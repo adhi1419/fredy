@@ -20,7 +20,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          # NOT node-version-file: upstream's .nvmrc (16.14.0) contradicts
+          # engines (>=22.22.0); match upstream test.yml instead.
+          node-version: 22
           cache: yarn
       - run: yarn install --frozen-lockfile
 
