@@ -25,8 +25,16 @@
 
 const BACKEND = process.env.STORAGE_BACKEND ?? 'sqlite';
 
-/** Modules that have a firestore implementation so far (Phase 1 rollout). */
-const FIRESTORE_IMPLEMENTED = new Set(['settingsStorage', 'sessionStore']);
+/** Modules that have a firestore implementation so far (Phase 2 cohort flipped). */
+const FIRESTORE_IMPLEMENTED = new Set([
+  'settingsStorage',
+  'sessionStore',
+  'userStorage',
+  'configuredAdapterStorage',
+  'jobStorage',
+  'watchListStorage',
+  'listingsStorage',
+]);
 
 /**
  * Load a storage module for the active backend.
