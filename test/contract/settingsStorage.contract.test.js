@@ -7,17 +7,19 @@
  * Contract tests: settingsStorage
  *
  * Backend-agnostic behavioral contract for the settings module. Seeds and
- * asserts ONLY through the public storage API. Must pass unchanged against
- * every storage backend (sqlite today, firestore in Phase 2).
+ * asserts ONLY through the public storage API (loaded via the harness so the
+ * same suite runs against every backend). Every storage call is awaited:
+ * the sqlite implementation is synchronous (await is a no-op), the firestore
+ * one is async.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { initBackend, resetBackend, teardownBackend } from './harness.js';
+import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
 
 let settingsStorage;
 
 beforeAll(async () => {
   await initBackend();
-  settingsStorage = await import('../../lib/services/storage/settingsStorage.js');
+  settingsStorage = await loadStorageModule('settingsStorage');
 });
 
 beforeEach(async () => {
@@ -38,26 +40,26 @@ describe('settingsStorage contract', () => {
     });
 
     it('round-trips a stored value through upsert + get', async () => {
-      settingsStorage.upsertSettings({ workingHourFrom: '08:00' });
+      await settingsStorage.upsertSettings({ workingHourFrom: '08:00' });
       const settings = await settingsStorage.getSettings();
       expect(settings.workingHourFrom).toBe('08:00');
     });
 
     it('stored settings override config-file values of the same name', async () => {
-      settingsStorage.upsertSettings({ interval: 5 });
+      await settingsStorage.upsertSettings({ interval: 5 });
       const settings = await settingsStorage.getSettings();
       expect(settings.interval).toBe(5);
     });
 
     it('updates an existing setting in place (upsert semantics)', async () => {
-      settingsStorage.upsertSettings({ proxyUrl: 'http://one' });
-      settingsStorage.upsertSettings({ proxyUrl: 'http://two' });
+      await settingsStorage.upsertSettings({ proxyUrl: 'http://one' });
+      await settingsStorage.upsertSettings({ proxyUrl: 'http://two' });
       const settings = await settingsStorage.getSettings();
       expect(settings.proxyUrl).toBe('http://two');
     });
 
     it('upserts multiple settings from one object map', async () => {
-      settingsStorage.upsertSettings({ a: 1, b: 'x', c: { nested: true } });
+      await settingsStorage.upsertSettings({ a: 1, b: 'x', c: { nested: true } });
       const settings = await settingsStorage.getSettings();
       expect(settings.a).toBe(1);
       expect(settings.b).toBe('x');
@@ -65,13 +67,13 @@ describe('settingsStorage contract', () => {
     });
 
     it('accepts the single {name, value} entry shape', async () => {
-      settingsStorage.upsertSettings({ name: 'demoMode', value: true });
+      await settingsStorage.upsertSettings({ name: 'demoMode', value: true });
       const settings = await settingsStorage.getSettings();
       expect(settings.demoMode).toBe(true);
     });
 
     it('preserves value types: numbers, booleans, arrays, objects, null-in-object', async () => {
-      settingsStorage.upsertSettings({
+      await settingsStorage.upsertSettings({
         num: 42.5,
         boolTrue: true,
         boolFalse: false,
@@ -87,16 +89,16 @@ describe('settingsStorage contract', () => {
     });
 
     it('deletes a setting when the value is null', async () => {
-      settingsStorage.upsertSettings({ toDelete: 'exists' });
+      await settingsStorage.upsertSettings({ toDelete: 'exists' });
       expect((await settingsStorage.getSettings()).toDelete).toBe('exists');
-      settingsStorage.upsertSettings({ toDelete: null });
+      await settingsStorage.upsertSettings({ toDelete: null });
       const settings = await settingsStorage.getSettings();
       expect(settings.toDelete).toBeUndefined();
     });
 
     it('cache invalidation: getSettings reflects writes made after a prior read', async () => {
       await settingsStorage.getSettings(); // populate cache
-      settingsStorage.upsertSettings({ addedLater: 'yes' });
+      await settingsStorage.upsertSettings({ addedLater: 'yes' });
       const settings = await settingsStorage.getSettings();
       expect(settings.addedLater).toBe('yes');
     });
@@ -104,44 +106,44 @@ describe('settingsStorage contract', () => {
 
   describe('user settings', () => {
     it('stores user settings separately from global settings', async () => {
-      settingsStorage.upsertSettings({ language: 'global-en' });
-      settingsStorage.upsertSettings({ language: 'de' }, 'user-1');
+      await settingsStorage.upsertSettings({ language: 'global-en' });
+      await settingsStorage.upsertSettings({ language: 'de' }, 'user-1');
 
       const globalSettings = await settingsStorage.getSettings();
-      const userSettings = settingsStorage.getUserSettings('user-1');
+      const userSettings = await settingsStorage.getUserSettings('user-1');
 
       expect(globalSettings.language).toBe('global-en');
       expect(userSettings.language).toBe('de');
     });
 
     it('isolates settings between users', async () => {
-      settingsStorage.upsertSettings({ theme: 'dark' }, 'user-1');
-      settingsStorage.upsertSettings({ theme: 'light' }, 'user-2');
-      expect(settingsStorage.getUserSettings('user-1').theme).toBe('dark');
-      expect(settingsStorage.getUserSettings('user-2').theme).toBe('light');
+      await settingsStorage.upsertSettings({ theme: 'dark' }, 'user-1');
+      await settingsStorage.upsertSettings({ theme: 'light' }, 'user-2');
+      expect((await settingsStorage.getUserSettings('user-1')).theme).toBe('dark');
+      expect((await settingsStorage.getUserSettings('user-2')).theme).toBe('light');
     });
 
-    it('returns an empty object for a user with no settings', () => {
-      expect(settingsStorage.getUserSettings('nobody')).toEqual({});
+    it('returns an empty object for a user with no settings', async () => {
+      expect(await settingsStorage.getUserSettings('nobody')).toEqual({});
     });
 
-    it('returns an empty object for missing/invalid userId', () => {
-      expect(settingsStorage.getUserSettings(null)).toEqual({});
-      expect(settingsStorage.getUserSettings(undefined)).toEqual({});
-      expect(settingsStorage.getUserSettings(123)).toEqual({});
+    it('returns an empty object for missing/invalid userId', async () => {
+      expect(await settingsStorage.getUserSettings(null)).toEqual({});
+      expect(await settingsStorage.getUserSettings(undefined)).toEqual({});
+      expect(await settingsStorage.getUserSettings(123)).toEqual({});
     });
 
     it('user settings do not leak into global settings', async () => {
-      settingsStorage.upsertSettings({ userOnly: 'private' }, 'user-1');
+      await settingsStorage.upsertSettings({ userOnly: 'private' }, 'user-1');
       const globalSettings = await settingsStorage.getSettings();
       expect(globalSettings.userOnly).toBeUndefined();
     });
 
-    it('deletes a user setting when the value is null', () => {
-      settingsStorage.upsertSettings({ gone: 'soon' }, 'user-1');
-      expect(settingsStorage.getUserSettings('user-1').gone).toBe('soon');
-      settingsStorage.upsertSettings({ gone: null }, 'user-1');
-      expect(settingsStorage.getUserSettings('user-1').gone).toBeUndefined();
+    it('deletes a user setting when the value is null', async () => {
+      await settingsStorage.upsertSettings({ gone: 'soon' }, 'user-1');
+      expect((await settingsStorage.getUserSettings('user-1')).gone).toBe('soon');
+      await settingsStorage.upsertSettings({ gone: null }, 'user-1');
+      expect((await settingsStorage.getUserSettings('user-1')).gone).toBeUndefined();
     });
   });
 
@@ -160,7 +162,7 @@ describe('settingsStorage contract', () => {
 
   describe('getPublicSettings', () => {
     it('strips secrets (session_secret, proxyAuthSecret) but keeps admin config', async () => {
-      settingsStorage.upsertSettings({
+      await settingsStorage.upsertSettings({
         session_secret: 'top-secret',
         proxyAuthSecret: 'also-secret',
         proxyUrl: 'http://proxy:8080',

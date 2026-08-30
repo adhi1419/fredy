@@ -11,7 +11,7 @@
  * every storage backend (sqlite today, firestore in Phase 2).
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { initBackend, resetBackend, teardownBackend } from './harness.js';
+import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
 
 let SqliteSessionStore;
 let sweepExpiredSessions;
@@ -31,7 +31,7 @@ const sessionFor = (userId, maxAge = 60_000) => ({
 
 beforeAll(async () => {
   await initBackend();
-  const mod = await import('../../lib/services/storage/sessionStore.js');
+  const mod = await loadStorageModule('sessionStore');
   SqliteSessionStore = mod.SqliteSessionStore;
   sweepExpiredSessions = mod.sweepExpiredSessions;
   store = new SqliteSessionStore();
@@ -129,7 +129,7 @@ describe('sessionStore contract', () => {
       await set('expired', { currentUser: 'old', cookie: { expires: new Date(Date.now() - 5000) } });
       await set('live', sessionFor('current', 600_000));
 
-      const removed = sweepExpiredSessions(Date.now());
+      const removed = await sweepExpiredSessions(Date.now());
       expect(removed).toBe(1);
 
       // Live session survives.
@@ -138,8 +138,8 @@ describe('sessionStore contract', () => {
       expect(await get('expired')).toBeNull();
     });
 
-    it('returns 0 when there is nothing to sweep', () => {
-      expect(sweepExpiredSessions(Date.now())).toBe(0);
+    it('returns 0 when there is nothing to sweep', async () => {
+      expect(await sweepExpiredSessions(Date.now())).toBe(0);
     });
 
     it('respects the now parameter for sweep cutoff', async () => {
@@ -147,7 +147,7 @@ describe('sessionStore contract', () => {
       await set('will-expire', sessionFor('user-1', 60_000));
 
       // Sweeping at far future should remove it.
-      const removed = sweepExpiredSessions(farFuture);
+      const removed = await sweepExpiredSessions(farFuture);
       expect(removed).toBe(1);
     });
   });

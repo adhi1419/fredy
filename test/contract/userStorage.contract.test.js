@@ -8,10 +8,11 @@
  *
  * Backend-agnostic behavioral contract for the user module. Seeds and asserts
  * ONLY through the public storage API (userStorage, jobStorage, settingsStorage).
- * Must pass unchanged against every storage backend.
+ * Every storage call is awaited so the same test body works against both
+ * sync (sqlite) and async (firestore) backends.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { initBackend, resetBackend, teardownBackend } from './harness.js';
+import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
 
 let userStorage;
 let jobStorage;
@@ -20,9 +21,9 @@ let hashModule;
 
 beforeAll(async () => {
   await initBackend();
-  userStorage = await import('../../lib/services/storage/userStorage.js');
-  jobStorage = await import('../../lib/services/storage/jobStorage.js');
-  settingsStorage = await import('../../lib/services/storage/settingsStorage.js');
+  userStorage = await loadStorageModule('userStorage');
+  jobStorage = await loadStorageModule('jobStorage');
+  settingsStorage = await loadStorageModule('settingsStorage');
   hashModule = await import('../../lib/services/security/hash.js');
 });
 
@@ -41,14 +42,14 @@ afterAll(async () => {
 /** Seed a user and return the id we can look it up with. */
 async function seedUser({ username = 'alice', password = 'secret', isAdmin = false } = {}) {
   await userStorage.upsertUser({ username, password, isAdmin });
-  const users = userStorage.getUsers();
+  const users = await userStorage.getUsers();
   const u = users.find((r) => r.username === username);
   return u.id;
 }
 
 /** Seed a minimal job owned by userId. */
-function seedJob(userId, name = 'job-1') {
-  jobStorage.upsertJob({
+async function seedJob(userId, name = 'job-1') {
+  await jobStorage.upsertJob({
     name,
     provider: [],
     notificationAdapter: [],
@@ -64,7 +65,7 @@ describe('userStorage contract', () => {
   describe('upsertUser', () => {
     it('inserts a new user retrievable by getUsers', async () => {
       await userStorage.upsertUser({ username: 'alice', password: 'pw', isAdmin: false });
-      const users = userStorage.getUsers();
+      const users = await userStorage.getUsers();
       expect(users).toHaveLength(1);
       expect(users[0].username).toBe('alice');
       expect(users[0].isAdmin).toBe(false);
@@ -72,37 +73,37 @@ describe('userStorage contract', () => {
 
     it('inserts a new admin user', async () => {
       await userStorage.upsertUser({ username: 'boss', password: 'pw', isAdmin: true });
-      const users = userStorage.getUsers();
+      const users = await userStorage.getUsers();
       expect(users[0].isAdmin).toBe(true);
     });
 
     it('updates username and isAdmin when userId is provided', async () => {
       const id = await seedUser({ username: 'alice', isAdmin: false });
       await userStorage.upsertUser({ userId: id, username: 'alice-renamed', password: '', isAdmin: true });
-      const user = userStorage.getUser(id);
+      const user = await userStorage.getUser(id);
       expect(user.username).toBe('alice-renamed');
       expect(user.isAdmin).toBe(true);
     });
 
     it('preserves existing password hash when update password is empty', async () => {
       const id = await seedUser({ username: 'alice', password: 'original' });
-      const before = userStorage.getUserWithSecretsByUsername('alice');
+      const before = await userStorage.getUserWithSecretsByUsername('alice');
       await userStorage.upsertUser({ userId: id, username: 'alice', password: '', isAdmin: false });
-      const after = userStorage.getUserWithSecretsByUsername('alice');
+      const after = await userStorage.getUserWithSecretsByUsername('alice');
       expect(after.password).toBe(before.password);
     });
 
     it('updates password hash when a non-empty password is provided', async () => {
       const id = await seedUser({ username: 'alice', password: 'original' });
-      const before = userStorage.getUserWithSecretsByUsername('alice');
+      const before = await userStorage.getUserWithSecretsByUsername('alice');
       await userStorage.upsertUser({ userId: id, username: 'alice', password: 'changed', isAdmin: false });
-      const after = userStorage.getUserWithSecretsByUsername('alice');
+      const after = await userStorage.getUserWithSecretsByUsername('alice');
       expect(after.password).not.toBe(before.password);
     });
 
     it('generates an MCP token on insert', async () => {
       const id = await seedUser();
-      const token = userStorage.getMcpToken(id);
+      const token = await userStorage.getMcpToken(id);
       expect(token).toBeTruthy();
       expect(token.startsWith('fredy_')).toBe(true);
     });
@@ -113,28 +114,28 @@ describe('userStorage contract', () => {
   // ---------------------------------------------------------------------------
 
   describe('getUsers', () => {
-    it('returns empty array when no users exist', () => {
-      expect(userStorage.getUsers()).toEqual([]);
+    it('returns empty array when no users exist', async () => {
+      expect(await userStorage.getUsers()).toEqual([]);
     });
 
     it('returns users ordered by username', async () => {
       await seedUser({ username: 'zara' });
       await seedUser({ username: 'alice' });
-      const names = userStorage.getUsers().map((u) => u.username);
+      const names = (await userStorage.getUsers()).map((u) => u.username);
       expect(names).toEqual(['alice', 'zara']);
     });
 
     it('includes numberOfJobs count per user', async () => {
       const id = await seedUser({ username: 'alice' });
-      seedJob(id, 'j1');
-      seedJob(id, 'j2');
-      const user = userStorage.getUsers().find((u) => u.id === id);
+      await seedJob(id, 'j1');
+      await seedJob(id, 'j2');
+      const user = (await userStorage.getUsers()).find((u) => u.id === id);
       expect(user.numberOfJobs).toBe(2);
     });
 
     it('does not expose password or mcp_token', async () => {
       await seedUser();
-      const user = userStorage.getUsers()[0];
+      const user = (await userStorage.getUsers())[0];
       expect(user.password).toBeUndefined();
       expect(user.mcp_token).toBeUndefined();
       expect(user.mcpToken).toBeUndefined();
@@ -146,13 +147,13 @@ describe('userStorage contract', () => {
   // ---------------------------------------------------------------------------
 
   describe('getUser', () => {
-    it('returns null for non-existent id', () => {
-      expect(userStorage.getUser('does-not-exist')).toBeNull();
+    it('returns null for non-existent id', async () => {
+      expect(await userStorage.getUser('does-not-exist')).toBeNull();
     });
 
     it('returns user with correct shape', async () => {
       const id = await seedUser({ username: 'alice', isAdmin: true });
-      const user = userStorage.getUser(id);
+      const user = await userStorage.getUser(id);
       expect(user).toMatchObject({
         id,
         username: 'alice',
@@ -169,13 +170,13 @@ describe('userStorage contract', () => {
   // ---------------------------------------------------------------------------
 
   describe('getUserByUsername', () => {
-    it('returns null for non-existent username', () => {
-      expect(userStorage.getUserByUsername('ghost')).toBeNull();
+    it('returns null for non-existent username', async () => {
+      expect(await userStorage.getUserByUsername('ghost')).toBeNull();
     });
 
     it('returns user without secrets', async () => {
       await seedUser({ username: 'alice', isAdmin: false });
-      const user = userStorage.getUserByUsername('alice');
+      const user = await userStorage.getUserByUsername('alice');
       expect(user.username).toBe('alice');
       expect(user.isAdmin).toBe(false);
       expect(user.id).toBeTruthy();
@@ -191,13 +192,13 @@ describe('userStorage contract', () => {
   // ---------------------------------------------------------------------------
 
   describe('getUserWithSecretsByUsername', () => {
-    it('returns null for non-existent username', () => {
-      expect(userStorage.getUserWithSecretsByUsername('ghost')).toBeNull();
+    it('returns null for non-existent username', async () => {
+      expect(await userStorage.getUserWithSecretsByUsername('ghost')).toBeNull();
     });
 
     it('includes password hash', async () => {
       await seedUser({ username: 'alice', password: 'secret' });
-      const user = userStorage.getUserWithSecretsByUsername('alice');
+      const user = await userStorage.getUserWithSecretsByUsername('alice');
       expect(user.password).toBeTruthy();
       expect(typeof user.password).toBe('string');
       // Hash should be verifiable
@@ -206,7 +207,7 @@ describe('userStorage contract', () => {
 
     it('includes isAdmin as a truthy/falsy value', async () => {
       await seedUser({ username: 'alice', isAdmin: true });
-      const user = userStorage.getUserWithSecretsByUsername('alice');
+      const user = await userStorage.getUserWithSecretsByUsername('alice');
       expect(user.isAdmin).toBeTruthy();
     });
   });
@@ -219,16 +220,16 @@ describe('userStorage contract', () => {
     it('sets lastLogin to a recent timestamp', async () => {
       const id = await seedUser({ username: 'alice' });
       const before = Date.now();
-      userStorage.setLastLoginToNow({ userId: id });
+      await userStorage.setLastLoginToNow({ userId: id });
       const after = Date.now();
-      const user = userStorage.getUser(id);
+      const user = await userStorage.getUser(id);
       expect(user.lastLogin).toBeGreaterThanOrEqual(before);
       expect(user.lastLogin).toBeLessThanOrEqual(after);
     });
 
     it('lastLogin is null before first login', async () => {
       const id = await seedUser({ username: 'alice' });
-      const user = userStorage.getUser(id);
+      const user = await userStorage.getUser(id);
       expect(user.lastLogin).toBeNull();
     });
   });
@@ -241,8 +242,8 @@ describe('userStorage contract', () => {
     it('replaces the stored hash directly', async () => {
       const id = await seedUser({ username: 'alice', password: 'old' });
       const newHash = await hashModule.hash('new-password');
-      userStorage.updatePasswordHash({ userId: id, passwordHash: newHash });
-      const user = userStorage.getUserWithSecretsByUsername('alice');
+      await userStorage.updatePasswordHash({ userId: id, passwordHash: newHash });
+      const user = await userStorage.getUserWithSecretsByUsername('alice');
       expect(user.password).toBe(newHash);
       expect(await hashModule.verify('new-password', user.password)).toBe(true);
       expect(await hashModule.verify('old', user.password)).toBe(false);
@@ -256,21 +257,21 @@ describe('userStorage contract', () => {
   describe('removeUser', () => {
     it('deletes the user', async () => {
       const id = await seedUser({ username: 'alice' });
-      userStorage.removeUser(id);
-      expect(userStorage.getUser(id)).toBeNull();
+      await userStorage.removeUser(id);
+      expect(await userStorage.getUser(id)).toBeNull();
     });
 
     it('cascades: user jobs disappear', async () => {
       const id = await seedUser({ username: 'alice' });
-      seedJob(id, 'doomed-job');
+      await seedJob(id, 'doomed-job');
       // Pre-condition: the job exists
-      const jobsBefore = jobStorage.getJobs({ includeDisabled: true });
+      const jobsBefore = await jobStorage.getJobs({ includeDisabled: true });
       expect(jobsBefore.some((j) => j.name === 'doomed-job')).toBe(true);
 
-      userStorage.removeUser(id);
+      await userStorage.removeUser(id);
 
       // Post-condition: the job is gone
-      const jobsAfter = jobStorage.getJobs({ includeDisabled: true });
+      const jobsAfter = await jobStorage.getJobs({ includeDisabled: true });
       expect(jobsAfter.some((j) => j.name === 'doomed-job')).toBe(false);
     });
   });
@@ -282,39 +283,39 @@ describe('userStorage contract', () => {
   describe('validateMcpToken', () => {
     it('returns userId for a valid token', async () => {
       const id = await seedUser({ username: 'alice' });
-      const token = userStorage.getMcpToken(id);
-      const result = userStorage.validateMcpToken(token);
+      const token = await userStorage.getMcpToken(id);
+      const result = await userStorage.validateMcpToken(token);
       expect(result).toEqual({ userId: id });
     });
 
-    it('returns null for an invalid token', () => {
-      expect(userStorage.validateMcpToken('fredy_bogus')).toBeNull();
+    it('returns null for an invalid token', async () => {
+      expect(await userStorage.validateMcpToken('fredy_bogus')).toBeNull();
     });
 
-    it('returns null for null/undefined/empty', () => {
-      expect(userStorage.validateMcpToken(null)).toBeNull();
-      expect(userStorage.validateMcpToken(undefined)).toBeNull();
-      expect(userStorage.validateMcpToken('')).toBeNull();
+    it('returns null for null/undefined/empty', async () => {
+      expect(await userStorage.validateMcpToken(null)).toBeNull();
+      expect(await userStorage.validateMcpToken(undefined)).toBeNull();
+      expect(await userStorage.validateMcpToken('')).toBeNull();
     });
   });
 
   describe('getMcpToken', () => {
     it('returns a fredy_ prefixed token for an existing user', async () => {
       const id = await seedUser({ username: 'alice' });
-      const token = userStorage.getMcpToken(id);
+      const token = await userStorage.getMcpToken(id);
       expect(typeof token).toBe('string');
       expect(token.startsWith('fredy_')).toBe(true);
       expect(token.length).toBeGreaterThan(10);
     });
 
-    it('returns null for a non-existent user', () => {
-      expect(userStorage.getMcpToken('no-such-id')).toBeNull();
+    it('returns null for a non-existent user', async () => {
+      expect(await userStorage.getMcpToken('no-such-id')).toBeNull();
     });
 
     it('each user gets a unique token', async () => {
       const id1 = await seedUser({ username: 'alice' });
       const id2 = await seedUser({ username: 'bob' });
-      expect(userStorage.getMcpToken(id1)).not.toBe(userStorage.getMcpToken(id2));
+      expect(await userStorage.getMcpToken(id1)).not.toBe(await userStorage.getMcpToken(id2));
     });
   });
 
@@ -325,7 +326,7 @@ describe('userStorage contract', () => {
   describe('ensureAdminUserExists', () => {
     it('creates an admin user on empty DB', async () => {
       await userStorage.ensureAdminUserExists();
-      const users = userStorage.getUsers();
+      const users = await userStorage.getUsers();
       expect(users).toHaveLength(1);
       expect(users[0].username).toBe('admin');
       expect(users[0].isAdmin).toBe(true);
@@ -333,14 +334,14 @@ describe('userStorage contract', () => {
 
     it('admin is created with the default password', async () => {
       await userStorage.ensureAdminUserExists();
-      const admin = userStorage.getUserWithSecretsByUsername('admin');
+      const admin = await userStorage.getUserWithSecretsByUsername('admin');
       expect(await hashModule.verify(userStorage.DEFAULT_ADMIN_PASSWORD, admin.password)).toBe(true);
     });
 
     it('admin is created with a last_login timestamp', async () => {
       const before = Date.now();
       await userStorage.ensureAdminUserExists();
-      const admin = userStorage.getUsers()[0];
+      const admin = (await userStorage.getUsers())[0];
       expect(admin.lastLogin).toBeGreaterThanOrEqual(before);
     });
 
@@ -351,7 +352,7 @@ describe('userStorage contract', () => {
 
       await userStorage.ensureAdminUserExists();
 
-      const users = userStorage.getUsers();
+      const users = await userStorage.getUsers();
       const admins = users.filter((u) => u.isAdmin);
       // Exactly one user promoted
       expect(admins).toHaveLength(1);
@@ -363,7 +364,7 @@ describe('userStorage contract', () => {
 
       await userStorage.ensureAdminUserExists();
 
-      const users = userStorage.getUsers();
+      const users = await userStorage.getUsers();
       expect(users).toHaveLength(2);
       const admins = users.filter((u) => u.isAdmin);
       expect(admins).toHaveLength(1);
@@ -377,41 +378,41 @@ describe('userStorage contract', () => {
 
   describe('ensureDemoUserExists', () => {
     it('creates a non-admin demo user when demoMode is on', async () => {
-      settingsStorage.upsertSettings({ demoMode: true });
+      await settingsStorage.upsertSettings({ demoMode: true });
 
       await userStorage.ensureDemoUserExists();
 
-      const demo = userStorage.getUserByUsername('demo');
+      const demo = await userStorage.getUserByUsername('demo');
       expect(demo).not.toBeNull();
       expect(demo.isAdmin).toBe(false);
     });
 
     it('demo user password is verifiable as "demo"', async () => {
-      settingsStorage.upsertSettings({ demoMode: true });
+      await settingsStorage.upsertSettings({ demoMode: true });
       await userStorage.ensureDemoUserExists();
 
-      const demo = userStorage.getUserWithSecretsByUsername('demo');
+      const demo = await userStorage.getUserWithSecretsByUsername('demo');
       expect(await hashModule.verify('demo', demo.password)).toBe(true);
     });
 
     it('demotes an existing admin demo user', async () => {
       // Seed a demo user with admin rights
       await userStorage.upsertUser({ username: 'demo', password: 'demo', isAdmin: true });
-      settingsStorage.upsertSettings({ demoMode: true });
+      await settingsStorage.upsertSettings({ demoMode: true });
 
       await userStorage.ensureDemoUserExists();
 
-      const demo = userStorage.getUserByUsername('demo');
+      const demo = await userStorage.getUserByUsername('demo');
       expect(demo.isAdmin).toBe(false);
     });
 
     it('does not create a demo user when demoMode is off (dev mode)', async () => {
       // demoMode defaults to falsy from config. In dev mode (NODE_ENV != production),
       // the function returns early without deleting an existing demo user.
-      settingsStorage.upsertSettings({ demoMode: false });
+      await settingsStorage.upsertSettings({ demoMode: false });
       await userStorage.ensureDemoUserExists();
 
-      expect(userStorage.getUserByUsername('demo')).toBeNull();
+      expect(await userStorage.getUserByUsername('demo')).toBeNull();
     });
   });
 });
