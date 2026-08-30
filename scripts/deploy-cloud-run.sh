@@ -51,7 +51,12 @@ echo "   cleanup policy set (keep newest version only)"
 
 echo "== Build (Cloud Build) =="
 IMAGE="$REGION-docker.pkg.dev/$PROJECT/fredy/fredy:latest"
-gcloud builds submit --tag "$IMAGE" .
+# --suppress-logs: streaming logs from the default bucket needs project
+# Viewer, which the lean CI deployer SA lacks; without the flag gcloud
+# exits 1 even though the build keeps running. The command still waits
+# for completion and fails on build failure — inspect failures in the
+# Cloud Build console.
+gcloud builds submit --tag "$IMAGE" --suppress-logs .
 
 echo "== Trigger token =="
 # Reuse the existing token when the service already has one, so the
