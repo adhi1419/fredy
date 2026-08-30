@@ -15,6 +15,7 @@ import { initActiveCheckerCron } from './lib/services/crons/listing-alive-cron.j
 import { initGeocodingCron } from './lib/services/crons/geocoding-cron.js';
 import { getSettings } from './lib/services/storage/settingsStorage.js';
 import SqliteConnection, { computeDbPath } from './lib/services/storage/SqliteConnection.js';
+import { isFirestore } from './lib/services/storage/backendResolver.js';
 import { initJobExecutionService } from './lib/services/jobs/jobExecutionService.js';
 import { ensureValidBinary } from './lib/services/ensureValidBinary.js';
 import { removeObsoleteProviders } from './lib/services/providers/providerCleanup.js';
@@ -55,16 +56,23 @@ try {
   process.exit(1);
 }
 
-await SqliteConnection.init();
+if (isFirestore()) {
+  // Firestore backend: no local DB file, no schema, no migrations.
+  const { default: FirestoreConnection } = await import('./lib/services/storage/firestore/FirestoreConnection.js');
+  await FirestoreConnection.init();
+  logger.info('Storage backend: firestore');
+} else {
+  await SqliteConnection.init();
 
-// Run DB migrations once at startup and block until finished. A failure here is fatal: continuing
-// would start the API and the schedulers against a schema that is missing the failed migration and
-// everything after it.
-try {
-  await runMigrations();
-} catch (err) {
-  logger.error('Database migration failed. Refusing to start.', err.cause ?? err);
-  process.exit(1);
+  // Run DB migrations once at startup and block until finished. A failure here is fatal: continuing
+  // would start the API and the schedulers against a schema that is missing the failed migration and
+  // everything after it.
+  try {
+    await runMigrations();
+  } catch (err) {
+    logger.error('Database migration failed. Refusing to start.', err.cause ?? err);
+    process.exit(1);
+  }
 }
 
 const settings = await getSettings();
@@ -76,9 +84,11 @@ const settings = await getSettings();
 await reloadEnabledFromSettings();
 
 // Ensure the sqlite directory exists before loading anything else (based on config.sqlitepath)
-const { dir: sqliteDir } = await computeDbPath();
-if (!fs.existsSync(sqliteDir)) {
-  fs.mkdirSync(sqliteDir, { recursive: true });
+if (!isFirestore()) {
+  const { dir: sqliteDir } = await computeDbPath();
+  if (!fs.existsSync(sqliteDir)) {
+    fs.mkdirSync(sqliteDir, { recursive: true });
+  }
 }
 
 // Load provider modules once at startup
@@ -89,7 +99,7 @@ const providers = await getProviders();
 // re-checked again, so they are pruned before anything starts working with jobs or listings.
 removeObsoleteProviders(providers);
 
-similarityCache.initSimilarityCache();
+await similarityCache.initSimilarityCache();
 similarityCache.startSimilarityCacheReloader();
 
 //assuming interval is always in minutes

@@ -16,7 +16,7 @@ vi.mock('../../../lib/services/storage/SqliteConnection.js', () => ({
     withTransaction: (callback) => db.transaction((cb) => cb(db))(callback),
   },
 }));
-vi.mock('../../../lib/services/storage/settingsStorage.js', () => ({
+vi.mock('../../../lib/services/storage/sqlite/settingsStorage.js', () => ({
   getSettings: async () => ({ demoMode }),
   getUserSettings: () => ({}),
   upsertSettings: () => {},
@@ -41,7 +41,7 @@ describe('userStorage.ensureDemoUserExists', () => {
       );
       CREATE TABLE jobs (id TEXT PRIMARY KEY, user_id TEXT);
     `);
-    ({ ensureDemoUserExists } = await import('../../../lib/services/storage/userStorage.js'));
+    ({ ensureDemoUserExists } = await import('../../../lib/services/storage/sqlite/userStorage.js'));
   });
 
   afterEach(() => db.close());

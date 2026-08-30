@@ -391,25 +391,25 @@ describe('telegram send() - multiple chat IDs', () => {
 });
 
 describe('telegram send() - config validation', () => {
-  it('throws when telegram adapter config is missing', () => {
-    expect(() =>
+  it('throws when telegram adapter config is missing', async () => {
+    await expect(
       send({
         serviceName: 's',
         newListings: [],
         notificationConfig: [],
         jobKey: 'k',
       }),
-    ).toThrow(/configuration missing/);
+    ).rejects.toThrow(/configuration missing/);
   });
 
-  it('throws when token or chatId is missing', () => {
-    expect(() =>
+  it('throws when token or chatId is missing', async () => {
+    await expect(
       send({
         serviceName: 's',
         newListings: [],
         notificationConfig: [{ id: 'telegram', fields: { token: '' } }],
         jobKey: 'k',
       }),
-    ).toThrow(/token.*chatId/);
+    ).rejects.toThrow(/token.*chatId/);
   });
 });

@@ -27,7 +27,7 @@ describe('similarityCache', () => {
     expect(checkAndAddEntry({ jobId: 'job-1', title: 'X', price: 200, address: 'Y' })).toBe(false);
 
     // Now initialize from storage
-    initSimilarityCache();
+    await initSimilarityCache();
 
     // Exact duplicates should be detected
     expect(checkAndAddEntry({ jobId: 'job-1', title: 'A', price: 1000, address: 'Main 1' })).toBe(true);
@@ -159,7 +159,7 @@ describe('similarityCache', () => {
         },
       ];
       const { initSimilarityCache, checkAndAddEntry } = await loadModuleWith({ entries });
-      initSimilarityCache();
+      await initSimilarityCache();
 
       expect(checkAndAddEntry(welt)).toBe(true);
     });
@@ -211,7 +211,7 @@ describe('similarityCache', () => {
           { job_id: 'job-1', title: 'A', address: 'Main 1', price: 1000 },
         ],
       });
-      initSimilarityCache();
+      await initSimilarityCache();
 
       const { removeEntry } = await import('../../lib/services/similarity-check/similarityCache.js');
       expect(removeEntry({ jobId: 'job-1', title: 'A', address: 'Main 1', price: 1000 })).toBe(true);
