@@ -101,7 +101,9 @@ if ! gcloud firestore databases describe --database='(default)' > /dev/null 2>&1
 fi
 
 echo "== 6/6 Seed allowlist ($ADMIN_EMAIL as admin) =="
-ENC_EMAIL=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1].strip().lower(), safe=''))" "$ADMIN_EMAIL")
+# NOTE: no URL-encoding — the Firestore REST API decodes %xx in document
+# paths, and the app reads the doc id as the raw lowercase email.
+ENC_EMAIL=$(python3 -c "import sys; print(sys.argv[1].strip().lower())" "$ADMIN_EMAIL")
 NOW_MS=$(python3 -c "import time; print(int(time.time()*1000))")
 curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: $PROJECT" -H "Content-Type: application/json" \
   "https://firestore.googleapis.com/v1/projects/$PROJECT/databases/(default)/documents/allowed_users/$ENC_EMAIL" \
