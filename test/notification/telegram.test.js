@@ -413,3 +413,61 @@ describe('telegram send() - config validation', () => {
     ).rejects.toThrow(/token.*chatId/);
   });
 });
+
+describe('telegram send() - inquiry draft second message', () => {
+  it('sends a second sendMessage with the inquiry draft after the listing', async () => {
+    mockNodeFetch.mockResolvedValue(jsonOk());
+
+    await send({
+      serviceName: 'immoscout',
+      newListings: [
+        {
+          id: 'a',
+          title: 'Listing',
+          link: 'https://example.com/a',
+          address: 'Addr',
+          price: '500€',
+          size: '50m²',
+          image: 'https://example.com/x/abc.jpg',
+          inquiryMessage: 'Sehr geehrte Damen und Herren, ich interessiere mich ...',
+        },
+      ],
+      notificationConfig: [baseConfig],
+      jobKey: 'Berlin',
+    });
+
+    const urls = mockNodeFetch.mock.calls.map((c) => c[0]);
+    // First the listing (sendPhoto), then the draft (sendMessage).
+    expect(urls).toContain('https://api.telegram.org/botTKN/sendMessage');
+    const draftCall = mockNodeFetch.mock.calls.find(
+      (c) => c[0].endsWith('/sendMessage') && JSON.parse(c[1].body).text?.startsWith('Sehr geehrte'),
+    );
+    expect(draftCall).toBeTruthy();
+    expect(JSON.parse(draftCall[1].body).chat_id).toBe('999');
+  });
+
+  it('sends only the listing (no second message) when there is no inquiry draft', async () => {
+    mockNodeFetch.mockResolvedValue(jsonOk());
+
+    await send({
+      serviceName: 'immoscout',
+      newListings: [
+        {
+          id: 'a',
+          title: 'Listing',
+          link: 'https://example.com/a',
+          address: 'Addr',
+          price: '500€',
+          size: '50m²',
+          image: 'https://example.com/x/abc.jpg',
+        },
+      ],
+      notificationConfig: [baseConfig],
+      jobKey: 'Berlin',
+    });
+
+    // Only the sendPhoto call; no draft sendMessage.
+    expect(mockNodeFetch).toHaveBeenCalledTimes(1);
+    expect(mockNodeFetch.mock.calls[0][0]).toBe('https://api.telegram.org/botTKN/sendPhoto');
+  });
+});
