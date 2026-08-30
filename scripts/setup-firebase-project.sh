@@ -66,7 +66,7 @@ TOKEN=$(gcloud auth print-access-token)
 
 echo "== 3/6 Attach Firebase =="
 HTTP=$(curl -s -o /tmp/addfb.json -w '%{http_code}' -X POST \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: $PROJECT" -H "Content-Type: application/json" \
   "https://firebase.googleapis.com/v1beta1/projects/$PROJECT:addFirebase" -d '{}')
 # 200 = attached now; 409 = already attached — both fine.
 if [ "$HTTP" != "200" ] && [ "$HTTP" != "409" ]; then
@@ -75,22 +75,22 @@ fi
 sleep 10
 
 echo "== 4/6 Web app + config =="
-APPS=$(curl -s -H "Authorization: Bearer $TOKEN" \
+APPS=$(curl -s -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: $PROJECT" \
   "https://firebase.googleapis.com/v1beta1/projects/$PROJECT/webApps")
 APP_ID=$(echo "$APPS" | python3 -c "import sys,json; apps=json.load(sys.stdin).get('apps',[]); print(apps[0]['appId'] if apps else '')")
 if [ -z "$APP_ID" ]; then
-  OP=$(curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  OP=$(curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: $PROJECT" -H "Content-Type: application/json" \
     "https://firebase.googleapis.com/v1beta1/projects/$PROJECT/webApps" \
     -d '{"displayName":"fredy"}')
   # webApps.create is long-running; poll briefly then re-list.
   sleep 15
-  APPS=$(curl -s -H "Authorization: Bearer $TOKEN" \
+  APPS=$(curl -s -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: $PROJECT" \
     "https://firebase.googleapis.com/v1beta1/projects/$PROJECT/webApps")
   APP_ID=$(echo "$APPS" | python3 -c "import sys,json; apps=json.load(sys.stdin).get('apps',[]); print(apps[0]['appId'] if apps else '')")
 fi
 [ -n "$APP_ID" ] || { echo "could not create/find web app"; exit 1; }
 
-curl -s -H "Authorization: Bearer $TOKEN" \
+curl -s -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: $PROJECT" \
   "https://firebase.googleapis.com/v1beta1/projects/$PROJECT/webApps/$APP_ID/config" \
   > firebase-web-config.json
 echo "   wrote firebase-web-config.json"
@@ -103,7 +103,7 @@ fi
 echo "== 6/6 Seed allowlist ($ADMIN_EMAIL as admin) =="
 ENC_EMAIL=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1].strip().lower(), safe=''))" "$ADMIN_EMAIL")
 NOW_MS=$(python3 -c "import time; print(int(time.time()*1000))")
-curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H "x-goog-user-project: $PROJECT" -H "Content-Type: application/json" \
   "https://firestore.googleapis.com/v1/projects/$PROJECT/databases/(default)/documents/allowed_users/$ENC_EMAIL" \
   -d "{\"fields\":{\"email\":{\"stringValue\":\"$(echo "$ADMIN_EMAIL" | tr 'A-Z' 'a-z')\"},\"isAdmin\":{\"booleanValue\":true},\"addedAt\":{\"integerValue\":\"$NOW_MS\"}}}" \
   > /dev/null && echo "   allowlisted: $ADMIN_EMAIL (admin)"
