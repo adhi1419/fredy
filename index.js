@@ -151,7 +151,10 @@ initTravelTimeCron();
 // a moment it needs holding back from.
 initConnectivityCron();
 
-logger.info(`Started Fredy successfully. Ui can be accessed via http://localhost:${settings.port}`);
+// Same resolution chain as api.js — PORT env (Cloud Run) wins, then config, then default.
+logger.info(
+  `Started Fredy successfully. Ui can be accessed via http://localhost:${Number(process.env.PORT) || settings.port || 9998}`,
+);
 
 // Initialize the lean Job Execution Service (schedules and bus listeners)
 initJobExecutionService({ providers, intervalMs: INTERVAL });
