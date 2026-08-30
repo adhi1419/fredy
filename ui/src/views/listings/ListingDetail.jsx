@@ -40,6 +40,8 @@ import {
   IconCalendar,
   IconBolt,
   IconRefresh,
+  IconEdit,
+  IconCopy,
 } from '@douyinfe/semi-icons';
 import maplibregl from '../../components/map/maplibre.js';
 import MapCanvas, { HOME_MARKER_COLOR } from '../../components/map/Map.jsx';
@@ -124,6 +126,12 @@ export default function ListingDetail() {
   // Which route the map draws. Straight line to begin with, because that is the one that needs
   // nothing fetched and so is never missing.
   const [routeMode, setRouteMode] = useState('straight');
+
+  // Draft inquiry message state
+  const [draftMessage, setDraftMessage] = useState(null);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftError, setDraftError] = useState(null);
+  const [draftCopied, setDraftCopied] = useState(false);
 
   useEffect(() => {
     setRouteTimes(listing?.travelTimes ?? []);
@@ -324,6 +332,36 @@ export default function ListingDetail() {
     } catch (e) {
       console.error('Failed to update status:', e);
       Toast.error(t('listings.toastStatusUpdateError'));
+    }
+  };
+
+  const handleDraftMessage = async () => {
+    if (!listing) return;
+    setDraftLoading(true);
+    setDraftError(null);
+    setDraftMessage(null);
+    setDraftCopied(false);
+    try {
+      const response = await xhrPost(`/api/listings/${listing.id}/draft-message`);
+      setDraftMessage(response.json.message);
+    } catch (e) {
+      if (e?.status === 404) {
+        setDraftError(t('listing.detail.draftMessage.notEnabled'));
+      } else {
+        setDraftError(t('listing.detail.draftMessage.error'));
+      }
+    } finally {
+      setDraftLoading(false);
+    }
+  };
+
+  const handleCopyDraft = async () => {
+    try {
+      await navigator.clipboard.writeText(draftMessage);
+      setDraftCopied(true);
+      setTimeout(() => setDraftCopied(false), 2000);
+    } catch {
+      Toast.error(t('listing.detail.draftMessage.error'));
     }
   };
 
@@ -589,6 +627,15 @@ export default function ListingDetail() {
               {listing.isWatched === 1 ? t('listing.detail.watched') : t('listing.detail.watch')}
             </Button>
             <StatusControl status={listing.status?.status ?? null} onChange={handleStatusChange} />
+            <Button
+              icon={<IconEdit />}
+              onClick={handleDraftMessage}
+              theme="light"
+              type="tertiary"
+              loading={draftLoading}
+            >
+              {draftLoading ? t('listing.detail.draftMessage.generating') : t('listing.detail.draftMessage.button')}
+            </Button>
             <a href={listing.link} target="_blank" rel="noopener noreferrer" className="listing-detail__open-btn">
               <IconLink style={{ marginRight: 6 }} />
               {t('listing.detail.openListing')}
@@ -615,6 +662,28 @@ export default function ListingDetail() {
               {t('listing.detail.delete')}
             </Button>
           </Space>
+
+          {/* Draft inquiry message result */}
+          {(draftMessage || draftError) && (
+            <div style={{ marginTop: 12, maxWidth: 600 }}>
+              {draftError && (
+                <Banner type="warning" description={draftError} closeIcon={null} style={{ marginBottom: 8 }} />
+              )}
+              {draftMessage && (
+                <div>
+                  <TextArea
+                    value={draftMessage}
+                    readonly
+                    autosize={{ minRows: 4, maxRows: 12 }}
+                    style={{ marginBottom: 8 }}
+                  />
+                  <Button icon={<IconCopy />} onClick={handleCopyDraft} size="small" theme="light">
+                    {draftCopied ? t('listing.detail.draftMessage.copied') : t('listing.detail.draftMessage.copy')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <Row>

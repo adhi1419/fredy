@@ -84,12 +84,15 @@ describe('POST /api/trigger', () => {
     });
 
     expect(res.statusCode).toBe(200);
-    // The response must not arrive before the run finished.
+    // The response must not arrive before the run finished — that ordering is
+    // the contract (Cloud Run only guarantees CPU while the request is open).
+    // Assert the flag, not a millisecond floor: setTimeout(50) can be measured
+    // as 49ms via timer rounding, which flakes a `>= 50` check in CI.
     expect(resolved).toBe(true);
     expect(runnerCalls).toEqual([{ respectWorkingHours: true }]);
     const body = res.json();
     expect(body.success).toBe(true);
-    expect(body.durationMs).toBeGreaterThanOrEqual(50);
+    expect(body.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('surfaces a failing run as 500', async () => {

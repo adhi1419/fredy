@@ -13,6 +13,7 @@ import TravelTimePage from './views/settings/pages/TravelTimePage';
 import ListingDetailsPage from './views/settings/pages/ListingDetailsPage';
 import NotificationsPage from './views/settings/pages/NotificationsPage';
 import ConnectionsPage from './views/settings/pages/ConnectionsPage';
+import InquiryProfilePage from './views/settings/pages/InquiryProfilePage';
 import AdminLayout from './views/admin/AdminLayout';
 import SystemPage from './views/admin/pages/SystemPage';
 import ExecutionPage from './views/admin/pages/ExecutionPage';
@@ -230,6 +231,7 @@ export default function FredyApp() {
                     <Route path="listings" element={<ListingDetailsPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="connections" element={<ConnectionsPage />} />
+                    <Route path="inquiry-profile" element={<InquiryProfilePage />} />
                   </Route>
 
                   {/* Settings that belong to the instance. Guarded once, at the parent, so a new

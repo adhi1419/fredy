@@ -677,6 +677,20 @@ export const useFredyState = create(
               throw Exception;
             }
           },
+          async saveInquiryProfile(inquiry_profile) {
+            try {
+              await xhrPost('/api/user/settings/inquiry-profile', { inquiry_profile });
+              set((state) => ({
+                userSettings: {
+                  ...state.userSettings,
+                  settings: { ...state.userSettings.settings, inquiry_profile },
+                },
+              }));
+            } catch (Exception) {
+              console.error('Error while trying to save inquiry profile. Error:', Exception);
+              throw Exception;
+            }
+          },
           async setLanguage(language) {
             try {
               await xhrPost('/api/user/settings/language', { language });
