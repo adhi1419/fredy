@@ -191,6 +191,9 @@ export default function Login() {
 
       await completeLogin();
     } catch (err) {
+      // Always leave a trace: 'popup closed' can also mean the browser or a
+      // header (COOP) severed the popup handshake, not that the user closed it.
+      console.error('Google sign-in failed:', err?.code ?? err);
       // User closed the popup or Firebase SDK error
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
         setPending(false);
