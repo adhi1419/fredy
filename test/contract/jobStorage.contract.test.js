@@ -113,7 +113,30 @@ describe('jobStorage contract', () => {
     });
 
     it('round-trips all fields: blacklist, provider, spatialFilter, specFilter, commuteFilter, shareWithUsers', async () => {
-      const spatialFilter = { type: 'FeatureCollection', features: [] };
+      // A real GeoJSON polygon: coordinates are [[[lng,lat], ...]] — nested
+      // arrays, which Firestore cannot store natively. This is exactly the
+      // shape a drawn map bound produces and must round-trip on every backend.
+      const spatialFilter = {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'Polygon',
+              coordinates: [
+                [
+                  [13.404, 52.52],
+                  [13.41, 52.52],
+                  [13.41, 52.53],
+                  [13.404, 52.53],
+                  [13.404, 52.52],
+                ],
+              ],
+            },
+          },
+        ],
+      };
       const specFilter = { maxPrice: 1200, minSize: 50 };
       const commuteFilter = { action: 'notify', limits: { Work: 35 } };
       await jobStorage.upsertJob(
