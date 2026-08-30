@@ -44,11 +44,23 @@ else
 fi
 
 echo "== 2/6 APIs =="
+# Billing-free APIs first: the whole Firebase/Firestore half works without a
+# billing account. The Cloud Run half is attempted separately and skipped
+# with a warning when billing is not linked yet.
 gcloud services enable \
-  firebase.googleapis.com identitytoolkit.googleapis.com \
-  firestore.googleapis.com run.googleapis.com \
-  cloudscheduler.googleapis.com cloudbuild.googleapis.com \
-  artifactregistry.googleapis.com
+  firebase.googleapis.com identitytoolkit.googleapis.com firestore.googleapis.com
+
+if gcloud services enable \
+  run.googleapis.com cloudscheduler.googleapis.com \
+  cloudbuild.googleapis.com artifactregistry.googleapis.com 2>/dev/null; then
+  echo "   deploy APIs enabled"
+else
+  echo "   WARNING: deploy APIs (run/scheduler/cloudbuild/artifactregistry) need billing."
+  echo "   Continuing with the Firebase setup. Before deploying:"
+  echo "     gcloud billing accounts list"
+  echo "     gcloud billing projects link $PROJECT --billing-account=XXXXXX-XXXXXX-XXXXXX"
+  echo "     gcloud services enable run.googleapis.com cloudscheduler.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com"
+fi
 
 TOKEN=$(gcloud auth print-access-token)
 
