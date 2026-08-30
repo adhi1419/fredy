@@ -173,7 +173,7 @@ export default function Login() {
     if (pending) return;
     if (!firebaseAuth) {
       // SDK still loading (or failed to load) — treat as a transient error.
-      setError(t('login.errorGeneric'));
+      setError(t('login.firebaseError'));
       return;
     }
     setError(null);
