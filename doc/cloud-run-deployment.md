@@ -51,10 +51,10 @@ gcloud run deploy fredy \
 
 SERVICE_URL=$(gcloud run services describe fredy --region $REGION --format 'value(status.url)')
 
-# Scheduler: scrape every 15 minutes, 15-minute attempt deadline
+# Scheduler: scrape every 30 minutes, 15-minute attempt deadline
 gcloud scheduler jobs create http fredy-scrape \
   --location $REGION \
-  --schedule '*/15 * * * *' \
+  --schedule "*/30 * * * *" \
   --uri "$SERVICE_URL/api/trigger" \
   --http-method POST \
   --headers X-Trigger-Token=$TRIGGER_TOKEN \
