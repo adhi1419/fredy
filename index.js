@@ -16,6 +16,7 @@ import { initGeocodingCron } from './lib/services/crons/geocoding-cron.js';
 import { getSettings } from './lib/services/storage/settingsStorage.js';
 import SqliteConnection, { computeDbPath } from './lib/services/storage/SqliteConnection.js';
 import { isFirestore } from './lib/services/storage/backendResolver.js';
+import { isFirebaseAuth, AUTH_MODE } from './lib/services/authMode.js';
 import { initJobExecutionService } from './lib/services/jobs/jobExecutionService.js';
 import { ensureValidBinary } from './lib/services/ensureValidBinary.js';
 import { removeObsoleteProviders } from './lib/services/providers/providerCleanup.js';
@@ -112,7 +113,18 @@ if (settings.demoMode) {
   logger.info('Running in demo mode');
 }
 
-await ensureAdminUserExists();
+if (isFirebaseAuth()) {
+  // Multi-tenant firebase auth: the allowlist requires Firestore, and the
+  // admin/admin bootstrap must not exist — the instance admin is whichever
+  // allowlist entry carries isAdmin: true (doc/prd-multi-tenant-auth.md).
+  if (!isFirestore()) {
+    logger.error('AUTH_MODE=firebase requires STORAGE_BACKEND=firestore. Refusing to start.');
+    process.exit(1);
+  }
+  logger.info(`Auth mode: ${AUTH_MODE}`);
+} else {
+  await ensureAdminUserExists();
+}
 await ensureDemoUserExists();
 
 // A demo instance must always present a working Fredy: the demo job is created on the first

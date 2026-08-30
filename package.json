@@ -80,6 +80,8 @@
     "cheerio": "^1.2.0",
     "cloakbrowser": "^0.5.9",
     "fastify": "^5.12.1",
+    "firebase": "^12.18.0",
+    "firebase-admin": "^14.3.0",
     "handlebars": "4.7.9",
     "maplibre-gl": "6.6.0",
     "nanoid": "6.0.1",

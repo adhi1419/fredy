@@ -109,3 +109,21 @@ curl -X POST -H 'X-Trigger-Token: dev-token' http://localhost:9998/api/trigger
 yarn test:contract
 STORAGE_BACKEND=firestore FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract
 ```
+
+## Multi-tenant mode (Firebase Auth)
+
+See `doc/prd-multi-tenant-auth.md`. To enable on Cloud Run:
+
+```bash
+# 1. In the Firebase console: add Firebase to the GCP project, enable the
+#    Google sign-in provider, and copy the web app config JSON.
+# 2. Seed the allowlist (your email as instance admin):
+#    Firestore -> allowed_users/{urlencoded-email} -> { email, isAdmin: true, addedAt }
+# 3. Redeploy with:
+gcloud run services update fredy --region $REGION \
+  --update-env-vars AUTH_MODE=firebase,FIREBASE_WEB_CONFIG="$(cat firebase-web-config.json)"
+```
+
+In firebase mode the password login answers 404, no admin/admin bootstrap
+user is created, and sign-in is Google-only, gated by the `allowed_users`
+collection. Removing an allowlist entry takes effect at next session expiry.
