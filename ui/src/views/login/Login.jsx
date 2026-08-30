@@ -73,7 +73,11 @@ export default function Login() {
 
   // Firebase auth mode state
   const [authMode, setAuthMode] = React.useState(null); // null = loading, 'password' | 'firebase'
-  const [firebaseConfig, setFirebaseConfig] = React.useState(null);
+  // Firebase auth handle, initialized on mount (NOT in the click handler):
+  // signInWithPopup must run inside the user-gesture chain, and awaiting the
+  // SDK import + init first makes Firefox's popup blocker kill the popup
+  // silently. Holds { auth, signInWithPopup, GoogleAuthProvider } when ready.
+  const [firebaseAuth, setFirebaseAuth] = React.useState(null);
 
   useEffect(() => {
     async function init() {
@@ -84,7 +88,15 @@ export default function Login() {
         const { json } = await xhrGet('/api/login/firebase/config');
         if (json.enabled && json.firebaseConfig) {
           setAuthMode('firebase');
-          setFirebaseConfig(json.firebaseConfig);
+          // Pre-load and pre-initialize the SDK now so the click handler can
+          // open the popup with no awaits before it. Still lazy for
+          // password-mode users: this only runs when firebase is enabled.
+          const [{ initializeApp }, { getAuth, signInWithPopup, GoogleAuthProvider }] = await Promise.all([
+            import('firebase/app'),
+            import('firebase/auth'),
+          ]);
+          const app = initializeApp(json.firebaseConfig);
+          setFirebaseAuth({ auth: getAuth(app), signInWithPopup, GoogleAuthProvider });
         } else {
           setAuthMode('password');
         }
@@ -159,20 +171,19 @@ export default function Login() {
 
   const handleGoogleSignIn = async () => {
     if (pending) return;
+    if (!firebaseAuth) {
+      // SDK still loading (or failed to load) — treat as a transient error.
+      setError(t('login.errorGeneric'));
+      return;
+    }
     setError(null);
     setPending(true);
 
     try {
-      // Lazy-load firebase SDK so it's not in the bundle for password-mode users
-      const [{ initializeApp }, { getAuth, signInWithPopup, GoogleAuthProvider }] = await Promise.all([
-        import('firebase/app'),
-        import('firebase/auth'),
-      ]);
-
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      // FIRST await must be the popup call itself: anything awaited before it
+      // breaks the user-gesture chain and gets the popup blocked.
+      const { auth, signInWithPopup, GoogleAuthProvider } = firebaseAuth;
+      const result = await signInWithPopup(auth, new GoogleAuthProvider());
       const idToken = await result.user.getIdToken();
 
       // Exchange the Firebase token for a Fredy session cookie

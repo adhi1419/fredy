@@ -25,6 +25,30 @@ if ! gcloud artifacts repositories describe fredy --location="$REGION" > /dev/nu
   gcloud artifacts repositories create fredy --repository-format=docker --location="$REGION"
 fi
 
+# Cleanup policy: keep only the most recent image version, delete everything
+# older than a day. Without this, every deploy adds a full image version
+# (Fredy's image is large: node + Chromium + fonts) and storage grows
+# unboundedly. With it, storage stays pinned at ~one image.
+CLEANUP=$(mktemp)
+cat > "$CLEANUP" << 'JSON'
+[
+  {
+    "name": "keep-most-recent",
+    "action": { "type": "Keep" },
+    "mostRecentVersions": { "keepCount": 1 }
+  },
+  {
+    "name": "delete-stale",
+    "action": { "type": "Delete" },
+    "condition": { "olderThan": "86400s" }
+  }
+]
+JSON
+gcloud artifacts repositories set-cleanup-policies fredy \
+  --location="$REGION" --policy="$CLEANUP" --no-dry-run > /dev/null
+rm -f "$CLEANUP"
+echo "   cleanup policy set (keep newest version only)"
+
 echo "== Build (Cloud Build) =="
 IMAGE="$REGION-docker.pkg.dev/$PROJECT/fredy/fredy:latest"
 gcloud builds submit --tag "$IMAGE" .
