@@ -25,7 +25,7 @@
 
 const BACKEND = process.env.STORAGE_BACKEND ?? 'sqlite';
 
-/** Modules that have a firestore implementation so far (Phase 2 cohort flipped). */
+/** Modules that have a firestore implementation so far (Phase 3: all). */
 const FIRESTORE_IMPLEMENTED = new Set([
   'settingsStorage',
   'sessionStore',
@@ -34,7 +34,16 @@ const FIRESTORE_IMPLEMENTED = new Set([
   'jobStorage',
   'watchListStorage',
   'listingsStorage',
+  'debugLogStorage',
+  'mcpOAuthStorage',
+  'backupRestoreService',
 ]);
+
+/** Sqlite-era modules that live outside lib/services/storage/. */
+const SQLITE_PATH_OVERRIDES = {
+  debugLogStorage: '../../lib/services/debug/debugLogStorage.js',
+  mcpOAuthStorage: '../../lib/mcp/mcpOAuthStorage.js',
+};
 
 /**
  * Load a storage module for the active backend.
@@ -43,6 +52,9 @@ const FIRESTORE_IMPLEMENTED = new Set([
 export async function loadStorageModule(name) {
   if (BACKEND === 'firestore' && FIRESTORE_IMPLEMENTED.has(name)) {
     return import(`../../lib/services/storage/firestore/${name}.js`);
+  }
+  if (SQLITE_PATH_OVERRIDES[name]) {
+    return import(SQLITE_PATH_OVERRIDES[name]);
   }
   return import(`../../lib/services/storage/${name}.js`);
 }
