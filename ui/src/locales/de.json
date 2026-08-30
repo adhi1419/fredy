@@ -1077,6 +1077,7 @@
   "listing.detail.toastGeoUnavailable": "Der Adressdienst antwortet gerade nicht. Bitte versuch es in ein paar Minuten noch einmal.",
   "listing.detail.toastGeoError": "Die Koordinaten für dieses Inserat konnten nicht ermittelt werden.",
   "listing.detail.draftMessage.button": "Anfrage entwerfen",
+  "listing.detail.draftMessage.regenerate": "Neu erstellen",
   "listing.detail.draftMessage.generating": "Wird erstellt…",
   "listing.detail.draftMessage.copy": "Kopieren",
   "listing.detail.draftMessage.copied": "Kopiert!",

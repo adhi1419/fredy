@@ -1077,6 +1077,7 @@
   "listing.detail.toastGeoUnavailable": "The address service is not answering right now. Please try again in a few minutes.",
   "listing.detail.toastGeoError": "Could not look up the coordinates for this listing.",
   "listing.detail.draftMessage.button": "Draft inquiry",
+  "listing.detail.draftMessage.regenerate": "Regenerate",
   "listing.detail.draftMessage.generating": "Generating…",
   "listing.detail.draftMessage.copy": "Copy",
   "listing.detail.draftMessage.copied": "Copied!",

@@ -161,6 +161,17 @@ export default function ListingDetail() {
     setNotesDraft(listing?.notes ?? '');
   }, [listing?.id, listing?.notes]);
 
+  // Show the eagerly-generated draft (produced at scrape time and stored on the
+  // listing) as soon as the page loads, so the user sees and can copy it without
+  // spending a fresh Gemini call. The Generate button then acts as a regenerate.
+  // Keyed on listing id only: a manual regenerate replaces draftMessage in place
+  // and must not be clobbered when the listing object is re-read for other reasons.
+  useEffect(() => {
+    setDraftMessage(listing?.inquiry_message ?? null);
+    setDraftError(null);
+    setDraftCopied(false);
+  }, [listing?.id]);
+
   // Fetched separately from the listing rather than joined onto it: most views never draw the
   // chart, and a series has no size bound, so it must not ride along on every listing read.
   useEffect(() => {
@@ -628,13 +639,17 @@ export default function ListingDetail() {
             </Button>
             <StatusControl status={listing.status?.status ?? null} onChange={handleStatusChange} />
             <Button
-              icon={<IconEdit />}
+              icon={draftMessage ? <IconRefresh /> : <IconEdit />}
               onClick={handleDraftMessage}
               theme="light"
               type="tertiary"
               loading={draftLoading}
             >
-              {draftLoading ? t('listing.detail.draftMessage.generating') : t('listing.detail.draftMessage.button')}
+              {draftLoading
+                ? t('listing.detail.draftMessage.generating')
+                : draftMessage
+                  ? t('listing.detail.draftMessage.regenerate')
+                  : t('listing.detail.draftMessage.button')}
             </Button>
             <a href={listing.link} target="_blank" rel="noopener noreferrer" className="listing-detail__open-btn">
               <IconLink style={{ marginRight: 6 }} />

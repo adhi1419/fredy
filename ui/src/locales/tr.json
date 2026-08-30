@@ -1062,6 +1062,7 @@
   "listing.detail.toastGeoUnavailable": "Adres servisi şu anda yanıt vermiyor. Lütfen birkaç dakika sonra tekrar dene.",
   "listing.detail.toastGeoError": "Bu ilanın koordinatları alınamadı.",
   "listing.detail.draftMessage.button": "Başvuru taslağı",
+  "listing.detail.draftMessage.regenerate": "Yeniden oluştur",
   "listing.detail.draftMessage.generating": "Oluşturuluyor…",
   "listing.detail.draftMessage.copy": "Kopyala",
   "listing.detail.draftMessage.copied": "Kopyalandı!",
