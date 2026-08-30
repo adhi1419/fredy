@@ -58,6 +58,19 @@ IMAGE="$REGION-docker.pkg.dev/$PROJECT/fredy/fredy:latest"
 # Cloud Build console.
 gcloud builds submit --tag "$IMAGE" --suppress-logs .
 
+echo "== Staging bucket lifecycle =="
+# Every `builds submit` leaves its source tarball in the staging bucket
+# forever. A 7-day expiry keeps it at ~zero (the bucket exists only after
+# the first build, hence the guard).
+LIFECYCLE=$(mktemp)
+printf '{"rule":[{"action":{"type":"Delete"},"condition":{"age":7}}]}' > "$LIFECYCLE"
+if gcloud storage buckets update "gs://${PROJECT}_cloudbuild" --lifecycle-file="$LIFECYCLE" > /dev/null 2>&1; then
+  echo "   7-day expiry set on gs://${PROJECT}_cloudbuild"
+else
+  echo "   staging bucket not found or not updatable — skipping (harmless)"
+fi
+rm -f "$LIFECYCLE"
+
 echo "== Trigger token =="
 # Reuse the existing token when the service already has one, so the
 # scheduler job keeps working across redeploys.
