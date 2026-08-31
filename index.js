@@ -106,6 +106,13 @@ similarityCache.startSimilarityCacheReloader();
 //assuming interval is always in minutes
 const INTERVAL = settings.interval * 60 * 1000;
 
+// Wire the Job Execution Service (sets the trigger runner + bus listeners) BEFORE the API starts
+// listening. On scale-to-zero Cloud Run the external scheduler's wake-up request can hit
+// /api/trigger the instant the server accepts connections; when this ran AFTER listen, that request
+// raced the trigger runner and returned 500 "Job execution service not initialized", skipping the
+// scrape for that cycle — which was the majority of cold-start cycles.
+initJobExecutionService({ providers, intervalMs: INTERVAL });
+
 // Initialize API only after migrations completed
 await import('./lib/api/api.js');
 
@@ -155,6 +162,3 @@ initConnectivityCron();
 logger.info(
   `Started Fredy successfully. Ui can be accessed via http://localhost:${Number(process.env.PORT) || settings.port || 9998}`,
 );
-
-// Initialize the lean Job Execution Service (schedules and bus listeners)
-initJobExecutionService({ providers, intervalMs: INTERVAL });
