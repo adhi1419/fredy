@@ -138,13 +138,13 @@ SERVICE_URL=$(gcloud run services describe $SERVICE --region "$REGION" --format 
 echo "== Scheduler =="
 if gcloud scheduler jobs describe fredy-scrape --location "$REGION" > /dev/null 2>&1; then
   gcloud scheduler jobs update http fredy-scrape --location "$REGION" \
-    --schedule '*/30 * * * *' \
+    --schedule '*/15 * * * *' \
     --uri "$SERVICE_URL/api/trigger" \
     --update-headers X-Trigger-Token="$TRIGGER_TOKEN"
 else
   gcloud scheduler jobs create http fredy-scrape \
     --location "$REGION" \
-    --schedule '*/30 * * * *' \
+    --schedule '*/15 * * * *' \
     --uri "$SERVICE_URL/api/trigger" \
     --http-method POST \
     --headers X-Trigger-Token="$TRIGGER_TOKEN" \
