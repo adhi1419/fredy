@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-color-emoji fonts-freefont-ttf fonts-unifont \
     fonts-ipafont-gothic fonts-wqy-zenhei fonts-tlwg-loma-otf \
   && rm -rf /var/lib/apt/lists/* \
-  && mkdir -p /conf /fredy
+  && mkdir -p /conf /fredy \
+  && ln -s /conf /fredy/conf
 
 WORKDIR /fredy
 
@@ -37,10 +38,11 @@ RUN yarn config set network-timeout 600000 \
 RUN node --input-type=module -e "import { ensureBinary } from 'cloakbrowser'; await ensureBinary();" \
   && yarn cache clean
 
-COPY lib ./lib
-COPY index.js ./
-
-RUN ln -s /conf /fredy/conf
+# --link keeps application code in independent layers. BuildKit can attach changed
+# code to the cached browser/runtime manifest without downloading and extracting
+# the large parent filesystem on every pull request.
+COPY --link lib ./lib
+COPY --link index.js ./
 
 EXPOSE 9998
 VOLUME /conf
@@ -52,8 +54,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 #
 # Chromium spawns helper processes (crashpad handler, gpu, and - because of --no-zygote - one
 # process per renderer). Whenever the browser process dies before them, e.g. when a page crashes
-# it or Puppeteer has to kill it, those helpers are reparented to pid 1. libuv only waits for the
-# pids node itself spawned, so a node running as pid 1 never reaps them and every failed scrape
+# it or Puppeteer has to kill it, those helpers are reparented to pid 1. libuv only waits for
+# the pids node itself spawned, so a node running as pid 1 never reaps them and every failed scrape
 # left two more `[chrome] <defunct>` entries behind until the container hit the pid limit.
 # tini reaps whatever it inherits and forwards signals (-g: to the whole process group), so
 # shutdown keeps working as before.

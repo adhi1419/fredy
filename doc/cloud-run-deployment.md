@@ -97,7 +97,8 @@ Add `adhi1419.github.io` to Firebase Authentication **Authorized domains**. Do n
 - `FIREBASE_WEB_CONFIG` is client configuration, not a service-account key, but remains required.
 - Datacenter IP reputation can still block browser providers; a German residential proxy may be needed.
 - A trigger outside configured working hours succeeds without scraping.
-- `node:22-trixie-slim` plus CloakBrowser's own browser is intentional. Generic Chromium images do not preserve CloakBrowser compatibility/fingerprint behavior and are not expected to improve warm deploys.
+- `node:22-trixie-slim` plus CloakBrowser's own browser is intentional. Generic Chromium images do not preserve CloakBrowser compatibility/fingerprint behavior.
+- Application code uses BuildKit `COPY --link` layers, allowing manifests to reuse the large browser/runtime layers without downloading and extracting their filesystem for ordinary source changes. This provides the cold-parent optimization without maintaining a custom Fredy browser base image.
 
 ## Verification
 
