@@ -12,6 +12,7 @@ import { xhrGet, xhrPost, xhrDelete } from '../xhr.js';
 import queryString from 'query-string';
 import { createJobsDataState, createJobsEffects } from './jobsState.js';
 import { createListingsDataState, createListingsEffects } from './listingsState.js';
+import { createUserSettingsState, createUserSettingsEffects } from './userSettingsState.js';
 
 /**
  * Optional state-change logging, off unless VITE_DEBUG_STORE is set.
@@ -60,34 +61,6 @@ async function refreshFinanceSummary(set) {
 }
 
 /**
- * Save or clear one tab of the finance profile, letting the server merge it into what is stored.
- *
- * The response carries the merged profile, so the store mirrors what the server decided rather
- * than a second, locally computed guess at it.
- *
- * @param {(updater: Function) => void} set Zustand setter.
- * @param {{section: 'rent'|'buy', profile?: Object, remove?: boolean}} payload
- * @returns {Promise<Object>} The profile that is now stored.
- */
-async function persistFinanceSection(set, payload) {
-  try {
-    const response = await xhrPost('/api/user/settings/finance-profile/section', payload);
-    const stored = response.json.finance_profile;
-    set((state) => ({
-      userSettings: {
-        ...state.userSettings,
-        settings: { ...state.userSettings.settings, finance_profile: stored },
-      },
-    }));
-    await refreshFinanceSummary(set);
-    return stored;
-  } catch (Exception) {
-    console.error('Error while trying to persist a finance profile section. Error:', Exception);
-    throw Exception;
-  }
-}
-
-/**
  * Middleware to track loading state of async actions.
  */
 const loadingTracker = (config) => (set, get, api) => {
@@ -104,6 +77,9 @@ export const useFredyState = create(
     loadingTracker((set) => {
       const jobsEffects = createJobsEffects(set, { get: xhrGet }, queryString.stringify);
       const listingsEffects = createListingsEffects(set, { get: xhrGet, post: xhrPost }, queryString.stringify);
+      const userSettingsEffects = createUserSettingsEffects(set, { get: xhrGet, post: xhrPost }, () =>
+        refreshFinanceSummary(set),
+      );
 
       // Async actions that directly set state (no separate reducer concept)
       const effects = {
@@ -298,213 +274,7 @@ export const useFredyState = create(
           },
         },
         listingsData: listingsEffects,
-        userSettings: {
-          async getUserSettings() {
-            try {
-              const response = await xhrGet('/api/user/settings');
-              set((state) => ({ userSettings: { ...state.userSettings, settings: response.json, loaded: true } }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/user/settings. Error:', Exception);
-              // Mark as loaded even on error to prevent blocking the UI
-              set((state) => ({ userSettings: { ...state.userSettings, loaded: true } }));
-            }
-          },
-          async setHomeAddresses(addresses) {
-            try {
-              const response = await xhrPost('/api/user/settings/home-address', { home_addresses: addresses });
-              if (response.status === 200) {
-                set((state) => ({
-                  userSettings: {
-                    ...state.userSettings,
-                    settings: {
-                      ...state.userSettings.settings,
-                      home_addresses: response.json.home_addresses,
-                    },
-                  },
-                }));
-                return response.json;
-              }
-              throw response;
-            } catch (Exception) {
-              console.error('Error while trying to update addresses. Error:', Exception);
-              throw Exception;
-            }
-          },
-          /**
-           * Persist one tab (renting or buying) of the finance profile, leaving the other tab as
-           * it is already stored.
-           *
-           * The merge happens server-side against what is actually stored. Doing it here meant a
-           * second copy of the merge rules in the browser, and a lost update whenever two tabs
-           * saved from stale state.
-           *
-           * @param {{section: 'rent'|'buy', profile: Object}} params
-           * @returns {Promise<Object>} The profile that is now stored.
-           */
-          async saveFinanceSection({ section, profile }) {
-            return persistFinanceSection(set, { section, profile });
-          },
-          /**
-           * Remove one tab (renting or buying) from the stored finance profile, keeping the
-           * household and the other tab.
-           *
-           * @param {'rent'|'buy'} section
-           * @returns {Promise<Object>} The profile that is now stored.
-           */
-          async deleteFinanceSection(section) {
-            return persistFinanceSection(set, { section, remove: true });
-          },
-          async setProviderDetails(providers) {
-            try {
-              await xhrPost('/api/user/settings/provider-details', { provider_details: providers });
-              set((state) => ({
-                userSettings: {
-                  ...state.userSettings,
-                  settings: { ...state.userSettings.settings, provider_details: providers },
-                },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to update provider details setting. Error:', Exception);
-              throw Exception;
-            }
-          },
-          /**
-           * Whether hovering a transport stop on the map opens its departure board.
-           *
-           * @param {boolean} enabled
-           * @returns {Promise<void>}
-           */
-          async setTransitHoverPopups(enabled) {
-            try {
-              await xhrPost('/api/user/settings/transit-hover-popups', { transit_hover_popups: enabled });
-              set((state) => ({
-                userSettings: {
-                  ...state.userSettings,
-                  settings: { ...state.userSettings.settings, transit_hover_popups: enabled },
-                },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to update the transit hover popups setting. Error:', Exception);
-              throw Exception;
-            }
-          },
-          async setBlacklistFilterOnProviderDetails(enabled) {
-            try {
-              await xhrPost('/api/user/settings/blacklist-filter-on-details', {
-                blacklist_filter_on_provider_details: enabled,
-              });
-              set((state) => ({
-                userSettings: {
-                  ...state.userSettings,
-                  settings: {
-                    ...state.userSettings.settings,
-                    blacklist_filter_on_provider_details: enabled,
-                  },
-                },
-              }));
-            } catch (Exception) {
-              console.error(
-                'Error while trying to update blacklist-filter-on-provider-details setting. Error:',
-                Exception,
-              );
-              throw Exception;
-            }
-          },
-          async setListingsViewMode(listings_view_mode) {
-            try {
-              await xhrPost('/api/user/settings/listings-view-mode', { listings_view_mode });
-              set((state) => ({
-                userSettings: {
-                  ...state.userSettings,
-                  settings: { ...state.userSettings.settings, listings_view_mode },
-                },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to update listings view mode setting. Error:', Exception);
-              throw Exception;
-            }
-          },
-          async setJobsViewMode(jobs_view_mode) {
-            try {
-              await xhrPost('/api/user/settings/jobs-view-mode', { jobs_view_mode });
-              set((state) => ({
-                userSettings: {
-                  ...state.userSettings,
-                  settings: { ...state.userSettings.settings, jobs_view_mode },
-                },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to update jobs view mode setting. Error:', Exception);
-              throw Exception;
-            }
-          },
-          async setListingDeletionPreference(listing_deletion_preference) {
-            try {
-              await xhrPost('/api/user/settings/listing-deletion-preference', { listing_deletion_preference });
-              set((state) => ({
-                userSettings: {
-                  ...state.userSettings,
-                  settings: { ...state.userSettings.settings, listing_deletion_preference },
-                },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to update listing deletion preference. Error:', Exception);
-              throw Exception;
-            }
-          },
-          async saveInquiryProfile(inquiry_profile) {
-            try {
-              await xhrPost('/api/user/settings/inquiry-profile', { inquiry_profile });
-              set((state) => ({
-                userSettings: {
-                  ...state.userSettings,
-                  settings: { ...state.userSettings.settings, inquiry_profile },
-                },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to save inquiry profile. Error:', Exception);
-              throw Exception;
-            }
-          },
-          async setLanguage(language) {
-            try {
-              await xhrPost('/api/user/settings/language', { language });
-              set((state) => ({
-                userSettings: {
-                  ...state.userSettings,
-                  settings: { ...state.userSettings.settings, language },
-                },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to update language setting. Error:', Exception);
-              throw Exception;
-            }
-          },
-          /**
-           * Store which theme this user wants the interface painted in.
-           *
-           * The document is repainted by App.jsx reacting to this slice rather than from here, so
-           * that a theme arriving from the server on login takes the same path as one picked in
-           * the settings form.
-           *
-           * @param {'dark'|'light'} theme
-           * @returns {Promise<void>}
-           */
-          async setTheme(theme) {
-            try {
-              await xhrPost('/api/user/settings/theme', { theme });
-              set((state) => ({
-                userSettings: {
-                  ...state.userSettings,
-                  settings: { ...state.userSettings.settings, theme },
-                },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to update theme setting. Error:', Exception);
-              throw Exception;
-            }
-          },
-        },
+        userSettings: userSettingsEffects,
       };
 
       // Initial state
@@ -515,7 +285,7 @@ export const useFredyState = create(
         notificationChannels: { channels: [], loaded: false },
         listingsData: createListingsDataState(),
         generalSettings: { settings: {} },
-        userSettings: { settings: {}, loaded: false },
+        userSettings: createUserSettingsState(),
         demoMode: { demoMode: false },
         provider: [],
         jobsData: createJobsDataState(),

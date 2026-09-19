@@ -15,6 +15,7 @@
     "ui/src/services/authenticatedTransport.ts",
     "ui/src/services/state/jobsState.ts",
     "ui/src/services/state/listingsState.ts",
+    "ui/src/services/state/userSettingsState.ts",
     "ui/src/vite-env.d.ts"
   ]
 }
