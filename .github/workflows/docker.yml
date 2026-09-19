@@ -1,11 +1,10 @@
 name: Create and publish Docker image
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - 'master'
-    # '!*-pre.*' keeps the pre-release tags created by `yarn release:pre` out of the stable
-    # image - those are built from develop and belong in fredy-pre-release (see pre-release.yml).
+    # Stable images are published only for explicit release tags. Cloud Run has
+    # its own single cached build, so every master push must not build twice.
     tags:
       - '*'
       - '!*-pre.*'
@@ -18,8 +17,6 @@ jobs:
     uses: ./.github/workflows/docker-build.yml
     with:
       image_name: ${{ github.repository }}
-      # Reproduces the metadata-action defaults this workflow relied on before:
-      # master -> :master + :latest, release tag -> :<version>
       tags: |
         type=ref,event=branch
         type=ref,event=tag
