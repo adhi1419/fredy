@@ -37,6 +37,7 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/authenticatedTransport.ts',
       'ui/src/services/state/jobsState.ts',
       'ui/src/services/state/listingsState.ts',
+      'ui/src/services/state/userSettingsState.ts',
       'ui/src/vite-env.d.ts',
     ]);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.ts'))).toBe(true);
