@@ -46,7 +46,14 @@ Architecture: GitHub Pages serves the hash-routed SPA under `/fredy/`. A build-t
 ## Next
 
 - [ ] Add mandatory profile setup after first Firebase registration; keep Settings edit-only afterward.
-- [ ] Remove upstream phone-home/update integrations.
+- [x] Remove upstream phone-home/update integrations and the in-app donation surface.
 - [ ] Implement the selected Paper / forest visual system from the approved light and dark screenshots.
 - [ ] Migrate frontend tooling to Bun and frontend source/tests to strict TypeScript with cached CI under 60 seconds.
 - [ ] Rewrite the backend in Rust behind frozen API/provider/Firestore contracts.
+
+## Completed feature: remove in-app donation surface
+
+- [x] Remove the runtime Donate button/modal, donation-only component stylesheet, sidebar mount, locale keys, theme tokens, and obsolete locale assertion; preserve the shared heart asset used by navigation, news, and notifications.
+- [x] Add a static UI regression test preventing the in-app donation surface and donation translation references from returning.
+- [x] Preserve README sponsorship/attribution content, Fredy identity, LICENSE, copyright attribution, and image-404 behavior.
+- [x] Validate: focused UI tests (3 files, 24 passed); offline suite (180 files passed, 1 skipped; 2,127 passed, 32 skipped); ESLint passed; scoped Prettier check passed; Pages production frontend build passed. Build emitted only the existing third-party `lottie-web` direct-eval warning.
