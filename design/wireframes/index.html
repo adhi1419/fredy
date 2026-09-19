@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fredy simplified UX wireframes</title>
+    <style>
+      :root {
+        --base: #f3eee3;
+        --surface: #fffaf0;
+        --surface-2: #f7f1e6;
+        --line: #d7d0c2;
+        --line-strong: #afa696;
+        --ink: #1e2922;
+        --muted: #687168;
+        --faint: #94998f;
+        --forest: #1f624c;
+        --forest-dark: #174a3a;
+        --forest-soft: #dce9df;
+        --sage: #94bea5;
+        --amber: #8b601e;
+        --amber-soft: #f3e5c8;
+        --red: #9e4841;
+        --red-soft: #f4dfdb;
+        --shadow: 0 16px 44px rgb(35 46 38 / 10%);
+        --radius: 14px;
+        --radius-sm: 8px;
+        --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --serif: Georgia, "Times New Roman", serif;
+      }
+
+      html[data-theme="dark"] {
+        --base: #090b09;
+        --surface: #111411;
+        --surface-2: #171b17;
+        --line: #2b322c;
+        --line-strong: #465047;
+        --ink: #eee8da;
+        --muted: #a5aaa1;
+        --faint: #70776f;
+        --forest: #93c4a5;
+        --forest-dark: #abd5b8;
+        --forest-soft: #1b3023;
+        --sage: #acd3b8;
+        --amber: #dfb96f;
+        --amber-soft: #322819;
+        --red: #e3a098;
+        --red-soft: #35201e;
+        --shadow: 0 18px 50px rgb(0 0 0 / 30%);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        min-width: 320px;
+        margin: 0;
+        color: var(--ink);
+        background: var(--base);
+        font-family: var(--sans);
+        line-height: 1.45;
+      }
+      button, input, select { font: inherit; color: inherit; }
+      button { cursor: pointer; }
+      button:focus-visible, input:focus-visible { outline: 3px solid var(--sage); outline-offset: 2px; }
+      h1, h2, h3, h4, p { margin-top: 0; }
+      .page { width: min(1380px, calc(100% - 32px)); margin: 0 auto; padding: 30px 0 60px; }
+      .masthead { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 20px; }
+      .eyebrow { color: var(--forest); font-size: 10px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+      h1 { max-width: 770px; margin: 7px 0 8px; font-family: var(--serif); font-size: clamp(32px, 5vw, 58px); line-height: 1; letter-spacing: -.04em; }
+      .lede { max-width: 720px; margin: 0; color: var(--muted); font-size: 14px; }
+      .invariant { max-width: 330px; padding: 14px 16px; border: 1px solid var(--forest); border-radius: 11px; background: var(--forest-soft); color: var(--forest-dark); font-size: 12px; }
+      .invariant strong { display: block; margin-bottom: 4px; }
+
+      .lab-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 18px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+      .control-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+      .control-label { margin: 0 4px; color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+      .lab-button, .surface-button, .theme-button, .viewport-button {
+        min-height: 34px;
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: transparent;
+        font-size: 11px;
+        font-weight: 750;
+      }
+      [aria-selected="true"], [aria-pressed="true"] { border-color: var(--forest); background: var(--forest-soft); color: var(--forest-dark); }
+      html[data-theme="dark"] [aria-selected="true"], html[data-theme="dark"] [aria-pressed="true"] { color: var(--sage); }
+
+      .frame { overflow: hidden; border: 1px solid var(--line-strong); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+      .option-note { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 13px 18px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+      .option-note h2 { margin: 2px 0; font-family: var(--serif); font-size: 20px; }
+      .option-note p { margin: 0; color: var(--muted); font-size: 11px; }
+      .option-badge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid var(--forest); border-radius: 99px; color: var(--forest); font-size: 10px; font-weight: 800; }
+
+      .app { min-height: 680px; background: var(--surface); }
+      .appbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px; min-height: 62px; padding: 0 22px; border-bottom: 1px solid var(--line); background: var(--surface); }
+      .brand { color: var(--forest); font-family: var(--serif); font-size: 23px; font-weight: 750; letter-spacing: -.02em; }
+      .primary-nav { display: flex; align-self: stretch; gap: 6px; }
+      .primary-tab { position: relative; min-width: 116px; border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 780; }
+      .primary-tab.active { color: var(--forest-dark); }
+      .primary-tab.active::after { content: ""; position: absolute; right: 14px; bottom: -1px; left: 14px; height: 3px; border-radius: 3px 3px 0 0; background: var(--forest); }
+      .mobile-nav, .mobile-cta { display: none; }
+      .account-zone { display: flex; justify-content: flex-end; align-items: center; gap: 9px; }
+      .health { color: var(--muted); font-size: 10px; }
+      .health::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--forest); }
+      .avatar { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 50%; background: var(--forest-soft); color: var(--forest-dark); font-size: 10px; font-weight: 900; }
+      .app-main { position: relative; max-width: 1180px; margin: 0 auto; padding: 28px 24px 38px; }
+      .page-heading { display: flex; align-items: start; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+      .page-heading h3 { margin: 3px 0 5px; font-family: var(--serif); font-size: clamp(27px, 4vw, 40px); line-height: 1.04; letter-spacing: -.035em; }
+      .page-heading p { max-width: 660px; margin: 0; color: var(--muted); font-size: 12px; }
+      .page-heading.compact { align-items: center; gap: 10px; margin-bottom: 12px; }
+      .page-heading.compact h3 { margin-block: 2px; font-size: 22px; }
+      .page-heading.compact p { max-width: 560px; font-size: 10px; }
+      .page-heading.compact .heading-actions { align-items: center; }
+      .heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+      .primary-action, .quiet-action, .icon-action {
+        min-height: 36px;
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: transparent;
+        font-size: 11px;
+        font-weight: 760;
+      }
+      .primary-action { border-color: var(--forest); background: var(--forest); color: #fff; }
+      html[data-theme="dark"] .primary-action { color: #0b120d; }
+      .quiet-action { color: var(--muted); }
+      .icon-action { min-width: 36px; padding-inline: 9px; }
+
+      .status-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; padding: 10px 12px; border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: 8px; background: var(--amber-soft); color: var(--amber); font-size: 11px; }
+      .status-line strong { color: var(--ink); }
+      .filters { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+      .filters input { flex: 1; min-width: 140px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); font-size: 11px; }
+      .home-query { display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 8px; margin-bottom: 9px; }
+      .home-query input, .sort-select { min-width: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 10px; }
+      .view-switch, .activity-tabs { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2); }
+      .view-switch button, .activity-tabs button { min-height: 31px; padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 9px; font-weight: 820; white-space: nowrap; }
+      .view-switch button.active, .activity-tabs button.active { background: var(--forest-soft); color: var(--forest-dark); }
+      .home-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+      .home-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+      .provider-picker { min-height: 35px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 9px; font-weight: 780; }
+      .chip, .tag { display: inline-flex; align-items: center; min-height: 27px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); background: var(--surface); font-size: 9px; font-weight: 800; white-space: nowrap; }
+      .chip.on, .tag.good { border-color: var(--forest); background: var(--forest-soft); color: var(--forest-dark); }
+      html[data-theme="dark"] .chip.on, html[data-theme="dark"] .tag.good { color: var(--sage); }
+      .tag.warn { border-color: var(--amber); background: var(--amber-soft); color: var(--amber); }
+      .tag.pause { color: var(--muted); }
+
+      .home-feed { display: grid; gap: 8px; }
+      .home-row { display: grid; grid-template-columns: 118px minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 112px; padding: 10px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+      .photo { display: grid; place-items: center; min-height: 90px; border-radius: 8px; background: repeating-linear-gradient(135deg, var(--line) 0 12px, var(--surface-2) 12px 24px); color: var(--faint); font-size: 9px; letter-spacing: .08em; text-align: center; }
+      .home-copy h4 { margin: 6px 0 3px; font-family: var(--serif); font-size: 18px; line-height: 1.08; }
+      .home-copy p { margin: 0 0 4px; color: var(--muted); font-size: 10px; }
+      .home-price { min-width: 126px; text-align: right; }
+      .home-price strong { display: block; color: var(--forest); font-size: 14px; }
+      .home-price span { color: var(--muted); font-size: 9px; }
+
+      .split-home { display: grid; grid-template-columns: minmax(300px, .78fr) minmax(420px, 1.22fr); min-height: 450px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; }
+      .split-list { padding: 9px; border-right: 1px solid var(--line); background: var(--surface-2); }
+      .split-list .home-row { grid-template-columns: 74px minmax(0, 1fr); min-height: 92px; margin-bottom: 7px; }
+      .split-list .photo { min-height: 70px; }
+      .split-list .home-price { display: none; }
+      .split-list .home-copy h4 { font-size: 14px; }
+      .map { position: relative; min-height: 450px; overflow: hidden; background: var(--forest-soft); }
+      .map::before, .map::after { content: ""; position: absolute; border: 2px solid color-mix(in srgb, var(--forest) 35%, transparent); border-radius: 50%; transform: rotate(16deg); }
+      .map::before { inset: -20% 38% -18% 18%; }
+      .map::after { inset: 47% -10% 8% 8%; border-width: 0 0 8px; transform: rotate(-10deg); }
+      .map-label { position: absolute; z-index: 2; top: 12px; right: 12px; left: 12px; display: flex; justify-content: space-between; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 10px; font-weight: 780; }
+      .pin { position: absolute; z-index: 2; display: grid; place-items: center; width: 27px; height: 27px; border: 2px solid var(--surface); border-radius: 50% 50% 50% 0; background: var(--forest); color: #fff; transform: rotate(-45deg); font-size: 9px; font-weight: 900; box-shadow: 0 4px 10px rgb(0 0 0 / 18%); }
+      .pin span { transform: rotate(45deg); }
+      .pin.p1 { top: 32%; left: 29%; } .pin.p2 { top: 57%; left: 64%; } .pin.p3 { top: 72%; left: 45%; }
+
+      .focus-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(250px, .65fr); gap: 14px; }
+      .focus-card { overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+      .focus-card .photo { min-height: 280px; border-radius: 0; }
+      .focus-content { padding: 16px; }
+      .focus-content h4 { margin: 8px 0 5px; font-family: var(--serif); font-size: 26px; }
+      .focus-content p { margin: 0; color: var(--muted); font-size: 11px; }
+      .evidence { display: grid; align-content: start; gap: 9px; }
+      .evidence-card { padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+      .evidence-card small { display: block; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+      .evidence-card strong { display: block; margin-top: 4px; font-size: 13px; }
+      .review-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 4px; }
+      .review-actions .primary-action { grid-column: 1 / -1; }
+
+      .search-list { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; }
+      .search-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(160px, .7fr) auto; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--line); background: var(--surface); }
+      .search-row:last-child { border-bottom: 0; }
+      .search-row h4 { margin: 0 0 3px; font-size: 12px; }
+      .search-row p, .search-row small { margin: 0; color: var(--muted); font-size: 10px; }
+      .search-status { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+      .row-actions { display: flex; gap: 5px; }
+      .create-card { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px; margin-top: 12px; padding: 17px; border: 1px dashed var(--line-strong); border-radius: 11px; background: var(--surface-2); }
+      .create-card h4 { margin: 0 0 3px; font-family: var(--serif); font-size: 18px; }
+      .create-card p { margin: 0; color: var(--muted); font-size: 10px; }
+      .guided-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; }
+      .guide-steps { display: grid; align-content: start; gap: 5px; }
+      .mobile-progress { display: none; }
+      .guide-step { padding: 11px; border-left: 3px solid var(--line); color: var(--muted); font-size: 10px; }
+      .guide-step strong { display: block; margin-bottom: 2px; color: var(--ink); font-size: 11px; }
+      .guide-step.active { border-color: var(--forest); background: var(--forest-soft); color: var(--forest-dark); }
+      .guided-panel { padding: 16px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-2); }
+      .guided-panel h4 { margin-bottom: 5px; font-family: var(--serif); font-size: 20px; }
+      .guided-panel > p { color: var(--muted); font-size: 10px; }
+      .provider-list { display: grid; gap: 8px; margin-top: 14px; }
+      .provider-choice { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+      .provider-choice h5 { margin: 0 0 3px; font-size: 11px; }
+      .provider-choice p { margin: 0; color: var(--muted); font-size: 9px; }
+      .provider-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
+      .flow-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; }
+
+      .detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 15px; }
+      .detail-main .photo { min-height: 255px; }
+      .detail-section { margin-top: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+      .detail-section h4 { margin-bottom: 7px; font-size: 12px; }
+      .detail-section p { margin: 0; color: var(--muted); font-size: 10px; }
+      .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+      .metric { padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+      .metric small { display: block; color: var(--muted); font-size: 9px; }
+      .metric strong { font-size: 13px; }
+      .detail-actions { display: grid; align-content: start; gap: 8px; padding: 14px; border: 1px solid var(--line-strong); border-radius: 11px; background: var(--surface-2); }
+      .detail-actions h4 { margin-bottom: 0; font-family: var(--serif); font-size: 20px; }
+      .guard { padding: 10px; border: 1px solid var(--amber); border-radius: 8px; background: var(--amber-soft); color: var(--amber); font-size: 9px; }
+
+      .account-stage { min-height: 520px; padding: 24px; background: color-mix(in srgb, var(--surface-2) 78%, var(--surface)); }
+      .account-menu { width: min(340px, 100%); margin-left: auto; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+      .account-head { padding: 15px; border-bottom: 1px solid var(--line); }
+      .account-head strong { display: block; font-size: 12px; }
+      .account-head span { color: var(--muted); font-size: 10px; }
+      .menu-group { padding: 7px; border-bottom: 1px solid var(--line); }
+      .menu-label { padding: 6px 8px 3px; color: var(--faint); font-size: 8px; font-weight: 850; letter-spacing: .11em; text-transform: uppercase; }
+      .menu-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 9px 8px; border: 0; border-radius: 6px; background: transparent; text-align: left; font-size: 11px; }
+      .menu-item:hover { background: var(--forest-soft); }
+      .critical-note { margin: 9px; padding: 9px; border: 1px solid var(--red); border-radius: 7px; background: var(--red-soft); color: var(--red); font-size: 9px; }
+
+      .state-note { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+      .state-note strong { color: var(--ink); }
+      .rationale { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; padding: 14px 18px 18px; border-top: 1px solid var(--line); background: var(--surface-2); }
+      .rationale div { padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+      .rationale strong { display: block; margin-bottom: 3px; color: var(--forest-dark); font-size: 10px; }
+      .rationale span { color: var(--muted); font-size: 9px; }
+
+      body[data-mode="mobile"] .frame { max-width: 410px; margin-inline: auto; }
+      body[data-mode="mobile"] .app { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; height: 720px; min-height: 0; padding: 0; }
+      body[data-mode="mobile"] .option-note { align-items: start; }
+      body[data-mode="mobile"] .option-badge, body[data-mode="mobile"] .health { display: none; }
+      body[data-mode="mobile"] .appbar { grid-template-columns: 1fr auto; gap: 7px; min-height: 54px; padding: 9px 12px; }
+      body[data-mode="mobile"] .appbar .primary-nav { display: none; }
+      body[data-mode="mobile"] .app-main, body[data-mode="mobile"] .account-stage { min-height: 0; overflow-y: auto; }
+      body[data-mode="mobile"] .app-main { padding: 19px 12px 28px; }
+      body[data-mode="mobile"] .mobile-nav { display: flex; z-index: 8; min-height: 58px; padding: 5px 8px max(5px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -8px 24px rgb(0 0 0 / 9%); }
+      body[data-mode="mobile"] .mobile-nav button { flex: 1; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 800; }
+      body[data-mode="mobile"] .mobile-nav button.active { background: var(--forest-soft); color: var(--forest-dark); }
+      body[data-mode="mobile"] .mobile-cta { display: grid; z-index: 7; grid-template-columns: minmax(0, 1fr) 54px; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -8px 24px rgb(0 0 0 / 8%); }
+      body[data-mode="mobile"] .mobile-cta button { min-height: 48px; }
+      body[data-mode="mobile"] .mobile-cta .icon-action { padding: 7px; font-size: 18px; }
+      body[data-mode="mobile"] .primary-tab { flex: 1; min-width: 0; }
+      body[data-mode="mobile"] .page-heading { display: block; }
+      body[data-mode="mobile"] .heading-actions { justify-content: flex-start; margin-top: 10px; }
+      body[data-mode="mobile"] .filters { overflow-x: auto; }
+      body[data-mode="mobile"] .filters input { min-width: 180px; }
+      body[data-mode="mobile"] .home-query { grid-template-columns: 1fr; }
+      body[data-mode="mobile"] .view-switch { width: 100%; }
+      body[data-mode="mobile"] .view-switch button { flex: 1; min-height: 42px; }
+      body[data-mode="mobile"] .home-controls { align-items: stretch; }
+      body[data-mode="mobile"] .activity-tabs { order: -1; width: 100%; overflow-x: auto; }
+      body[data-mode="mobile"] .activity-tabs button { flex: 1; min-height: 42px; }
+      body[data-mode="mobile"] .home-tools { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+      body[data-mode="mobile"] .provider-picker, body[data-mode="mobile"] .sort-select { min-height: 42px; width: 100%; }
+      body[data-mode="mobile"] .home-row { grid-template-columns: 84px minmax(0, 1fr); min-height: 100px; gap: 10px; }
+      body[data-mode="mobile"] .home-row .photo { min-height: 78px; }
+      body[data-mode="mobile"] .home-price { grid-column: 2; text-align: left; }
+      body[data-mode="mobile"] .split-home, body[data-mode="mobile"] .focus-layout, body[data-mode="mobile"] .detail-layout, body[data-mode="mobile"] .guided-layout { grid-template-columns: 1fr; }
+      body[data-mode="mobile"] .guide-steps { display: none; }
+      body[data-mode="mobile"] .mobile-progress { display: block; margin-bottom: 12px; }
+      body[data-mode="mobile"] .mobile-progress strong { display: block; margin-bottom: 6px; color: var(--forest-dark); font-size: 10px; }
+      body[data-mode="mobile"] .mobile-progress span { display: block; height: 3px; border-radius: 3px; background: linear-gradient(to right, var(--forest) 25%, var(--line) 25%); }
+      body[data-mode="mobile"] .step-label { display: none; }
+      body[data-mode="mobile"] .provider-choice { grid-template-columns: 1fr; }
+      body[data-mode="mobile"] .provider-controls { justify-content: flex-start; }
+      body[data-mode="mobile"] .split-list { border-right: 0; border-bottom: 1px solid var(--line); }
+      body[data-mode="mobile"] .map { min-height: 260px; }
+      body[data-mode="mobile"] .focus-card .photo { min-height: 205px; }
+      body[data-mode="mobile"] .detail-actions { display: none; }
+      body[data-mode="mobile"] .search-row { grid-template-columns: 1fr auto; gap: 8px; }
+      body[data-mode="mobile"] .search-status { grid-column: 1; }
+      body[data-mode="mobile"] .row-actions { grid-column: 2; grid-row: 1 / 3; }
+      body[data-mode="mobile"] .metric-grid, body[data-mode="mobile"] .rationale { grid-template-columns: 1fr; }
+      body[data-mode="mobile"] .create-card { grid-template-columns: 1fr; }
+
+      body.embed .masthead, body.embed .lab-controls { display: none; }
+      body.embed .page { width: 100%; padding: 0; }
+      body.embed .frame { border-radius: 0; border-inline: 0; }
+      body.embed .rationale { display: none; }
+
+      @media (max-width: 760px) {
+        .page { width: min(100% - 20px, 1380px); }
+        body.embed .page { width: 100%; }
+        .masthead { display: block; }
+        .invariant { max-width: none; margin-top: 13px; }
+        .lab-controls { align-items: stretch; }
+        .control-group { width: 100%; }
+      }
+    </style>
+  </head>
+  <body data-mode="desktop">
+    <main class="page">
+      <header class="masthead">
+        <div>
+          <div class="eyebrow">Fredy · selected UX direction</div>
+          <h1>Two tabs. One calm Home.</h1>
+          <p class="lede">Quiet feed is the default. List + map is an alternate view inside the same Home. Saved Searches is the only other primary destination.</p>
+        </div>
+        <aside class="invariant"><strong>Shared invariant</strong>Home · Saved Searches. Settings and Administration live behind the account menu. Listing and search routes remain deep-linkable.</aside>
+      </header>
+
+      <section class="lab-controls" aria-label="Wireframe controls">
+        <div class="control-group" role="tablist" aria-label="Preview surface">
+          <span class="control-label">Preview</span>
+          <button class="surface-button" data-surface="home" aria-selected="true">Home</button>
+          <button class="surface-button" data-surface="saved" aria-selected="false">Saved Searches</button>
+          <button class="surface-button" data-surface="detail" aria-selected="false">Listing</button>
+          <button class="surface-button" data-surface="search" aria-selected="false">Search flow</button>
+          <button class="surface-button" data-surface="account" aria-selected="false">Account menu</button>
+        </div>
+        <div class="control-group">
+          <span class="control-label">View</span>
+          <button class="theme-button" data-theme="light" aria-pressed="true">Light</button>
+          <button class="theme-button" data-theme="dark" aria-pressed="false">Dark</button>
+          <button class="viewport-button" data-mode="desktop" aria-pressed="true">Desktop</button>
+          <button class="viewport-button" data-mode="mobile" aria-pressed="false">Mobile</button>
+        </div>
+      </section>
+
+      <section id="wireframe" class="frame" aria-live="polite"></section>
+    </main>
+
+    <script>
+      const state = { surface: 'home', application: 'new', activity: 'new', homeView: 'feed' };
+      const direction = {
+        name: 'Quiet feed + map',
+        description: 'A calm feed by default, with synchronized list and map available without leaving Home.',
+        rationale: ['One Home, not another route', 'Activity states are exclusive', 'Map is a view, not a destination']
+      };
+
+      const button = (label, primary = false, extra = '') => `<button class="${primary ? 'primary-action' : 'quiet-action'}" ${extra}>${label}</button>`;
+      const tag = (label, kind = '') => `<span class="tag ${kind}">${label}</span>`;
+      const photo = (label = 'PHOTO') => `<div class="photo" aria-label="Listing image placeholder">${label}<br />placeholder</div>`;
+      const homeRow = (title, place, price, status, kind = 'good') => `<article class="home-row">${photo()}<div class="home-copy">${tag(status, kind)}<h4>${title}</h4><p>${place}</p><p>24 min to Alexanderplatz · 2 rooms</p></div><div class="home-price"><strong>${price}</strong><span>warm · open details →</span></div></article>`;
+      const map = () => `<div class="map" role="img" aria-label="Map placeholder with three listing pins"><div class="map-label"><span>Homes in view</span><span>12</span></div><div class="pin p1"><span>1</span></div><div class="pin p2"><span>2</span></div><div class="pin p3"><span>3</span></div></div>`;
+      const pageHeading = (eyebrow, title, description, actions = '') => `<header class="page-heading ${state.surface === 'saved' ? '' : 'compact'}"><div><div class="eyebrow">${eyebrow}</div><h3>${title}</h3><p>${description}</p></div>${actions ? `<div class="heading-actions">${actions}</div>` : ''}</header>`;
+      const stateNote = (copy) => `<div class="state-note"><span><strong>Loading</strong> reserves this layout</span><span><strong>Empty</strong> leads to Create search</span><span><strong>Error</strong> keeps existing results and offers retry</span><span>${copy}</span></div>`;
+
+      function appbar(active) {
+        const homeActive = active !== 'saved';
+        return `<header class="appbar"><div class="brand">Fredy</div><nav class="primary-nav" aria-label="Primary"><button class="primary-tab ${homeActive ? 'active' : ''}" data-product-nav="home">Home</button><button class="primary-tab ${active === 'saved' ? 'active' : ''}" data-product-nav="saved">Saved Searches</button></nav><div class="account-zone"><span class="health">Searches healthy</span><button class="avatar" data-product-nav="account" aria-label="Open account menu">AR</button></div></header>`;
+      }
+
+      function mobileNav(active) {
+        const homeActive = active !== 'saved';
+        return `<nav class="mobile-nav" aria-label="Primary"><button class="${homeActive ? 'active' : ''}" data-product-nav="home">⌂ Home</button><button class="${active === 'saved' ? 'active' : ''}" data-product-nav="saved">⌕ Saved Searches</button></nav>`;
+      }
+
+      function mobileListingCta() {
+        const applied = state.application !== 'new';
+        return `<div class="mobile-cta" aria-label="Listing actions"><button class="primary-action" data-application="applied" ${applied ? 'disabled' : ''}>${applied ? 'Applied ✓' : 'Apply'}</button><button class="icon-action" aria-label="Open provider listing">↗</button></div>`;
+      }
+
+      function homeSurface() {
+        const fixtures = {
+          new: [
+            ['Altbau by Viktoriapark', 'Kreuzberg · 64 m² · ImmoScout24', '€1,420', 'Top match', 'good'],
+            ['Quiet courtyard home', 'Schöneberg · 71 m² · Immowelt', '€1,510', 'New today', 'good'],
+            ['Canal-side apartment', 'Neukölln · 78 m² · Kleinanzeigen', '€1,590', 'New today', '']
+          ],
+          applied: [
+            ['Altbau near Gleisdreieck', 'Kreuzberg · 62 m² · ImmoScout24', '€1,390', 'Applied · 18 Sep', 'good'],
+            ['Garden flat in Tempelhof', 'Tempelhof · 69 m² · Deutsche Wohnen', '€1,480', 'Applied · 17 Sep', 'good']
+          ],
+          viewed: [
+            ['Sunny rooms by the canal', 'Neukölln · 74 m² · Immowelt', '€1,550', 'Viewed · 21 Sep', 'good'],
+            ['Courtyard home', 'Schöneberg · 71 m² · ImmoScout24', '€1,510', 'Viewed · 23 Sep', 'good']
+          ],
+          archived: [
+            ['Top-floor apartment', 'Moabit · 59 m² · Kleinanzeigen', '€1,350', 'Archived', ''],
+            ['Home near Südkreuz', 'Tempelhof · 66 m² · Immowelt', '€1,460', 'Archived', '']
+          ]
+        };
+        const rows = fixtures[state.activity].map((item) => homeRow(...item)).join('');
+        const viewSwitch = `<div class="view-switch" role="radiogroup" aria-label="Home view"><button class="${state.homeView === 'feed' ? 'active' : ''}" data-home-view="feed">Feed</button><button class="${state.homeView === 'map' ? 'active' : ''}" data-home-view="map">List + map</button></div>`;
+        const activity = `<div class="activity-tabs" role="radiogroup" aria-label="Listing activity">${['new', 'applied', 'viewed', 'archived'].map((value) => `<button class="${state.activity === value ? 'active' : ''}" data-activity="${value}" aria-pressed="${state.activity === value}">${value[0].toUpperCase() + value.slice(1)}</button>`).join('')}</div>`;
+        const tools = `<div class="home-tools"><button class="provider-picker" aria-label="Choose providers">Providers · 3 selected ▾</button><select class="sort-select" aria-label="Sort homes"><option>Newest first</option><option>Travel time: shortest</option><option>Distance: nearest</option><option>Price: lowest</option><option>Size: largest</option></select></div>`;
+        const results = state.homeView === 'map' ? `<section class="split-home"><div class="split-list">${rows}</div>${map()}</section>` : `<section class="home-feed">${rows}</section>`;
+        return pageHeading('Home · updated 4 minutes ago', 'Homes worth your time', 'Quiet by default; switch to map without losing activity, providers, sort, or search.', button('Run searches')) +
+          `<div class="status-line"><span><strong>Berlin rentals needs attention.</strong> Its provider URL must be checked before the next run.</span>${button('Fix search')}</div>` +
+          `<div class="home-query"><input aria-label="Search homes" placeholder="Search title, district, or address" />${viewSwitch}</div><div class="home-controls">${activity}${tools}</div>` + results +
+          stateNote('New, Applied, Viewed, and Archived are mutually exclusive activity views.');
+      }
+
+      function savedSearches() {
+        return pageHeading('Saved Searches', 'Your searches', 'Create, run, pause, or repair a search. Results always return to Home.', button('Create search', true, 'data-product-nav="search"')) +
+          `<section class="search-list"><article class="search-row"><div><h4>Berlin rentals</h4><p>ImmoScout24 + Immowelt · 2+ rooms · €1,600 warm</p></div><div class="search-status">${tag('Needs attention', 'warn')}<small>URL check required</small></div><div class="row-actions">${button('Fix')}${button('•••')}</div></article><article class="search-row"><div><h4>South Berlin</h4><p>Kleinanzeigen + WG-Gesucht · transit ≤ 35 min</p></div><div class="search-status">${tag('Active', 'good')}<small>Last run 4 min ago</small></div><div class="row-actions">${button('Run')}${button('•••')}</div></article><article class="search-row"><div><h4>Homes to buy</h4><p>3 providers · 3+ rooms · financing profile applied</p></div><div class="search-status">${tag('Paused', 'pause')}<small>Not scheduled</small></div><div class="row-actions">${button('Resume')}${button('•••')}</div></article></section>` +
+          `<section class="create-card"><div><h4>Add another search</h4><p>Choose providers first. Criteria, per-provider application policy, and delivery unfold in a guided flow.</p></div>${button('Create search', true, 'data-product-nav="search"')}</section>` +
+          stateNote('A broken search never blocks healthy searches or Home.');
+      }
+
+      function searchFlow() {
+        return pageHeading('Saved Searches / New', 'Create a saved search', 'A guided flow reveals one decision group at a time.', button('Save draft')) +
+          `<div class="mobile-progress"><strong>Step 1 of 4</strong><span aria-hidden="true"></span></div><section class="guided-layout"><aside class="guide-steps"><div class="guide-step active"><strong>1 · Providers</strong>Sources and application support</div><div class="guide-step"><strong>2 · Home criteria</strong>Place, price, rooms, deal</div><div class="guide-step"><strong>3 · Real-world fit</strong>Commute and affordability</div><div class="guide-step"><strong>4 · Delivery</strong>Notifications and review</div></aside><div class="guided-panel"><div class="eyebrow step-label">Step 1 of 4</div><h4>Where should Fredy look?</h4><p>Add one or more provider searches. Application capability is explicit per provider; each resulting job-listing owns its eventual application state.</p><div class="provider-list"><article class="provider-choice"><div><h5>ImmoScout24</h5><p>Search URL recognized · automatic applications supported · no account connection currently required</p></div><div class="provider-controls">${tag('Supported', 'good')}<span class="chip on">Auto-apply eligible listings: On</span></div></article><article class="provider-choice"><div><h5>Deutsche Wohnen</h5><p>Search URL recognized · automatic applications supported after profile requirements pass</p></div><div class="provider-controls">${tag('Supported', 'good')}<span class="chip">Auto-apply: Off</span></div></article><article class="provider-choice"><div><h5>Future authenticated provider</h5><p>Capability metadata declares an account connection requirement before auto-apply can be enabled.</p></div><div class="provider-controls">${tag('Connection required', 'warn')}${button('Connect account')}</div></article></div><div class="flow-actions">${button('Cancel')}${button('Continue to criteria', true)}</div></div></section>` +
+          stateNote('Unsupported providers never show a misleading auto-apply control.');
+      }
+
+      function listingDetail() {
+        const lifecycle = state.application === 'viewed' ? tag('Viewed', 'good') : state.application === 'archived' ? tag('Archived') : state.application === 'applied' ? tag('Applied', 'good') : tag('New');
+        const applyAction = state.application === 'new' ? button('Apply', true, 'data-application="applied"') : button(state.application === 'viewed' ? 'Viewed ✓' : state.application === 'archived' ? 'Archived' : 'Applied ✓', true, 'disabled');
+        return pageHeading('Home / Listing', 'Altbau by Viktoriapark', 'Details preserve the Home query and return position.', lifecycle + button('Back to Home')) +
+          `<section class="detail-layout"><div class="detail-main">${photo('LISTING GALLERY')}<div class="detail-section"><h4>Fit</h4><div class="metric-grid"><div class="metric"><small>Warm rent</small><strong>€1,420</strong></div><div class="metric"><small>Affordability</small><strong>Comfortable</strong></div><div class="metric"><small>Commute</small><strong>24 min</strong></div></div></div><div class="detail-section"><h4>Route, stops, and source facts</h4><p>Reveal exact route, nearby transit, price history, and provider details progressively.</p></div><div class="detail-section"><h4>Your activity</h4><div class="row-actions">${button('Add notes')}${button('I applied myself', false, 'data-application="applied"')}${button('Got a viewing', false, 'data-application="viewed"')}</div><p style="margin-top:8px">One lifecycle owns New, Applied, Viewed, Archived, offer, and rejected states—provider delivery no longer has a separate competing status.</p></div></div><aside class="detail-actions">${lifecycle}<h4>Next action</h4>${applyAction}${button('Open listing ↗')}${button('Save home')}${button('Add notes')}${button('I applied myself', false, 'data-application="applied"')}${button('Got a viewing', false, 'data-application="viewed"')}${button('Archive', false, 'data-application="archived"')}<div class="guard"><strong>Guarded application</strong><br />Profile, provider capability, consent, and validation must pass. Unknown outcomes remain explicit and non-retryable.</div></aside></section>` +
+          stateNote('Application outcomes update the listing lifecycle automatically.');
+      }
+
+      function accountMenu() {
+        return `<section class="account-stage"><aside class="account-menu"><div class="account-head"><strong>Alex</strong><span>alex@example.com · Administrator</span></div><div class="menu-group"><button class="menu-item"><span>My account</span><span>›</span></button><button class="menu-item"><span>Admin panel</span><span>›</span></button></div><div class="menu-group"><button class="menu-item"><span>Sign out</span><span>↗</span></button></div><div class="critical-note"><strong>Only critical state appears here:</strong> active debug capture or stopped execution may add one compact warning. Preferences remain rolled into My account.</div></aside></section>`;
+      }
+
+      function render() {
+        let content;
+        if (state.surface === 'home') content = homeSurface();
+        if (state.surface === 'saved') content = savedSearches();
+        if (state.surface === 'detail') content = listingDetail();
+        if (state.surface === 'search') content = searchFlow();
+        if (state.surface === 'account') content = accountMenu();
+        const active = state.surface === 'saved' || state.surface === 'search' ? 'saved' : state.surface === 'account' ? 'account' : 'home';
+        const body = state.surface === 'account' ? content : `<main class="app-main">${content}</main>`;
+        const listingCta = state.surface === 'detail' ? mobileListingCta() : '';
+        document.querySelector('#wireframe').innerHTML = `<header class="option-note"><div><div class="eyebrow">Selected Home direction</div><h2>${direction.name}</h2><p>${direction.description}</p></div><span class="option-badge">Selected</span></header><div class="app">${appbar(active)}${body}${listingCta}${mobileNav(active)}</div><footer class="rationale">${direction.rationale.map((item, index) => `<div><strong>0${index + 1}</strong><span>${item}</span></div>`).join('')}</footer>`;
+        document.querySelectorAll('[data-product-nav]').forEach((control) => control.addEventListener('click', () => {
+          state.surface = control.dataset.productNav;
+          syncControls();
+          render();
+        }));
+        document.querySelectorAll('[data-application]').forEach((control) => control.addEventListener('click', () => {
+          state.application = control.dataset.application;
+          render();
+        }));
+        document.querySelectorAll('[data-home-view]').forEach((control) => control.addEventListener('click', () => {
+          state.homeView = control.dataset.homeView;
+          render();
+        }));
+        document.querySelectorAll('[data-activity]').forEach((control) => control.addEventListener('click', () => {
+          state.activity = control.dataset.activity;
+          render();
+        }));
+      }
+
+      function syncControls() {
+        document.querySelectorAll('[data-surface]').forEach((control) => control.setAttribute('aria-selected', String(control.dataset.surface === state.surface)));
+      }
+
+      document.querySelectorAll('[data-surface]').forEach((control) => control.addEventListener('click', () => {
+        state.surface = control.dataset.surface;
+        syncControls();
+        render();
+      }));
+      document.querySelectorAll('[data-theme]').forEach((control) => control.addEventListener('click', () => {
+        document.documentElement.dataset.theme = control.dataset.theme;
+        document.querySelectorAll('[data-theme]').forEach((item) => item.setAttribute('aria-pressed', String(item === control)));
+      }));
+      document.querySelectorAll('[data-mode]').forEach((control) => control.addEventListener('click', () => {
+        document.body.dataset.mode = control.dataset.mode;
+        document.querySelectorAll('[data-mode]').forEach((item) => item.setAttribute('aria-pressed', String(item === control)));
+      }));
+
+      const initial = new URLSearchParams(window.location.search);
+      if (['home', 'saved', 'detail', 'search', 'account'].includes(initial.get('surface'))) state.surface = initial.get('surface');
+      if (['feed', 'map'].includes(initial.get('homeView'))) state.homeView = initial.get('homeView');
+      if (['new', 'applied', 'viewed', 'archived'].includes(initial.get('activity'))) state.activity = initial.get('activity');
+      if (['light', 'dark'].includes(initial.get('theme'))) document.documentElement.dataset.theme = initial.get('theme');
+      if (['desktop', 'mobile'].includes(initial.get('mode'))) document.body.dataset.mode = initial.get('mode');
+      if (['new', 'applied', 'viewed', 'archived'].includes(initial.get('application'))) state.application = initial.get('application');
+      if (initial.get('embed') === '1') document.body.classList.add('embed');
+
+      syncControls();
+      document.querySelectorAll('[data-theme]').forEach((item) => item.setAttribute('aria-pressed', String(item.dataset.theme === document.documentElement.dataset.theme)));
+      document.querySelectorAll('[data-mode]').forEach((item) => item.setAttribute('aria-pressed', String(item.dataset.mode === document.body.dataset.mode)));
+      render();
+    </script>
+  </body>
+</html>

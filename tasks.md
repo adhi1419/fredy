@@ -1,69 +1,80 @@
 # Fredy modernization tasks
 
-## Completed
+This is the canonical working tracker. Current location: `/home/adhitr/workspace/fredy-wireframes-luna/tasks.md` until the selected UX specification is rebased and merged to `main`.
 
-- [x] Remove MCP integration.
-- [x] Consolidate the active product line behind PR #2 to `main`.
-- [x] Remove SQLite and make Firestore the sole persistence layer.
-- [x] Add immutable Cloud Run image tags and reusable BuildKit caching.
-- [x] Remove obsolete direct dependencies and native container build overhead.
-- [x] Eliminate duplicate mainline tests/image builds with cost-optimized PR #3.
-- [x] Eliminate post-merge Test/source reruns with PR #4; only Deploy runs on `main`.
-- [x] Select the Paper / forest UI direction, including its near-black / sage dark variant.
+## Completed architecture and delivery
 
-## Active feature: direct Firebase bearer authentication
+- [x] Make Firestore the sole persistence implementation.
+- [x] Replace Fredy sessions with direct Firebase bearer authentication and per-request allowlist enforcement.
+- [x] Serve the frontend from GitHub Pages and keep Cloud Run API-only.
+- [x] Fix exact-origin CORS and authenticated SSE across Pages → Cloud Run.
+- [x] Rename the protected branch to `main`; enforce rebase-only linear history and automatic branch cleanup.
+- [x] Combine validation into one Pull Request workflow while preserving `Check the source code` and `PR Gate`.
+- [x] Combine Pages and Cloud Run production delivery into one conditional Deploy workflow.
+- [x] Add parallel backend validation, cross-PR GHCR cache, exact candidate-image promotion, and linked application layers.
+- [x] Reach a 44-second representative steady-state Cloud Run deployment.
+- [x] Keep standard `node:22-trixie-slim` + CloakBrowser; reject a Fredy-owned base image.
 
-Architecture: Firebase Authentication is the browser session authority. The browser persists Firebase auth locally and sends a fresh ID token in `Authorization: Bearer <token>` for every API request and authenticated event stream. Fastify verifies the token, checks the Firestore email allowlist on every request, derives the Firebase UID/email server-side, and exposes the existing Fredy user shape to routes. No Fredy cookie/session or client-supplied identity remains.
+## Completed upstream-surface cleanup
 
-- [x] Backend: replace cookie/session authentication with Firebase bearer verification and per-request allowlist enforcement.
-- [x] Backend: preserve Firebase UID ownership for existing jobs, settings, channels, listings, and inquiry safety state.
-- [x] Frontend: initialize Firebase once with `browserLocalPersistence`; attach refreshed bearer tokens to every API call.
-- [x] Frontend: replace native `EventSource` with authenticated fetch streaming and explicit reconnect/abort handling.
-- [x] Cleanup: remove password login, Firebase token exchange, session storage/cleanup, reverse-proxy auth, session TTL UI, and obsolete dependencies.
-- [x] Tests: cover missing/malformed/expired tokens, allowlist revocation, admin derivation, user provisioning, token refresh, authenticated streaming, and logout.
-- [x] Validate: offline suite, Firestore contracts, frontend build, lint, format, Docker smoke, and rendered Google-login flow.
-- [x] Commit and push the `firebase-bearer-auth` branch; open protected-mainline PR #5.
-- [x] Trigger immutable commit `21eda21` deployment to GCP through Actions run 35465344034.
-- [ ] Verify deployed Google sign-in and authenticated API/SSE after the user-observed deployment finishes.
+- [x] Remove MCP transports, OAuth/token surfaces, UI, dependencies, and tests.
+- [x] Remove SQLite, migrations, native database dependencies, `/db`, and volume/config contracts.
+- [x] Remove analytics phone-home and consent UI through PR #10.
+- [x] Remove release polling, `/api/version`, and update banner through PR #12.
+- [x] Remove in-app donation UI while preserving attribution, license, README sponsorship, and shared assets through PR #17.
+- [x] Remove bundled What's New UI/data/state through PR #18.
 
-## Active feature: GitHub Pages frontend + API-only Cloud Run
+## Architecture migration program
 
-Architecture: GitHub Pages serves the hash-routed SPA under `/fredy/`. A build-time API origin routes browser requests and authenticated fetch streams to Cloud Run. Cloud Run serves only `/api` plus `/health`, accepts CORS only from the exact Pages origin, and no longer installs or builds frontend dependencies. Pages performs the single frontend production build; Cloud Build performs the single backend image build.
+- [x] PR #19: Bun 1.3.14 and strict TypeScript foundation; Bun owns frontend CI/Pages, Yarn remains for Node backend/Docker.
+- [x] PR #20: freeze pagination, similarity tombstone, deletion cascade, and travel-time projection behavior in Firestore contract tests.
+- [x] PR #21: Firebase identity deep module — merged and deployed successfully.
+- [x] PR #22: authenticated transport deep module — merged and deployed in 39 seconds.
+- [x] PR #23: home-address/travel-time settings deep module — merged and deployed successfully.
+- [x] Draft unified application lifecycle/provider capability architecture; publication remains pending the separate persistence-model gate.
+- [ ] **IN PROGRESS:** Freeze the first Rust wire contract for health, Firebase auth, CORS, and SSE.
+- [ ] **IN PROGRESS:** Extract listings state as the first strict TypeScript domain-state module.
+- [ ] **IN PROGRESS:** Implement phase-one listing/application lifecycle unification with real production callers.
+- [ ] Confirm per-Saved-Search provider-source policy → per-job-listing lifecycle model before migrating the job-level auto-apply flag.
+- [ ] Freeze remaining provider, notification, schedule, and Cloud Run deploy contracts.
+- [ ] Continue splitting frontend state into deep domain modules while preserving selector/action compatibility.
+- [ ] Migrate nonvisual frontend services, state, and hooks to strict TypeScript in small PRs.
+- [ ] Replace backend route groups incrementally with Rust behind frozen contracts; avoid a big-bang rewrite.
+- [x] Keep `FredyPipelineExecutioner` architectural refactoring explicitly out of this program; only separately approved feature integration may touch it.
 
-- [x] Frontend: add one API URL resolver for requests, Firebase config, and authenticated SSE.
-- [x] Frontend: build correctly under the `/fredy/` Pages base and keep asset/deep-link behavior.
-- [x] Backend: add exact-origin CORS and preflight handling for Authorization/Content-Type.
-- [x] Backend: replace SPA/static serving with an API health endpoint.
-- [x] Deployment: add GitHub Pages workflow and inject API origin without duplicating frontend builds.
-- [x] Deployment: remove frontend build layers and static dependency from the Cloud Run image.
-- [x] Tests: cover API URL resolution, exact-origin CORS, preflight rejection, and API-only health.
-- [x] Validate: 2,135 offline tests, 298 Firestore contracts, Pages asset path, and 49-second API image build.
-- [x] Commit/push the stacked branch and open PR #6 against `firebase-bearer-auth`.
-- [x] Set `CLOUD_RUN_API_ORIGIN` and enable GitHub Actions as the Pages source.
-- [ ] Merge PR #5, retarget PR #6 to `main`, then merge it so API and Pages deploy together.
-- [ ] Verify the live Pages URL, Google sign-in, CORS, authenticated API, and SSE.
+## Selected UX direction
 
-## Next
+- [x] Use exactly two primary destinations: Home and Saved Searches.
+- [x] Use Quiet feed as Home's default and List + map as a state-preserving alternate view.
+- [x] Keep New, Applied, Viewed, and Archived mutually exclusive; add Archive as a listing action.
+- [x] Add provider multi-select and sorting by newest, travel time, distance, price, and size.
+- [x] Reduce the account menu to My account, optional Admin panel, and Sign out.
+- [x] Freeze Home/Saved Searches navigation at the bottom on mobile.
+- [x] Freeze mobile listing CTAs above navigation: Apply on the left, icon-only Open listing on the right.
+- [x] Unify provider/manual application outcomes with listing status; include I applied myself, notes, viewing, and archive actions.
+- [x] Use a guided Saved Search add/edit flow and a minimal mobile Step N of 4 indicator.
+- [x] Use compact heading regions everywhere except the Saved Searches index.
+- [x] Consolidate the interactive artifact from three competing options into one selected hybrid direction.
+- [x] Exercise all Feed/List+map × New/Applied/Viewed/Archived states plus Saved Searches, Listing, guided Search, and Account surfaces.
+- [x] Validate self-contained HTML, inline JavaScript, light/dark, desktop/mobile, compact headings, one-handed CTA order, and HTTP 200 preview serving.
+- [x] Deliver the current self-contained HTML and visual evidence through the dashboard because the work-host loopback URL is not reachable from macOS Firefox.
+- [ ] Confirm provider-source application policy, capability, and future Connect account interaction.
+- [x] Perform final human interaction review and approve the UX specification — approved by the operator on 2026-09-19.
+- [x] Freeze the approved decision document and interactive HTML for rebase-auto-merge publication.
+- [ ] Merge the approved design specification PR.
 
-- [ ] Add mandatory profile setup after first Firebase registration; keep Settings edit-only afterward.
-- [x] Remove upstream phone-home/update integrations and the in-app donation surface.
-- [ ] Map core user journeys and approve responsive UX wireframes for dashboard, listings, listing detail, job creation, and settings.
-- [x] Add Bun 1.3.14 and strict TypeScript foundations: exact dev-tool pins, frozen Bun lock, Yarn lock compatibility, deterministic lock drift checks, a narrow strict API URL seam, Bun frontend CI/Pages commands, and foundation/workflow tests; broad frontend migration remains.
-- [ ] Migrate services, store, hooks, components, and pages by approved UX slice with cached CI under 60 seconds.
-- [ ] Implement the selected Paper / forest visual system from the approved wireframes and light/dark direction.
-- [ ] Rewrite the customer README with final UI screenshots and move technical setup into the developer guide.
-- [ ] Rewrite the backend in Rust behind frozen API/provider/Firestore contracts.
+## After UX approval
 
-## Completed feature: remove in-app donation surface
+- [ ] Implement the two-tab shell and account/admin entry points.
+- [ ] Implement Home feed/map/activity/provider/sort state.
+- [ ] Implement one-handed mobile listing detail and unified lifecycle actions.
+- [ ] Implement guided Saved Search add/edit flow.
+- [ ] Apply final Paper/forest styling through theme tokens only.
+- [ ] Run accessibility, responsive, and new-user usability review with screenshots/recordings.
 
-- [x] Remove the runtime Donate button/modal, donation-only component stylesheet, sidebar mount, locale keys, theme tokens, and obsolete locale assertion; preserve the shared heart asset used by navigation, news, and notifications.
-- [x] Add a static UI regression test preventing the in-app donation surface and donation translation references from returning.
-- [x] Preserve README sponsorship/attribution content, Fredy identity, LICENSE, copyright attribution, and image-404 behavior.
-- [x] Validate: focused UI tests (3 files, 24 passed); offline suite (180 files passed, 1 skipped; 2,127 passed, 32 skipped); ESLint passed; scoped Prettier check passed; Pages production frontend build passed. Build emitted only the existing third-party `lottie-web` direct-eval warning.
+## Last-mile product work
 
-## Completed feature: remove bundled What's New surface
-
-- [x] Remove the runtime modal/history mounts and all bundled What's New components, styles, selection service, payload, transit image, state action, marker endpoint, legacy hash compatibility path, development mock, locale keys, and feature-specific tests.
-- [x] Add a static UI regression test preventing runtime components, bundled payload, marker API, state action, and locale references from returning.
-- [x] Preserve unrelated browser notification wording, release tooling, shared heart artwork, README, LICENSE, Fredy/Christian Kellner attribution, and image-404 behavior.
-- [x] Validate: targeted removal and locale tests (2 files, 16 passed); offline suite (182 files passed, 1 skipped; 2,123 passed, 32 skipped); ESLint passed; Prettier check passed; copyright check passed; Pages production frontend build passed. Build emitted only the existing third-party `lottie-web` direct-eval warning.
+- [ ] Add mandatory applicant-profile setup after first registration; keep My account edit-only afterward.
+- [ ] Rewrite the customer README only after TypeScript migration and UI modernization are complete.
+- [ ] Capture final product screenshots only from the finished UI.
+- [ ] Create and link a separate developer/operator guide.
