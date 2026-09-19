@@ -151,7 +151,6 @@ const routes = {
   'GET /api/user/settings': {},
   'GET /api/dashboard': dashboard,
   'GET /api/demo': { demoMode: false },
-  'POST /api/user/settings/news-hash': {},
   'POST /api/user/settings/listing-deletion-preference': {},
 };
 
