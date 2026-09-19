@@ -38,6 +38,12 @@ jobs:
             exit 1
           fi
 
-      - run: yarn test:offline
+      - name: Offline test suite
+        run: yarn test:offline
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8144
+
+      - name: Firestore contract suite
+        run: yarn test:contract
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8144
