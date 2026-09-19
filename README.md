@@ -276,17 +276,6 @@ For HOWOGE partner links, Fredy submits the fresh signed form once and treats th
 request as **Applied**; the applicant must still confirm HOWOGE's email. Other InBerlinWohnen partner
 hosts remain notification-only until their application flows are implemented.
 
-### MCP Server 🤖
-
-Starting with **V20**, Fredy ships with a built-in **MCP Server**. This allows you to connect Fredy to LLMs (like Claude, ChatGPT, or local models via LM Studio) and query your real estate data using natural language.
-The local LLM can even enrich existing listings by checking the listing online.   
-
-For more information on how to set it up and use it, please refer to the [MCP Readme](lib/mcp/README.md).
-
-#### Connect Claude.ai or ChatGPT over OAuth
-
-Set Fredy's `baseUrl` to its public HTTPS URL, then add `<baseUrl>/api/mcp` as a custom MCP server in Claude.ai or ChatGPT. Fredy advertises OAuth discovery metadata, dynamically registers the client, and asks you to sign in and approve read access. OAuth access tokens expire after one hour and refresh automatically; existing MCP tokens continue to work for local clients. Connected apps are listed under **Settings → Connections**, where access can be revoked at any time.
-
 ------------------------------------------------------------------------
 
 ## 💶 Financing Calculator
@@ -335,9 +324,6 @@ Each tab saves and deletes on its own. Once one is saved, its verdict appears el
 
 Which calculation a listing gets follows the deal type of its job, so a 1.200 € rent is never
 read as a very cheap house. Nothing appears until the matching tab is filled in.
-
-An LLM can ask the same question over MCP with the `calculate_financing` tool, which returns a
-mortgage answer or a rent answer depending on the listing.
 
 > **This is an estimate, not financial advice.** The Grunderwerbsteuer rates ship as editable
 > defaults and Bundesländer change them from time to time, so check the figure for your state
@@ -491,8 +477,7 @@ only from the **trusted proxy addresses** you list - matched against the TCP pee
 `X-Forwarded-For` - and, if you configure one, only when a **shared-secret header** matches too.
 The name is then mapped onto an **existing** Fredy user with the same username. Nothing is
 created, nothing is promoted; an unknown name is ignored and the login form appears as usual. An
-explicit session always wins, so nobody is silently switched, and `sessionTTL`, admin checks and
-MCP tokens are untouched.
+explicit session always wins, so nobody is silently switched, and `sessionTTL` and admin checks are untouched.
 
 Set it up under *Administration → System → Reverse proxy sign-in*:
 

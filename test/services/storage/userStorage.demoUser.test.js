@@ -36,8 +36,7 @@ describe('userStorage.ensureDemoUserExists', () => {
         username   TEXT UNIQUE,
         password   TEXT,
         last_login INTEGER,
-        is_admin   INTEGER DEFAULT 0,
-        mcp_token  TEXT
+        is_admin   INTEGER DEFAULT 0
       );
       CREATE TABLE jobs (id TEXT PRIMARY KEY, user_id TEXT);
     `);

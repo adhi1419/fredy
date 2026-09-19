@@ -35,14 +35,12 @@ const FIRESTORE_IMPLEMENTED = new Set([
   'watchListStorage',
   'listingsStorage',
   'debugLogStorage',
-  'mcpOAuthStorage',
   'backupRestoreService',
 ]);
 
 /** Sqlite-era modules that live outside lib/services/storage/. */
 const SQLITE_PATH_OVERRIDES = {
   debugLogStorage: '../../lib/services/debug/debugLogStorage.js',
-  mcpOAuthStorage: '../../lib/mcp/mcpOAuthStorage.js',
 };
 
 /**

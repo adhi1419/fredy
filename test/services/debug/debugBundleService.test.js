@@ -137,16 +137,16 @@ describe('services/debug/debugBundleService.js', () => {
     it('redacts credential-shaped settings by key name, whatever they are called', async () => {
       const sys = await svc.buildSystemInfo({
         settings: {
-          mcp_token: 'mcp-abc',
+          legacy_api_token: 'legacy-abc',
           smtpPassword: 'hunter2',
           someApiKey: 'ak-live-1',
           nothingSensitive: 'plain',
         },
       });
-      expect(sys).not.toContain('mcp-abc');
+      expect(sys).not.toContain('legacy-abc');
       expect(sys).not.toContain('hunter2');
       expect(sys).not.toContain('ak-live-1');
-      expect(sys).toContain('mcp_token: <redacted>');
+      expect(sys).toContain('legacy_api_token: <redacted>');
       expect(sys).toContain('smtpPassword: <redacted>');
       expect(sys).toContain('someApiKey: <redacted>');
       expect(sys).toContain('nothingSensitive: plain');

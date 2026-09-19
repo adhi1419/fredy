@@ -11,7 +11,7 @@
 import http from 'node:http';
 const now = Date.now();
 
-const users = [{ id: 1, username: 'admin', isAdmin: true, lastLogin: now, numberOfJobs: 2, mcpToken: 'tok_abc123' }];
+const users = [{ id: 1, username: 'admin', isAdmin: true, lastLogin: now, numberOfJobs: 2 }];
 
 const jobs = [
   {

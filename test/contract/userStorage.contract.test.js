@@ -100,13 +100,6 @@ describe('userStorage contract', () => {
       const after = await userStorage.getUserWithSecretsByUsername('alice');
       expect(after.password).not.toBe(before.password);
     });
-
-    it('generates an MCP token on insert', async () => {
-      const id = await seedUser();
-      const token = await userStorage.getMcpToken(id);
-      expect(token).toBeTruthy();
-      expect(token.startsWith('fredy_')).toBe(true);
-    });
   });
 
   // ---------------------------------------------------------------------------
@@ -133,12 +126,10 @@ describe('userStorage contract', () => {
       expect(user.numberOfJobs).toBe(2);
     });
 
-    it('does not expose password or mcp_token', async () => {
+    it('does not expose password', async () => {
       await seedUser();
       const user = (await userStorage.getUsers())[0];
       expect(user.password).toBeUndefined();
-      expect(user.mcp_token).toBeUndefined();
-      expect(user.mcpToken).toBeUndefined();
     });
   });
 
@@ -161,7 +152,6 @@ describe('userStorage contract', () => {
       });
       expect(user.numberOfJobs).toBe(0);
       expect(user.password).toBeUndefined();
-      expect(user.mcp_token).toBeUndefined();
     });
   });
 
@@ -182,8 +172,6 @@ describe('userStorage contract', () => {
       expect(user.id).toBeTruthy();
       // Secrets MUST be stripped
       expect(user.password).toBeUndefined();
-      expect(user.mcp_token).toBeUndefined();
-      expect(user.mcpToken).toBeUndefined();
     });
   });
 
@@ -273,49 +261,6 @@ describe('userStorage contract', () => {
       // Post-condition: the job is gone
       const jobsAfter = await jobStorage.getJobs({ includeDisabled: true });
       expect(jobsAfter.some((j) => j.name === 'doomed-job')).toBe(false);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // MCP token management
-  // ---------------------------------------------------------------------------
-
-  describe('validateMcpToken', () => {
-    it('returns userId for a valid token', async () => {
-      const id = await seedUser({ username: 'alice' });
-      const token = await userStorage.getMcpToken(id);
-      const result = await userStorage.validateMcpToken(token);
-      expect(result).toEqual({ userId: id });
-    });
-
-    it('returns null for an invalid token', async () => {
-      expect(await userStorage.validateMcpToken('fredy_bogus')).toBeNull();
-    });
-
-    it('returns null for null/undefined/empty', async () => {
-      expect(await userStorage.validateMcpToken(null)).toBeNull();
-      expect(await userStorage.validateMcpToken(undefined)).toBeNull();
-      expect(await userStorage.validateMcpToken('')).toBeNull();
-    });
-  });
-
-  describe('getMcpToken', () => {
-    it('returns a fredy_ prefixed token for an existing user', async () => {
-      const id = await seedUser({ username: 'alice' });
-      const token = await userStorage.getMcpToken(id);
-      expect(typeof token).toBe('string');
-      expect(token.startsWith('fredy_')).toBe(true);
-      expect(token.length).toBeGreaterThan(10);
-    });
-
-    it('returns null for a non-existent user', async () => {
-      expect(await userStorage.getMcpToken('no-such-id')).toBeNull();
-    });
-
-    it('each user gets a unique token', async () => {
-      const id1 = await seedUser({ username: 'alice' });
-      const id2 = await seedUser({ username: 'bob' });
-      expect(await userStorage.getMcpToken(id1)).not.toBe(await userStorage.getMcpToken(id2));
     });
   });
 

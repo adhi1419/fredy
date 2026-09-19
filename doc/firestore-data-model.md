@@ -10,7 +10,7 @@ pass it unchanged.
 |---|---|---|
 | `settings` | `${userId ?? '__global__'}__${encodeURIComponent(name)}` | value kept as JSON string for exact round-trip |
 | `sessions` | sid | `{ data, expiresAt }` |
-| `users` | user id (nanoid) | `{ username, password, lastLogin, isAdmin, mcpToken }` |
+| `users` | user id (nanoid) | `{ username, password, lastLogin, isAdmin }` |
 | `jobs` | job id (nanoid) | arrays/maps stored natively (not JSON strings) |
 | `configured_adapters` | channel id (nanoid) | `{ userId, adapterId, name, fields, visibility, createdAt, updatedAt }` |
 | `listings` | sha1(jobId + NUL + hash) | see "Dedup" below |

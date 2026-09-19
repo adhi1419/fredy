@@ -47,12 +47,6 @@ describe('read-by-id parity: empty ids mean "not found", never an error', () => 
     }
   });
 
-  it('getMcpToken', async () => {
-    for (const id of EMPTYish) {
-      expect(await userStorage.getMcpToken(id)).toBeNull();
-    }
-  });
-
   it('getChannel', async () => {
     for (const id of EMPTYish) {
       expect(await channelStorage.getChannel(id)).toBeNull();
