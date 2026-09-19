@@ -121,6 +121,186 @@ describe('jobStorage contract', () => {
       expect((await jobStorage.getJob('j-auto')).autoSendInquiry).toBe(true);
     });
 
+    it('adds a disabled source policy when no policy or legacy flag is provided', async () => {
+      await jobStorage.upsertJob(
+        makeJob({ jobId: 'j-policy-default', provider: [{ id: 'immoscout', url: 'https://immoscout.de/mieten' }] }),
+      );
+      expect((await jobStorage.getJob('j-policy-default')).provider).toEqual([
+        {
+          id: 'immoscout',
+          url: 'https://immoscout.de/mieten',
+          applicationPolicy: { automatic: 'disabled' },
+        },
+      ]);
+    });
+
+    it('accepts an enabled policy for a provider with automatic capability', async () => {
+      await jobStorage.upsertJob(
+        makeJob({
+          jobId: 'j-policy-enabled',
+          provider: [
+            {
+              id: 'immoscout',
+              url: 'https://immoscout.de/mieten',
+              enabled: true,
+              applicationPolicy: { automatic: 'enabled' },
+            },
+          ],
+        }),
+      );
+      expect((await jobStorage.getJob('j-policy-enabled')).provider[0].applicationPolicy).toEqual({
+        automatic: 'enabled',
+      });
+    });
+
+    it('stores only canonical provider-source fields and never credentials or connections', async () => {
+      await jobStorage.upsertJob(
+        makeJob({
+          jobId: 'j-policy-sensitive-fields',
+          provider: [
+            {
+              id: 'immoscout',
+              name: 'ImmoScout24',
+              url: 'https://immoscout.de/mieten',
+              enabled: true,
+              applicationPolicy: { automatic: 'enabled', token: 'nested-secret' },
+              credentials: { password: 'must-not-persist' },
+              connection: { accessToken: 'must-not-persist' },
+            },
+          ],
+        }),
+      );
+
+      expect((await jobStorage.getJob('j-policy-sensitive-fields')).provider).toEqual([
+        {
+          id: 'immoscout',
+          name: 'ImmoScout24',
+          url: 'https://immoscout.de/mieten',
+          enabled: true,
+          applicationPolicy: { automatic: 'enabled' },
+        },
+      ]);
+    });
+
+    it('accepts enabled policy for listing-scoped capability and leaves listing checks to lifecycle', async () => {
+      await jobStorage.upsertJob(
+        makeJob({
+          jobId: 'j-policy-listing',
+          provider: [
+            {
+              id: 'inberlinwohnen',
+              url: 'https://inberlinwohnen.de/angebote',
+              applicationPolicy: { automatic: 'enabled' },
+            },
+          ],
+        }),
+      );
+      expect((await jobStorage.getJob('j-policy-listing')).provider[0].applicationPolicy).toEqual({
+        automatic: 'enabled',
+      });
+    });
+
+    it('rejects an explicit enabled policy for an unsupported capability', async () => {
+      await expect(
+        jobStorage.upsertJob(
+          makeJob({
+            jobId: 'j-policy-unsupported',
+            provider: [
+              { id: 'immowelt', url: 'https://www.immowelt.de/suche', applicationPolicy: { automatic: 'enabled' } },
+            ],
+          }),
+        ),
+      ).rejects.toThrow('not supported');
+      expect(await jobStorage.getJob('j-policy-unsupported')).toBeNull();
+    });
+
+    it('uses persisted source policy before the legacy job flag on reads', async () => {
+      await jobStorage.upsertJob(
+        makeJob({
+          jobId: 'j-policy-precedence',
+          autoSendInquiry: null,
+          provider: [
+            { id: 'immoscout', url: 'https://immoscout.de/mieten', applicationPolicy: { automatic: 'disabled' } },
+          ],
+        }),
+      );
+      expect((await jobStorage.getJob('j-policy-precedence')).provider[0].applicationPolicy).toEqual({
+        automatic: 'disabled',
+      });
+    });
+
+    it('lets an explicit legacy flag override source state during the compatibility window', async () => {
+      await jobStorage.upsertJob(
+        makeJob({
+          jobId: 'j-policy-legacy-override',
+          autoSendInquiry: true,
+          provider: [
+            { id: 'immoscout', url: 'https://immoscout.de/mieten', applicationPolicy: { automatic: 'disabled' } },
+          ],
+        }),
+      );
+      expect((await jobStorage.getJob('j-policy-legacy-override')).provider[0].applicationPolicy).toEqual({
+        automatic: 'enabled',
+      });
+    });
+
+    it('uses the legacy flag when source policy is omitted', async () => {
+      await jobStorage.upsertJob(
+        makeJob({
+          jobId: 'j-policy-legacy-fallback',
+          autoSendInquiry: true,
+          provider: [{ id: 'immoscout', url: 'https://immoscout.de/mieten' }],
+        }),
+      );
+      expect((await jobStorage.getJob('j-policy-legacy-fallback')).provider[0].applicationPolicy).toEqual({
+        automatic: 'enabled',
+      });
+    });
+
+    it('reads a legacy row without source policy without rewriting it', async () => {
+      const { default: FirestoreConnection } =
+        await import('../../lib/services/storage/firestore/FirestoreConnection.js');
+      await FirestoreConnection.collection('jobs')
+        .doc('j-legacy-row')
+        .set({
+          userId: 'u1',
+          name: 'Legacy',
+          provider: [{ id: 'immoscout', url: 'https://immoscout.de/mieten', enabled: true }],
+          notificationAdapter: [],
+          enabled: true,
+          autoSendInquiry: true,
+          dealType: 'rent',
+          lastRunAt: null,
+        });
+
+      const job = await jobStorage.getJob('j-legacy-row');
+      expect(job.provider[0].applicationPolicy).toEqual({ automatic: 'enabled' });
+      expect((await FirestoreConnection.collection('jobs').doc('j-legacy-row').get()).data().provider[0]).toEqual({
+        id: 'immoscout',
+        url: 'https://immoscout.de/mieten',
+        enabled: true,
+      });
+    });
+
+    it('round-trips source policy updates without changing URL or enabled shape', async () => {
+      await jobStorage.upsertJob(
+        makeJob({
+          jobId: 'j-policy-roundtrip',
+          provider: [
+            {
+              id: 'immoscout',
+              url: 'https://immoscout.de/mieten',
+              enabled: true,
+              applicationPolicy: { automatic: 'enabled' },
+            },
+          ],
+        }),
+      );
+      const existing = await jobStorage.getJob('j-policy-roundtrip');
+      await jobStorage.upsertJob({ ...makeJob({ jobId: 'j-policy-roundtrip' }), provider: existing.provider });
+      expect((await jobStorage.getJob('j-policy-roundtrip')).provider).toEqual(existing.provider);
+    });
+
     it('round-trips all fields: blacklist, provider, spatialFilter, specFilter, commuteFilter, shareWithUsers', async () => {
       // A real GeoJSON polygon: coordinates are [[[lng,lat], ...]] — nested
       // arrays, which Firestore cannot store natively. This is exactly the
@@ -217,7 +397,7 @@ describe('jobStorage contract', () => {
       expect(job.name).toBe('After');
       expect(job.enabled).toBe(false);
       expect(job.blacklist).toEqual(['x']);
-      expect(job.provider).toEqual([{ url: 'https://new.de' }]);
+      expect(job.provider).toEqual([{ url: 'https://new.de', applicationPolicy: { automatic: 'disabled' } }]);
       expect(job.shared_with_user).toEqual(['u5']);
       expect(job.spatialFilter).toEqual({ type: 'Point' });
       expect(job.specFilter).toEqual({ minRooms: 3 });
