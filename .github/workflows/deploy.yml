@@ -31,19 +31,24 @@ jobs:
           docker run -d --name firestore-emulator -p 127.0.0.1:8144:8144 \
             gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators \
             gcloud emulators firestore start --host-port=0.0.0.0:8144
+          ready=false
           for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:8144/ > /dev/null && break || sleep 2
+            if curl -sf http://127.0.0.1:8144/ > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 2
           done
+          if [ "$ready" != true ]; then
+            docker logs firestore-emulator
+            exit 1
+          fi
 
       - name: Offline test suite
         run: npx x-var TEST_MODE=offline vitest run --config vitest.gh.config.js
 
-      - name: Contract suite (sqlite)
-        run: yarn test:contract
-
-      - name: Contract suite (firestore)
+      - name: Contract suite (Firestore)
         env:
-          STORAGE_BACKEND: firestore
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8144
         run: yarn test:contract
 

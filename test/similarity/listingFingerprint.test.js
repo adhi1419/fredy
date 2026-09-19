@@ -159,7 +159,7 @@ describe('listingFingerprint', () => {
   });
 
   describe('buildFingerprint', () => {
-    it('pins size and rooms to a shared grid so SQLite and the scrapers agree', () => {
+    it('pins size and rooms to a shared grid so stored listings and the scrapers agree', () => {
       const fromScraper = buildFingerprint({ jobId: 'j', size: 77.6, rooms: 2.4 });
       const fromDatabase = buildFingerprint({ jobId: 'j', size: 78, rooms: '2.5' });
       expect(fromScraper.size).toBe(fromDatabase.size);

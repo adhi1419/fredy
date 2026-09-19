@@ -1,6 +1,6 @@
-# Firestore Data Model (SQLite migration)
+# Firestore Data Model
 
-Design decisions for the Firestore storage backend. The behavioral source of
+Design decisions for Fredy's Firestore persistence layer. The behavioral source of
 truth is the contract suite (`test/contract/`) — every decision here exists to
 pass it unchanged.
 
@@ -27,7 +27,7 @@ exactly ON CONFLICT DO NOTHING. Because the ID is deterministic, the
 "propagate the existing row's id on conflict" contract of `storeListings`
 is automatic: new and existing resolve to the same id.
 
-## Semantics carried over from SQLite (encoded in the contract suite)
+## Compatibility semantics (encoded in the contract suite)
 
 - `getKnownListingHashesForJobAndProvider` returns hashes of ALL rows,
   including soft-deleted (`manually_deleted`) tombstones — the tombstone is
@@ -35,19 +35,18 @@ is automatic: new and existing resolve to the same id.
 - Soft delete = `manuallyDeleted: true` flag; hard delete = doc removal
   (+ subcollections).
 - `storeListings` mutates its input: `item.id` is overwritten with the doc id.
-- Price coercion mirrors SQLite column affinity: numeric-looking strings are
-  stored as numbers, everything else verbatim.
+- Numeric-looking price strings are stored as numbers; everything else is stored
+  verbatim.
 - Booleans (`enabled`, `isAdmin`, `isActive`) are stored natively and returned
-  as booleans (the sqlite layer coerces `0/1 -> boolean` at the API edge; the
-  API shape is identical).
+  as booleans.
 
 ## Cascades (no FK support in Firestore — explicit helpers)
 
 - `removeJob` -> delete job doc, all listings where `jobId ==`, their
   subcollections, and their watch_list entries.
 - `removeUser` -> delete user doc + cascade every owned job as above.
-- All bulk deletes are chunked into batches of <= 500 ops (Firestore batch
-  limit — same 500 chunk size the sqlite layer uses for bound params).
+- All bulk deletes are chunked into batches of <= 500 operations, the Firestore
+  batch limit.
 
 ## Queries
 
@@ -68,7 +67,7 @@ Dev/test run against the official emulator (Docker):
       gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators \
       gcloud emulators firestore start --host-port=0.0.0.0:8144
 
-    STORAGE_BACKEND=firestore FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract
+    FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract
 
 `FirestoreConnection.clearAllData()` refuses to run when
 `FIRESTORE_EMULATOR_HOST` is unset, so a misconfigured test run can never wipe

@@ -6,10 +6,9 @@
 /*
  * Contract tests: userStorage
  *
- * Backend-agnostic behavioral contract for the user module. Seeds and asserts
- * ONLY through the public storage API (userStorage, jobStorage, settingsStorage).
- * Every storage call is awaited so the same test body works against both
- * sync (sqlite) and async (firestore) backends.
+ * Firestore behavioral contract for the user module. Seeds and asserts ONLY
+ * through the public storage API (userStorage, jobStorage, settingsStorage).
+ * Every storage call is awaited because Firestore is async.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';

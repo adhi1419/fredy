@@ -9,7 +9,7 @@ Fredy is a self-hosted real estate finder for Germany. It scrapes German real es
 
 - Node.js >= 22, ESM-only (`"type": "module"`)
 - Default port: 9998, default login: admin / admin
-- SQLite via `better-sqlite3` (synchronous - all DB ops are sync; only network I/O is async)
+- Firestore via `@google-cloud/firestore` (storage operations are asynchronous)
 
 ## Commands
 
@@ -34,8 +34,8 @@ TEST_MODE=offline npx vitest run test/provider/immoscout.test.js
 yarn lint && yarn lint:fix
 yarn format && yarn format:check
 
-# DB migrations
-yarn migratedb
+# Firestore contract tests (requires the emulator)
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract
 ```
 
 ## Architecture
@@ -44,7 +44,6 @@ yarn migratedb
 
 ```
 index.js (startup)
-  ├── runMigrations()
   ├── getProviders()            # lazily imports lib/provider/*.js
   ├── similarityCache.init()    # preloads hash cache from DB
   ├── api.js                    # starts fastify HTTP server
@@ -72,7 +71,7 @@ scheduler (every N minutes) or manual trigger via POST /api/jobs/:id/run
   lowercase). Absent means `['de']`, which is why no shipped provider declares it and why adding the
   field changed no existing installation. Resolved in `lib/services/providers/`: `countries.js` is
   the pure half (the default, normalisation, union) and is all the Nominatim client imports, since
-  `providerCountries.js` reaches for the job storage and would drag SQLite in behind it. The
+  `providerCountries.js` reaches for job storage and would initialize persistence behind it. The
   geocoder searches within the resolved countries; the map's `maxBounds` is the union of their
   boxes from `ui/src/components/map/countryBounds.js`. Where no provider exists to ask - home
   addresses, the listings map, the listing detail - the answer is the union across the jobs the user
@@ -108,8 +107,7 @@ An adapter *configuration* is separate from the adapter itself: it is a row in `
 | SSE broker | `lib/services/sse/sse-broker.js` | Per-userId `Set<ServerResponse>`; heartbeat every 25s; pushes job status to UI |
 | Similarity cache | `lib/services/similarity-check/` | Per-job dedup, refreshed hourly. Two tiers: an exact SHA-256 over `jobId\|title\|price\|address`, then `listingFingerprint.js`, which matches the same flat across *different* providers on living space, rooms and location. Portals never agree on the headline, the address format, or what "price" means, so the hash tier alone never fired across providers |
 | Notification channels | `lib/services/storage/configuredAdapterStorage.js` | Saved adapter configurations (`configured_adapter`). Jobs store `[{configuredAdapterId}]`; `jobStorage` hydrates those back into `{id, name, fields}` on every read, so the pipeline never sees the indirection. Who may use vs. edit a channel: `lib/services/security/channelAccess.js` |
-| SqliteConnection | `lib/services/storage/SqliteConnection.js` | Singleton, WAL mode; `execute()`, `query()`, `withTransaction()` |
-| Migrations | `lib/services/storage/migrations/` | Numbered JS files each exporting `up(db)`; checksum-tracked in `schema_migrations` |
+| FirestoreConnection | `lib/services/storage/firestore/FirestoreConnection.js` | Singleton Firestore client; emulator support for local tests and ADC for production |
 | Extractor | `lib/services/extractor/` | Orchestrates Puppeteer + Cheerio; shared browser instance per job |
 
 ### Frontend

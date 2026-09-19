@@ -10,19 +10,12 @@ import { xhrPost, errorMessage } from '../../services/xhr';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import { CONNECTIVITY_SOURCES } from '../../components/connectivity/connectivityFormat.js';
 
-/**
- * The fields the System page owns.
- *
- * `sqlitepath` is the odd one out: the backend routes it to conf/config.json rather than the
- * settings table. It travels in the same request regardless.
- * @type {string[]}
- */
+/** The fields the System page owns. @type {string[]} */
 export const SYSTEM_FIELDS = [
   'port',
   'baseUrl',
   'sessionTTL',
   'listingRetentionDays',
-  'sqlitepath',
   'analyticsEnabled',
   'demoMode',
   'proxyAuthEnabled',
@@ -64,11 +57,10 @@ const nullOrEmpty = (val) => val == null || String(val).length === 0;
  */
 function toForm(settings) {
   return {
-    port: settings?.port ?? '',
+    port: settings?.port ?? 9998,
     baseUrl: settings?.baseUrl ?? '',
-    sessionTTL: settings?.sessionTTL ?? '',
+    sessionTTL: settings?.sessionTTL ?? 2,
     listingRetentionDays: settings?.listingRetentionDays ?? 14,
-    sqlitepath: settings?.sqlitepath ?? '',
     analyticsEnabled: settings?.analyticsEnabled === true,
     demoMode: settings?.demoMode === true,
     proxyAuthEnabled: settings?.proxyAuthEnabled === true,
@@ -78,7 +70,7 @@ function toForm(settings) {
     // Write-only: the backend never sends it back, so the form always starts empty and an empty
     // value on save means "keep the current secret".
     proxyAuthSecret: '',
-    interval: settings?.interval ?? '',
+    interval: settings?.interval ?? 60,
     workingHours: {
       from: settings?.workingHours?.from ?? null,
       to: settings?.workingHours?.to ?? null,
@@ -122,9 +114,9 @@ function differs(a, b, fields) {
 /**
  * Operator settings: one form, three pages, one save per page.
  *
- * System and Execution used to be tabs sharing a single Save that posted all fourteen fields at
- * once, so saving a proxy URL also rewrote the database path. They are separate routes now, and the
- * backend (`generalSettingsRoute.js`) validates and upserts only the keys a request actually
+ * System and Execution used to be tabs sharing a single Save that posted all fields at once.
+ * They are separate routes now, and the backend (`generalSettingsRoute.js`) validates and upserts
+ * only the keys a request actually
  * carries, so each page can save its own fields and leave the others' values untouched.
  *
  * The hook lives on the Administration layout rather than on any one page so that switching between
@@ -223,9 +215,6 @@ export function useAdminSettings(settings) {
           if (nullOrEmpty(form.port)) {
             return t('settings.toastPortEmpty');
           }
-          if (nullOrEmpty(form.sqlitepath)) {
-            return t('settings.toastSqlitePathEmpty');
-          }
           // A cleared field must not be sent: the backend would have to guess, and guessing on a
           // setting that drives an irreversible delete is the wrong default either way.
           if (
@@ -237,8 +226,8 @@ export function useAdminSettings(settings) {
           }
           return null;
         },
-        // The port and the database path only take effect on the process that reads them at boot,
-        // and the browser is talking to that process.
+        // The port only takes effect on the process that reads it at boot, and the browser is
+        // talking to that process.
         true,
       ),
     [save, form, t],

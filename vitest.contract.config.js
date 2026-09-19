@@ -6,8 +6,7 @@
 /*
  * Vitest config for the storage contract test suite.
  *
- * Run with:  yarn test:contract              (sqlite backend, default)
- *            STORAGE_BACKEND=firestore yarn test:contract   (Phase 2+)
+ * Run with: FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract
  */
 import { defineConfig } from 'vitest/config';
 
@@ -16,12 +15,12 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['test/contract/**/*.contract.test.js'],
-    setupFiles: ['./test/contract/setup.js'],
     testTimeout: 30000,
     reporters: ['verbose'],
-    // Each worker gets its own temp DB dir (setup.js), but keep it simple:
-    // one worker, sequential files. The suite is small and fast.
+    // Contract files share one emulator database. Keep both file execution and
+    // workers sequential so per-test resets cannot race across files.
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    fileParallelism: false,
+    maxWorkers: 1,
   },
 });

@@ -6,15 +6,11 @@
 /*
  * Contract tests: backupRestoreService (Firestore-only)
  *
- * The SQLite backup service already has its own test suite (test/backup/).
- * This file validates the Firestore-specific implementation: JSON-per-collection
- * zip format, subcollection round-trip (travel_times, price_history), and
- * manifest validation.
- *
- * Skipped entirely on the sqlite backend.
+ * This file validates the JSON-per-collection zip format, subcollection round-trip
+ * (travel_times, price_history), and manifest validation.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { initBackend, resetBackend, teardownBackend, loadStorageModule, backendName } from './harness.js';
+import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
 
 let backupRestoreService;
 let userStorage;
@@ -37,7 +33,7 @@ afterAll(async () => {
   await teardownBackend();
 });
 
-describe.skipIf(backendName() !== 'firestore')('backupRestoreService contract (Firestore)', () => {
+describe('backupRestoreService contract (Firestore)', () => {
   // ── Seed helpers (match existing contract test patterns) ────────────
 
   async function seedUser(username = `user_${Date.now()}`) {

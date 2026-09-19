@@ -20,11 +20,10 @@ const routerFiles = fs
 /**
  * Link every API route module in a real Node process.
  *
- * This exists because of a real failure. A named export was deleted from
- * `lib/services/security/adapterFields.js` while `jobRouter.js` still imported it. ESM resolves
- * named imports at link time, so the server threw `SyntaxError: ... does not provide an export
- * named 'sanitiseNotificationAdapter'` and refused to boot - while the whole suite stayed green,
- * because nothing imported a router. `yarn lint` misses it too: ESLint does not check named
+ * This exists because of a real failure. A named export was deleted from a shared module while an
+ * API route still imported it. ESM resolves named imports at link time, so the server threw
+ * `SyntaxError: ... does not provide an export` and refused to boot - while the whole suite stayed
+ * green because nothing imported a router. `yarn lint` misses it too: ESLint does not check named
  * exports across files.
  *
  * The check deliberately spawns `node` rather than `import()`-ing from inside the test. Vitest

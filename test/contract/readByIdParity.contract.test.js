@@ -6,11 +6,9 @@
 /*
  * Contract tests: read-by-id with missing/empty ids.
  *
- * SQLite treats a lookup with '' / null / undefined as "no such row" and
- * returns null. Firestore's .doc('') THROWS unless guarded — a parity gap
- * found live: saving a NEW job sends an empty jobId and the route probes
- * getJob(jobId) first, which crashed the firestore backend. Every read-by-id
- * that is reachable with caller-supplied input must return null, not throw.
+ * Firestore's .doc('') THROWS unless guarded. Saving a NEW job sends an empty
+ * jobId and the route probes getJob(jobId) first, so every read-by-id operation
+ * reachable with caller-supplied input must return null, not throw.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { initBackend, teardownBackend, loadStorageModule } from './harness.js';
@@ -34,7 +32,7 @@ afterAll(async () => {
 
 const EMPTYish = ['', null, undefined];
 
-describe('read-by-id parity: empty ids mean "not found", never an error', () => {
+describe('Firestore read-by-id: empty ids mean "not found", never an error', () => {
   it('getJob', async () => {
     for (const id of EMPTYish) {
       expect(await jobStorage.getJob(id)).toBeNull();

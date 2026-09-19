@@ -1,78 +1,109 @@
 #!/bin/sh
-set -e
+set -eu
 
-# Stop and remove old container if it exists
-if [ "$(docker ps -aq -f name=fredy)" ]; then
-  docker stop fredy || true
-  docker rm fredy || true
-fi
+RUN_SUFFIX=$$
+APP_CONTAINER="fredy-test-$RUN_SUFFIX"
+EMULATOR_CONTAINER="fredy-firestore-emulator-test-$RUN_SUFFIX"
+NETWORK="fredy-test-$RUN_SUFFIX"
 
-# On Apple Silicon, force linux/amd64 to match production CI and avoid arm64/x86_64
-# Chrome mismatch under Rosetta. On native Linux (amd64 or arm64) let Docker pick naturally. That took me fucking 1 hour to figure out.
-PLATFORM=""
-if [ "$(uname -m)" = "arm64" ] && [ "$(uname -s)" = "Darwin" ]; then
-  PLATFORM="linux/amd64"
-fi
+cleanup() {
+  docker rm -f "$APP_CONTAINER" "$EMULATOR_CONTAINER" >/dev/null 2>&1 || true
+  docker network rm "$NETWORK" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
+cleanup
 
-# Build image from local Dockerfile, forcing a fresh build without cache
-if [ -n "$PLATFORM" ]; then
-  docker build --no-cache --platform "$PLATFORM" -t fredy:local .
-else
-  docker build --no-cache -t fredy:local .
-fi
+docker network create "$NETWORK" >/dev/null
 
-# Run container with volumes and port mapping
-if [ -n "$PLATFORM" ]; then
-  docker run -d --name fredy --platform "$PLATFORM" -v fredy_conf:/conf -v fredy_db:/db -p 9998:9998 fredy:local
-else
-  docker run -d --name fredy -v fredy_conf:/conf -v fredy_db:/db -p 9998:9998 fredy:local
-fi
+docker run -d \
+  --name "$EMULATOR_CONTAINER" \
+  --network "$NETWORK" \
+  gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators \
+  gcloud emulators firestore start --host-port=0.0.0.0:8080 >/dev/null
 
-echo "Waiting for app to be ready..."
+printf '%s\n' 'Waiting for the Firestore emulator...'
 for i in $(seq 1 30); do
-  if docker exec fredy curl -sf http://localhost:9998/ > /dev/null 2>&1; then
-    echo "App is up"
+  if docker exec "$EMULATOR_CONTAINER" curl -sf http://127.0.0.1:8080/ >/dev/null 2>&1; then
     break
   fi
   if [ "$i" = "30" ]; then
-    echo "App did not come up in time"
-    docker logs fredy
+    printf '%s\n' 'Firestore emulator did not become ready'
+    docker logs "$EMULATOR_CONTAINER"
     exit 1
   fi
   sleep 2
 done
 
-# Verify the DB is readable/writable via the API.
-# /api/demo is unauthenticated and reads the settings table - if SQLite is broken this returns an error.
-echo "Testing DB via API (/api/demo)..."
-DEMO_RESPONSE=$(docker exec fredy curl -sf http://localhost:9998/api/demo 2>&1)
-if echo "$DEMO_RESPONSE" | grep -q "demoMode"; then
-  echo "DB is readable (got demoMode from /api/demo)"
+# On Apple Silicon, force linux/amd64 to match production CI and avoid an
+# arm64/x86_64 Chrome mismatch under Rosetta. Native Linux uses its own platform.
+PLATFORM=""
+if [ "$(uname -m)" = "arm64" ] && [ "$(uname -s)" = "Darwin" ]; then
+  PLATFORM="linux/amd64"
+fi
+
+if [ "${SKIP_BUILD:-false}" != "true" ]; then
+  printf '%s\n' 'Building the Firestore-only image...'
+  if [ -n "$PLATFORM" ]; then
+    docker build --no-cache --platform "$PLATFORM" -t fredy:local .
+  else
+    docker build --no-cache -t fredy:local .
+  fi
+fi
+
+RUN_ARGS="--name $APP_CONTAINER --network $NETWORK -e FIRESTORE_EMULATOR_HOST=$EMULATOR_CONTAINER:8080 -e FIRESTORE_PROJECT_ID=fredy-docker-test"
+if [ -n "$PLATFORM" ]; then
+  # shellcheck disable=SC2086
+  docker run -d $RUN_ARGS --platform "$PLATFORM" fredy:local >/dev/null
 else
-  echo "DB check failed - unexpected response from /api/demo: $DEMO_RESPONSE"
-  docker logs fredy
+  # shellcheck disable=SC2086
+  docker run -d $RUN_ARGS fredy:local >/dev/null
+fi
+
+printf '%s\n' 'Waiting for Fredy...'
+for i in $(seq 1 30); do
+  if docker exec "$APP_CONTAINER" curl -sf http://localhost:9998/ >/dev/null 2>&1; then
+    break
+  fi
+  if [ "$i" = "30" ]; then
+    printf '%s\n' 'Fredy did not become ready'
+    docker logs "$APP_CONTAINER"
+    exit 1
+  fi
+  sleep 2
+done
+
+printf '%s\n' 'Testing Firestore through /api/demo...'
+DEMO_RESPONSE=$(docker exec "$APP_CONTAINER" curl -sf http://localhost:9998/api/demo 2>&1)
+case "$DEMO_RESPONSE" in
+  '{}'|*'"demoMode"'*) printf '%s\n' 'Firestore settings are readable through the API' ;;
+  *)
+    printf '%s\n' "Firestore read check failed: $DEMO_RESPONSE"
+    docker logs "$APP_CONTAINER"
+    exit 1
+    ;;
+esac
+
+# Startup creates the administrator when the users collection is empty. Seeing
+# that document through the emulator REST API proves the container can write.
+USERS_RESPONSE=$(docker exec "$EMULATOR_CONTAINER" curl -sf   'http://127.0.0.1:8080/v1/projects/fredy-docker-test/databases/(default)/documents/users?pageSize=1')
+if echo "$USERS_RESPONSE" | grep -q '"documents"'; then
+  printf '%s\n' 'Firestore is writable (administrator document created)'
+else
+  printf '%s\n' "Firestore write check failed: $USERS_RESPONSE"
   exit 1
 fi
 
-# Verify Chrome launches without crashing.
-# On amd64: Chrome for Testing lives in the puppeteer cache.
-# On arm64: system Chromium is used instead.
-echo "Testing Chrome..."
-CHROME=$(docker exec fredy find /root/.cache/puppeteer /home -name chrome -type f 2>/dev/null | head -1)
+printf '%s\n' 'Testing the bundled browser...'
+CHROME=$(docker exec "$APP_CONTAINER" sh -c "find /root/.cloakbrowser /root/.cache /home -type f \\( -name chrome -o -name chromium \\) 2>/dev/null | head -1")
 if [ -z "$CHROME" ]; then
-  CHROME=$(docker exec fredy which chromium 2>/dev/null || true)
-fi
-if [ -z "$CHROME" ]; then
-  echo "Chrome/Chromium binary not found"
+  printf '%s\n' 'Chrome/Chromium binary not found'
   exit 1
 fi
-if docker exec fredy "$CHROME" --headless --no-sandbox --disable-gpu --dump-dom https://example.com 2>&1 | grep -q "<html"; then
-  echo "Chrome works"
+if docker exec "$APP_CONTAINER" "$CHROME" --headless --no-sandbox --disable-gpu --dump-dom https://example.com 2>&1 | grep -q '<html'; then
+  printf '%s\n' 'Bundled browser works'
 else
-  echo "Chrome failed to render a page"
-  docker exec fredy "$CHROME" --headless --no-sandbox --disable-gpu --dump-dom https://example.com 2>&1 | head -20
+  printf '%s\n' 'Bundled browser failed to render a page'
   exit 1
 fi
 
-echo ""
-echo "All checks passed."
+printf '\n%s\n' 'All Docker smoke checks passed.'

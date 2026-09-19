@@ -6,14 +6,13 @@
 /*
  * Contract tests: sessionStore
  *
- * Backend-agnostic behavioral contract for the session store module. Seeds and
- * asserts ONLY through the public storage API. Must pass unchanged against
- * every storage backend (sqlite today, firestore in Phase 2).
+ * Behavioral contract for the Firestore session store. Seeds and
+ * asserts only through the public callback-style storage API.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
 
-let SqliteSessionStore;
+let SessionStore;
 let sweepExpiredSessions;
 let store;
 
@@ -32,15 +31,15 @@ const sessionFor = (userId, maxAge = 60_000) => ({
 beforeAll(async () => {
   await initBackend();
   const mod = await loadStorageModule('sessionStore');
-  SqliteSessionStore = mod.SqliteSessionStore;
+  SessionStore = mod.SessionStore;
   sweepExpiredSessions = mod.sweepExpiredSessions;
-  store = new SqliteSessionStore();
+  store = new SessionStore();
 });
 
 beforeEach(async () => {
   await resetBackend();
   // Re-create a fresh store instance after data wipe so no stale state lingers.
-  store = new SqliteSessionStore();
+  store = new SessionStore();
 });
 
 afterAll(async () => {
@@ -163,7 +162,7 @@ describe('sessionStore contract', () => {
 
     it('survives a new store instance (persistence across restarts)', async () => {
       await set('sid-1', sessionFor('user-1'));
-      const newStore = new SqliteSessionStore();
+      const newStore = new SessionStore();
       const loaded = await new Promise((resolve, reject) =>
         newStore.get('sid-1', (e, s) => (e ? reject(e) : resolve(s))),
       );

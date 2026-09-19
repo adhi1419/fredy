@@ -3,74 +3,49 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
-/**
- * The cleanup runs plain SQL, so the test backs the mocked SqliteConnection with a real
- * in-memory database. That keeps the assertions honest (transactions, ON DELETE CASCADE)
- * without touching the real listings.db.
- */
-let db;
+const jobs = new Map();
+let storedProviders;
 
-const sqliteMock = {
-  execute: (sql, params = {}) => db.prepare(sql).run(params),
-  query: (sql, params = {}) => db.prepare(sql).all(params),
-  withTransaction: (callback) => db.transaction((cb) => cb(db))(callback),
+const jobStorageMock = {
+  getJobs: vi.fn(async () => [...jobs.values()]),
+  upsertJob: vi.fn(async (job) => {
+    jobs.set(job.jobId, { ...job, id: job.jobId });
+  }),
 };
 
-vi.mock('../../lib/services/storage/SqliteConnection.js', () => ({
-  default: sqliteMock,
-}));
+const listingsStorageMock = {
+  getAvailableProviders: vi.fn(async () => storedProviders),
+};
+
+vi.mock('../../lib/services/storage/jobStorage.js', () => jobStorageMock);
+vi.mock('../../lib/services/storage/listingsStorage.js', () => listingsStorageMock);
 
 const provider = (id) => ({ metaInformation: { id } });
 
-const addJob = (id, name, providerConfig) =>
-  db.prepare(`INSERT INTO jobs (id, name, provider) VALUES (?, ?, ?)`).run(id, name, JSON.stringify(providerConfig));
+const addJob = (id, name, providerConfig) => {
+  jobs.set(id, { id, name, provider: providerConfig });
+};
 
-const addListing = (id, providerId, jobId = 'job-1') =>
-  db.prepare(`INSERT INTO listings (id, provider, job_id) VALUES (?, ?, ?)`).run(id, providerId, jobId);
-
-const providerConfigOf = (id) => JSON.parse(db.prepare(`SELECT provider FROM jobs WHERE id = ?`).get(id).provider);
-
-const listingIds = () =>
-  db
-    .prepare(`SELECT id FROM listings ORDER BY id`)
-    .all()
-    .map((row) => row.id);
+const providerConfigOf = (id) => jobs.get(id).provider;
 
 describe('providerCleanup', () => {
   let removeObsoleteProviders;
 
   beforeEach(async () => {
-    db = new Database(':memory:');
-    db.pragma('foreign_keys = ON');
-    db.exec(`
-      CREATE TABLE jobs (id TEXT PRIMARY KEY, name TEXT, provider TEXT NOT NULL DEFAULT '[]');
-      CREATE TABLE listings (
-        id       TEXT PRIMARY KEY,
-        provider TEXT,
-        job_id   TEXT,
-        FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE CASCADE
-      );
-      CREATE TABLE watch_list (
-        id         TEXT PRIMARY KEY,
-        listing_id TEXT NOT NULL,
-        FOREIGN KEY (listing_id) REFERENCES listings (id) ON DELETE CASCADE
-      );
-    `);
+    jobs.clear();
+    storedProviders = [];
+    vi.clearAllMocks();
     addJob('job-1', 'Test', [{ id: 'immoscout', url: 'https://example.org' }]);
-
     ({ removeObsoleteProviders } = await import('../../lib/services/providers/providerCleanup.js'));
   });
-
-  afterEach(() => db.close());
 
   describe('job configs', () => {
     it('removes a provider that no longer exists and keeps the remaining ones', async () => {
       addJob('job-2', 'Mixed', [{ id: 'immoscout' }, { id: 'immonet', url: 'https://immonet.de' }]);
 
-      const result = await await removeObsoleteProviders([provider('immoscout')]);
+      const result = await removeObsoleteProviders([provider('immoscout')]);
 
       expect(providerConfigOf('job-2')).toEqual([{ id: 'immoscout' }]);
       expect(result.jobsUpdated).toBe(1);
@@ -87,7 +62,7 @@ describe('providerCleanup', () => {
     });
 
     it('leaves jobs untouched when every configured provider still exists', async () => {
-      const result = await await removeObsoleteProviders([provider('immoscout'), provider('immowelt')]);
+      const result = await removeObsoleteProviders([provider('immoscout'), provider('immowelt')]);
 
       expect(providerConfigOf('job-1')).toEqual([{ id: 'immoscout', url: 'https://example.org' }]);
       expect(result.jobsUpdated).toBe(0);
@@ -95,61 +70,38 @@ describe('providerCleanup', () => {
     });
   });
 
-  describe('listings', () => {
-    it('removes listings of an obsolete provider and keeps the others', async () => {
-      addListing('keep-1', 'immoscout');
-      addListing('drop-1', 'immonet');
-      addListing('drop-2', 'immonet');
+  describe('Firestore listing inventory', () => {
+    it('reports obsolete listing providers without pretending to delete them', async () => {
+      storedProviders = ['immoscout', 'immonet'];
 
-      const result = await await removeObsoleteProviders([provider('immoscout')]);
+      const result = await removeObsoleteProviders([provider('immoscout')]);
 
-      expect(listingIds()).toEqual(['keep-1']);
-      expect(result.listingsRemoved).toBe(2);
       expect(result.obsoleteProviderIds).toEqual(['immonet']);
+      expect(result.listingsRemoved).toBe(0);
     });
 
-    it('removes listings that carry no provider at all', async () => {
-      addListing('keep-1', 'immoscout');
-      addListing('orphan-1', null);
+    it('reports orphan listings alongside an updated job config', async () => {
+      addJob('job-2', 'Mixed', [{ id: 'immoscout' }, { id: 'immonet' }]);
+      storedProviders = ['immonet'];
 
-      const result = await await removeObsoleteProviders([provider('immoscout')]);
+      const result = await removeObsoleteProviders([provider('immoscout')]);
 
-      expect(listingIds()).toEqual(['keep-1']);
-      expect(result.listingsRemoved).toBe(1);
-      expect(result.obsoleteProviderIds).toEqual(['unknown']);
-    });
-
-    it('drops watch list entries of removed listings', async () => {
-      addListing('drop-1', 'immonet');
-      db.prepare(`INSERT INTO watch_list (id, listing_id) VALUES ('w-1', 'drop-1')`).run();
-
-      await removeObsoleteProviders([provider('immoscout')]);
-
-      expect(db.prepare(`SELECT COUNT(1) AS c FROM watch_list`).get().c).toBe(0);
-    });
-  });
-
-  it('reports job and listing cleanup together', async () => {
-    addJob('job-2', 'Mixed', [{ id: 'immoscout' }, { id: 'immonet' }]);
-    addListing('drop-1', 'immonet');
-
-    const result = await await removeObsoleteProviders([provider('immoscout')]);
-
-    expect(result).toEqual({
-      obsoleteProviderIds: ['immonet'],
-      jobsUpdated: 1,
-      providerConfigsRemoved: 1,
-      listingsRemoved: 1,
+      expect(providerConfigOf('job-2')).toEqual([{ id: 'immoscout' }]);
+      expect(result).toEqual({
+        obsoleteProviderIds: ['immonet'],
+        jobsUpdated: 1,
+        providerConfigsRemoved: 1,
+        listingsRemoved: 0,
+      });
     });
   });
 
   it('does nothing when no provider module could be loaded', async () => {
-    addListing('keep-1', 'immoscout');
-
     const result = await removeObsoleteProviders([]);
 
-    expect(listingIds()).toEqual(['keep-1']);
     expect(providerConfigOf('job-1')).toEqual([{ id: 'immoscout', url: 'https://example.org' }]);
+    expect(jobStorageMock.getJobs).not.toHaveBeenCalled();
+    expect(listingsStorageMock.getAvailableProviders).not.toHaveBeenCalled();
     expect(result).toEqual({
       obsoleteProviderIds: [],
       jobsUpdated: 0,

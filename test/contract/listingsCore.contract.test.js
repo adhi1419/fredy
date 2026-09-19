@@ -6,9 +6,8 @@
 /*
  * Contract tests: listingsStorage (core behaviors)
  *
- * Backend-agnostic behavioral contract for storage, dedup, query, delete, and
- * access control. Seeds and asserts ONLY through the public storage API.
- * Must pass unchanged against every storage backend.
+ * Firestore behavioral contract for storage, dedup, query, delete, and access
+ * control. Seeds and asserts ONLY through the public storage API.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';

@@ -1,0 +1,28 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    env:
+      - DOCKER_BUILDKIT=1
+    args:
+      - -ceu
+      - |
+        image="${_IMAGE}"
+        cache_image="${_CACHE_IMAGE}"
+        cache_args=()
+
+        # A missing :latest image is expected on the first build. Only pass
+        # --cache-from when the previous cache image was pulled successfully.
+        if docker pull "$cache_image"; then
+          cache_args=(--cache-from "$cache_image")
+        else
+          echo "No previous image available; building without a cache."
+        fi
+
+        docker build \
+          "${cache_args[@]}" \
+          --build-arg BUILDKIT_INLINE_CACHE=1 \
+          --tag "$image" \
+          --tag "$cache_image" \
+          .
+        docker push "$image"
+        docker push "$cache_image"

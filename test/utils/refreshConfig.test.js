@@ -17,9 +17,8 @@ import { DEFAULT_CONFIG } from '../../lib/defaultConfig.js';
  *
  * - Not creating one when it is absent made every fresh Docker container unstartable (issue #389),
  *   because the image ships no conf/config.json and the first read threw ENOENT.
- * - Overwriting one it could not parse silently reset `sqlitepath` to the default, so Fredy came up
- *   against an empty database while the real one sat elsewhere - indistinguishable from data loss,
- *   with the config that pointed at it gone too.
+ * - Overwriting an operator-supplied file that cannot be parsed would destroy their authentication
+ *   or other startup configuration instead of telling them to repair it.
  */
 describe('refreshConfig', () => {
   let tempDir;
@@ -52,7 +51,7 @@ describe('refreshConfig', () => {
 
   // The scenario the operator cares about: they mounted their own file, it must come back untouched.
   it('leaves a config the operator brought exactly as it was', async () => {
-    const brought = { sqlitepath: '/mnt/fredy-data', somethingCustom: 'keep me' };
+    const brought = { authMode: '/mnt/fredy-data', somethingCustom: 'keep me' };
     fs.writeFileSync(configPath, JSON.stringify(brought));
 
     const result = await refreshConfig(configPath);
@@ -71,7 +70,7 @@ describe('refreshConfig', () => {
 
   describe('a config that cannot be read', () => {
     it('refuses to start rather than replacing it', async () => {
-      fs.writeFileSync(configPath, '{"sqlitepath": "/mnt/fredy-data",');
+      fs.writeFileSync(configPath, '{"authMode": "/mnt/fredy-data",');
 
       await expect(refreshConfig(configPath)).rejects.toThrow(/could not be read or parsed/);
     });
@@ -79,7 +78,7 @@ describe('refreshConfig', () => {
     // The important half of the assertion. Throwing is only useful if the file the operator has to
     // repair is still there to repair.
     it('leaves the unreadable file on disk untouched', async () => {
-      const broken = '{"sqlitepath": "/mnt/fredy-data",';
+      const broken = '{"authMode": "/mnt/fredy-data",';
       fs.writeFileSync(configPath, broken);
 
       await refreshConfig(configPath).catch(() => {});

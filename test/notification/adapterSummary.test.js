@@ -137,7 +137,6 @@ describe('shipped adapters declare their metadata', () => {
     sendgrid: 'receiver',
     slack: 'channel',
     smtp: 'receiver',
-    sqlite: 'dbPath',
     telegram: 'chatId',
   };
 

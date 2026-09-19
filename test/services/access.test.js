@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { canAccessJob, canModifyJob, SHARED_WITH_USER_SQL } from '../../lib/services/security/access.js';
+import { canAccessJob, canModifyJob } from '../../lib/services/security/access.js';
 
 const owner = { id: 'u1', isAdmin: false };
 const stranger = { id: 'u2', isAdmin: false };
@@ -75,12 +75,5 @@ describe('ownership comparison never matches on absent ids', () => {
 
   it('does not match a user without an id against a share list holding null', () => {
     expect(canAccessJob(noId, job({ userId: 'u1', shared_with_user: [null] }))).toBe(false);
-  });
-});
-
-describe('SHARED_WITH_USER_SQL', () => {
-  it('expresses the same rule set-wise, for the queries that filter rather than decide', () => {
-    expect(SHARED_WITH_USER_SQL).toContain('j.user_id = @userId');
-    expect(SHARED_WITH_USER_SQL).toContain('json_each(j.shared_with_user)');
   });
 });
