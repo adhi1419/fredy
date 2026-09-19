@@ -583,6 +583,47 @@ describe('listingsStorage lifecycle contract', () => {
         expect(listing.status.status).toBe(status);
       }
     });
+
+    it('round-trips the canonical four-state lifecycle and reset', async () => {
+      await seedUser();
+      await seedJob();
+      const id = await seedListing('job-1');
+
+      let listing = await listingsStorage.getListingById(id, 'u1', true);
+      expect(listing.lifecycle.state).toBe('new');
+
+      await listingsStorage.setListingStatus(id, 'applied', 'u1');
+      listing = await listingsStorage.getListingById(id, 'u1', true);
+      expect(listing.lifecycle).toMatchObject({ state: 'applied', source: 'manual', changedBy: 'u1' });
+      expect(listing.status).toMatchObject({ status: 'applied' });
+
+      await listingsStorage.setListingStatus(id, 'viewed', 'u1');
+      listing = await listingsStorage.getListingById(id, 'u1', true);
+      expect(listing.lifecycle.state).toBe('viewed');
+      expect(listing.status.status).toBe('applied');
+
+      await listingsStorage.setListingStatus(id, 'archived', 'u1');
+      listing = await listingsStorage.getListingById(id, 'u1', true);
+      expect(listing.lifecycle.state).toBe('archived');
+      expect(listing.status).toBeNull();
+
+      await listingsStorage.setListingStatus(id, 'reset', 'u1');
+      listing = await listingsStorage.getListingById(id, 'u1', true);
+      expect(listing.lifecycle.state).toBe('new');
+    });
+
+    it('maps legacy accepted and rejected statuses to archived without dropping them', async () => {
+      await seedUser();
+      await seedJob();
+      const id = await seedListing('job-1');
+
+      for (const legacy of ['accepted', 'rejected']) {
+        await listingsStorage.setListingStatus(id, legacy);
+        const listing = await listingsStorage.getListingById(id, 'u1', true);
+        expect(listing.lifecycle.state).toBe('archived');
+        expect(listing.status.status).toBe(legacy);
+      }
+    });
   });
 
   describe('setListingAddress', () => {

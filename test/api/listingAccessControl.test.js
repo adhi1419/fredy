@@ -182,6 +182,31 @@ describe('listing access control', () => {
       expect(reply.statusCode).toBe(403);
     });
 
+    it('applies manual lifecycle actions through the existing status route', async () => {
+      const reply = makeReply();
+      await routes['POST /:listingId/status'](
+        requestFor('alice', { action: 'applied' }, { listingId: 'mine-1' }),
+        reply,
+      );
+      expect(reply.statusCode).toBeNull();
+      expect(firestore.read('listings', 'mine-1').lifecycle.state).toBe('applied');
+
+      await routes['POST /:listingId/status'](
+        requestFor('alice', { action: 'viewed' }, { listingId: 'mine-1' }),
+        reply,
+      );
+      expect(firestore.read('listings', 'mine-1').lifecycle.state).toBe('viewed');
+
+      await routes['POST /:listingId/status'](
+        requestFor('alice', { action: 'archive' }, { listingId: 'mine-1' }),
+        reply,
+      );
+      expect(firestore.read('listings', 'mine-1').lifecycle.state).toBe('archived');
+
+      await routes['POST /:listingId/status'](requestFor('alice', { action: 'reset' }, { listingId: 'mine-1' }), reply);
+      expect(firestore.read('listings', 'mine-1').lifecycle.state).toBe('new');
+    });
+
     it('rejects watching a foreign listing', async () => {
       const reply = makeReply();
       await routes['POST /watch'](requestFor('alice', { listingId: 'someone-elses' }), reply);
