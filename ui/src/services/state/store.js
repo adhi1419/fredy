@@ -10,6 +10,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { xhrGet, xhrPost, xhrDelete } from '../xhr.js';
 import queryString from 'query-string';
+import { createJobsDataState, createJobsEffects } from './jobsState.js';
 import { createListingsDataState, createListingsEffects } from './listingsState.js';
 
 /**
@@ -101,6 +102,7 @@ const loadingTracker = (config) => (set, get, api) => {
 export const useFredyState = create(
   logger(
     loadingTracker((set) => {
+      const jobsEffects = createJobsEffects(set, { get: xhrGet }, queryString.stringify);
       const listingsEffects = createListingsEffects(set, { get: xhrGet, post: xhrPost }, queryString.stringify);
 
       // Async actions that directly set state (no separate reducer concept)
@@ -256,60 +258,7 @@ export const useFredyState = create(
             }
           },
         },
-        jobsData: {
-          async getJobs() {
-            try {
-              const response = await xhrGet('/api/jobs');
-              set((state) => ({ jobsData: { ...state.jobsData, jobs: Object.freeze(response.json) } }));
-            } catch (Exception) {
-              console.error(`Error while trying to get resource for api/jobs. Error:`, Exception);
-            }
-          },
-          async getJobsData({
-            page = 1,
-            pageSize = 20,
-            freeTextFilter = null,
-            sortfield = null,
-            sortdir = 'asc',
-            filter,
-          } = {}) {
-            try {
-              const qryString = queryString.stringify({
-                page,
-                pageSize,
-                freeTextFilter,
-                sortfield,
-                sortdir,
-                ...filter,
-              });
-              const response = await xhrGet(`/api/jobs/data?${qryString}`);
-              set((state) => ({
-                jobsData: { ...state.jobsData, ...response.json },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/jobs/data. Error:', Exception);
-            }
-          },
-          async getSharableUserList() {
-            try {
-              const response = await xhrGet('/api/jobs/shareableUserList');
-              set((state) => ({ jobsData: { ...state.jobsData, shareableUserList: Object.freeze(response.json) } }));
-            } catch (Exception) {
-              console.error(`Error while trying to get resource for api/jobs. Error:`, Exception);
-            }
-          },
-          setJobRunning(jobId, running) {
-            if (!jobId) return;
-            set((state) => {
-              const list = state.jobsData.jobs || [];
-              const updated = list.map((j) => (j.id === jobId ? { ...j, running: !!running } : j));
-              const result = (state.jobsData.result || []).map((j) =>
-                j.id === jobId ? { ...j, running: !!running } : j,
-              );
-              return { jobsData: { ...state.jobsData, jobs: Object.freeze(updated), result: Object.freeze(result) } };
-            });
-          },
-        },
+        jobsData: jobsEffects,
         user: {
           /**
            * Loads the logged-in user and returns it, so a caller that needs to act on the
@@ -569,13 +518,7 @@ export const useFredyState = create(
         userSettings: { settings: {}, loaded: false },
         demoMode: { demoMode: false },
         provider: [],
-        jobsData: {
-          jobs: [],
-          shareableUserList: [],
-          totalNumber: 0,
-          page: 1,
-          result: [],
-        },
+        jobsData: createJobsDataState(),
         user: { currentUser: null },
       };
 
