@@ -3,125 +3,79 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import { authenticatedFetch } from './authenticatedFetch.js';
+
 /**
  * post something to our backend.
- *
- * @param url
- * @param data based on the content type, you need to make sure to parse in the proper data
- * @param contentType default is json
- * @returns {Promise}
+ * @param {string} url
+ * @param {unknown} data
+ * @param {string} [contentType]
+ * @param {boolean} [isJson]
+ * @returns {Promise<{status:number,json:Object}>}
  */
 export function xhrPost(url, data, contentType = 'application/json; charset=utf-8', isJson = true) {
   return executePostOrPutCall(url, contentType, data, isJson, true);
 }
+
 /**
  * put request to backend.
- *
- * @param url
- * @param data based on the content type, you need to make sure to parse in the proper data
- * @param contentType default is json
- * @returns {Promise}
+ * @param {string} url
+ * @param {unknown} data
+ * @param {string} [contentType]
+ * @param {boolean} [isJson]
+ * @returns {Promise<{status:number,json:Object}>}
  */
 export function xhrPut(url, data, contentType = 'application/json; charset=utf-8', isJson = true) {
   return executePostOrPutCall(url, contentType, data, isJson, false);
 }
-function executePostOrPutCall(url, contentType, data, isJson, isPost) {
-  return new Promise((resolve, reject) => {
-    fetch(url, {
-      method: isPost ? 'POST' : 'PUT',
-      cache: 'no-cache',
-      credentials: 'include',
-      mode: 'cors',
-      headers: {
-        'Content-Type': contentType,
-      },
-      body: data == null ? JSON.stringify({}) : JSON.stringify(data),
-    })
-      .then((response) => (isJson ? parseJSON(response) : response))
-      .then((response) => resolve(response))
-      .catch((error) => {
-        reject(error);
-      });
+
+async function executePostOrPutCall(url, contentType, data, isJson, isPost) {
+  const response = await authenticatedFetch(url, {
+    method: isPost ? 'POST' : 'PUT',
+    cache: 'no-cache',
+    mode: 'cors',
+    headers: { 'Content-Type': contentType },
+    body: data == null ? JSON.stringify({}) : JSON.stringify(data),
   });
+  return isJson ? parseJSON(response) : response;
 }
+
 /**
- * get request to backend
- * returns a Promise with
- * {
- *     status: statusCode,
- *     json: values
- * }
- *
- * if an error occurs, the promise rejects with
- * {
- *     json: errors: ['error', 'error']
- * }
- * @param url
- * @param contentType
- * @param isJson
- * @returns {Promise}
+ * get request to backend.
+ * @param {string} url
+ * @param {string} [contentType]
+ * @param {boolean} [isJson]
+ * @returns {Promise<{status:number,json:Object}|Response>}
  */
-export function xhrGet(url, contentType = 'application/json; charset=utf-8', isJson = true) {
-  return new Promise((resolve, reject) => {
-    fetch(url, {
-      credentials: 'include',
-      mode: 'cors',
-      headers: {
-        'Content-Type': contentType,
-      },
-    })
-      .then((response) => (isJson ? parseJSON(response) : response))
-      .then((response) => resolve(response))
-      .catch((error) => {
-        reject(error);
-      });
+export async function xhrGet(url, contentType = 'application/json; charset=utf-8', isJson = true) {
+  const response = await authenticatedFetch(url, {
+    mode: 'cors',
+    headers: { 'Content-Type': contentType },
   });
+  return isJson ? parseJSON(response) : response;
 }
+
 /**
- * delete request to backend
- * returns a Promise with
- * {
- *     status: statusCode,
- *     json: values
- * }
- *
- * if an error occurs, the promise rejects with
- * {
- *     json: errors: ['error', 'error']
- * }
- * @param url
- * @param data
- * @returns {Promise}
+ * delete request to backend.
+ * @param {string} url
+ * @param {unknown} data
+ * @param {string} [contentType]
+ * @returns {Promise<{status:number,json:Object}>}
  */
-export function xhrDelete(url, data, contentType = 'application/json; charset=utf-8') {
-  return new Promise((resolve, reject) => {
-    fetch(url, {
-      method: 'DELETE',
-      credentials: 'include',
-      mode: 'cors',
-      body: data == null ? JSON.stringify({}) : JSON.stringify(data),
-      headers: {
-        'Content-Type': contentType,
-      },
-    })
-      .then((response) => parseJSON(response))
-      .then((response) => resolve(response))
-      // Rejects with the same `{ status, json }` shape as the other helpers. It used to reject
-      // with a bare string or `{ errors: [...] }`, so callers reading `error.message` (which none
-      // of the shapes ever carried) always fell through to their generic message.
-      .catch((error) => reject(error));
+export async function xhrDelete(url, data, contentType = 'application/json; charset=utf-8') {
+  const response = await authenticatedFetch(url, {
+    method: 'DELETE',
+    mode: 'cors',
+    body: data == null ? JSON.stringify({}) : JSON.stringify(data),
+    headers: { 'Content-Type': contentType },
   });
+  return parseJSON(response);
 }
+
 /**
  * Pull a human-readable message out of a rejected request.
- *
- * All four helpers reject with `{ status, json }`, and the backend puts its explanation under
- * either `error` or `message` depending on the route. Callers used to read `error.message`, which
- * no rejection shape ever carried, so a real server message ("you cannot remove the demo job")
- * was always replaced by a generic one.
- *
- * @param {unknown} rejection - Whatever the helper rejected with.
- * @param {string} fallback - Shown when the response carried no message.
+ * @param {unknown} rejection
+ * @param {string} fallback
  * @returns {string}
  */
 export function errorMessage(rejection, fallback) {
@@ -135,26 +89,19 @@ function parseJSON(response) {
     response
       .text()
       .then((text) => {
-        //some responses doesn't contain a body. .json() would throw errors here...
         const json = text != null && text.length > 0 ? JSON.parse(text) : {};
         if (response.ok) {
-          resolve({
-            status: response.status,
-            json,
-          });
+          resolve({ status: response.status, json });
         } else {
-          // A 401 means the session expired (or was never valid). Broadcast it so the app can
-          // drop the cached user and redirect to login instead of leaving the UI stuck. Without
-          // this, a 401 just rejects and callers like the news popup get stuck open forever.
-          if (response.status === 401 && typeof window !== 'undefined') {
+          if (
+            (response.status === 401 || (response.status === 403 && json?.reason === 'not allowed')) &&
+            typeof window !== 'undefined'
+          ) {
             window.dispatchEvent(new CustomEvent('fredy:unauthorized'));
           }
-          reject({
-            status: response.status,
-            json,
-          });
+          reject({ status: response.status, json });
         }
       })
-      .catch((error) => reject('Error while trying to parse json.', error)),
+      .catch(() => reject('Error while trying to parse json.')),
   );
 }

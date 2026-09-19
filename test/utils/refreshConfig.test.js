@@ -51,7 +51,7 @@ describe('refreshConfig', () => {
 
   // The scenario the operator cares about: they mounted their own file, it must come back untouched.
   it('leaves a config the operator brought exactly as it was', async () => {
-    const brought = { authMode: '/mnt/fredy-data', somethingCustom: 'keep me' };
+    const brought = { storagePath: '/mnt/fredy-data', somethingCustom: 'keep me' };
     fs.writeFileSync(configPath, JSON.stringify(brought));
 
     const result = await refreshConfig(configPath);
@@ -70,7 +70,7 @@ describe('refreshConfig', () => {
 
   describe('a config that cannot be read', () => {
     it('refuses to start rather than replacing it', async () => {
-      fs.writeFileSync(configPath, '{"authMode": "/mnt/fredy-data",');
+      fs.writeFileSync(configPath, '{"storagePath": "/mnt/fredy-data",');
 
       await expect(refreshConfig(configPath)).rejects.toThrow(/could not be read or parsed/);
     });
@@ -78,7 +78,7 @@ describe('refreshConfig', () => {
     // The important half of the assertion. Throwing is only useful if the file the operator has to
     // repair is still there to repair.
     it('leaves the unreadable file on disk untouched', async () => {
-      const broken = '{"authMode": "/mnt/fredy-data",';
+      const broken = '{"storagePath": "/mnt/fredy-data",';
       fs.writeFileSync(configPath, broken);
 
       await refreshConfig(configPath).catch(() => {});

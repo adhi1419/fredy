@@ -20,12 +20,10 @@ import ConnectivityPage from './views/admin/pages/ConnectivityPage';
 import BackupPage from './views/admin/pages/BackupPage';
 import DebugPage from './views/admin/pages/DebugPage';
 import JobMutation from './views/jobs/mutation/JobMutation';
-import UserMutator from './views/user/mutation/UserMutator';
 import { useActions, useSelector } from './services/state/store';
 import { useBrowserNotifications } from './hooks/useBrowserNotifications';
-import { Routes, Route, Navigate, useLocation, useParams } from 'react-router';
+import { Routes, Route, Navigate, useLocation } from 'react-router';
 import Login from './views/login/Login';
-import Users from './views/user/Users';
 import Jobs from './views/jobs/Jobs';
 
 import './App.less';
@@ -46,6 +44,7 @@ import DebugLoggingBanner from './components/debug/DebugLoggingBanner.jsx';
 import DemoBanner from './components/demo/DemoBanner.jsx';
 import { LEGACY_REDIRECTS } from './services/routes/legacyRedirects.js';
 import { applyTheme, normalizeTheme } from './services/theme/theme.js';
+import { signOutFirebase, subscribeToAuthState } from './services/auth/firebaseAuth.js';
 
 const semiLocaleModules = import.meta.glob('/node_modules/@douyinfe/semi-ui-19/lib/es/locale/source/*.js', {
   eager: true,
@@ -56,21 +55,6 @@ for (const [path, mod] of Object.entries(semiLocaleModules)) {
   const name = path.match(/\/source\/(\w+)\.js$/)?.[1];
   if (name) semiLocales[name] = mod.default ?? mod;
 }
-
-/**
- * Carry the user id from the old edit URL over to the new one.
- *
- * `<Navigate to="/admin/users/edit/:userId">` would navigate to the literal string, so the
- * parameter has to be read and put back.
- *
- * @returns {React.ReactElement}
- */
-function LegacyUserEditRedirect() {
-  const { userId } = useParams();
-  return <Navigate to={`/admin/users/edit/${userId}`} replace />;
-}
-
-LegacyUserEditRedirect.displayName = 'LegacyUserEditRedirect';
 
 export default function FredyApp() {
   const location = useLocation();
@@ -125,7 +109,12 @@ export default function FredyApp() {
         // drop `loading`, and render the whole app against empty stores. Anything that seeds
         // component state from settings on mount (the finance calculator, view-mode toggles)
         // then kept the blank values it saw.
-        const user = await actions.user.getCurrentUser();
+        let user = null;
+        try {
+          user = await actions.user.getCurrentUser();
+        } catch {
+          // No restored/approved Firebase identity: render the login route.
+        }
         const userId = user?.userId ?? null;
 
         if (userId == null) {
@@ -166,14 +155,24 @@ export default function FredyApp() {
     init();
   }, [currentUser?.userId]);
 
-  // When any request reports a 401 (expired session), drop the cached user. That flips
-  // needsLogin() to true, so the router shows the login screen (carrying the current
-  // location as `from` so the user is sent back here after re-authenticating).
+  // A Firebase state change to null is authoritative for logout, including logout in another tab.
   useEffect(() => {
-    const onUnauthorized = () => actions.user.resetCurrentUser();
+    return subscribeToAuthState((firebaseUser) => {
+      if (!firebaseUser) actions.user.resetCurrentUser();
+    });
+  }, [actions]);
+
+  // When any request reports a 401, drop the Firebase auth state and cached user. That flips
+  // needsLogin() to true, so the router shows the login screen instead of leaving stale data open.
+  useEffect(() => {
+    const onUnauthorized = () => {
+      void signOutFirebase()
+        .catch(() => {})
+        .finally(() => actions.user.resetCurrentUser());
+    };
     window.addEventListener('fredy:unauthorized', onUnauthorized);
     return () => window.removeEventListener('fredy:unauthorized', onUnauthorized);
-  }, []);
+  }, [actions]);
 
   const needsLogin = () => {
     return currentUser == null || Object.keys(currentUser).length === 0;
@@ -246,9 +245,6 @@ export default function FredyApp() {
                     <Route path="system" element={<SystemPage />} />
                     <Route path="execution" element={<ExecutionPage />} />
                     <Route path="connectivity" element={<ConnectivityPage />} />
-                    <Route path="users" element={<Users />} />
-                    <Route path="users/new" element={<UserMutator />} />
-                    <Route path="users/edit/:userId" element={<UserMutator />} />
                     <Route path="backup" element={<BackupPage />} />
                     <Route path="debug" element={<DebugPage />} />
                   </Route>
@@ -259,9 +255,6 @@ export default function FredyApp() {
                   {Object.entries(LEGACY_REDIRECTS).map(([from, to]) => (
                     <Route key={from} path={from} element={<Navigate to={to} replace />} />
                   ))}
-                  {/* Carries a parameter, so it needs a component rather than a table entry. */}
-                  <Route path="/users/edit/:userId" element={<LegacyUserEditRedirect />} />
-
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   {/* Catch-all: an authenticated user landing on an unknown path (e.g. still on
                       /login during the post-login transition) is sent to the dashboard instead

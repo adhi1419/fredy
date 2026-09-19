@@ -8,8 +8,9 @@ as the single copy so the two cannot drift.
 Fredy is a self-hosted real estate finder for Germany. It scrapes German real estate portals (ImmoScout24, Immowelt, Immonet, Kleinanzeigen, WG-Gesucht, etc.), deduplicates results across providers, and sends notifications via Slack, Telegram, Email, Discord, ntfy, etc. It includes a React web UI.
 
 - Node.js >= 22, ESM-only (`"type": "module"`)
-- Default port: 9998, default login: admin / admin
+- Default port: 9998
 - Firestore via `@google-cloud/firestore` (storage operations are asynchronous)
+- Authentication uses direct Firebase bearer tokens with browser-local Firebase persistence; production requires `FIREBASE_WEB_CONFIG` and Application Default Credentials.
 
 ## Commands
 
@@ -109,6 +110,15 @@ An adapter *configuration* is separate from the adapter itself: it is a row in `
 | Notification channels | `lib/services/storage/configuredAdapterStorage.js` | Saved adapter configurations (`configured_adapter`). Jobs store `[{configuredAdapterId}]`; `jobStorage` hydrates those back into `{id, name, fields}` on every read, so the pipeline never sees the indirection. Who may use vs. edit a channel: `lib/services/security/channelAccess.js` |
 | FirestoreConnection | `lib/services/storage/firestore/FirestoreConnection.js` | Singleton Firestore client; emulator support for local tests and ADC for production |
 | Extractor | `lib/services/extractor/` | Orchestrates Puppeteer + Cheerio; shared browser instance per job |
+
+### Authentication and local testing
+
+The browser is the Firebase Authentication session authority. It initializes Firebase with
+`browserLocalPersistence` and sends refreshed ID tokens as `Authorization: Bearer <token>`; Fredy
+does not use a cookie or server-side browser session. Production startup requires valid
+`FIREBASE_WEB_CONFIG`; Firestore and Firebase Admin use Application Default Credentials. Local
+Compose and offline tests use the Firestore emulator and do not validate Google popup login,
+Firebase token refresh, or cross-origin persistence.
 
 ### Frontend
 

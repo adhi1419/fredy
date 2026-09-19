@@ -81,7 +81,7 @@ describe('POST /api/listings/:listingId/send-inquiry', () => {
     const plugin = (await import('../../lib/api/routes/listingsRouter.js')).default;
     app = Fastify();
     app.addHook('onRequest', async (request) => {
-      request.session = { currentUser };
+      request.currentUser = { id: currentUser, isAdmin: false };
       request.currentUser = { id: currentUser, username: `${currentUser}@example.com`, isAdmin: false };
     });
     await app.register(plugin, { prefix: '/api/listings' });

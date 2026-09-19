@@ -34,7 +34,6 @@ describe('settingsStorage contract', () => {
       expect(await settingsStorage.getSettings()).toMatchObject({
         interval: 60,
         port: 9998,
-        sessionTTL: 2,
         workingHours: { from: null, to: null },
       });
     });
@@ -172,16 +171,6 @@ describe('settingsStorage contract', () => {
       expect(publicSettings.session_secret).toBeUndefined();
       expect(publicSettings.proxyAuthSecret).toBeUndefined();
       expect(publicSettings.proxyUrl).toBe('http://proxy:8080');
-    });
-  });
-
-  describe('getOrCreateSessionSecret', () => {
-    it('creates a secret on first call and returns the same one afterwards', async () => {
-      const first = await settingsStorage.getOrCreateSessionSecret();
-      expect(typeof first).toBe('string');
-      expect(first.length).toBeGreaterThanOrEqual(32);
-      const second = await settingsStorage.getOrCreateSessionSecret();
-      expect(second).toBe(first);
     });
   });
 });

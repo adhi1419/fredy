@@ -51,7 +51,8 @@ import {
   clearAllFilters,
 } from '../../../services/jobs/jobFilters.js';
 import { useActions, useSelector } from '../../../services/state/store.js';
-import { xhrDelete, xhrPut, xhrPost, errorMessage } from '../../../services/xhr.js';
+import { createAuthenticatedEventStream } from '../../../services/sse/authenticatedEventStream.js';
+import { errorMessage, xhrDelete, xhrPost, xhrPut } from '../../../services/xhr.js';
 import { debounce } from '../../../utils';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
 import JobsTable from '../../table/JobsTable.jsx';
@@ -128,50 +129,37 @@ const JobGrid = () => {
     loadData();
   }, [page, sortField, sortDir, freeTextFilter, activityFilter]);
 
-  // SSE connection for live job status updates
+  // Authenticated SSE connection for live job status updates.
   useEffect(() => {
-    // establish SSE connection
-    const src = new EventSource('/api/jobs/events');
-    evtSourceRef.current = src;
-
-    const onJobStatus = (e) => {
-      try {
-        const data = JSON.parse(e.data || '{}');
-        if (data && data.jobId) {
-          actions.jobsData.setJobRunning(data.jobId, !!data.running);
-          if (data.running === false) {
-            // A finished run is exactly when the listing count changed. Without this the grid
-            // keeps showing the count from before the run - typically 0 on a brand new job -
-            // until the user reloads the page and wonders whether the run did anything.
-            loadDataRef.current();
-            // notify finish if it was triggered by this view
-            if (pendingJobIdRef.current === data.jobId) {
-              Toast.success(t('jobs.toastFinished'));
-              pendingJobIdRef.current = null;
+    const stream = createAuthenticatedEventStream('/api/jobs/events', {
+      onEvent: (event) => {
+        if (event.type !== 'jobStatus') return;
+        try {
+          const data = JSON.parse(event.data || '{}');
+          if (data && data.jobId) {
+            actions.jobsData.setJobRunning(data.jobId, !!data.running);
+            if (data.running === false) {
+              loadDataRef.current();
+              if (pendingJobIdRef.current === data.jobId) {
+                Toast.success(t('jobs.toastFinished'));
+                pendingJobIdRef.current = null;
+              }
             }
           }
+        } catch {
+          // ignore malformed events
         }
-      } catch {
-        // ignore malformed events
-      }
-    };
-
-    src.addEventListener('jobStatus', onJobStatus);
-    src.onerror = () => {
-      // Let browser auto-reconnect
-    };
+      },
+    });
+    evtSourceRef.current = stream;
+    stream.start();
 
     return () => {
-      try {
-        src.removeEventListener('jobStatus', onJobStatus);
-        src.close();
-      } catch {
-        //noop
-      }
+      stream.close();
       evtSourceRef.current = null;
       pendingJobIdRef.current = null;
     };
-  }, [actions.jobsData]);
+  }, [actions.jobsData, t]);
 
   const handleFilterChange = useMemo(() => debounce((value) => setFreeTextFilter(value), 500), []);
 

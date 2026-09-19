@@ -5,7 +5,6 @@
 
 import { checkIfConfigIsAccessible, getProviders, refreshConfig } from './lib/utils.js';
 import * as similarityCache from './lib/services/similarity-check/similarityCache.js';
-import { ensureDemoUserExists, ensureAdminUserExists } from './lib/services/storage/userStorage.js';
 import { initTrackerCron } from './lib/services/crons/tracker-cron.js';
 import logger from './lib/services/logger.js';
 import { reloadEnabledFromSettings } from './lib/services/debug/debugLogStorage.js';
@@ -13,17 +12,48 @@ import { initActiveCheckerCron } from './lib/services/crons/listing-alive-cron.j
 import { initGeocodingCron } from './lib/services/crons/geocoding-cron.js';
 import { getSettings } from './lib/services/storage/settingsStorage.js';
 import FirestoreConnection from './lib/services/storage/firestore/FirestoreConnection.js';
-import { isFirebaseAuth, AUTH_MODE } from './lib/services/authMode.js';
 import { initJobExecutionService } from './lib/services/jobs/jobExecutionService.js';
 import { ensureValidBinary } from './lib/services/ensureValidBinary.js';
 import { removeObsoleteProviders } from './lib/services/providers/providerCleanup.js';
-import { seedDemo, warnOnDefaultAdminPassword } from './lib/services/demo/demoService.js';
+import { seedDemo } from './lib/services/demo/demoService.js';
 import { initDemoCleanupCron } from './lib/services/crons/demo-cleanup-cron.js';
-import { initSessionCleanupCron } from './lib/services/crons/session-cleanup-cron.js';
 import { initListingRetentionCron } from './lib/services/crons/listing-retention-cron.js';
 import { initPriceTrackingCron } from './lib/services/crons/price-tracking-cron.js';
 import { initTravelTimeCron } from './lib/services/crons/travel-time-cron.js';
 import { initConnectivityCron } from './lib/services/crons/connectivity-cron.js';
+
+function validateProductionAuthConfiguration() {
+  if (process.env.NODE_ENV !== 'production') return;
+
+  const rawConfig = process.env.FIREBASE_WEB_CONFIG;
+  if (!rawConfig) {
+    throw new Error('FIREBASE_WEB_CONFIG is required in production');
+  }
+
+  let config;
+  try {
+    config = JSON.parse(rawConfig);
+  } catch {
+    throw new Error('FIREBASE_WEB_CONFIG must contain valid JSON');
+  }
+
+  if (
+    config == null ||
+    typeof config !== 'object' ||
+    Array.isArray(config) ||
+    typeof config.projectId !== 'string' ||
+    typeof config.appId !== 'string' ||
+    typeof config.apiKey !== 'string'
+  ) {
+    throw new Error('FIREBASE_WEB_CONFIG must contain projectId, appId, and apiKey');
+  }
+
+  if (process.env.FIRESTORE_EMULATOR_HOST) {
+    throw new Error('FIRESTORE_EMULATOR_HOST is not allowed in production');
+  }
+}
+
+validateProductionAuthConfiguration();
 
 // Ensure the CloakBrowser stealth Chromium binary is present and complete before
 // jobs run.  ensureValidBinary() also detects and auto-heals partial extractions
@@ -85,25 +115,17 @@ if (settings.demoMode) {
   logger.info('Running in demo mode');
 }
 
-if (isFirebaseAuth()) {
-  // Multi-tenant Firebase auth: the instance admin is whichever allowlist entry carries isAdmin: true.
-  logger.info(`Auth mode: ${AUTH_MODE}`);
-} else {
-  await ensureAdminUserExists();
-}
-await ensureDemoUserExists();
+logger.info('Authentication: Firebase bearer tokens');
 
 // A demo instance must always present a working Fredy: the demo job is created on the first
 // start and repaired on every later one, so a drifted config can never leave the demo empty.
 await seedDemo(providers);
-await warnOnDefaultAdminPassword();
 
 await initTrackerCron();
 //do not wait for this to finish, let it run in the background
 initActiveCheckerCron();
 initGeocodingCron();
 await initDemoCleanupCron();
-await initSessionCleanupCron();
 await initListingRetentionCron();
 // Schedules only. Unlike the others this one is never run on start: it renders a browser page per
 // listing, and a restart is the worst moment to begin doing that.

@@ -137,7 +137,7 @@ describe('listing access control', () => {
     });
 
     const requestFor = (userId, body = {}, params = {}) => ({
-      session: { currentUser: userId },
+      currentUser: { id: userId, isAdmin: false },
       body,
       params,
       query: {},

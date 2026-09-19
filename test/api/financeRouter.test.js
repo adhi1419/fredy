@@ -53,7 +53,7 @@ const listing = (id, price, dealType = 'buy') => ({
 async function buildApp() {
   const app = Fastify();
   app.addHook('onRequest', async (request) => {
-    request.session = { currentUser: 'user-1' };
+    request.currentUser = { id: 'user-1', isAdmin: false };
   });
   await app.register(financePlugin);
   await app.ready();

@@ -32,7 +32,7 @@ describe('POST /api/jobs channel authorisation', () => {
     const instance = Fastify();
     instance.addHook('preHandler', async (request) => {
       request.currentUser = currentUser;
-      request.session = { currentUser: currentUser.id };
+      request.currentUser = currentUser;
     });
     await instance.register(plugin, { prefix: '/api/jobs' });
     return instance;

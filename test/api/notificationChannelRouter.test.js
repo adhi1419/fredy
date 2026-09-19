@@ -94,7 +94,7 @@ describe('notificationChannelRouter', () => {
     const instance = Fastify();
     instance.addHook('preHandler', async (request) => {
       request.currentUser = currentUser;
-      request.session = { currentUser: currentUser.id };
+      request.currentUser = currentUser;
     });
     await instance.register(plugin, { prefix: '/api/notificationChannels' });
     return instance;

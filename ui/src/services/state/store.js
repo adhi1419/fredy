@@ -308,14 +308,6 @@ export const useFredyState = create(
           },
         },
         user: {
-          async getUsers() {
-            try {
-              const response = await xhrGet('/api/admin/users');
-              set((state) => ({ user: { ...state.user, users: response.json } }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/admin/users. Error:', Exception);
-            }
-          },
           /**
            * Loads the logged-in user and returns it, so a caller that needs to act on the
            * answer immediately does not have to wait for the store update to reach its props.
@@ -324,13 +316,13 @@ export const useFredyState = create(
            */
           async getCurrentUser() {
             try {
-              const response = await xhrGet('/api/login/user');
+              const response = await xhrGet('/api/auth/me');
               const currentUser = Object.freeze(response.json);
               set((state) => ({ user: { ...state.user, currentUser } }));
               return currentUser;
             } catch (Exception) {
-              console.error('Error while trying to get resource for api/login/user. Error:', Exception);
-              return null;
+              set((state) => ({ user: { ...state.user, currentUser: {} } }));
+              throw Exception;
             }
           },
           /**
@@ -759,7 +751,7 @@ export const useFredyState = create(
           page: 1,
           result: [],
         },
-        user: { users: [], currentUser: null },
+        user: { currentUser: null },
       };
 
       // Expose actions by grouping them per slice

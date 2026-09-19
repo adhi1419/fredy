@@ -6,8 +6,8 @@
 /*
  * Contract tests: allowedUsersStorage (multi-tenant allowlist)
  *
- * Firestore-only: the allowlist exists solely for AUTH_MODE=firebase, which
- * requires the firestore backend (index.js refuses any other combination).
+ * Firestore-only: the allowlist is required by direct Firebase bearer auth,
+ * which uses the Firestore backend (index.js refuses production without it).
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend } from './harness.js';

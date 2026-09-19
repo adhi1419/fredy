@@ -58,9 +58,7 @@
   "dependencies": {
     "@douyinfe/semi-icons": "^2.102.0",
     "@douyinfe/semi-ui-19": "^2.102.0",
-    "@fastify/cookie": "^11.1.2",
     "@fastify/helmet": "^13.1.1",
-    "@fastify/session": "^11.1.2",
     "@fastify/static": "^10.1.3",
     "@google-cloud/firestore": "^9.0.0",
     "@mapbox/mapbox-gl-draw": "^1.5.1",

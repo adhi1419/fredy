@@ -33,14 +33,8 @@ async function loadService() {
     },
   }));
   vi.doMock(userStoragePath, () => ({
-    ADMIN_USERNAME: 'admin',
-    DEFAULT_ADMIN_PASSWORD: 'admin',
     DEMO_USERNAME: 'demo',
-    DEMO_PASSWORD: 'demo',
-    // getUsers() no longer hands out credentials; anything that needs the stored hash asks for it
-    // explicitly through getUserWithSecretsByUsername().
     getUsers: () => state.users.map((user) => ({ ...user, password: undefined })),
-    getUserWithSecretsByUsername: (username) => state.users.find((user) => user.username === username) ?? null,
   }));
   vi.doMock(settingsStoragePath, () => ({
     getSettings: async () => state.settings,
@@ -92,7 +86,7 @@ describe('services/demo/demoService', () => {
   beforeEach(() => {
     state = {
       jobs: {},
-      users: [{ id: 'u-demo', username: 'demo', isAdmin: false, password: 'irrelevant' }],
+      users: [{ id: 'u-demo', username: 'demo', isAdmin: false }],
       userSettings: {},
       settings: { demoMode: true },
       inactiveDeletes: [],
@@ -304,47 +298,6 @@ describe('services/demo/demoService', () => {
       expect(state.userSettings['u-demo'].home_addresses).toBeDefined();
       expect(state.userSettings['u-demo'].theme).toBeUndefined();
       expect(state.userSettings['u-demo'].language).toBeUndefined();
-    });
-  });
-
-  describe('warnOnDefaultAdminPassword', () => {
-    /** Build a real scrypt hash so the check is exercised end to end. */
-    async function hashOf(plain) {
-      const { hash } = await import(root + '/lib/services/security/hash.js');
-      return hash(plain);
-    }
-
-    it('warns when the admin password is still "admin"', async () => {
-      const { warnOnDefaultAdminPassword } = await loadService();
-      state.users.push({ id: 'u-admin', username: 'admin', isAdmin: true, password: await hashOf('admin') });
-
-      const warned = await warnOnDefaultAdminPassword();
-
-      expect(warned).toBe(true);
-      expect(state.warnings.join('\n')).toContain('DEFAULT ADMIN PASSWORD');
-    });
-
-    it('stays silent when the admin password was changed', async () => {
-      const { warnOnDefaultAdminPassword } = await loadService();
-      state.users.push({ id: 'u-admin', username: 'admin', isAdmin: true, password: await hashOf('s3cret') });
-
-      const warned = await warnOnDefaultAdminPassword();
-
-      expect(warned).toBe(false);
-      expect(state.warnings).toEqual([]);
-    });
-
-    it('does not throw when there is no admin user', async () => {
-      const { warnOnDefaultAdminPassword } = await loadService();
-
-      await expect(warnOnDefaultAdminPassword()).resolves.toBe(false);
-    });
-
-    it('does not throw when the stored hash is unreadable', async () => {
-      const { warnOnDefaultAdminPassword } = await loadService();
-      state.users.push({ id: 'u-admin', username: 'admin', isAdmin: true, password: 'not-a-hash' });
-
-      await expect(warnOnDefaultAdminPassword()).resolves.toBe(false);
     });
   });
 

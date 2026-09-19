@@ -61,7 +61,6 @@ describe('navModel', () => {
     ['/settings', '/settings'],
     ['/admin', '/admin'],
     ['/admin/settings', '/admin'],
-    ['/admin/users/edit/7', '/admin'],
     ['/admin/maintenance', '/admin'],
   ])('marks %s as %s', (pathname, expected) => {
     expect(resolveActiveKey(navTreeFor(true), pathname)).toBe(expected);

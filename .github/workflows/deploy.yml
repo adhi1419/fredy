@@ -2,7 +2,7 @@ name: Deploy to Cloud Run
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -30,6 +30,13 @@ jobs:
           service_account: ${{ vars.GCP_SA_EMAIL }}
 
       - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Validate Firebase web config
+        run: |
+          test -n "$FIREBASE_WEB_CONFIG"
+          printf '%s' "$FIREBASE_WEB_CONFIG" | jq -e '.projectId and .appId and .apiKey' > /dev/null
+        env:
+          FIREBASE_WEB_CONFIG: ${{ vars.FIREBASE_WEB_CONFIG }}
 
       - name: Materialize firebase web config
         run: printf '%s' "$FIREBASE_WEB_CONFIG" > firebase-web-config.json

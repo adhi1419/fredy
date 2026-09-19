@@ -50,7 +50,7 @@ if [ "${SKIP_BUILD:-false}" != "true" ]; then
   fi
 fi
 
-RUN_ARGS="--name $APP_CONTAINER --network $NETWORK -e FIRESTORE_EMULATOR_HOST=$EMULATOR_CONTAINER:8080 -e FIRESTORE_PROJECT_ID=fredy-docker-test"
+RUN_ARGS="--name $APP_CONTAINER --network $NETWORK -e NODE_ENV=development -e FIRESTORE_EMULATOR_HOST=$EMULATOR_CONTAINER:8080 -e FIRESTORE_PROJECT_ID=fredy-docker-test"
 if [ -n "$PLATFORM" ]; then
   # shellcheck disable=SC2086
   docker run -d $RUN_ARGS --platform "$PLATFORM" fredy:local >/dev/null
@@ -83,13 +83,16 @@ case "$DEMO_RESPONSE" in
     ;;
 esac
 
-# Startup creates the administrator when the users collection is empty. Seeing
-# that document through the emulator REST API proves the container can write.
-USERS_RESPONSE=$(docker exec "$EMULATOR_CONTAINER" curl -sf   'http://127.0.0.1:8080/v1/projects/fredy-docker-test/databases/(default)/documents/users?pageSize=1')
-if echo "$USERS_RESPONSE" | grep -q '"documents"'; then
-  printf '%s\n' 'Firestore is writable (administrator document created)'
+# Write and read a disposable marker through the emulator REST API. This validates
+# storage independently of the removed password/admin bootstrap path.
+MARKER_URL='http://127.0.0.1:8080/v1/projects/fredy-docker-test/databases/(default)/documents/docker_smoke/marker'
+MARKER_RESPONSE=$(docker exec "$EMULATOR_CONTAINER" curl -sf -X PATCH "$MARKER_URL" \
+  -H 'Content-Type: application/json' \
+  -d '{"fields":{"status":{"stringValue":"ok"}}}')
+if echo "$MARKER_RESPONSE" | grep -q '"status"'; then
+  printf '%s\n' 'Firestore write check passed'
 else
-  printf '%s\n' "Firestore write check failed: $USERS_RESPONSE"
+  printf '%s\n' "Firestore write check failed: $MARKER_RESPONSE"
   exit 1
 fi
 
