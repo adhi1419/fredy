@@ -17,7 +17,6 @@ import logo from '../../assets/logo.png';
 import logoWhite from '../../assets/logo_white.png';
 import heart from '../../assets/heart.png';
 import Logout from '../logout/Logout.jsx';
-import Donate from '../donate/Donate.jsx';
 import NewsHistory from '../news/NewsHistory.jsx';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -102,16 +101,8 @@ export default function Navigation({ isAdmin }) {
       }
       footer={
         <Nav.Footer className="navigate__footer">
-          {/* Reachable at any time, unlike the dialog that appears on its own: dismissing that one
-              used to be the end of it, with no way back to what it had said. */}
           <div className="navigate__footer-news">
             <NewsHistory collapsed={collapsed} />
-          </div>
-          {/* Shown on the demo instance too. The demo is where most people meet Fredy for the
-              first time, so hiding the one place it asks for support removed it from exactly the
-              audience that has just seen what the project does. */}
-          <div className="navigate__footer-donate">
-            <Donate collapsed={collapsed} />
           </div>
           <div className={`navigate__footer-actions${collapsed ? ' navigate__footer-actions--collapsed' : ''}`}>
             <Logout text={!collapsed} />

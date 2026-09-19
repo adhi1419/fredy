@@ -17,7 +17,6 @@ import {
 } from '../../ui/src/components/connectivity/connectivityFormat.js';
 
 const localeDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../ui/src/locales');
-const donateComponent = fs.readFileSync(path.join(localeDir, '../components/donate/Donate.jsx'), 'utf-8');
 
 /**
  * Reads a locale file and returns its translations without the _meta block.
@@ -202,15 +201,5 @@ describe('locales', () => {
       'login.loginButtonPending',
       'login.loginButton',
     ]);
-  });
-
-  it('translates every key the donate dialog uses', () => {
-    // Two shapes to catch: t('donate.title') and the label keys held in DONATION_TARGETS.
-    const usedKeys = [...new Set([...donateComponent.matchAll(/'(donate\.[a-zA-Z0-9]+)'/g)].map((match) => match[1]))];
-
-    expect(usedKeys.length).toBeGreaterThan(0);
-    for (const key of usedKeys) {
-      expect(Object.keys(english)).toContain(key);
-    }
   });
 });
