@@ -1,7 +1,7 @@
 name: Check the source code
 on:
   pull_request:
-    branches: [master, develop]
+    branches: [main, develop]
   workflow_dispatch:
 jobs:
   check_source_code:
