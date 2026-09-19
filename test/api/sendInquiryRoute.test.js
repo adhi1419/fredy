@@ -42,7 +42,6 @@ vi.mock('../../lib/services/storage/jobStorage.js', () => ({
   getJob: async () => ({ id: 'J1', userId: ownerId }),
 }));
 vi.mock('../../lib/services/storage/watchListStorage.js', () => ({ toggleWatch: vi.fn(), ensureWatch: vi.fn() }));
-vi.mock('../../lib/services/tracking/Tracker.js', () => ({ trackPoi: vi.fn() }));
 vi.mock('../../lib/services/messageGenerator.js', () => ({
   isMessageGeneratorEnabled: () => false,
   generateInquiryMessage: vi.fn(),

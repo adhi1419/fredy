@@ -11,7 +11,7 @@ import { useTranslation } from '../../services/i18n/i18n.jsx';
 import { CONNECTIVITY_SOURCES } from '../../components/connectivity/connectivityFormat.js';
 
 /** The fields the System page owns. @type {string[]} */
-export const SYSTEM_FIELDS = ['port', 'baseUrl', 'listingRetentionDays', 'analyticsEnabled', 'demoMode'];
+export const SYSTEM_FIELDS = ['port', 'baseUrl', 'listingRetentionDays', 'demoMode'];
 
 /** The fields the Connectivity page owns. @type {string[]} */
 export const CONNECTIVITY_FIELDS = [
@@ -48,7 +48,6 @@ function toForm(settings) {
     port: settings?.port ?? 9998,
     baseUrl: settings?.baseUrl ?? '',
     listingRetentionDays: settings?.listingRetentionDays ?? 14,
-    analyticsEnabled: settings?.analyticsEnabled === true,
     demoMode: settings?.demoMode === true,
     interval: settings?.interval ?? 60,
     workingHours: {

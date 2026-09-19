@@ -24,7 +24,6 @@ async function loadPostHandler(isAdmin = true) {
     upsertSettings: (settings) => upserted.push(settings),
   }));
   vi.doMock(root + '/lib/api/security.js', () => ({ isAdmin: () => isAdmin }));
-  vi.doMock(root + '/lib/services/tracking/Tracker.js', () => ({ trackPoi: vi.fn() }));
   vi.doMock(root + '/lib/services/storage/userStorage.js', () => ({ ensureDemoUserExists: vi.fn() }));
   // isValidTimeZone is the real one: it only asks Intl whether a zone name resolves, which needs
   // no fixture and is exactly what the route is supposed to enforce.

@@ -5,7 +5,6 @@
 
 import { checkIfConfigIsAccessible, getProviders, refreshConfig } from './lib/utils.js';
 import * as similarityCache from './lib/services/similarity-check/similarityCache.js';
-import { initTrackerCron } from './lib/services/crons/tracker-cron.js';
 import logger from './lib/services/logger.js';
 import { reloadEnabledFromSettings } from './lib/services/debug/debugLogStorage.js';
 import { initActiveCheckerCron } from './lib/services/crons/listing-alive-cron.js';
@@ -125,7 +124,6 @@ logger.info('Authentication: Firebase bearer tokens');
 // start and repaired on every later one, so a drifted config can never leave the demo empty.
 await seedDemo(providers);
 
-await initTrackerCron();
 //do not wait for this to finish, let it run in the background
 initActiveCheckerCron();
 initGeocodingCron();

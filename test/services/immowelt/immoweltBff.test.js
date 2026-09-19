@@ -5,7 +5,6 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-vi.mock('../../../lib/services/tracking/Tracker.js', () => ({ trackPoi: vi.fn(async () => {}) }));
 vi.mock('../../../lib/services/logger.js', () => ({
   default: { warn: vi.fn(), error: vi.fn(), debug: vi.fn(), info: vi.fn() },
 }));

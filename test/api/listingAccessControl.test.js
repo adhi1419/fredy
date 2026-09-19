@@ -21,7 +21,6 @@ vi.mock('../../lib/services/storage/watchListStorage.js', () => ({
   toggleWatch: vi.fn(),
   ensureWatch: vi.fn(),
 }));
-vi.mock('../../lib/services/tracking/Tracker.js', () => ({ trackPoi: vi.fn() }));
 vi.mock('../../lib/services/storage/jobStorage.js', () => ({ getJob: async () => null }));
 
 const { filterListingIdsForUser, userCanAccessListing } = await import('../../lib/services/storage/listingsStorage.js');

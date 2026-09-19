@@ -5,14 +5,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { TRACKING_POIS } from '../../lib/TRACKING_POIS.js';
-
 const root = (await import('node:path')).resolve('.');
 
 /** @type {Array<{settings: Record<string, any>, userId: string|null}>} */
 let upserted;
-/** @type {string[]} */
-let tracked;
 
 /**
  * Register the user-settings plugin against a fastify double and return the theme handler.
@@ -22,7 +18,6 @@ let tracked;
  */
 async function loadThemeHandler(stored = {}) {
   upserted = [];
-  tracked = [];
   vi.resetModules();
   vi.doMock(root + '/lib/services/storage/settingsStorage.js', () => ({
     getSettings: async () => ({ demoMode: false }),
@@ -31,9 +26,6 @@ async function loadThemeHandler(stored = {}) {
     upsertSettings: (settings, userId = null) => upserted.push({ settings, userId }),
   }));
   vi.doMock(root + '/lib/api/security.js', () => ({ isAdmin: () => true }));
-  vi.doMock(root + '/lib/services/tracking/Tracker.js', () => ({
-    trackPoi: async (poi) => tracked.push(poi),
-  }));
   vi.doMock(root + '/lib/services/geocoding/geoCodingService.js', () => ({ geocodeAddress: vi.fn() }));
   vi.doMock(root + '/lib/services/geocoding/autocompleteService.js', () => ({ autocompleteAddress: vi.fn() }));
   vi.doMock(root + '/lib/services/geocoding/distanceService.js', () => ({
@@ -71,20 +63,6 @@ describe('POST /api/user/settings/theme', () => {
     handler = await loadThemeHandler();
   });
 
-  /**
-   * Post a theme on behalf of a user who already has `stored` saved.
-   *
-   * @param {string|undefined} theme
-   * @param {Record<string, any>} [stored={}]
-   * @returns {Promise<{status: number}>}
-   */
-  async function post(theme, stored = {}) {
-    handler = await loadThemeHandler(stored);
-    const reply = replyDouble();
-    await handler({ currentUser: { id: 'user-1', isAdmin: true }, body: { theme } }, reply);
-    return reply.recorded;
-  }
-
   it.each(['dark', 'light'])('stores %s against the calling user', async (theme) => {
     const reply = replyDouble();
     const result = await handler({ currentUser: { id: 'user-1', isAdmin: true }, body: { theme } }, reply);
@@ -109,34 +87,5 @@ describe('POST /api/user/settings/theme', () => {
     await handler({ currentUser: { id: 'user-2', isAdmin: true }, body: { theme: 'light', userId: 'user-1' } }, reply);
 
     expect(upserted).toEqual([{ settings: { theme: 'light' }, userId: 'user-2' }]);
-  });
-
-  it('reports which theme was switched to, not merely that the setting was touched', async () => {
-    await post('light', { theme: 'dark' });
-    expect(tracked).toEqual([TRACKING_POIS.CHANGE_THEME_LIGHT]);
-
-    await post('dark', { theme: 'light' });
-    expect(tracked).toEqual([TRACKING_POIS.CHANGE_THEME_DARK]);
-  });
-
-  it('counts a first-ever choice of light, since the account was on the dark default', async () => {
-    await post('light', {});
-    expect(tracked).toEqual([TRACKING_POIS.CHANGE_THEME_LIGHT]);
-  });
-
-  it('does not count re-saving the theme the user is already on', async () => {
-    // Including the first-ever save of `dark`, which repaints nothing: the account was already
-    // being shown the dark default. A count of switches has to mean switches.
-    await post('dark', {});
-    expect(tracked).toEqual([]);
-
-    await post('light', { theme: 'light' });
-    expect(tracked).toEqual([]);
-  });
-
-  it('tracks nothing at all when the value was rejected', async () => {
-    const recorded = await post('sepia', { theme: 'dark' });
-    expect(recorded.status).toBe(400);
-    expect(tracked).toEqual([]);
   });
 });

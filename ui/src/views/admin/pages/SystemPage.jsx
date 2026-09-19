@@ -54,11 +54,6 @@ export default function SystemPage() {
         />
       </SegmentPart>
 
-      <SegmentPart name={t('settings.analytics')} helpText={t('settings.analyticsHelp')}>
-        <Checkbox checked={form.analyticsEnabled} onChange={(e) => setField('analyticsEnabled', e.target.checked)}>
-          {t('settings.analyticsEnable')}
-        </Checkbox>
-      </SegmentPart>
 
       <SegmentPart name={t('settings.demoMode')} helpText={t('settings.demoModeHelp')}>
         <Checkbox checked={form.demoMode} onChange={(e) => setField('demoMode', e.target.checked)}>
