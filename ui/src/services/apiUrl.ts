@@ -12,7 +12,7 @@ const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim() ?? '';
  * Absolute and protocol-relative URLs are intentionally left unchanged so external resources keep
  * their existing behavior.
  */
-export function resolveApiUrl(input: string | URL, apiBaseUrl?: string): string | URL;
+export function resolveApiUrl(input: string | URL | Request, apiBaseUrl?: string): string | URL | Request;
 export function resolveApiUrl(input: unknown, apiBaseUrl: unknown = configuredApiBaseUrl): unknown {
   if (typeof input !== 'string' && !(typeof URL !== 'undefined' && input instanceof URL)) {
     return input;
