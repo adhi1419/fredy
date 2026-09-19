@@ -4,6 +4,7 @@
  */
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import wireContract from '../../wireContracts.json';
 
 /**
  * SSE connections are long-lived, and behind a proxy they frequently go away without ever emitting
@@ -37,7 +38,7 @@ describe('sse broker', () => {
     const res = makeRes();
     broker.addClient('u1', res);
     expect(broker.connectionCount()).toBe(1);
-    expect(res.written.join('')).toContain('event: hello');
+    expect(res.written.join('')).toContain(wireContract.sse.hello);
   });
 
   it('delivers an event to every connection of a user', () => {
@@ -89,10 +90,11 @@ describe('sse broker', () => {
 
   describe('heartbeat', () => {
     it('pings live connections', () => {
+      expect(broker.HEARTBEAT_INTERVAL_MS).toBe(wireContract.sse.heartbeatIntervalMs);
       const res = makeRes();
       broker.addClient('u1', res);
       broker.heartbeat();
-      expect(res.written.join('')).toContain(': ping');
+      expect(res.written.at(-1)).toMatch(new RegExp(wireContract.sse.heartbeatPattern));
     });
 
     it('reaps connections that went away without a close event', () => {
@@ -122,7 +124,7 @@ describe('sse broker', () => {
 
     broker.sendToUsers(['u1', 'u2', 'u1'], 'jobStatus', { running: true });
 
-    expect(first.written.filter((c) => c.includes('jobStatus'))).toHaveLength(1);
-    expect(second.written.filter((c) => c.includes('jobStatus'))).toHaveLength(1);
+    expect(first.written.join('')).toContain(wireContract.sse.jobStatus);
+    expect(second.written.join('')).toContain(wireContract.sse.jobStatus);
   });
 });
