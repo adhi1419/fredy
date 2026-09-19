@@ -5,7 +5,7 @@ as the single copy so the two cannot drift.
 
 ## Project Overview
 
-Fredy is a self-hosted real estate finder for Germany. It scrapes German real estate portals (ImmoScout24, Immowelt, Immonet, Kleinanzeigen, WG-Gesucht, etc.), deduplicates results across providers, and sends notifications via Slack, Telegram, Email, Discord, ntfy, etc. It includes a React web UI and a built-in MCP server for LLM access to listings data.
+Fredy is a self-hosted real estate finder for Germany. It scrapes German real estate portals (ImmoScout24, Immowelt, Immonet, Kleinanzeigen, WG-Gesucht, etc.), deduplicates results across providers, and sends notifications via Slack, Telegram, Email, Discord, ntfy, etc. It includes a React web UI.
 
 - Node.js >= 22, ESM-only (`"type": "module"`)
 - Default port: 9998, default login: admin / admin
@@ -192,14 +192,6 @@ save of `dark` by an account that was on the dark default, is not somebody chang
 Contrast is not a matter of taste here: the light accent is two steps darker than the dark one
 (`#b04a3f` against `#c0564a`) because the dark red that carries white text at 4.5:1 on near-black
 falls below AA against paper, and every primary button in the app depends on it.
-
-### MCP server
-
-Two transports:
-1. **stdio** (`lib/mcp/stdio.js`) - for Claude Desktop/LM Studio; opens its own DB connection (main process need not be running)
-2. **HTTP** (`/api/mcp`) - authenticated via Bearer token (`mcp_token` column in `users` table)
-
-Tools: `list_jobs`, `get_job`, `list_listings`, `get_listing`, `get_current_date_time`. Responses are Markdown via `lib/mcp/mcpNormalizer.js`.
 
 ## Key Conventions
 

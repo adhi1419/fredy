@@ -28,6 +28,7 @@ import { formatEuro } from '../../../components/cards/chartTheme.js';
 // own when a job carries no deal type, so a form that guessed differently would show one thing and
 // store another. Kept in step by test/ui/dealTypeCopyInSync.test.js.
 import { detectDealTypeFromUrl } from '../../../services/jobs/dealType.js';
+import { isInquiryContactProfileReady, isInquiryProviderSupported } from '../../../services/inquiries/profile.js';
 import {
   IconArrowLeft,
   IconBell,
@@ -55,6 +56,7 @@ export default function JobMutator() {
   const jobs = useSelector((state) => state.jobsData.jobs);
   const shareableUserList = useSelector((state) => state.jobsData.shareableUserList);
   const allChannels = useSelector((state) => state.notificationChannels.channels);
+  const inquiryProfile = useSelector((state) => state.userSettings.settings?.inquiry_profile);
   const params = useParams();
   const location = useLocation();
 
@@ -78,6 +80,7 @@ export default function JobMutator() {
   const defaultSpatialFilter = sourceJob?.spatialFilter || null;
   const defaultSpecFilter = sourceJob?.specFilter || null;
   const defaultCommuteFilter = sourceJob?.commuteFilter || null;
+  const defaultAutoSendInquiry = sourceJob?.autoSendInquiry ?? false;
   // Deliberately not defaulted for a new job: the user has to say what they are looking for,
   // because it decides which half of their finance profile applies to everything this job finds.
   const defaultDealType = sourceJob?.dealType || null;
@@ -95,9 +98,17 @@ export default function JobMutator() {
   const [spatialFilter, setSpatialFilter] = useState(defaultSpatialFilter);
   const [specFilter, setSpecFilter] = useState(defaultSpecFilter);
   const [commuteFilter, setCommuteFilter] = useState(defaultCommuteFilter);
+  const [autoSendInquiry, setAutoSendInquiry] = useState(defaultAutoSendInquiry);
   const [dealType, setDealType] = useState(defaultDealType);
   /** Whether the value in the deal type field was guessed rather than chosen. */
   const [dealTypeWasInferred, setDealTypeWasInferred] = useState(false);
+  const inquiryProviderIds = providerData
+    .filter((provider) => provider.enabled !== false && isInquiryProviderSupported(provider.id))
+    .map((provider) => provider.id);
+  const hasInquiryProvider = inquiryProviderIds.length > 0;
+  const contactProfileReady =
+    hasInquiryProvider &&
+    inquiryProviderIds.every((providerId) => isInquiryContactProfileReady(inquiryProfile, providerId));
 
   // Derived on every render rather than kept alongside the ids. A second copy of the selection in
   // state is a copy that has to be resolved once the channels load and then kept in step, and the
@@ -149,6 +160,7 @@ export default function JobMutator() {
     if (draft.spatialFilter !== undefined) setSpatialFilter(draft.spatialFilter);
     if (draft.specFilter !== undefined) setSpecFilter(draft.specFilter);
     if (draft.commuteFilter !== undefined) setCommuteFilter(draft.commuteFilter);
+    if (draft.autoSendInquiry !== undefined) setAutoSendInquiry(draft.autoSendInquiry);
     setDraftRestored(true);
   }, [draftId]);
 
@@ -167,6 +179,7 @@ export default function JobMutator() {
       spatialFilter,
       specFilter,
       commuteFilter,
+      autoSendInquiry,
     });
   }, [
     draftId,
@@ -180,6 +193,7 @@ export default function JobMutator() {
     spatialFilter,
     specFilter,
     commuteFilter,
+    autoSendInquiry,
   ]);
 
   // The deal type decides which half of the finance profile applies to everything this job finds,
@@ -215,6 +229,7 @@ export default function JobMutator() {
     setSpatialFilter(defaultSpatialFilter);
     setSpecFilter(defaultSpecFilter);
     setCommuteFilter(defaultCommuteFilter);
+    setAutoSendInquiry(defaultAutoSendInquiry);
   };
 
   const leaveForm = () => {
@@ -234,7 +249,7 @@ export default function JobMutator() {
 
   // What the collapsed section holds, so it does not have to be opened to find out.
   const refinementSummary = summariseJobRefinements(
-    { blacklist, specFilter, spatialFilter, commuteFilter, shareWithUsers, enabled },
+    { blacklist, specFilter, spatialFilter, commuteFilter, shareWithUsers, enabled, autoSendInquiry },
     { t, formatPrice: (value) => formatEuro(value, locale) },
   );
 
@@ -255,6 +270,7 @@ export default function JobMutator() {
         spatialFilter,
         specFilter,
         commuteFilter,
+        autoSendInquiry,
         dealType,
         enabled,
         jobId: jobToBeEdit?.id || null,
@@ -537,6 +553,32 @@ export default function JobMutator() {
               <Button theme="borderless" size="small" onClick={() => setAreaExpanded((current) => !current)}>
                 {areaExpanded ? t('jobs.mutation.areaCollapse') : t('jobs.mutation.areaExpand')}
               </Button>
+            </SegmentPart>
+
+            <SegmentPart
+              Icon={IconPlayCircle}
+              name={t('jobs.mutation.sectionAutoSendInquiry')}
+              helpText={t('jobs.mutation.autoSendInquiryHelp')}
+              helpMode="popover"
+            >
+              <Switch
+                className="jobMutation__spaceTop"
+                onChange={(checked) => setAutoSendInquiry(checked)}
+                checked={autoSendInquiry}
+                disabled={(!hasInquiryProvider || !contactProfileReady) && !autoSendInquiry}
+              />
+              {!hasInquiryProvider && (
+                <p className="jobMutation__inferredHint">{t('jobs.mutation.autoSendInquiryUnsupported')}</p>
+              )}
+              {hasInquiryProvider && !contactProfileReady && (
+                <div>
+                  <p className="jobMutation__inferredHint">{t('jobs.mutation.autoSendInquiryProfileMissing')}</p>
+                  <Button size="small" theme="light" onClick={() => leaveWithReturnPath('/settings/inquiry-profile')}>
+                    {t('jobs.mutation.completeInquiryProfile')}
+                  </Button>
+                </div>
+              )}
+              <p className="jobMutation__inferredHint">{t('jobs.mutation.autoSendInquiryWarning')}</p>
             </SegmentPart>
 
             <SegmentPart

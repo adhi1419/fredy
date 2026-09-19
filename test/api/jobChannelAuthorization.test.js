@@ -67,6 +67,7 @@ describe('POST /api/jobs channel authorisation', () => {
         spatial_filter TEXT,
         spec_filter TEXT,
         commute_filter TEXT,
+        auto_send_inquiry INTEGER NOT NULL DEFAULT 0,
         deal_type TEXT,
         last_run_at INTEGER
       );

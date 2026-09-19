@@ -1,0 +1,363 @@
+/*
+ * Copyright (c) 2026 by Christian Kellner.
+ * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
+ */
+
+/*
+ * Contract tests: userStorage
+ *
+ * Backend-agnostic behavioral contract for the user module. Seeds and asserts
+ * ONLY through the public storage API (userStorage, jobStorage, settingsStorage).
+ * Every storage call is awaited so the same test body works against both
+ * sync (sqlite) and async (firestore) backends.
+ */
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
+import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
+
+let userStorage;
+let jobStorage;
+let settingsStorage;
+let hashModule;
+
+beforeAll(async () => {
+  await initBackend();
+  userStorage = await loadStorageModule('userStorage');
+  jobStorage = await loadStorageModule('jobStorage');
+  settingsStorage = await loadStorageModule('settingsStorage');
+  hashModule = await import('../../lib/services/security/hash.js');
+});
+
+beforeEach(async () => {
+  await resetBackend();
+});
+
+afterAll(async () => {
+  await teardownBackend();
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Seed a user and return the id we can look it up with. */
+async function seedUser({ username = 'alice', password = 'secret', isAdmin = false } = {}) {
+  await userStorage.upsertUser({ username, password, isAdmin });
+  const users = await userStorage.getUsers();
+  const u = users.find((r) => r.username === username);
+  return u.id;
+}
+
+/** Seed a minimal job owned by userId. */
+async function seedJob(userId, name = 'job-1') {
+  await jobStorage.upsertJob({
+    name,
+    provider: [],
+    notificationAdapter: [],
+    userId,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// upsertUser
+// ---------------------------------------------------------------------------
+
+describe('userStorage contract', () => {
+  describe('upsertUser', () => {
+    it('inserts a new user retrievable by getUsers', async () => {
+      await userStorage.upsertUser({ username: 'alice', password: 'pw', isAdmin: false });
+      const users = await userStorage.getUsers();
+      expect(users).toHaveLength(1);
+      expect(users[0].username).toBe('alice');
+      expect(users[0].isAdmin).toBe(false);
+    });
+
+    it('inserts a new admin user', async () => {
+      await userStorage.upsertUser({ username: 'boss', password: 'pw', isAdmin: true });
+      const users = await userStorage.getUsers();
+      expect(users[0].isAdmin).toBe(true);
+    });
+
+    it('updates username and isAdmin when userId is provided', async () => {
+      const id = await seedUser({ username: 'alice', isAdmin: false });
+      await userStorage.upsertUser({ userId: id, username: 'alice-renamed', password: '', isAdmin: true });
+      const user = await userStorage.getUser(id);
+      expect(user.username).toBe('alice-renamed');
+      expect(user.isAdmin).toBe(true);
+    });
+
+    it('preserves existing password hash when update password is empty', async () => {
+      const id = await seedUser({ username: 'alice', password: 'original' });
+      const before = await userStorage.getUserWithSecretsByUsername('alice');
+      await userStorage.upsertUser({ userId: id, username: 'alice', password: '', isAdmin: false });
+      const after = await userStorage.getUserWithSecretsByUsername('alice');
+      expect(after.password).toBe(before.password);
+    });
+
+    it('updates password hash when a non-empty password is provided', async () => {
+      const id = await seedUser({ username: 'alice', password: 'original' });
+      const before = await userStorage.getUserWithSecretsByUsername('alice');
+      await userStorage.upsertUser({ userId: id, username: 'alice', password: 'changed', isAdmin: false });
+      const after = await userStorage.getUserWithSecretsByUsername('alice');
+      expect(after.password).not.toBe(before.password);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getUsers
+  // ---------------------------------------------------------------------------
+
+  describe('getUsers', () => {
+    it('returns empty array when no users exist', async () => {
+      expect(await userStorage.getUsers()).toEqual([]);
+    });
+
+    it('returns users ordered by username', async () => {
+      await seedUser({ username: 'zara' });
+      await seedUser({ username: 'alice' });
+      const names = (await userStorage.getUsers()).map((u) => u.username);
+      expect(names).toEqual(['alice', 'zara']);
+    });
+
+    it('includes numberOfJobs count per user', async () => {
+      const id = await seedUser({ username: 'alice' });
+      await seedJob(id, 'j1');
+      await seedJob(id, 'j2');
+      const user = (await userStorage.getUsers()).find((u) => u.id === id);
+      expect(user.numberOfJobs).toBe(2);
+    });
+
+    it('does not expose password', async () => {
+      await seedUser();
+      const user = (await userStorage.getUsers())[0];
+      expect(user.password).toBeUndefined();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getUser
+  // ---------------------------------------------------------------------------
+
+  describe('getUser', () => {
+    it('returns null for non-existent id', async () => {
+      expect(await userStorage.getUser('does-not-exist')).toBeNull();
+    });
+
+    it('returns user with correct shape', async () => {
+      const id = await seedUser({ username: 'alice', isAdmin: true });
+      const user = await userStorage.getUser(id);
+      expect(user).toMatchObject({
+        id,
+        username: 'alice',
+        isAdmin: true,
+      });
+      expect(user.numberOfJobs).toBe(0);
+      expect(user.password).toBeUndefined();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getUserByUsername
+  // ---------------------------------------------------------------------------
+
+  describe('getUserByUsername', () => {
+    it('returns null for non-existent username', async () => {
+      expect(await userStorage.getUserByUsername('ghost')).toBeNull();
+    });
+
+    it('returns user without secrets', async () => {
+      await seedUser({ username: 'alice', isAdmin: false });
+      const user = await userStorage.getUserByUsername('alice');
+      expect(user.username).toBe('alice');
+      expect(user.isAdmin).toBe(false);
+      expect(user.id).toBeTruthy();
+      // Secrets MUST be stripped
+      expect(user.password).toBeUndefined();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getUserWithSecretsByUsername
+  // ---------------------------------------------------------------------------
+
+  describe('getUserWithSecretsByUsername', () => {
+    it('returns null for non-existent username', async () => {
+      expect(await userStorage.getUserWithSecretsByUsername('ghost')).toBeNull();
+    });
+
+    it('includes password hash', async () => {
+      await seedUser({ username: 'alice', password: 'secret' });
+      const user = await userStorage.getUserWithSecretsByUsername('alice');
+      expect(user.password).toBeTruthy();
+      expect(typeof user.password).toBe('string');
+      // Hash should be verifiable
+      expect(await hashModule.verify('secret', user.password)).toBe(true);
+    });
+
+    it('includes isAdmin as a truthy/falsy value', async () => {
+      await seedUser({ username: 'alice', isAdmin: true });
+      const user = await userStorage.getUserWithSecretsByUsername('alice');
+      expect(user.isAdmin).toBeTruthy();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // setLastLoginToNow
+  // ---------------------------------------------------------------------------
+
+  describe('setLastLoginToNow', () => {
+    it('sets lastLogin to a recent timestamp', async () => {
+      const id = await seedUser({ username: 'alice' });
+      const before = Date.now();
+      await userStorage.setLastLoginToNow({ userId: id });
+      const after = Date.now();
+      const user = await userStorage.getUser(id);
+      expect(user.lastLogin).toBeGreaterThanOrEqual(before);
+      expect(user.lastLogin).toBeLessThanOrEqual(after);
+    });
+
+    it('lastLogin is null before first login', async () => {
+      const id = await seedUser({ username: 'alice' });
+      const user = await userStorage.getUser(id);
+      expect(user.lastLogin).toBeNull();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // updatePasswordHash
+  // ---------------------------------------------------------------------------
+
+  describe('updatePasswordHash', () => {
+    it('replaces the stored hash directly', async () => {
+      const id = await seedUser({ username: 'alice', password: 'old' });
+      const newHash = await hashModule.hash('new-password');
+      await userStorage.updatePasswordHash({ userId: id, passwordHash: newHash });
+      const user = await userStorage.getUserWithSecretsByUsername('alice');
+      expect(user.password).toBe(newHash);
+      expect(await hashModule.verify('new-password', user.password)).toBe(true);
+      expect(await hashModule.verify('old', user.password)).toBe(false);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // removeUser (cascade)
+  // ---------------------------------------------------------------------------
+
+  describe('removeUser', () => {
+    it('deletes the user', async () => {
+      const id = await seedUser({ username: 'alice' });
+      await userStorage.removeUser(id);
+      expect(await userStorage.getUser(id)).toBeNull();
+    });
+
+    it('cascades: user jobs disappear', async () => {
+      const id = await seedUser({ username: 'alice' });
+      await seedJob(id, 'doomed-job');
+      // Pre-condition: the job exists
+      const jobsBefore = await jobStorage.getJobs({ includeDisabled: true });
+      expect(jobsBefore.some((j) => j.name === 'doomed-job')).toBe(true);
+
+      await userStorage.removeUser(id);
+
+      // Post-condition: the job is gone
+      const jobsAfter = await jobStorage.getJobs({ includeDisabled: true });
+      expect(jobsAfter.some((j) => j.name === 'doomed-job')).toBe(false);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // ensureAdminUserExists
+  // ---------------------------------------------------------------------------
+
+  describe('ensureAdminUserExists', () => {
+    it('creates an admin user on empty DB', async () => {
+      await userStorage.ensureAdminUserExists();
+      const users = await userStorage.getUsers();
+      expect(users).toHaveLength(1);
+      expect(users[0].username).toBe('admin');
+      expect(users[0].isAdmin).toBe(true);
+    });
+
+    it('admin is created with the default password', async () => {
+      await userStorage.ensureAdminUserExists();
+      const admin = await userStorage.getUserWithSecretsByUsername('admin');
+      expect(await hashModule.verify(userStorage.DEFAULT_ADMIN_PASSWORD, admin.password)).toBe(true);
+    });
+
+    it('admin is created with a last_login timestamp', async () => {
+      const before = Date.now();
+      await userStorage.ensureAdminUserExists();
+      const admin = (await userStorage.getUsers())[0];
+      expect(admin.lastLogin).toBeGreaterThanOrEqual(before);
+    });
+
+    it('promotes first user when no admin exists', async () => {
+      // Create two non-admin users
+      await seedUser({ username: 'beta' });
+      await seedUser({ username: 'alpha' });
+
+      await userStorage.ensureAdminUserExists();
+
+      const users = await userStorage.getUsers();
+      const admins = users.filter((u) => u.isAdmin);
+      // Exactly one user promoted
+      expect(admins).toHaveLength(1);
+    });
+
+    it('does nothing when an admin already exists', async () => {
+      await seedUser({ username: 'boss', isAdmin: true });
+      await seedUser({ username: 'pleb', isAdmin: false });
+
+      await userStorage.ensureAdminUserExists();
+
+      const users = await userStorage.getUsers();
+      expect(users).toHaveLength(2);
+      const admins = users.filter((u) => u.isAdmin);
+      expect(admins).toHaveLength(1);
+      expect(admins[0].username).toBe('boss');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // ensureDemoUserExists
+  // ---------------------------------------------------------------------------
+
+  describe('ensureDemoUserExists', () => {
+    it('creates a non-admin demo user when demoMode is on', async () => {
+      await settingsStorage.upsertSettings({ demoMode: true });
+
+      await userStorage.ensureDemoUserExists();
+
+      const demo = await userStorage.getUserByUsername('demo');
+      expect(demo).not.toBeNull();
+      expect(demo.isAdmin).toBe(false);
+    });
+
+    it('demo user password is verifiable as "demo"', async () => {
+      await settingsStorage.upsertSettings({ demoMode: true });
+      await userStorage.ensureDemoUserExists();
+
+      const demo = await userStorage.getUserWithSecretsByUsername('demo');
+      expect(await hashModule.verify('demo', demo.password)).toBe(true);
+    });
+
+    it('demotes an existing admin demo user', async () => {
+      // Seed a demo user with admin rights
+      await userStorage.upsertUser({ username: 'demo', password: 'demo', isAdmin: true });
+      await settingsStorage.upsertSettings({ demoMode: true });
+
+      await userStorage.ensureDemoUserExists();
+
+      const demo = await userStorage.getUserByUsername('demo');
+      expect(demo.isAdmin).toBe(false);
+    });
+
+    it('does not create a demo user when demoMode is off (dev mode)', async () => {
+      // demoMode defaults to falsy from config. In dev mode (NODE_ENV != production),
+      // the function returns early without deleting an existing demo user.
+      await settingsStorage.upsertSettings({ demoMode: false });
+      await userStorage.ensureDemoUserExists();
+
+      expect(await userStorage.getUserByUsername('demo')).toBeNull();
+    });
+  });
+});

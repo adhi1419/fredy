@@ -54,15 +54,15 @@ describe('services/debug/debugBundleService.js', () => {
   });
 
   describe('renderLogsTxt', () => {
-    it('returns an empty string when there are no rows', () => {
-      expect(svc.renderLogsTxt()).toBe('');
+    it('returns an empty string when there are no rows', async () => {
+      expect(await svc.renderLogsTxt()).toBe('');
     });
 
-    it('formats each row as [date] LEVEL: message and keeps order', () => {
+    it('formats each row as [date] LEVEL: message and keeps order', async () => {
       storedLogs.push({ id: 1, ts: 1717855200000, level: 'info', message: 'first line' });
       storedLogs.push({ id: 2, ts: 1717855201000, level: 'warn', message: 'second line' });
 
-      const out = svc.renderLogsTxt();
+      const out = await svc.renderLogsTxt();
 
       expect(out).toMatch(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] INFO: first line/);
       expect(out).toMatch(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] WARN: second line/);
@@ -137,16 +137,16 @@ describe('services/debug/debugBundleService.js', () => {
     it('redacts credential-shaped settings by key name, whatever they are called', async () => {
       const sys = await svc.buildSystemInfo({
         settings: {
-          mcp_token: 'mcp-abc',
+          legacy_api_token: 'legacy-abc',
           smtpPassword: 'hunter2',
           someApiKey: 'ak-live-1',
           nothingSensitive: 'plain',
         },
       });
-      expect(sys).not.toContain('mcp-abc');
+      expect(sys).not.toContain('legacy-abc');
       expect(sys).not.toContain('hunter2');
       expect(sys).not.toContain('ak-live-1');
-      expect(sys).toContain('mcp_token: <redacted>');
+      expect(sys).toContain('legacy_api_token: <redacted>');
       expect(sys).toContain('smtpPassword: <redacted>');
       expect(sys).toContain('someApiKey: <redacted>');
       expect(sys).toContain('nothingSensitive: plain');

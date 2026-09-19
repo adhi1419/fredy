@@ -67,10 +67,10 @@ describe('providerCleanup', () => {
   afterEach(() => db.close());
 
   describe('job configs', () => {
-    it('removes a provider that no longer exists and keeps the remaining ones', () => {
+    it('removes a provider that no longer exists and keeps the remaining ones', async () => {
       addJob('job-2', 'Mixed', [{ id: 'immoscout' }, { id: 'immonet', url: 'https://immonet.de' }]);
 
-      const result = removeObsoleteProviders([provider('immoscout')]);
+      const result = await await removeObsoleteProviders([provider('immoscout')]);
 
       expect(providerConfigOf('job-2')).toEqual([{ id: 'immoscout' }]);
       expect(result.jobsUpdated).toBe(1);
@@ -78,16 +78,16 @@ describe('providerCleanup', () => {
       expect(result.obsoleteProviderIds).toEqual(['immonet']);
     });
 
-    it('empties the config of a job that only used obsolete providers', () => {
+    it('empties the config of a job that only used obsolete providers', async () => {
       addJob('job-2', 'Dead', [{ id: 'immonet' }, { id: 'wohnungsboerse' }]);
 
-      removeObsoleteProviders([provider('immoscout')]);
+      await removeObsoleteProviders([provider('immoscout')]);
 
       expect(providerConfigOf('job-2')).toEqual([]);
     });
 
-    it('leaves jobs untouched when every configured provider still exists', () => {
-      const result = removeObsoleteProviders([provider('immoscout'), provider('immowelt')]);
+    it('leaves jobs untouched when every configured provider still exists', async () => {
+      const result = await await removeObsoleteProviders([provider('immoscout'), provider('immowelt')]);
 
       expect(providerConfigOf('job-1')).toEqual([{ id: 'immoscout', url: 'https://example.org' }]);
       expect(result.jobsUpdated).toBe(0);
@@ -96,44 +96,44 @@ describe('providerCleanup', () => {
   });
 
   describe('listings', () => {
-    it('removes listings of an obsolete provider and keeps the others', () => {
+    it('removes listings of an obsolete provider and keeps the others', async () => {
       addListing('keep-1', 'immoscout');
       addListing('drop-1', 'immonet');
       addListing('drop-2', 'immonet');
 
-      const result = removeObsoleteProviders([provider('immoscout')]);
+      const result = await await removeObsoleteProviders([provider('immoscout')]);
 
       expect(listingIds()).toEqual(['keep-1']);
       expect(result.listingsRemoved).toBe(2);
       expect(result.obsoleteProviderIds).toEqual(['immonet']);
     });
 
-    it('removes listings that carry no provider at all', () => {
+    it('removes listings that carry no provider at all', async () => {
       addListing('keep-1', 'immoscout');
       addListing('orphan-1', null);
 
-      const result = removeObsoleteProviders([provider('immoscout')]);
+      const result = await await removeObsoleteProviders([provider('immoscout')]);
 
       expect(listingIds()).toEqual(['keep-1']);
       expect(result.listingsRemoved).toBe(1);
       expect(result.obsoleteProviderIds).toEqual(['unknown']);
     });
 
-    it('drops watch list entries of removed listings', () => {
+    it('drops watch list entries of removed listings', async () => {
       addListing('drop-1', 'immonet');
       db.prepare(`INSERT INTO watch_list (id, listing_id) VALUES ('w-1', 'drop-1')`).run();
 
-      removeObsoleteProviders([provider('immoscout')]);
+      await removeObsoleteProviders([provider('immoscout')]);
 
       expect(db.prepare(`SELECT COUNT(1) AS c FROM watch_list`).get().c).toBe(0);
     });
   });
 
-  it('reports job and listing cleanup together', () => {
+  it('reports job and listing cleanup together', async () => {
     addJob('job-2', 'Mixed', [{ id: 'immoscout' }, { id: 'immonet' }]);
     addListing('drop-1', 'immonet');
 
-    const result = removeObsoleteProviders([provider('immoscout')]);
+    const result = await await removeObsoleteProviders([provider('immoscout')]);
 
     expect(result).toEqual({
       obsoleteProviderIds: ['immonet'],
@@ -143,10 +143,10 @@ describe('providerCleanup', () => {
     });
   });
 
-  it('does nothing when no provider module could be loaded', () => {
+  it('does nothing when no provider module could be loaded', async () => {
     addListing('keep-1', 'immoscout');
 
-    const result = removeObsoleteProviders([]);
+    const result = await removeObsoleteProviders([]);
 
     expect(listingIds()).toEqual(['keep-1']);
     expect(providerConfigOf('job-1')).toEqual([{ id: 'immoscout', url: 'https://example.org' }]);

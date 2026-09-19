@@ -69,6 +69,8 @@ On top of the listing itself, Fredy answers two questions:
     the headline - no two portals write that the same way
 -   ⏱️ Configurable search intervals and working hours
 -   💶 **Financing calculator**: which listings you can afford, for renting and for buying
+-   ✉️ **Guarded rental inquiries**: review and send a generated draft through ImmoScout or
+    Deutsche Wohnen, or opt a job into automatic sending with duplicate and unknown-outcome protection
 -   🚆 **Real travel times** from your addresses by public transport, car, bike or on foot,
     plus a filter to match
 -   🗺️ **Public transport on the map**: the network, every stop, and live departures
@@ -241,16 +243,38 @@ to Slack + Telegram."\
 Jobs run automatically at the interval you configure under **Administration → Execution**,
 where you can also restrict them to working hours.
 
-### MCP Server 🤖
+### Guarded rental inquiries ✉️
 
-Starting with **V20**, Fredy ships with a built-in **MCP Server**. This allows you to connect Fredy to LLMs (like Claude, ChatGPT, or local models via LM Studio) and query your real estate data using natural language.
-The local LLM can even enrich existing listings by checking the listing online.   
+Fredy can send its generated rental inquiry through a supported provider instead of leaving it as
+copyable text. The feature is **off by default**. Fill in the provider's contact fields and consent
+under **Settings → Inquiry profile**; the email address always comes from the signed-in Fredy account
+and cannot be overridden by an API request.
 
-For more information on how to set it up and use it, please refer to the [MCP Readme](lib/mcp/README.md).
+There are two ways to send:
 
-#### Connect Claude.ai or ChatGPT over OAuth
+- open a supported listing, edit the generated draft and confirm the provider-specific send action
+- enable **Automatic inquiries** in one job's optional settings; only that job sends its generated
+  drafts automatically
 
-Set Fredy's `baseUrl` to its public HTTPS URL, then add `<baseUrl>/api/mcp` as a custom MCP server in Claude.ai or ChatGPT. Fredy advertises OAuth discovery metadata, dynamically registers the client, and asks you to sign in and approve read access. OAuth access tokens expire after one hour and refresh automatically; existing MCP tokens continue to work for local clients. Connected apps are listed under **Settings → Connections**, where access can be revoked at any time.
+Before every real request Fredy asks ImmoScout to validate the same payload without sending it. A
+listing that requires profile fields Fredy does not have is skipped rather than filled with guesses.
+Each listing is reserved before delivery so a double-click and the scheduled run cannot both send.
+Confirmed requests are stored with their provider request id. A timeout or other ambiguous outcome
+is marked **unknown** and is never retried automatically, because ImmoScout may already have received
+it. Rejections record the provider phase, HTTP status and a short redacted provider error without
+logging applicant contact fields. Telegram reports a successful automatic application as one message beginning with `[Applied]`
+instead of following the listing with a second copyable draft.
+
+Only ImmoScout and Deutsche Wohnen can currently carry generated messages. Deutsche Wohnen asks for
+a phone number plus provider-defined income categories; configure those and grant its separate consent
+under **Settings → Inquiry profile**. Unlike ImmoScout, its contact endpoint has no validation-only mode,
+so Fredy validates locally and makes one real request; ambiguous results remain non-retryable.
+
+InBerlinWohnen links HOWOGE offers to HOWOGE's own application workflow. That workflow accepts only
+name and email, sends a double-opt-in confirmation email, and exposes no field for the generated message.
+For HOWOGE partner links, Fredy submits the fresh signed form once and treats the server-accepted DOI
+request as **Applied**; the applicant must still confirm HOWOGE's email. Other InBerlinWohnen partner
+hosts remain notification-only until their application flows are implemented.
 
 ------------------------------------------------------------------------
 
@@ -300,9 +324,6 @@ Each tab saves and deletes on its own. Once one is saved, its verdict appears el
 
 Which calculation a listing gets follows the deal type of its job, so a 1.200 € rent is never
 read as a very cheap house. Nothing appears until the matching tab is filled in.
-
-An LLM can ask the same question over MCP with the `calculate_financing` tool, which returns a
-mortgage answer or a rent answer depending on the listing.
 
 > **This is an estimate, not financial advice.** The Grunderwerbsteuer rates ship as editable
 > defaults and Bundesländer change them from time to time, so check the figure for your state
@@ -456,8 +477,7 @@ only from the **trusted proxy addresses** you list - matched against the TCP pee
 `X-Forwarded-For` - and, if you configure one, only when a **shared-secret header** matches too.
 The name is then mapped onto an **existing** Fredy user with the same username. Nothing is
 created, nothing is promoted; an unknown name is ignored and the login form appears as usual. An
-explicit session always wins, so nobody is silently switched, and `sessionTTL`, admin checks and
-MCP tokens are untouched.
+explicit session always wins, so nobody is silently switched, and `sessionTTL` and admin checks are untouched.
 
 Set it up under *Administration → System → Reverse proxy sign-in*:
 

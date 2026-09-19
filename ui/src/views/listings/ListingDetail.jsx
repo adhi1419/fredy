@@ -18,6 +18,7 @@ import {
   Divider,
   Descriptions,
   Banner,
+  Popconfirm,
   Spin,
   Toast,
   TextArea,
@@ -39,7 +40,10 @@ import {
   IconGridView,
   IconCalendar,
   IconBolt,
+  IconSend,
   IconRefresh,
+  IconEdit,
+  IconCopy,
 } from '@douyinfe/semi-icons';
 import maplibregl from '../../components/map/maplibre.js';
 import MapCanvas, { HOME_MARKER_COLOR } from '../../components/map/Map.jsx';
@@ -67,6 +71,11 @@ import './ListingDetail.less';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
 import { useFinanceProfile } from '../../hooks/useFinanceProfile.js';
 import { VERDICT_COLORS, formatEuro, withAlpha } from '../../components/cards/chartTheme.js';
+import {
+  inquiryProviderRequiresMessage,
+  isInquiryContactProfileReady,
+  isInquiryProviderSupported,
+} from '../../services/inquiries/profile.js';
 
 const { Title, Text } = Typography;
 
@@ -94,7 +103,17 @@ export default function ListingDetail() {
   const actions = useActions();
   const { isComplete: buyComplete, rentComplete, thresholds: financeThresholds } = useFinanceProfile();
   const listing = useSelector((state) => state.listingsData.currentListing);
+  const inquiryProviderName =
+    listing?.provider === 'deutscheWohnen'
+      ? 'Deutsche Wohnen'
+      : listing?.provider === 'inberlinwohnen'
+        ? 'HOWOGE'
+        : 'ImmoScout';
   const userSettings = useSelector((state) => state.userSettings.settings);
+  const contactProfileReady = isInquiryContactProfileReady(userSettings?.inquiry_profile, listing?.provider);
+  const canApplyWithoutMessage =
+    isInquiryProviderSupported(listing?.provider, listing) &&
+    !inquiryProviderRequiresMessage(listing?.provider, listing);
   const connectivityEnabled = useSelector((state) => state.generalSettings.settings?.connectivityEnabled === true);
   const homeAddresses = useMemo(() => getAddresses(userSettings), [userSettings]);
   const listingDeletionPref = userSettings?.listing_deletion_preference;
@@ -125,6 +144,13 @@ export default function ListingDetail() {
   // nothing fetched and so is never missing.
   const [routeMode, setRouteMode] = useState('straight');
 
+  // Draft inquiry message state
+  const [draftMessage, setDraftMessage] = useState(null);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftError, setDraftError] = useState(null);
+  const [draftCopied, setDraftCopied] = useState(false);
+  const [inquirySending, setInquirySending] = useState(false);
+
   useEffect(() => {
     setRouteTimes(listing?.travelTimes ?? []);
   }, [listing?.id, listing?.travelTimes]);
@@ -152,6 +178,17 @@ export default function ListingDetail() {
   useEffect(() => {
     setNotesDraft(listing?.notes ?? '');
   }, [listing?.id, listing?.notes]);
+
+  // Show the eagerly-generated draft (produced at scrape time and stored on the
+  // listing) as soon as the page loads, so the user sees and can copy it without
+  // spending a fresh Gemini call. The Generate button then acts as a regenerate.
+  // Keyed on listing id only: a manual regenerate replaces draftMessage in place
+  // and must not be clobbered when the listing object is re-read for other reasons.
+  useEffect(() => {
+    setDraftMessage(listing?.inquiry_message ?? null);
+    setDraftError(null);
+    setDraftCopied(false);
+  }, [listing?.id]);
 
   // Fetched separately from the listing rather than joined onto it: most views never draw the
   // chart, and a series has no size bound, so it must not ride along on every listing read.
@@ -324,6 +361,51 @@ export default function ListingDetail() {
     } catch (e) {
       console.error('Failed to update status:', e);
       Toast.error(t('listings.toastStatusUpdateError'));
+    }
+  };
+
+  const handleDraftMessage = async () => {
+    if (!listing) return;
+    setDraftLoading(true);
+    setDraftError(null);
+    setDraftMessage(null);
+    setDraftCopied(false);
+    try {
+      const response = await xhrPost(`/api/listings/${listing.id}/draft-message`);
+      setDraftMessage(response.json.message);
+    } catch (e) {
+      if (e?.status === 404) {
+        setDraftError(t('listing.detail.draftMessage.notEnabled'));
+      } else {
+        setDraftError(t('listing.detail.draftMessage.error'));
+      }
+    } finally {
+      setDraftLoading(false);
+    }
+  };
+
+  const handleCopyDraft = async () => {
+    try {
+      await navigator.clipboard.writeText(draftMessage);
+      setDraftCopied(true);
+      setTimeout(() => setDraftCopied(false), 2000);
+    } catch {
+      Toast.error(t('listing.detail.draftMessage.error'));
+    }
+  };
+
+  const handleSendInquiry = async () => {
+    if (!listing || !draftMessage?.trim()) return;
+    setInquirySending(true);
+    try {
+      await xhrPost(`/api/listings/${listing.id}/send-inquiry`, { message: draftMessage });
+      await actions.listingsData.getListing(listingId);
+      Toast.success(t('listing.detail.inquirySend.success'));
+    } catch (error) {
+      await actions.listingsData.getListing(listingId);
+      Toast.error(errorMessage(error, t('listing.detail.inquirySend.error')));
+    } finally {
+      setInquirySending(false);
     }
   };
 
@@ -589,6 +671,19 @@ export default function ListingDetail() {
               {listing.isWatched === 1 ? t('listing.detail.watched') : t('listing.detail.watch')}
             </Button>
             <StatusControl status={listing.status?.status ?? null} onChange={handleStatusChange} />
+            <Button
+              icon={draftMessage ? <IconRefresh /> : <IconEdit />}
+              onClick={handleDraftMessage}
+              theme="light"
+              type="tertiary"
+              loading={draftLoading}
+            >
+              {draftLoading
+                ? t('listing.detail.draftMessage.generating')
+                : draftMessage
+                  ? t('listing.detail.draftMessage.regenerate')
+                  : t('listing.detail.draftMessage.button')}
+            </Button>
             <a href={listing.link} target="_blank" rel="noopener noreferrer" className="listing-detail__open-btn">
               <IconLink style={{ marginRight: 6 }} />
               {t('listing.detail.openListing')}
@@ -615,6 +710,86 @@ export default function ListingDetail() {
               {t('listing.detail.delete')}
             </Button>
           </Space>
+
+          {/* Draft inquiry message result */}
+          {(draftMessage || draftError || canApplyWithoutMessage || listing.inquiry_send_status) && (
+            <div style={{ marginTop: 12, maxWidth: 600 }}>
+              {draftError && (
+                <Banner type="warning" description={draftError} closeIcon={null} style={{ marginBottom: 8 }} />
+              )}
+              {(draftMessage || canApplyWithoutMessage || listing.inquiry_send_status) && (
+                <div>
+                  {draftMessage && (
+                    <TextArea
+                      value={draftMessage}
+                      onChange={setDraftMessage}
+                      disabled={listing.inquiry_send_status === 'sending'}
+                      autosize={{ minRows: 4, maxRows: 12 }}
+                      style={{ marginBottom: 8 }}
+                    />
+                  )}
+                  <Space wrap>
+                    {draftMessage && (
+                      <Button icon={<IconCopy />} onClick={handleCopyDraft} size="small" theme="light">
+                        {draftCopied ? t('listing.detail.draftMessage.copied') : t('listing.detail.draftMessage.copy')}
+                      </Button>
+                    )}
+                    {isInquiryProviderSupported(listing.provider, listing) &&
+                      !['sending', 'sent', 'unknown'].includes(listing.inquiry_send_status) &&
+                      (contactProfileReady ? (
+                        <Popconfirm
+                          title={t('listing.detail.inquirySend.confirmTitle')}
+                          content={t('listing.detail.inquirySend.confirmBody')}
+                          onConfirm={handleSendInquiry}
+                        >
+                          <Button icon={<IconSend />} size="small" theme="solid" loading={inquirySending}>
+                            {t('listing.detail.inquirySend.button', { provider: inquiryProviderName })}
+                          </Button>
+                        </Popconfirm>
+                      ) : (
+                        <Button
+                          icon={<IconEdit />}
+                          size="small"
+                          theme="light"
+                          onClick={() => navigate('/settings/inquiry-profile')}
+                        >
+                          {t('listing.detail.inquirySend.completeProfile')}
+                        </Button>
+                      ))}
+                    {listing.inquiry_send_status && (
+                      <Tag
+                        color={
+                          listing.inquiry_send_status === 'sent'
+                            ? 'green'
+                            : listing.inquiry_send_status === 'sending'
+                              ? 'blue'
+                              : 'orange'
+                        }
+                      >
+                        {t(`listing.detail.inquirySend.status.${listing.inquiry_send_status}`)}
+                      </Tag>
+                    )}
+                  </Space>
+                  {listing.inquiry_send_status === 'failed' && (
+                    <Banner
+                      type="warning"
+                      description={t('listing.detail.inquirySend.failedWarning')}
+                      closeIcon={null}
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
+                  {listing.inquiry_send_status === 'unknown' && (
+                    <Banner
+                      type="warning"
+                      description={t('listing.detail.inquirySend.unknownWarning')}
+                      closeIcon={null}
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <Row>

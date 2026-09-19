@@ -57,75 +57,77 @@ describe('parseTrustedProxies', () => {
   });
 });
 
-describe('resolveProxyUser', () => {
-  it('returns null when the feature is off, whatever the headers say', () => {
+describe('resolveProxyUser', async () => {
+  it('returns null when the feature is off, whatever the headers say', async () => {
     const req = request('172.16.51.1', { 'Remote-User': 'admin' });
-    expect(resolveProxyUser(req, { proxyAuthEnabled: false })).toBeNull();
-    expect(resolveProxyUser(req, {})).toBeNull();
+    expect(await resolveProxyUser(req, { proxyAuthEnabled: false })).toBeNull();
+    expect(await resolveProxyUser(req, {})).toBeNull();
     expect(getUserByUsername).not.toHaveBeenCalled();
   });
 
-  it('maps the identity header to an existing user when the peer is a trusted proxy', () => {
+  it('maps the identity header to an existing user when the peer is a trusted proxy', async () => {
     const req = request('172.16.51.1', { 'Remote-User': 'admin' });
-    expect(resolveProxyUser(req, enabled())).toEqual(ADMIN);
+    expect(await resolveProxyUser(req, enabled())).toEqual(ADMIN);
   });
 
-  it('unwraps IPv4-mapped IPv6 peer addresses (dual-stack listeners)', () => {
+  it('unwraps IPv4-mapped IPv6 peer addresses (dual-stack listeners)', async () => {
     const req = request('::ffff:172.16.51.1', { 'Remote-User': 'admin' });
-    expect(resolveProxyUser(req, enabled())).toEqual(ADMIN);
+    expect(await resolveProxyUser(req, enabled())).toEqual(ADMIN);
   });
 
-  it('ignores the header when the peer is not a trusted proxy', () => {
+  it('ignores the header when the peer is not a trusted proxy', async () => {
     const req = request('192.168.178.20', { 'Remote-User': 'admin' });
-    expect(resolveProxyUser(req, enabled())).toBeNull();
+    expect(await resolveProxyUser(req, enabled())).toBeNull();
     expect(getUserByUsername).not.toHaveBeenCalled();
   });
 
-  it('trusts nobody when no trusted proxies are configured, even if enabled', () => {
+  it('trusts nobody when no trusted proxies are configured, even if enabled', async () => {
     const req = request('172.16.51.1', { 'Remote-User': 'admin' });
-    expect(resolveProxyUser(req, enabled({ proxyAuthTrustedProxies: '' }))).toBeNull();
-    expect(resolveProxyUser(req, enabled({ proxyAuthTrustedProxies: 'garbage' }))).toBeNull();
+    expect(await resolveProxyUser(req, enabled({ proxyAuthTrustedProxies: '' }))).toBeNull();
+    expect(await resolveProxyUser(req, enabled({ proxyAuthTrustedProxies: 'garbage' }))).toBeNull();
   });
 
-  it('never creates users: an unknown identity yields null', () => {
+  it('never creates users: an unknown identity yields null', async () => {
     const req = request('172.16.51.1', { 'Remote-User': 'stranger' });
-    expect(resolveProxyUser(req, enabled())).toBeNull();
+    expect(await resolveProxyUser(req, enabled())).toBeNull();
   });
 
-  it('reads the header named in the settings, defaulting to Remote-User', () => {
+  it('reads the header named in the settings, defaulting to Remote-User', async () => {
     expect(DEFAULT_PROXY_AUTH_USER_HEADER).toBe('Remote-User');
     const req = request('172.16.51.1', { 'X-Authentik-Username': 'admin', 'Remote-User': 'stranger' });
-    expect(resolveProxyUser(req, enabled({ proxyAuthUserHeader: 'X-Authentik-Username' }))).toEqual(ADMIN);
+    expect(await resolveProxyUser(req, enabled({ proxyAuthUserHeader: 'X-Authentik-Username' }))).toEqual(ADMIN);
   });
 
-  it('ignores an empty or multi-valued identity header', () => {
-    expect(resolveProxyUser(request('172.16.51.1', { 'Remote-User': '' }), enabled())).toBeNull();
-    expect(resolveProxyUser(request('172.16.51.1', { 'Remote-User': ['admin', 'x'] }), enabled())).toBeNull();
+  it('ignores an empty or multi-valued identity header', async () => {
+    expect(await resolveProxyUser(request('172.16.51.1', { 'Remote-User': '' }), enabled())).toBeNull();
+    expect(await resolveProxyUser(request('172.16.51.1', { 'Remote-User': ['admin', 'x'] }), enabled())).toBeNull();
   });
 
-  it('requires the shared secret header to match when one is configured', () => {
+  it('requires the shared secret header to match when one is configured', async () => {
     const settings = enabled({ proxyAuthSecretHeader: 'X-Fredy-Proxy-Secret', proxyAuthSecret: 's3cret' });
     const base = { 'Remote-User': 'admin' };
-    expect(resolveProxyUser(request('172.16.51.1', base), settings)).toBeNull();
-    expect(resolveProxyUser(request('172.16.51.1', { ...base, 'X-Fredy-Proxy-Secret': 'wrong' }), settings)).toBeNull();
-    expect(resolveProxyUser(request('172.16.51.1', { ...base, 'X-Fredy-Proxy-Secret': 's3cret' }), settings)).toEqual(
-      ADMIN,
-    );
+    expect(await resolveProxyUser(request('172.16.51.1', base), settings)).toBeNull();
+    expect(
+      await resolveProxyUser(request('172.16.51.1', { ...base, 'X-Fredy-Proxy-Secret': 'wrong' }), settings),
+    ).toBeNull();
+    expect(
+      await resolveProxyUser(request('172.16.51.1', { ...base, 'X-Fredy-Proxy-Secret': 's3cret' }), settings),
+    ).toEqual(ADMIN);
   });
 
-  it('refuses to run with a secret header name but no secret (fail closed)', () => {
+  it('refuses to run with a secret header name but no secret (fail closed)', async () => {
     const settings = enabled({ proxyAuthSecretHeader: 'X-Fredy-Proxy-Secret', proxyAuthSecret: '' });
     const req = request('172.16.51.1', { 'Remote-User': 'admin', 'X-Fredy-Proxy-Secret': '' });
-    expect(resolveProxyUser(req, settings)).toBeNull();
+    expect(await resolveProxyUser(req, settings)).toBeNull();
   });
 });
 
-describe('resolveProxyUser trust-list cache', () => {
-  it('follows a changed trusted-proxy setting without a restart', () => {
+describe('resolveProxyUser trust-list cache', async () => {
+  it('follows a changed trusted-proxy setting without a restart', async () => {
     const req = request('192.168.1.9', { 'Remote-User': 'admin' });
-    expect(resolveProxyUser(req, enabled())).toBeNull();
-    expect(resolveProxyUser(req, enabled({ proxyAuthTrustedProxies: '192.168.1.0/24' }))).toEqual(ADMIN);
-    expect(resolveProxyUser(req, enabled())).toBeNull();
+    expect(await resolveProxyUser(req, enabled())).toBeNull();
+    expect(await resolveProxyUser(req, enabled({ proxyAuthTrustedProxies: '192.168.1.0/24' }))).toEqual(ADMIN);
+    expect(await resolveProxyUser(req, enabled())).toBeNull();
   });
 });
 

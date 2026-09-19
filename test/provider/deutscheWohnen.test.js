@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { afterEach, expect } from 'vitest';
+import { afterEach, expect, vi } from 'vitest';
 import * as similarityCache from '../../lib/services/similarity-check/similarityCache.js';
 import { mockFredy, providerConfig } from '../utils.js';
 import { get } from '../mocks/mockNotification.js';
@@ -119,6 +119,27 @@ describe('#deutscheWohnen provider testsuite()', () => {
       }));
 
     const apiUrl = () => provider.convertWebToApi('https://www.deutsche-wohnen.com/mieten/mietangebote?city=Berlin');
+
+    it('retrieves and applies a search token after a 401', async () => {
+      globalThis.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized' })
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ token: 'search-token', ttl: 900 }) })
+        .mockImplementationOnce(async (_url, options) => {
+          expect(options.headers['X-VON-Search-Token']).toBe('search-token');
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ paging: { info: { count: 1, limit: 50 } }, results: rows(0, 1) }),
+          };
+        });
+
+      const listings = await provider.config.getListings(apiUrl());
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(3);
+      expect(globalThis.fetch.mock.calls[1][0]).toBe('https://www.deutsche-wohnen.com/api/real-estate/search-token');
+      expect(listings).toHaveLength(1);
+    });
 
     it('walks the pages the cap leaves behind', async () => {
       const offsets = [];

@@ -123,6 +123,9 @@ describe('services/jobs/jobExecutionService', () => {
 
     bus.emit('jobs:status', { jobId: 'j1', running: true });
 
+    // resolveRecipients is async; give the microtask queue a tick to settle.
+    await new Promise((r) => setTimeout(r, 10));
+
     expect(calls.sent.length, 'sendToUsers should be called once').toBe(1);
     const [recipients, event, data] = calls.sent[0];
     expect(event).toBe('jobStatus');

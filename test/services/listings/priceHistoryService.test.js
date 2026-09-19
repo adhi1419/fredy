@@ -66,7 +66,7 @@ describe('services/listings/priceHistoryService', () => {
   describe('recordPriceChange', () => {
     it('records the observation and reports a drop past the threshold', async () => {
       const { recordPriceChange } = await loadService();
-      const change = recordPriceChange(listing(1200), 1100, { source: 'priceProbe', thresholdPercent: 1 });
+      const change = await recordPriceChange(listing(1200), 1100, { source: 'priceProbe', thresholdPercent: 1 });
 
       expect(state.observations).toHaveLength(1);
       expect(state.applied[0].slice(0, 2)).toEqual(['l1', 1100]);
@@ -76,14 +76,14 @@ describe('services/listings/priceHistoryService', () => {
 
     it('reports an increase as an increase', async () => {
       const { recordPriceChange } = await loadService();
-      expect(recordPriceChange(listing(1000), 1100, { thresholdPercent: 1 })).toMatchObject({ direction: 'up' });
+      expect(await recordPriceChange(listing(1000), 1100, { thresholdPercent: 1 })).toMatchObject({ direction: 'up' });
     });
 
     // The distinction the whole threshold exists for: the data is still true and still worth
     // charting, it is just not worth a push notification at three in the morning.
     it('still records a sub-threshold move but reports nothing to notify', async () => {
       const { recordPriceChange } = await loadService();
-      const change = recordPriceChange(listing(1000), 1005, { thresholdPercent: 1 });
+      const change = await recordPriceChange(listing(1000), 1005, { thresholdPercent: 1 });
 
       expect(change).toBeNull();
       expect(state.observations).toHaveLength(1);
@@ -92,7 +92,7 @@ describe('services/listings/priceHistoryService', () => {
 
     it('does nothing at all when the price has not moved', async () => {
       const { recordPriceChange } = await loadService();
-      expect(recordPriceChange(listing(1200), 1200, { thresholdPercent: 1 })).toBeNull();
+      expect(await recordPriceChange(listing(1200), 1200, { thresholdPercent: 1 })).toBeNull();
       expect(state.observations).toHaveLength(0);
       expect(state.applied).toHaveLength(0);
     });
@@ -101,13 +101,13 @@ describe('services/listings/priceHistoryService', () => {
     // and report a total collapse to everyone watching the listing.
     it.each([null, undefined, 0, -5, NaN])('ignores the unusable reading %s', async (reading) => {
       const { recordPriceChange } = await loadService();
-      expect(recordPriceChange(listing(1200), reading, { thresholdPercent: 1 })).toBeNull();
+      expect(await recordPriceChange(listing(1200), reading, { thresholdPercent: 1 })).toBeNull();
       expect(state.observations).toHaveLength(0);
     });
 
     it('seeds a baseline without reporting a change when the listing had no price', async () => {
       const { recordPriceChange } = await loadService();
-      const change = recordPriceChange(listing(null), 900, { thresholdPercent: 1 });
+      const change = await recordPriceChange(listing(null), 900, { thresholdPercent: 1 });
 
       expect(change).toBeNull();
       expect(state.observations).toHaveLength(1);
@@ -115,7 +115,7 @@ describe('services/listings/priceHistoryService', () => {
 
     it('reports every change when the threshold is zero', async () => {
       const { recordPriceChange } = await loadService();
-      expect(recordPriceChange(listing(1000), 1001, { thresholdPercent: 0 })).not.toBeNull();
+      expect(await recordPriceChange(listing(1000), 1001, { thresholdPercent: 0 })).not.toBeNull();
     });
   });
 

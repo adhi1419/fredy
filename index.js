@@ -15,13 +15,14 @@ import { initActiveCheckerCron } from './lib/services/crons/listing-alive-cron.j
 import { initGeocodingCron } from './lib/services/crons/geocoding-cron.js';
 import { getSettings } from './lib/services/storage/settingsStorage.js';
 import SqliteConnection, { computeDbPath } from './lib/services/storage/SqliteConnection.js';
+import { isFirestore } from './lib/services/storage/backendResolver.js';
+import { isFirebaseAuth, AUTH_MODE } from './lib/services/authMode.js';
 import { initJobExecutionService } from './lib/services/jobs/jobExecutionService.js';
 import { ensureValidBinary } from './lib/services/ensureValidBinary.js';
 import { removeObsoleteProviders } from './lib/services/providers/providerCleanup.js';
 import { seedDemo, warnOnDefaultAdminPassword } from './lib/services/demo/demoService.js';
 import { initDemoCleanupCron } from './lib/services/crons/demo-cleanup-cron.js';
 import { initSessionCleanupCron } from './lib/services/crons/session-cleanup-cron.js';
-import { initMcpOAuthCleanupCron } from './lib/services/crons/mcp-oauth-cleanup-cron.js';
 import { initListingRetentionCron } from './lib/services/crons/listing-retention-cron.js';
 import { initPriceTrackingCron } from './lib/services/crons/price-tracking-cron.js';
 import { initTravelTimeCron } from './lib/services/crons/travel-time-cron.js';
@@ -55,16 +56,23 @@ try {
   process.exit(1);
 }
 
-await SqliteConnection.init();
+if (isFirestore()) {
+  // Firestore backend: no local DB file, no schema, no migrations.
+  const { default: FirestoreConnection } = await import('./lib/services/storage/firestore/FirestoreConnection.js');
+  await FirestoreConnection.init();
+  logger.info('Storage backend: firestore');
+} else {
+  await SqliteConnection.init();
 
-// Run DB migrations once at startup and block until finished. A failure here is fatal: continuing
-// would start the API and the schedulers against a schema that is missing the failed migration and
-// everything after it.
-try {
-  await runMigrations();
-} catch (err) {
-  logger.error('Database migration failed. Refusing to start.', err.cause ?? err);
-  process.exit(1);
+  // Run DB migrations once at startup and block until finished. A failure here is fatal: continuing
+  // would start the API and the schedulers against a schema that is missing the failed migration and
+  // everything after it.
+  try {
+    await runMigrations();
+  } catch (err) {
+    logger.error('Database migration failed. Refusing to start.', err.cause ?? err);
+    process.exit(1);
+  }
 }
 
 const settings = await getSettings();
@@ -76,9 +84,11 @@ const settings = await getSettings();
 await reloadEnabledFromSettings();
 
 // Ensure the sqlite directory exists before loading anything else (based on config.sqlitepath)
-const { dir: sqliteDir } = await computeDbPath();
-if (!fs.existsSync(sqliteDir)) {
-  fs.mkdirSync(sqliteDir, { recursive: true });
+if (!isFirestore()) {
+  const { dir: sqliteDir } = await computeDbPath();
+  if (!fs.existsSync(sqliteDir)) {
+    fs.mkdirSync(sqliteDir, { recursive: true });
+  }
 }
 
 // Load provider modules once at startup
@@ -89,11 +99,18 @@ const providers = await getProviders();
 // re-checked again, so they are pruned before anything starts working with jobs or listings.
 removeObsoleteProviders(providers);
 
-similarityCache.initSimilarityCache();
+await similarityCache.initSimilarityCache();
 similarityCache.startSimilarityCacheReloader();
 
 //assuming interval is always in minutes
 const INTERVAL = settings.interval * 60 * 1000;
+
+// Wire the Job Execution Service (sets the trigger runner + bus listeners) BEFORE the API starts
+// listening. On scale-to-zero Cloud Run the external scheduler's wake-up request can hit
+// /api/trigger the instant the server accepts connections; when this ran AFTER listen, that request
+// raced the trigger runner and returned 500 "Job execution service not initialized", skipping the
+// scrape for that cycle — which was the majority of cold-start cycles.
+initJobExecutionService({ providers, intervalMs: INTERVAL });
 
 // Initialize API only after migrations completed
 await import('./lib/api/api.js');
@@ -102,7 +119,18 @@ if (settings.demoMode) {
   logger.info('Running in demo mode');
 }
 
-await ensureAdminUserExists();
+if (isFirebaseAuth()) {
+  // Multi-tenant firebase auth: the allowlist requires Firestore, and the
+  // admin/admin bootstrap must not exist — the instance admin is whichever
+  // allowlist entry carries isAdmin: true (doc/prd-multi-tenant-auth.md).
+  if (!isFirestore()) {
+    logger.error('AUTH_MODE=firebase requires STORAGE_BACKEND=firestore. Refusing to start.');
+    process.exit(1);
+  }
+  logger.info(`Auth mode: ${AUTH_MODE}`);
+} else {
+  await ensureAdminUserExists();
+}
 await ensureDemoUserExists();
 
 // A demo instance must always present a working Fredy: the demo job is created on the first
@@ -116,7 +144,6 @@ initActiveCheckerCron();
 initGeocodingCron();
 await initDemoCleanupCron();
 await initSessionCleanupCron();
-await initMcpOAuthCleanupCron();
 await initListingRetentionCron();
 // Schedules only. Unlike the others this one is never run on start: it renders a browser page per
 // listing, and a restart is the worst moment to begin doing that.
@@ -129,7 +156,7 @@ initTravelTimeCron();
 // a moment it needs holding back from.
 initConnectivityCron();
 
-logger.info(`Started Fredy successfully. Ui can be accessed via http://localhost:${settings.port}`);
-
-// Initialize the lean Job Execution Service (schedules and bus listeners)
-initJobExecutionService({ providers, intervalMs: INTERVAL });
+// Same resolution chain as api.js — PORT env (Cloud Run) wins, then config, then default.
+logger.info(
+  `Started Fredy successfully. Ui can be accessed via http://localhost:${Number(process.env.PORT) || settings.port || 9998}`,
+);

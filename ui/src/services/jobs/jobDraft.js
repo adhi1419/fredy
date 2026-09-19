@@ -53,6 +53,7 @@ export const DRAFT_FIELDS = [
   'spatialFilter',
   'specFilter',
   'commuteFilter',
+  'autoSendInquiry',
 ];
 
 /**
@@ -90,7 +91,8 @@ export function hasContent(draft) {
     draft.dealType != null ||
     draft.spatialFilter != null ||
     draft.specFilter != null ||
-    draft.commuteFilter != null
+    draft.commuteFilter != null ||
+    draft.autoSendInquiry === true
   );
 }
 

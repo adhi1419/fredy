@@ -91,7 +91,7 @@ describe('restoreFromZip - WAL safety and cache invalidation', () => {
       default: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
     }));
     vi.doMock(path.join(ROOT, 'lib', 'utils.js'), () => ({ getPackageVersion: async () => '23.2.3' }));
-    vi.doMock(path.join(ROOT, 'lib', 'services', 'storage', 'settingsStorage.js'), () => ({
+    vi.doMock(path.join(ROOT, 'lib', 'services', 'storage', 'sqlite', 'settingsStorage.js'), () => ({
       refreshSettingsCache: async () => {
         recorded.settingsRefreshed += 1;
         recorded.order.push('settings');
@@ -104,7 +104,7 @@ describe('restoreFromZip - WAL safety and cache invalidation', () => {
       },
     }));
 
-    svc = await import(path.join(ROOT, 'lib', 'services', 'storage', 'backupRestoreService.js'));
+    svc = await import(path.join(ROOT, 'lib', 'services', 'storage', 'sqlite', 'backupRestoreService.js'));
   });
 
   it('checkpoints the WAL before touching the database file', async () => {
