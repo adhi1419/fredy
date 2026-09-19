@@ -137,6 +137,28 @@ describe('listingsStorage contract', () => {
       expect(await listingsStorage.storeListings('j1', 'immoscout', [])).toBeUndefined();
       expect(await listingsStorage.storeListings('j1', 'immoscout', null)).toBeUndefined();
     });
+
+    it('returns similarity rows for live listings and excludes soft-deleted rows', async () => {
+      await seedUser('u1');
+      await seedJob('j1', 'u1');
+      const live = makeListing('similarity-live', { description: 'live description' });
+      const deleted = makeListing('similarity-deleted', { description: 'deleted description' });
+      await listingsStorage.storeListings('j1', 'immoscout', [live, deleted]);
+      await listingsStorage.deleteListingsById([deleted.id]);
+
+      await expect(listingsStorage.getAllEntriesFromListings()).resolves.toEqual([
+        {
+          job_id: 'j1',
+          provider: 'immoscout',
+          title: 'Flat similarity-live',
+          address: 'Hauptstrasse 1',
+          price: 1000,
+          size: 60,
+          rooms: 2,
+          description: 'live description',
+        },
+      ]);
+    });
   });
 
   // ── getKnownListingHashesForJobAndProvider ─────────────────────────────────
@@ -191,6 +213,26 @@ describe('listingsStorage contract', () => {
 
       const page2 = await listingsStorage.queryListings({ pageSize: 2, page: 2, userId: 'u1' });
       expect(page2.result).toHaveLength(2);
+    });
+
+    it.each([
+      { input: { page: 0, pageSize: 0 }, expectedPage: 1, expectedLength: 5 },
+      { input: { page: -2, pageSize: 2 }, expectedPage: 1, expectedLength: 2 },
+      { input: { page: 1, pageSize: 1001 }, expectedPage: 1, expectedLength: 5 },
+    ])('normalizes pagination input %#', async ({ input, expectedPage, expectedLength }) => {
+      await seedUser('u1');
+      await seedJob('j1', 'u1');
+      await listingsStorage.storeListings(
+        'j1',
+        'immoscout',
+        Array.from({ length: 5 }, (_, i) => makeListing(`pagination-boundary-${i}`)),
+      );
+
+      const result = await listingsStorage.queryListings({ ...input, userId: 'u1' });
+
+      expect(result.page).toBe(expectedPage);
+      expect(result.result).toHaveLength(expectedLength);
+      expect(result.totalNumber).toBe(5);
     });
 
     it('sorts by price ascending and descending', async () => {
