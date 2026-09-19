@@ -12,7 +12,6 @@ import { describe, it, expect, vi } from 'vitest';
  */
 const STORED_SETTINGS = {
   demoMode: false,
-  analyticsEnabled: true,
   interval: 60,
   port: 9998,
   baseUrl: 'https://fredy.example',
@@ -76,7 +75,6 @@ describe('settings exposure', () => {
     async function loadGetHandler(isAdmin) {
       vi.resetModules();
       vi.doMock('../../lib/api/security.js', () => ({ isAdmin: () => isAdmin }));
-      vi.doMock('../../lib/services/tracking/Tracker.js', () => ({ trackPoi: vi.fn() }));
 
       const plugin = (await import('../../lib/api/routes/generalSettingsRoute.js')).default;
       const routes = {};
@@ -108,9 +106,8 @@ describe('settings exposure', () => {
     it('still gives a non-admin the flags the app needs to boot', async () => {
       const handler = await loadGetHandler(false);
       const payload = await handler({});
-      // App.jsx gates the demo banner and the tracking consent modal on these two; the dashboard
-      // renders the interval. Anything less and the UI breaks for regular users.
-      expect(payload).toEqual({ demoMode: false, analyticsEnabled: true, interval: 60 });
+      // App.jsx gates the demo banner on demoMode; the dashboard renders the interval.
+      expect(payload).toEqual({ demoMode: false, interval: 60 });
     });
   });
 });

@@ -49,7 +49,7 @@ On top of the listing itself, Fredy answers two questions:
 [Core Concepts](#-core-concepts) · [Financing Calculator](#-financing-calculator) ·
 [Travel Time](#travel-time) · [Public Transport](#public-transport) ·
 [Immoscout](#immoscout) · [Bot Detection & Proxies](#-bot-detection--proxies) ·
-[Analytics](#analytics) · [Debug Information](#-debug-information) ·
+[[Debug Information](#-debug-information) ·
 [Development](#-development) · [Architecture](#-architecture) ·
 [Contributing](#-contributing) · [Credits & Data](#-credits--data) ·
 [License](#-license) · [Support](#-support)
@@ -519,14 +519,6 @@ Local Docker and offline tests use the Firestore emulator and do not exercise th
 Firebase token refresh, or cross-origin browser persistence. Use the emulator-backed contract suite
 for storage behavior and an actual Firebase project for the browser sign-in flow.
 
-## Analytics
-
-Fredy is completely free (and will always remain free). However, it would be a huge help if you’d allow me to collect some analytical data.
-Before you freak out, let me explain...  
-If you agree, Fredy will send a ping once every 6 hours to my internal tracking project (Will be open sourced soon).  
-The data includes: which notification adapters and providers are in use (the type only, for example `slack`, never your channels, their names or their credentials), OS, architecture, Node version, and language. The information is entirely anonymous and helps me understand which adapters/providers are most frequently used.
-
-**Thanks**🤘
 
 ## 🐞 Debug Information
 

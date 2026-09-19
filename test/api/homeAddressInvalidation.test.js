@@ -10,7 +10,7 @@ const root = (await import('node:path')).resolve('.');
 const settingsStoragePath = root + '/lib/services/storage/settingsStorage.js';
 const geoCodingPath = root + '/lib/services/geocoding/geoCodingService.js';
 const distanceServicePath = root + '/lib/services/geocoding/distanceService.js';
-const trackerPath = root + '/lib/services/tracking/Tracker.js';
+const providerCountriesPath = root + '/lib/services/providers/providerCountries.js';
 const geocodingCronPath = root + '/lib/services/crons/geocoding-cron.js';
 
 let stored;
@@ -41,7 +41,7 @@ async function buildServer() {
   vi.doMock(distanceServicePath, () => ({
     updateDistancesForAddressChange: (userId, addresses) => invalidations.push(addresses),
   }));
-  vi.doMock(trackerPath, () => ({ trackPoi: async () => {} }));
+  vi.doMock(providerCountriesPath, () => ({ getCountriesForUser: async () => ['de'] }));
   vi.doMock(geocodingCronPath, () => ({ runGeoCordTask: () => sweeps.push(true) }));
 
   const plugin = (await import(root + '/lib/api/routes/userSettingsRoute.js')).default;

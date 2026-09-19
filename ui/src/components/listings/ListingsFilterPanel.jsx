@@ -46,8 +46,6 @@ import { useTranslation } from '../../services/i18n/i18n.jsx';
  * @param {string} props.affordabilityHelp
  * @param {boolean} props.hasAddresses
  * @param {boolean} [props.connectivityEnabled]
- * @param {() => void} props.onAffordabilityUsed
- * @param {(kind: 'downstream'|'fiber'|'mobile') => void} props.onConnectivityFilterUsed
  * @returns {React.ReactElement}
  */
 export default function ListingsFilterPanel({
@@ -62,8 +60,6 @@ export default function ListingsFilterPanel({
   affordabilityHelp,
   hasAddresses,
   connectivityEnabled = false,
-  onAffordabilityUsed,
-  onConnectivityFilterUsed,
 }) {
   const t = useTranslation();
   const activeCount = countActiveFilters(values);
@@ -133,11 +129,6 @@ export default function ListingsFilterPanel({
               showClear
               onChange={(val) => {
                 onChange({ afford: val ?? null, page: 1 });
-                // Counted when it is switched on, not when it is cleared, and not on every page
-                // load that happens to carry the filter in its URL.
-                if (val != null) {
-                  onAffordabilityUsed();
-                }
               }}
               value={values.afford}
               style={{ width: '100%' }}
@@ -181,9 +172,6 @@ export default function ListingsFilterPanel({
             showClear
             onChange={(val) => {
               onChange({ down: val ?? null, page: 1 });
-              if (val != null) {
-                onConnectivityFilterUsed('downstream');
-              }
             }}
             value={values.down}
             style={{ width: '100%' }}
@@ -208,9 +196,6 @@ export default function ListingsFilterPanel({
             onChange={(e) => {
               const wantsFiber = e.target.value === 'fiber';
               onChange({ fiber: wantsFiber ? true : null, page: 1 });
-              if (wantsFiber) {
-                onConnectivityFilterUsed('fiber');
-              }
             }}
           >
             <Radio value="all">{t('listings.filterAll')}</Radio>
@@ -226,9 +211,6 @@ export default function ListingsFilterPanel({
               // and leaving it set would make the next technology pick silently narrower than the
               // drawer shows.
               onChange({ mtech: val ?? null, mop: val == null ? null : values.mop, page: 1 });
-              if (val != null) {
-                onConnectivityFilterUsed('mobile');
-              }
             }}
             value={values.mtech}
             style={{ width: '100%' }}

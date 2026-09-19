@@ -27,7 +27,6 @@ import Login from './views/login/Login';
 import Jobs from './views/jobs/Jobs';
 
 import './App.less';
-import TrackingModal from './components/tracking/TrackingModal.jsx';
 import { LocaleProvider } from '@douyinfe/semi-ui-19';
 import VersionBanner from './components/version/VersionBanner.jsx';
 import Listings from './views/listings/Listings.jsx';
@@ -139,11 +138,9 @@ export default function FredyApp() {
           // Marked done only now: a route that seeds its state from the store on mount must not
           // be rendered before the store actually holds it.
           initializedFor.current = userId;
-          // Nothing in the first render depends on these two - the version banner and the
-          // tracking modal appear when they arrive - so they must not hold up the app.
+          // The version banner does not affect the first render, so it must not hold up the app.
           // getVersionUpdate in particular reaches out to api.github.com.
           actions.versionUpdate.getVersionUpdate();
-          actions.tracking.getTrackingPois();
         }
 
         setLoading(false);
@@ -206,7 +203,6 @@ export default function FredyApp() {
                 {versionUpdate?.newVersion && <VersionBanner />}
                 <DebugLoggingBanner />
                 {settings.demoMode && <DemoBanner />}
-                {settings.analyticsEnabled === null && !settings.demoMode && <TrackingModal />}
                 {!settings.demoMode && <NewsModal />}
                 <Routes>
                   <Route path="/403" element={<InsufficientPermission />} />

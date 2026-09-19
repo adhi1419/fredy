@@ -10,7 +10,6 @@ const listingsStoragePath = root + '/lib/services/storage/listingsStorage.js';
 const settingsPath = root + '/lib/services/storage/settingsStorage.js';
 const providerCountriesPath = root + '/lib/services/providers/providerCountries.js';
 const servicePath = root + '/lib/services/connectivity/connectivityService.js';
-const trackerPath = root + '/lib/services/tracking/Tracker.js';
 const loggerPath = root + '/lib/services/logger.js';
 
 let state;
@@ -47,7 +46,6 @@ async function loadSweeper() {
     DEFAULT_CONNECTIVITY_LIMIT_PER_RUN: 200,
     DEFAULT_CONNECTIVITY_MAX_AGE_DAYS: 180,
   }));
-  vi.doMock(trackerPath, () => ({ trackPoi: async (poi) => state.tracked.push(poi) }));
   vi.doMock(loggerPath, () => ({ default: { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} } }));
   return (await import(root + '/lib/services/connectivity/connectivitySweeper.js')).default;
 }
@@ -69,7 +67,6 @@ describe('services/connectivity/connectivitySweeper', () => {
       stored: [],
       queries: [],
       lookups: [],
-      tracked: [],
       paused: [],
       disabledSources: [],
       answer: { maxDownMbit: 1000, fiber: true, source: 'de-bba' },
@@ -179,23 +176,6 @@ describe('services/connectivity/connectivitySweeper', () => {
     expect(state.lookups).toEqual([]);
   });
 
-  it('reports a register that has gone away, once', async () => {
-    state.pending = Array.from({ length: 5 }, (_, index) => ({
-      id: `l${index}`,
-      latitude: 52.5 + index / 100,
-      longitude: 13.4,
-      provider: 'immoscout',
-    }));
-    state.paused = ['de-bba'];
-    const sweep = await loadSweeper();
-
-    await sweep({ now: 1000 });
-
-    // Once per sweep, never once per listing - a dead register would otherwise drown out
-    // everything else the tracking has to say.
-    expect(state.tracked).toEqual(['CONNECTIVITY_SOURCE_UNAVAILABLE']);
-  });
-
   it('leaves a listing alone when its register is switched off', async () => {
     state.disabledSources = ['de-bba'];
     const sweep = await loadSweeper();
@@ -208,26 +188,6 @@ describe('services/connectivity/connectivitySweeper', () => {
     expect(tally.skipped).toBe(1);
     expect(state.stored).toEqual([]);
     expect(state.lookups).toEqual([]);
-  });
-
-  it('says nothing about a register that answered', async () => {
-    const sweep = await loadSweeper();
-
-    await sweep({ now: 1000 });
-
-    expect(state.tracked).toEqual([]);
-  });
-
-  it('does not call an outage on a run that never asked anything', async () => {
-    // A sweep with only Austrian listings stamps them and asks nobody. A register left standing off
-    // by an earlier run must not turn that into an outage report.
-    state.pending = [{ id: 'l1', latitude: 48.21, longitude: 16.37, provider: 'austrianportal' }];
-    state.paused = ['de-bba'];
-    const sweep = await loadSweeper();
-
-    await sweep({ now: 1000 });
-
-    expect(state.tracked).toEqual([]);
   });
 
   it('keeps going when one listing blows up', async () => {

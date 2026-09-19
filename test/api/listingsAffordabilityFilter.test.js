@@ -28,7 +28,6 @@ vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
   getSettings: vi.fn(async () => ({})),
   getUserSettings: vi.fn(() => ({})),
 }));
-vi.mock('../../lib/services/tracking/Tracker.js', () => ({ trackPoi: vi.fn() }));
 vi.mock('../../lib/services/logger.js', () => ({ default: { error: vi.fn(), info: vi.fn(), debug: vi.fn() } }));
 vi.mock('../../lib/api/security.js', () => ({ isAdmin: vi.fn(() => false) }));
 

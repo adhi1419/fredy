@@ -13,13 +13,11 @@ vi.mock('../../lib/services/storage/listingsStorage.js', () => ({
 vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
   getUserSettings: vi.fn(() => ({})),
 }));
-vi.mock('../../lib/services/tracking/Tracker.js', () => ({ trackPoi: vi.fn() }));
 vi.mock('../../lib/services/logger.js', () => ({ default: { error: vi.fn(), info: vi.fn(), debug: vi.fn() } }));
 vi.mock('../../lib/api/security.js', () => ({ isAdmin: vi.fn(() => false) }));
 
 import { queryListings, getListingById } from '../../lib/services/storage/listingsStorage.js';
 import { getUserSettings } from '../../lib/services/storage/settingsStorage.js';
-import { trackPoi } from '../../lib/services/tracking/Tracker.js';
 import financePlugin from '../../lib/api/routes/financeRouter.js';
 
 const PROFILE = {
@@ -95,13 +93,6 @@ describe('POST /calculate', () => {
     // The normalized profile comes back too: the form seeds from it, and normalizing is itself a
     // rule (defaults for equity, Bundesland, scenarios) that must not be reimplemented client-side.
     expect(body.profile.financing.scenarios.length).toBeGreaterThan(0);
-  });
-
-  it('records that the calculator was used', async () => {
-    const app = await buildApp();
-    await app.inject({ method: 'POST', url: '/calculate', payload: { profile: PROFILE } });
-
-    expect(trackPoi).toHaveBeenCalledWith('FINANCE_CALCULATOR_USED');
   });
 
   it('rejects a negative purchase price', async () => {

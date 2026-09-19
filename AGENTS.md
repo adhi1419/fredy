@@ -193,11 +193,6 @@ which stays photography in both themes; `#000` used as a mask stencil; white on 
 is dark red either way. The map basemap is the light OpenFreeMap style in both themes, so map
 overlays follow the page rather than inverting.
 
-**Tracking.** Switching theme fires `CHANGE_THEME_DARK` or `CHANGE_THEME_LIGHT`. A tracking event
-carries a feature name and nothing else (`trackPoi` sends one string), so any value worth reporting
-has to be part of the name - which is why there is a POI per theme rather than one for the setting.
-It fires on the transition only: re-saving the theme you are already on, including the first-ever
-save of `dark` by an account that was on the dark default, is not somebody changing theme.
 
 Contrast is not a matter of taste here: the light accent is two steps darker than the dark one
 (`#b04a3f` against `#c0564a`) because the dark red that carries white text at 4.5:1 on near-black

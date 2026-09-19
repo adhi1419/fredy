@@ -30,7 +30,6 @@ const NewsModal = () => {
   const screenWidth = useScreenWidth();
   const lastSeen = useSelector((state) => state.userSettings.settings.news_last_seen_version);
   const userSettingsLoaded = useSelector((state) => state.userSettings.loaded);
-  const pois = useSelector((state) => state.tracking.pois);
   const actions = useActions();
 
   // Closing the dialog is a decision the user just made; remembering it is a request that can
@@ -58,7 +57,7 @@ const NewsModal = () => {
   const steps = useMemo(() => toSteps(unseen), [unseen]);
   const visible = !dismissed && userSettingsLoaded && steps.length > 0;
 
-  const handleClose = (poi) => {
+  const handleClose = () => {
     setDismissed(true);
     // Best effort: if the marker cannot be stored the news simply comes back on the next visit,
     // which beats an error toast in front of someone who just closed a welcome dialog. The catch
@@ -66,9 +65,6 @@ const NewsModal = () => {
     actions.userSettings.setNewsLastSeenVersion(newest).catch((error) => {
       console.warn('Could not remember that the news were read.', error);
     });
-    if (poi) {
-      actions.tracking.trackPoi(poi);
-    }
   };
 
   if (!visible) {
@@ -84,7 +80,7 @@ const NewsModal = () => {
         placement="bottom"
         height="90%"
         title={t('news.sheetTitle')}
-        onCancel={() => handleClose(pois.WELCOME_SKIPPED)}
+        onCancel={() => handleClose()}
         className="news__sheet"
       >
         {unseen.map((release) =>
@@ -95,7 +91,7 @@ const NewsModal = () => {
             </div>
           )),
         )}
-        <Button theme="solid" type="primary" block onClick={() => handleClose(pois.WELCOME_FINISHED)}>
+        <Button theme="solid" type="primary" block onClick={() => handleClose()}>
           {t('news.sheetDone')}
         </Button>
       </SideSheet>
@@ -108,8 +104,8 @@ const NewsModal = () => {
       mask={true}
       steps={steps}
       visible
-      onFinish={() => handleClose(pois.WELCOME_FINISHED)}
-      onSkip={() => handleClose(pois.WELCOME_SKIPPED)}
+      onFinish={() => handleClose()}
+      onSkip={() => handleClose()}
       modalProps={{
         width: '850px',
       }}

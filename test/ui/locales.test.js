@@ -7,7 +7,6 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { TRACKING_POIS } from '../../lib/TRACKING_POIS.js';
 import { COMMUTE_ACTIONS } from '../../ui/src/services/jobs/commuteFilter.js';
 import {
   CONNECTIVITY_SOURCES,
@@ -212,20 +211,6 @@ describe('locales', () => {
     expect(usedKeys.length).toBeGreaterThan(0);
     for (const key of usedKeys) {
       expect(Object.keys(english)).toContain(key);
-    }
-  });
-
-  it('only references donation tracking POIs that exist', () => {
-    // A misspelled POI sends `{ poi: undefined }`, the route answers 400 and the store swallows
-    // the failure in a console.error - the counter would sit at zero without anyone noticing.
-    // Both reference shapes: pois.DONATION_MODAL_OPENED and the quoted keys in DONATION_TARGETS.
-    const usedPois = [
-      ...new Set([...donateComponent.matchAll(/(?:pois\.|')(DONATION_[A-Z_]+)/g)].map((match) => match[1])),
-    ];
-
-    expect(usedPois.length).toBe(4);
-    for (const poi of usedPois) {
-      expect(Object.keys(TRACKING_POIS)).toContain(poi);
     }
   });
 });

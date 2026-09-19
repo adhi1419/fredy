@@ -6,7 +6,6 @@
 import { useState } from 'react';
 import { Modal } from '@douyinfe/semi-ui-19';
 import { IconHeartStroked, IconGithubLogo, IconCoinMoneyStroked, IconCreditCardStroked } from '@douyinfe/semi-icons';
-import { useActions, useSelector } from '../../services/state/store';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import heart from '../../assets/heart.png';
 
@@ -15,27 +14,24 @@ import './Donate.less';
 /**
  * The three places the money can go, ordered by how committing they are: GitHub Sponsors and
  * Ko-fi both offer a recurring option, PayPal is the one-off tip for everyone who wants neither
- * an account nor a subscription. Each carries its own POI because they are not interchangeable.
+ * an account nor a subscription.
  *
- * @type {Array<{href: string, label: string, poi: string, Icon: import('react').ElementType}>}
+ * @type {Array<{href: string, label: string, Icon: import('react').ElementType}>}
  */
 const DONATION_TARGETS = [
   {
     href: 'https://github.com/sponsors/orangecoding',
     label: 'donate.github',
-    poi: 'DONATION_GITHUB_CLICKED',
     Icon: IconGithubLogo,
   },
   {
     href: 'https://ko-fi.com/orangecoding',
     label: 'donate.kofi',
-    poi: 'DONATION_KOFI_CLICKED',
     Icon: IconCoinMoneyStroked,
   },
   {
     href: 'https://paypal.me/chriztian',
     label: 'donate.paypal',
-    poi: 'DONATION_PAYPAL_CLICKED',
     Icon: IconCreditCardStroked,
   },
 ];
@@ -51,13 +47,10 @@ const DONATION_TARGETS = [
  */
 export default function Donate({ collapsed }) {
   const t = useTranslation();
-  const actions = useActions();
-  const pois = useSelector((state) => state.tracking.pois);
   const [visible, setVisible] = useState(false);
 
   const open = () => {
     setVisible(true);
-    actions.tracking.trackPoi(pois.DONATION_MODAL_OPENED);
   };
 
   return (
@@ -80,14 +73,13 @@ export default function Donate({ collapsed }) {
           <p className="donate__paragraph">{t('donate.paragraph1')}</p>
           <p className="donate__paragraph">{t('donate.paragraph2')}</p>
           <div className="donate__targets">
-            {DONATION_TARGETS.map(({ href, label, poi, Icon }) => (
+            {DONATION_TARGETS.map(({ href, label, Icon }) => (
               <a
                 key={label}
                 className="donate__target"
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => actions.tracking.trackPoi(pois[poi])}
               >
                 <Icon size="large" />
                 {t(label)}

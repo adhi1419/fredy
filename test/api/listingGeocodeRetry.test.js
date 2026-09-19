@@ -20,7 +20,6 @@ const geoCodingPath = root + '/lib/services/geocoding/geoCodingService.js';
 const distanceServicePath = root + '/lib/services/geocoding/distanceService.js';
 const jobStoragePath = root + '/lib/services/storage/jobStorage.js';
 const settingsStoragePath = root + '/lib/services/storage/settingsStorage.js';
-const trackerPath = root + '/lib/services/tracking/Tracker.js';
 
 let listing;
 let geocodeResult;
@@ -62,7 +61,6 @@ async function buildServer({ demoMode = false, isAdmin = false } = {}) {
     getSettings: async () => ({ demoMode }),
     getUserSettings: () => ({}),
   }));
-  vi.doMock(trackerPath, () => ({ trackPoi: async () => {} }));
 
   const plugin = (await import(root + '/lib/api/routes/listingsRouter.js')).default;
   const app = Fastify();

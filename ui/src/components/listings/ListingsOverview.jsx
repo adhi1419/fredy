@@ -93,7 +93,6 @@ const ListingsOverview = () => {
   const locale = useLocale();
   const listingsData = useSelector((state) => state.listingsData);
   const providers = useSelector((state) => state.provider);
-  const pois = useSelector((state) => state.tracking.pois);
   const jobs = useSelector((state) => state.jobsData.jobs);
   const userSettings = useSelector((state) => state.userSettings.settings);
   const generalSettings = useSelector((state) => state.generalSettings.settings);
@@ -450,16 +449,6 @@ const ListingsOverview = () => {
         affordabilityHelp={affordabilityHelp}
         hasAddresses={hasAddresses}
         connectivityEnabled={generalSettings?.connectivityEnabled === true}
-        onAffordabilityUsed={() => actions.tracking.trackPoi(pois.FINANCE_AFFORDABILITY_FILTER_USED)}
-        onConnectivityFilterUsed={(kind) =>
-          actions.tracking.trackPoi(
-            {
-              downstream: pois.CONNECTIVITY_FILTER_DOWNSTREAM,
-              fiber: pois.CONNECTIVITY_FILTER_FIBER,
-              mobile: pois.CONNECTIVITY_FILTER_MOBILE,
-            }[kind],
-          )
-        }
       />
 
       {newAvailableCount > 0 && (

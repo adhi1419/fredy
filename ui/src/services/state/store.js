@@ -357,23 +357,6 @@ export const useFredyState = create(
             }
           },
         },
-        tracking: {
-          async getTrackingPois() {
-            try {
-              const response = await xhrGet('/api/tracking/trackingPois');
-              set((state) => ({ tracking: { ...state.tracking, pois: Object.freeze(response.json) } }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/tracking. Error:', Exception);
-            }
-          },
-          async trackPoi(poi) {
-            try {
-              await xhrPost('/api/tracking/poi', { poi });
-            } catch (Exception) {
-              console.error('Error while trying to track poi. Error:', Exception);
-            }
-          },
-        },
         listingsData: {
           async getListingsData({
             page = 1,
@@ -742,7 +725,6 @@ export const useFredyState = create(
         userSettings: { settings: {}, loaded: false },
         demoMode: { demoMode: false },
         versionUpdate: {},
-        tracking: { pois: {} },
         provider: [],
         jobsData: {
           jobs: [],
@@ -763,7 +745,6 @@ export const useFredyState = create(
         generalSettings: { ...effects.generalSettings },
         demoMode: { ...effects.demoMode },
         versionUpdate: { ...effects.versionUpdate },
-        tracking: { ...effects.tracking },
         listingsData: { ...effects.listingsData },
         provider: { ...effects.provider },
         jobsData: { ...effects.jobsData },

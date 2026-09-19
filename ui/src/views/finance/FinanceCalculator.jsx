@@ -22,7 +22,7 @@ import InterestPrincipalChart from './charts/InterestPrincipalChart.jsx';
 import CostBreakdownChart from './charts/CostBreakdownChart.jsx';
 import BudgetChart from './charts/BudgetChart.jsx';
 
-import { useActions, useSelector } from '../../services/state/store.js';
+import { useActions } from '../../services/state/store.js';
 import { errorMessage } from '../../services/xhr.js';
 import { useFinanceProfile } from '../../hooks/useFinanceProfile.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
@@ -106,7 +106,6 @@ export default function FinanceCalculator() {
   const actions = useActions();
   const [searchParams] = useSearchParams();
   const { profile: storedProfile, stored, anyComplete } = useFinanceProfile();
-  const pois = useSelector((state) => state.tracking.pois);
 
   // Never `{}`: the Buy tab dereferences `draft.financing.scenarios`, and there is no error
   // boundary in the app, so one failed profile-summary request would blank the whole page. The
@@ -211,9 +210,6 @@ export default function FinanceCalculator() {
     setSaving(section);
     try {
       await actions.userSettings.saveFinanceSection({ section, profile: draft });
-      // Only the deliberate Save is counted. The save-on-blur below fires on every field the
-      // user leaves, which would measure typing rather than adoption.
-      actions.tracking.trackPoi(section === 'rent' ? pois.FINANCE_RENT_PROFILE_SAVED : pois.FINANCE_BUY_PROFILE_SAVED);
       Toast.success(t('finance.saved'));
     } catch (error) {
       Toast.error(errorMessage(error, t('finance.saveFailed')));
@@ -226,7 +222,6 @@ export default function FinanceCalculator() {
     setDeleting(section);
     try {
       await actions.userSettings.deleteFinanceSection(section);
-      actions.tracking.trackPoi(pois.FINANCE_PROFILE_DELETED);
       Toast.success(t('finance.deleted'));
     } catch (error) {
       Toast.error(errorMessage(error, t('finance.deleteFailed')));

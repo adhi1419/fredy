@@ -24,7 +24,6 @@ async function loadPostHandler(isAdmin = true) {
     upsertSettings: (settings) => upserted.push(settings),
   }));
   vi.doMock(root + '/lib/api/security.js', () => ({ isAdmin: () => isAdmin }));
-  vi.doMock(root + '/lib/services/tracking/Tracker.js', () => ({ trackPoi: vi.fn() }));
   vi.doMock(root + '/lib/services/storage/userStorage.js', () => ({ ensureDemoUserExists: vi.fn() }));
   // The real isValidTimeZone: asking Intl whether a zone resolves needs no fixture, and it is the
   // behaviour under test.
