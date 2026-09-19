@@ -63,7 +63,7 @@ describe('POST /api/listings/:listingId/draft-message', () => {
     const plugin = (await import('../../lib/api/routes/listingsRouter.js')).default;
     const instance = Fastify();
     instance.addHook('onRequest', async (request) => {
-      request.session = { currentUser };
+      request.currentUser = { id: currentUser, isAdmin: false };
       request.currentUser = currentUser ? { id: currentUser, isAdmin: false } : undefined;
     });
     await instance.register(plugin, { prefix: '/api/listings' });

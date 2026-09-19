@@ -3,17 +3,30 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { xhrPost } from '../../services/xhr';
 import { IconUser } from '@douyinfe/semi-icons';
+import { useNavigate } from 'react-router';
+import { useActions } from '../../services/state/store';
+import { signOutFirebase } from '../../services/auth/firebaseAuth.js';
 
 const Logout = function Logout({ text }) {
+  const navigate = useNavigate();
+  const actions = useActions();
+
   const handleLogout = async () => {
-    await xhrPost('/api/login/logout');
-    location.reload();
+    try {
+      await signOutFirebase();
+    } finally {
+      actions.user.resetCurrentUser();
+      navigate('/login', { replace: true });
+    }
   };
 
   return (
-    <button className={`navigate__logout-btn${!text ? ' navigate__logout-btn--icon-only' : ''}`} onClick={handleLogout}>
+    <button
+      type="button"
+      className={`navigate__logout-btn${!text ? ' navigate__logout-btn--icon-only' : ''}`}
+      onClick={handleLogout}
+    >
       <IconUser size="default" />
       {text && 'Logout'}
     </button>

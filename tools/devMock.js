@@ -139,8 +139,7 @@ const dashboard = {
 };
 
 const routes = {
-  'GET /api/login/user': { userId: 1, username: 'admin', isAdmin: true },
-  'GET /api/admin/users': users,
+  'GET /api/auth/me': { userId: 1, username: 'admin@example.com', isAdmin: true },
   'GET /api/jobs/provider': [
     { id: 'immoscout', name: 'ImmobilienScout24', baseUrl: 'https://www.immobilienscout24.de' },
     { id: 'immo', name: 'Immowelt', baseUrl: 'https://www.immowelt.de' },

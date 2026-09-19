@@ -6,16 +6,13 @@
 /**
  * Addresses that used to be pages of their own.
  *
- * Fredy has moved things around more than once: settings and users lived at the top level before
- * they were grouped, the travel-time page was called "addresses", and the listings watchlist was
+ * Fredy has moved things around more than once: the travel-time page was called "addresses",
+ * and the listings watchlist was
  * its own page before it became a filter. Those URLs are in people's bookmarks and in the links of
  * notification mails that have already gone out, so they keep working.
  *
  * A table rather than a wall of `<Navigate>` elements, so that "does every old address still land
  * somewhere real" is a question a test can answer.
- *
- * The one case missing here is `/users/edit/:userId`, which carries a parameter and therefore needs
- * a component to read it; `App.jsx` keeps a small redirect for that.
  *
  * @type {Record<string, string>}
  */
@@ -30,10 +27,6 @@ export const LEGACY_REDIRECTS = {
   // The watchlist is a filter on the listings overview, not a place.
   '/listings/watchlist': '/listings?watch=true',
   '/watchlistManagement': '/listings?watch=true',
-
-  // User management, from before it moved under Administration.
-  '/users': '/admin/users',
-  '/users/new': '/admin/users/new',
 };
 
 /**

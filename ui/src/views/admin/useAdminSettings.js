@@ -11,19 +11,7 @@ import { useTranslation } from '../../services/i18n/i18n.jsx';
 import { CONNECTIVITY_SOURCES } from '../../components/connectivity/connectivityFormat.js';
 
 /** The fields the System page owns. @type {string[]} */
-export const SYSTEM_FIELDS = [
-  'port',
-  'baseUrl',
-  'sessionTTL',
-  'listingRetentionDays',
-  'analyticsEnabled',
-  'demoMode',
-  'proxyAuthEnabled',
-  'proxyAuthTrustedProxies',
-  'proxyAuthUserHeader',
-  'proxyAuthSecretHeader',
-  'proxyAuthSecret',
-];
+export const SYSTEM_FIELDS = ['port', 'baseUrl', 'listingRetentionDays', 'analyticsEnabled', 'demoMode'];
 
 /** The fields the Connectivity page owns. @type {string[]} */
 export const CONNECTIVITY_FIELDS = [
@@ -59,17 +47,9 @@ function toForm(settings) {
   return {
     port: settings?.port ?? 9998,
     baseUrl: settings?.baseUrl ?? '',
-    sessionTTL: settings?.sessionTTL ?? 2,
     listingRetentionDays: settings?.listingRetentionDays ?? 14,
     analyticsEnabled: settings?.analyticsEnabled === true,
     demoMode: settings?.demoMode === true,
-    proxyAuthEnabled: settings?.proxyAuthEnabled === true,
-    proxyAuthTrustedProxies: settings?.proxyAuthTrustedProxies ?? '',
-    proxyAuthUserHeader: settings?.proxyAuthUserHeader ?? 'Remote-User',
-    proxyAuthSecretHeader: settings?.proxyAuthSecretHeader ?? '',
-    // Write-only: the backend never sends it back, so the form always starts empty and an empty
-    // value on save means "keep the current secret".
-    proxyAuthSecret: '',
     interval: settings?.interval ?? 60,
     workingHours: {
       from: settings?.workingHours?.from ?? null,

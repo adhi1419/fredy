@@ -30,7 +30,7 @@ export default function SettingsShell({ title, tabs, banner = null, context = un
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Longest prefix wins, so a future '/admin/users/edit/:id' still marks the Users tab as current
+  // Longest prefix wins, so nested Administration pages still mark their parent tab as current
   // instead of falling through to no selection at all.
   const activeKey =
     tabs

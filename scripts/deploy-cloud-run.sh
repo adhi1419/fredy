@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Build + deploy Fredy to Cloud Run in multi-tenant firebase mode.
+# Build + deploy Fredy to Cloud Run with direct Firebase bearer auth.
 # Run from the repo root, wherever gcloud is authenticated.
 #
 # Usage:
@@ -122,7 +122,6 @@ import json, sys
 envfile, token = sys.argv[1], sys.argv[2]
 web_config = json.dumps(json.load(open('firebase-web-config.json')), separators=(',', ':'))
 env = {
-    'AUTH_MODE': 'firebase',
     'EXTERNAL_SCHEDULER': 'true',
     'TRIGGER_TOKEN': token,
     'FIREBASE_WEB_CONFIG': web_config,

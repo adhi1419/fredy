@@ -7,7 +7,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 /**
  * A full global settings row set, as `getSettings()` would compile it: operator configuration,
- * the two flags the whole UI needs, and the session signing secret that must never leave the
+ * the two flags the whole UI needs, and a legacy signing secret that must never leave the
  * process.
  */
 const STORED_SETTINGS = {
@@ -16,7 +16,6 @@ const STORED_SETTINGS = {
   interval: 60,
   port: 9998,
   baseUrl: 'https://fredy.example',
-  sessionTTL: 4,
   proxyUrl: 'http://user:hunter2@proxy.example:8080',
   workingHours: { from: '08:00', to: '20:00' },
   session_secret: 'super-secret-signing-key',
@@ -96,13 +95,12 @@ describe('settings exposure', () => {
       const handler = await loadGetHandler(true);
       const payload = await handler({});
       expect(payload.proxyUrl).toBe(STORED_SETTINGS.proxyUrl);
-      expect(payload.sessionTTL).toBe(4);
     });
 
     it('withholds operator configuration from a non-admin', async () => {
       const handler = await loadGetHandler(false);
       const payload = await handler({});
-      for (const secret of ['proxyUrl', 'sessionTTL', 'port', 'baseUrl', 'session_secret']) {
+      for (const secret of ['proxyUrl', 'port', 'baseUrl', 'session_secret']) {
         expect(payload).not.toHaveProperty(secret);
       }
     });

@@ -47,7 +47,7 @@ async function buildServer() {
   const plugin = (await import(root + '/lib/api/routes/userSettingsRoute.js')).default;
   const app = Fastify();
   app.addHook('preHandler', (request, _reply, done) => {
-    request.session = { currentUser: 'user-1' };
+    request.currentUser = { id: 'user-1', isAdmin: false };
     request.currentUser = { id: 'user-1', isAdmin: false };
     done();
   });

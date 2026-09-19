@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { IconSignal, IconRefresh, IconGlobe, IconUserGroup, IconFolder, IconAlertTriangle } from '@douyinfe/semi-icons';
+import { IconSignal, IconRefresh, IconGlobe, IconFolder, IconAlertTriangle } from '@douyinfe/semi-icons';
 
 import SettingsShell from '../../components/settingsShell/SettingsShell.jsx';
 import ScopeBanner from './ScopeBanner.jsx';
@@ -32,7 +32,6 @@ export default function AdminLayout() {
     { path: '/admin/system', label: t('admin.tabSystem'), icon: <IconSignal size="small" /> },
     { path: '/admin/execution', label: t('admin.tabExecution'), icon: <IconRefresh size="small" /> },
     { path: '/admin/connectivity', label: t('admin.tabConnectivity'), icon: <IconGlobe size="small" /> },
-    { path: '/admin/users', label: t('admin.tabUsers'), icon: <IconUserGroup size="small" /> },
     { path: '/admin/backup', label: t('admin.tabBackup'), icon: <IconFolder size="small" /> },
     {
       path: '/admin/debug',

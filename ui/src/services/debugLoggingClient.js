@@ -3,6 +3,12 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+/*
+ * Copyright (c) 2026 by Christian Kellner.
+ * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
+ */
+import { authenticatedFetch } from './authenticatedFetch.js';
+
 /**
  * Tiny client wrapping the /api/admin/debug endpoints.
  *
@@ -34,7 +40,7 @@ function extractFileNameFromDisposition(disposition) {
  * @returns {Promise<{enabled:boolean, size:number, max:number, hasLogs:boolean, everEnabled:boolean}>}
  */
 export async function fetchDebugStatus() {
-  const resp = await fetch('/api/admin/debug/status', { credentials: 'include' });
+  const resp = await authenticatedFetch('/api/admin/debug/status', {});
   if (!resp.ok) throw new Error('Failed to load debug logging status');
   return resp.json();
 }
@@ -47,7 +53,7 @@ export async function fetchDebugStatus() {
  * @returns {Promise<{enabled:boolean}>}
  */
 export async function fetchDebugActive() {
-  const resp = await fetch('/api/debug/active', { credentials: 'include' });
+  const resp = await authenticatedFetch('/api/debug/active', {});
   if (!resp.ok) throw new Error('Failed to load debug active flag');
   return resp.json();
 }
@@ -59,9 +65,9 @@ export async function fetchDebugActive() {
  * @returns {Promise<object>}
  */
 export async function enableDebugLogging({ clearPrevious = false } = {}) {
-  const resp = await fetch('/api/admin/debug/enable', {
+  const resp = await authenticatedFetch('/api/admin/debug/enable', {
     method: 'POST',
-    credentials: 'include',
+
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ clearPrevious }),
   });
@@ -74,9 +80,8 @@ export async function enableDebugLogging({ clearPrevious = false } = {}) {
  * @returns {Promise<object>}
  */
 export async function disableDebugLogging() {
-  const resp = await fetch('/api/admin/debug/disable', {
+  const resp = await authenticatedFetch('/api/admin/debug/disable', {
     method: 'POST',
-    credentials: 'include',
   });
   if (!resp.ok) throw new Error('Failed to disable debug logging');
   return resp.json();
@@ -89,9 +94,8 @@ export async function disableDebugLogging() {
  * @returns {Promise<object>}
  */
 export async function clearDebugLogs() {
-  const resp = await fetch('/api/admin/debug/logs', {
+  const resp = await authenticatedFetch('/api/admin/debug/logs', {
     method: 'DELETE',
-    credentials: 'include',
   });
   if (!resp.ok) throw new Error('Failed to clear debug logs');
   return resp.json();
@@ -103,7 +107,7 @@ export async function clearDebugLogs() {
  * @returns {Promise<void>}
  */
 export async function downloadDebugBundle() {
-  const resp = await fetch('/api/admin/debug/download', { credentials: 'include' });
+  const resp = await authenticatedFetch('/api/admin/debug/download', {});
   if (resp.status === 409) {
     const data = await resp.json().catch(() => ({}));
     const err = new Error(data?.error || 'No debug logs available yet');

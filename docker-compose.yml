@@ -25,7 +25,7 @@ services:
       dockerfile: Dockerfile
     image: ${FREDY_IMAGE:-ghcr.io/orangecoding/fredy}
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
       - FIRESTORE_PROJECT_ID=fredy-compose
     volumes:

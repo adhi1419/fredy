@@ -3,231 +3,196 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// userStorage is only needed by isAdmin/adminHook - mock it so the suite has no DB dependency.
-vi.mock('../../lib/services/storage/userStorage.js', () => ({
-  getUser: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  verifyIdToken: vi.fn(),
+  getAllowedUser: vi.fn(),
+  getUserIdentity: vi.fn(),
+  upsertUser: vi.fn(),
 }));
-// security.js reads sessionTTL at import time. An empty settings object exercises the default.
-vi.mock('../../lib/services/storage/settingsStorage.js', () => ({ getSettings: vi.fn(async () => ({})) }));
 
-import { getUser } from '../../lib/services/storage/userStorage.js';
-import { isUnauthorized, isAdmin, authHook, adminHook, touchSession } from '../../lib/api/security.js';
+vi.mock('../../lib/services/firebaseAdmin.js', () => ({ verifyIdToken: mocks.verifyIdToken }));
+vi.mock('../../lib/services/storage/firestore/allowedUsersStorage.js', () => ({
+  getAllowedUser: mocks.getAllowedUser,
+}));
+vi.mock('../../lib/services/storage/userStorage.js', () => ({
+  getUserIdentity: mocks.getUserIdentity,
+  upsertUser: mocks.upsertUser,
+}));
 
-const SESSION_MAX_AGE = 2 * 60 * 60 * 1000; // the default applied when sessionTTL is unset
+import { adminHook, authHook, normalizeVerifiedEmail, parseBearerToken } from '../../lib/api/security.js';
 
-/**
- * Re-import security.js with a specific sessionTTL setting.
- *
- * The TTL is read live per request now rather than snapshotted at module load, but the module
- * registry is still reset per scenario so each case gets a clean settings mock.
- * @param {any} sessionTTL - The raw setting value as it would come from the settings table.
- * @returns {Promise<typeof import('../../lib/api/security.js')>}
- */
-async function importSecurityWithTtl(sessionTTL) {
-  vi.resetModules();
-  vi.doMock('../../lib/services/storage/userStorage.js', () => ({ getUser: vi.fn() }));
-  vi.doMock('../../lib/services/storage/settingsStorage.js', () => ({
-    getSettings: vi.fn(async () => ({ sessionTTL })),
-  }));
-  return import('../../lib/api/security.js');
-}
-
-const sessionAgedHours = (hours) => ({ currentUser: 'user-1', createdAt: Date.now() - hours * 60 * 60 * 1000 });
-
-/**
- * Minimal Fastify reply double recording the status code and whether send() was called.
- */
 function makeReply() {
   return {
     statusCode: null,
-    sent: false,
-    code(c) {
-      this.statusCode = c;
+    payload: undefined,
+    code(statusCode) {
+      this.statusCode = statusCode;
       return this;
     },
-    send() {
-      this.sent = true;
+    send(payload) {
+      this.payload = payload;
       return this;
     },
   };
 }
 
-const freshSession = () => ({ currentUser: 'user-1', createdAt: Date.now() });
-const expiredSession = () => ({ currentUser: 'user-1', createdAt: Date.now() - (SESSION_MAX_AGE + 1000) });
+const requestWithToken = (token = 'token') => ({
+  headers: { authorization: `Bearer ${token}` },
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.verifyIdToken.mockResolvedValue({
+    uid: 'uid-alice',
+    email: 'Alice@Example.COM',
+    email_verified: true,
+  });
+  mocks.getAllowedUser.mockResolvedValue({ email: 'alice@example.com', isAdmin: false });
+  mocks.getUserIdentity.mockResolvedValue({ id: 'uid-alice', username: 'alice@example.com', isAdmin: false });
 });
 
-describe('isUnauthorized', () => {
-  it('is unauthorized when there is no session', async () => {
-    expect(await isUnauthorized({})).toBe(true);
+describe('parseBearerToken', () => {
+  it.each([
+    [undefined, 'missing header'],
+    ['', 'empty header'],
+    ['Basic token', 'wrong scheme'],
+    ['Bearer', 'missing token'],
+    ['Bearer token with spaces', 'token contains spaces'],
+    ['Bearer token, Bearer other', 'comma-joined duplicate values'],
+  ])('rejects %s (%s)', (authorization) => {
+    expect(parseBearerToken({ headers: { authorization } })).toBeNull();
   });
 
-  it('is unauthorized when the session has no currentUser', async () => {
-    expect(await isUnauthorized({ session: { createdAt: Date.now() } })).toBe(true);
+  it('accepts one bearer value regardless of scheme casing', () => {
+    expect(parseBearerToken({ headers: { authorization: 'bEaReR firebase-token' } })).toBe('firebase-token');
   });
 
-  it('is unauthorized when the session is older than the max age (hard expiry)', async () => {
-    expect(await isUnauthorized({ session: expiredSession() })).toBe(true);
-  });
-
-  it('is authorized for a fresh session', async () => {
-    expect(await isUnauthorized({ session: freshSession() })).toBe(false);
+  it('rejects repeated authorization headers', () => {
+    expect(parseBearerToken({ headers: { authorization: ['Bearer first', 'Bearer second'] } })).toBeNull();
+    expect(
+      parseBearerToken({
+        headers: { authorization: 'Bearer first' },
+        raw: { rawHeaders: ['Authorization', 'Bearer first', 'authorization', 'Bearer second'] },
+      }),
+    ).toBeNull();
   });
 });
 
-describe('session max age', () => {
-  it('honors a configured sessionTTL above the two hour default', async () => {
-    const { isUnauthorized: check, sessionMaxAge: maxAge } = await importSecurityWithTtl(24);
-
-    expect(await maxAge()).toBe(24 * 60 * 60 * 1000);
-    // Would have expired under the previously hard-coded two hour cap.
-    expect(await check({ session: sessionAgedHours(3) })).toBe(false);
-    expect(await check({ session: sessionAgedHours(25) })).toBe(true);
+describe('normalizeVerifiedEmail', () => {
+  it('trims and lowercases a Firebase email claim', () => {
+    expect(normalizeVerifiedEmail('  Alice@Example.COM ')).toBe('alice@example.com');
   });
 
-  it('honors a sessionTTL shorter than the default', async () => {
-    const { isUnauthorized: check } = await importSecurityWithTtl(1);
-
-    expect(await check({ session: sessionAgedHours(0.5) })).toBe(false);
-    expect(await check({ session: sessionAgedHours(1.5) })).toBe(true);
-  });
-
-  it('accepts the numeric string the settings UI stores', async () => {
-    const { sessionMaxAge: maxAge } = await importSecurityWithTtl('12');
-
-    expect(await maxAge()).toBe(12 * 60 * 60 * 1000);
-  });
-
-  it('follows a sessionTTL changed after startup, without a restart', async () => {
-    // The whole point of reading it live: the setting used to be snapshotted at module load, so
-    // changing it in the UI appeared to work and did nothing.
-    vi.resetModules();
-    let ttl = 1;
-    vi.doMock('../../lib/services/storage/userStorage.js', () => ({ getUser: vi.fn() }));
-    vi.doMock('../../lib/services/storage/settingsStorage.js', () => ({
-      getSettings: vi.fn(async () => ({ sessionTTL: ttl })),
-    }));
-    const { sessionMaxAge: maxAge } = await import('../../lib/api/security.js');
-
-    expect(await maxAge()).toBe(60 * 60 * 1000);
-    ttl = 8;
-    expect(await maxAge()).toBe(8 * 60 * 60 * 1000);
-  });
-
-  it.each([['not-a-number'], [''], [0], [-5], [null], [undefined]])(
-    'falls back to the default instead of never expiring for sessionTTL %o',
-    async (value) => {
-      // A NaN or non-positive max age would make the expiry comparison always false,
-      // leaving sessions valid forever.
-      const { sessionMaxAge: maxAge, isUnauthorized: check } = await importSecurityWithTtl(value);
-
-      expect(await maxAge()).toBe(SESSION_MAX_AGE);
-      expect(await check({ session: sessionAgedHours(3) })).toBe(true);
-    },
-  );
-});
-
-describe('touchSession', () => {
-  it('moves the session timestamp forward so the TTL behaves as an idle timeout', () => {
-    const session = sessionAgedHours(1.5);
-    touchSession({ session });
-
-    expect(Date.now() - session.createdAt).toBeLessThan(1000);
-  });
-
-  it('does nothing when there is no session', () => {
-    expect(() => touchSession({})).not.toThrow();
+  it.each([undefined, null, '', '   '])('rejects an empty or non-string claim: %o', (email) => {
+    expect(normalizeVerifiedEmail(email)).toBeNull();
   });
 });
 
 describe('authHook', () => {
-  it('short-circuits the lifecycle by returning the reply when unauthorized', async () => {
+  it('returns 401 and does not verify when the bearer header is missing or malformed', async () => {
     const reply = makeReply();
-    const result = await authHook({ session: expiredSession() }, reply);
 
-    // Returning the reply is what tells Fastify to stop and NOT run the route handler.
-    expect(result).toBe(reply);
+    await authHook({ headers: { authorization: 'Basic not-a-firebase-token' } }, reply);
+
     expect(reply.statusCode).toBe(401);
-    expect(reply.sent).toBe(true);
+    expect(mocks.verifyIdToken).not.toHaveBeenCalled();
+    expect(mocks.getAllowedUser).not.toHaveBeenCalled();
+    expect(mocks.upsertUser).not.toHaveBeenCalled();
   });
 
-  it('does not touch the reply for an authorized request', async () => {
-    getUser.mockReturnValue({ id: 'user-1', isAdmin: false });
+  it('returns 401 when Firebase verification fails', async () => {
+    mocks.verifyIdToken.mockRejectedValue(new Error('auth/id-token-expired'));
     const reply = makeReply();
-    const result = await authHook({ session: freshSession() }, reply);
 
-    expect(result).toBeUndefined();
+    await authHook(requestWithToken(), reply);
+
+    expect(reply.statusCode).toBe(401);
+    expect(mocks.getAllowedUser).not.toHaveBeenCalled();
+    expect(mocks.upsertUser).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ email: 'alice@example.com', email_verified: true }, 'uid missing'],
+    [{ uid: 'uid-alice', email_verified: true }, 'email missing'],
+    [{ uid: 'uid-alice', email: 'alice@example.com', email_verified: false }, 'email not verified'],
+    [{ uid: 'uid-alice', email: 'alice@example.com' }, 'verification claim missing'],
+  ])('returns 401 for invalid verified identity claims (%s)', async (claims) => {
+    mocks.verifyIdToken.mockResolvedValue(claims);
+    const reply = makeReply();
+
+    await authHook(requestWithToken(), reply);
+
+    expect(reply.statusCode).toBe(401);
+    expect(mocks.getAllowedUser).not.toHaveBeenCalled();
+    expect(mocks.upsertUser).not.toHaveBeenCalled();
+  });
+
+  it('normalizes the verified email, provisions a missing Firebase UID, and sets request.currentUser', async () => {
+    mocks.getUserIdentity.mockResolvedValue(null);
+    const request = requestWithToken();
+    const reply = makeReply();
+
+    await authHook(request, reply);
+
     expect(reply.statusCode).toBeNull();
-    expect(reply.sent).toBe(false);
+    expect(mocks.getAllowedUser).toHaveBeenCalledWith('alice@example.com');
+    expect(mocks.upsertUser).toHaveBeenCalledWith({
+      userId: 'uid-alice',
+      username: 'alice@example.com',
+      isAdmin: false,
+    });
+    expect(request.currentUser).toEqual({ id: 'uid-alice', username: 'alice@example.com', isAdmin: false });
   });
 
-  it('resolves the user once and hangs it on the request', async () => {
-    // Routes ask isAdmin() several times per request; this is what stops each of those being
-    // another SELECT with a correlated subquery.
-    getUser.mockReturnValue({ id: 'user-1', isAdmin: true });
-    const request = { session: freshSession() };
-    await authHook(request, makeReply());
-
-    expect(request.currentUser).toEqual({ id: 'user-1', isAdmin: true });
-    expect(getUser).toHaveBeenCalledTimes(1);
-  });
-
-  it('rejects a session pointing at a user that no longer exists', async () => {
-    getUser.mockReturnValue(null);
+  it('returns 403 for a verified Firebase identity missing from the allowlist', async () => {
+    mocks.getAllowedUser.mockResolvedValue(null);
+    const request = requestWithToken();
+    request.currentUser = { id: 'attacker-controlled-id', isAdmin: true };
     const reply = makeReply();
-    const result = await authHook({ session: freshSession() }, reply);
 
-    expect(result).toBe(reply);
-    expect(reply.statusCode).toBe(401);
+    await authHook(request, reply);
+
+    expect(reply.statusCode).toBe(403);
+    expect(mocks.upsertUser).not.toHaveBeenCalled();
+    expect(request.currentUser).toBeUndefined();
   });
 
-  it('extends the session of an authorized request', async () => {
-    getUser.mockReturnValue({ id: 'user-1', isAdmin: false });
-    const session = sessionAgedHours(1.5);
-    await authHook({ session }, makeReply());
+  it('reads the allowlist on every request and applies revocation and admin changes immediately', async () => {
+    const request = requestWithToken();
+    const reply = makeReply();
 
-    expect(Date.now() - session.createdAt).toBeLessThan(1000);
-  });
+    mocks.getAllowedUser
+      .mockResolvedValueOnce({ email: 'alice@example.com', isAdmin: false })
+      .mockResolvedValueOnce({ email: 'alice@example.com', isAdmin: true })
+      .mockResolvedValueOnce(null);
 
-  it('does not extend the session of a rejected request', async () => {
-    const session = expiredSession();
-    const before = session.createdAt;
-    await authHook({ session }, makeReply());
+    await authHook(request, reply);
+    expect(request.currentUser).toMatchObject({ id: 'uid-alice', isAdmin: false });
 
-    expect(session.createdAt).toBe(before);
+    const promotedRequest = requestWithToken();
+    await authHook(promotedRequest, makeReply());
+    expect(promotedRequest.currentUser).toMatchObject({ id: 'uid-alice', isAdmin: true });
+
+    const revokedReply = makeReply();
+    await authHook(requestWithToken(), revokedReply);
+    expect(revokedReply.statusCode).toBe(403);
+    expect(mocks.getAllowedUser).toHaveBeenCalledTimes(3);
+    expect(mocks.upsertUser).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('isAdmin / adminHook', () => {
-  it('reads the user authHook resolved, without querying again', () => {
-    expect(isAdmin({ currentUser: { id: 'user-1', isAdmin: true } })).toBe(true);
-    expect(isAdmin({ currentUser: { id: 'user-1', isAdmin: false } })).toBe(false);
-    expect(getUser).not.toHaveBeenCalled();
-  });
-
-  it('is not admin without a resolved user, so a route reached outside authHook fails closed', () => {
-    expect(isAdmin({})).toBe(false);
-    expect(isAdmin({ currentUser: null })).toBe(false);
-  });
-
-  it('short-circuits with a 401 reply for a non-admin request', async () => {
+describe('adminHook', () => {
+  it('allows an allowlist-derived administrator', async () => {
     const reply = makeReply();
-    const result = await adminHook({ currentUser: { id: 'user-1', isAdmin: false } }, reply);
-
-    expect(result).toBe(reply);
-    expect(reply.statusCode).toBe(401);
-    expect(reply.sent).toBe(true);
+    await adminHook({ currentUser: { isAdmin: true } }, reply);
+    expect(reply.statusCode).toBeNull();
   });
 
-  it('lets an admin request through untouched', async () => {
+  it('returns 403 for an authenticated non-admin', async () => {
     const reply = makeReply();
-    const result = await adminHook({ currentUser: { id: 'user-1', isAdmin: true } }, reply);
-
-    expect(result).toBeUndefined();
-    expect(reply.sent).toBe(false);
+    await adminHook({ currentUser: { isAdmin: false } }, reply);
+    expect(reply.statusCode).toBe(403);
   });
 });

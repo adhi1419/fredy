@@ -1,131 +1,102 @@
 # Fredy on Cloud Run (free tier)
 
 Run Fredy serverless with scale-to-zero: Firestore stores everything, Cloud
-Scheduler triggers each scrape, and no instance runs between scrapes. With
-2 providers at a 15-minute interval this fits entirely inside GCP's
-always-free tier (~130k of 240k free vCPU-seconds/month).
+Scheduler triggers each scrape, and no instance runs between scrapes. Browser
+users authenticate directly with Firebase; Cloud Scheduler uses a separate
+machine trigger token.
 
 ## How it works
 
 - Firestore is Fredy's only persistence layer. Cloud Run uses Application
   Default Credentials; no local database file or storage volume is required.
-- `EXTERNAL_SCHEDULER=true` disables Fredy's internal timer and the
-  scrape-on-boot; **every** scrape is driven by `POST /api/trigger`.
-- Cloud Scheduler calls `/api/trigger` with a shared secret
-  (`X-Trigger-Token`). The endpoint holds the request open until the run
-  completes — on Cloud Run, CPU is only guaranteed while a request is in
-  flight.
-- The UI works whenever an instance is warm; opening it cold-starts one.
+- Production startup requires `FIREBASE_WEB_CONFIG`. Firebase Admin and
+  Firestore use the Cloud Run service account through ADC.
+- The browser persists Firebase Authentication locally with
+  `browserLocalPersistence` and sends a refreshed ID token as
+  `Authorization: Bearer <token>` on API requests and authenticated event
+  streams. Fredy does not issue a cookie or store a browser session.
+- Fredy checks the Firestore `allowed_users` collection for every authenticated
+  request. The Firebase UID is the server-derived Fredy user id.
+- `EXTERNAL_SCHEDULER=true` disables Fredy's internal timer and scrape-on-boot;
+  every scrape is driven by `POST /api/trigger`.
+- Cloud Scheduler calls `/api/trigger` with `X-Trigger-Token`. The endpoint
+  holds the request open until the run completes.
 
 ## One-time setup
 
 ```bash
 PROJECT=fredy-$(whoami)
-REGION=europe-west1              # close to the German portals
-TRIGGER_TOKEN=$(openssl rand -hex 32)
+REGION=europe-west1
 
-gcloud projects create $PROJECT
-gcloud config set project $PROJECT
-# Billing account must be linked (free tier still requires one):
-# gcloud billing projects link $PROJECT --billing-account=XXXXXX-XXXXXX-XXXXXX
+ gcloud projects create "$PROJECT"
+ gcloud config set project "$PROJECT"
+ # Billing account must be linked (free tier still requires one).
 
-gcloud services enable run.googleapis.com firestore.googleapis.com \
-  cloudscheduler.googleapis.com cloudbuild.googleapis.com \
-  artifactregistry.googleapis.com
+ gcloud services enable run.googleapis.com firestore.googleapis.com \
+   cloudscheduler.googleapis.com cloudbuild.googleapis.com \
+   artifactregistry.googleapis.com firebase.googleapis.com \
+   identitytoolkit.googleapis.com
 
-# Firestore in Native mode (free tier: 1 GiB, 50k reads / 20k writes per day)
-gcloud firestore databases create --location=$REGION
-
-# Build an immutable revision image while refreshing :latest as the cache alias
-REVISION=$(git rev-parse --verify HEAD)
-IMAGE=$REGION-docker.pkg.dev/$PROJECT/fredy/fredy:$REVISION
-CACHE_IMAGE=$REGION-docker.pkg.dev/$PROJECT/fredy/fredy:latest
-gcloud builds submit --config cloudbuild.yaml \
-  --substitutions="_IMAGE=$IMAGE,_CACHE_IMAGE=$CACHE_IMAGE" .
-
-# Deploy the exact revision: scale-to-zero, single instance, generous timeout
-gcloud run deploy fredy \
-  --image $IMAGE \
-  --region $REGION \
-  --memory 1Gi --cpu 1 \
-  --min-instances 0 --max-instances 1 \
-  --timeout 900 \
-  --allow-unauthenticated \
-  --set-env-vars EXTERNAL_SCHEDULER=true,TRIGGER_TOKEN=$TRIGGER_TOKEN
-
-SERVICE_URL=$(gcloud run services describe fredy --region $REGION --format 'value(status.url)')
-
-# Scheduler: scrape every 30 minutes, 15-minute attempt deadline
-gcloud scheduler jobs create http fredy-scrape \
-  --location $REGION \
-  --schedule "*/30 * * * *" \
-  --uri "$SERVICE_URL/api/trigger" \
-  --http-method POST \
-  --headers X-Trigger-Token=$TRIGGER_TOKEN \
-  --attempt-deadline 900s
+ # Firestore in Native mode.
+ gcloud firestore databases create --location="$REGION"
 ```
 
-Then open `$SERVICE_URL`, log in with `admin`/`admin`, **change the password
-immediately** (the service is public), and configure your search jobs.
+Attach Firebase to the project, create a Firebase web app, enable the Google
+sign-in provider, and save the web-app JSON as `firebase-web-config.json`.
+Seed the first instance administrator manually:
+
+```text
+allowed_users/<lowercase-email>
+{ email, isAdmin: true, addedAt }
+```
+
+The repository helper performs the image build, immutable Cloud Run deploy,
+trigger-token preservation, and Scheduler setup:
+
+```bash
+./scripts/deploy-cloud-run.sh "$PROJECT" "$REGION"
+```
+
+The helper passes the web config as `FIREBASE_WEB_CONFIG` and does not set an
+auth-mode feature flag. The Cloud Run runtime service account must have a role
+that permits the required Firestore reads/writes. Confirm the service's
+Firebase authorized domain includes its `*.run.app` origin.
 
 ## Notes and limits
 
-- **Auth of the trigger**: the token check is constant-time; without
-  `TRIGGER_TOKEN` set, the endpoint answers 404. For belt-and-braces, switch
-  the service to `--no-allow-unauthenticated` and give the Scheduler job an
-  OIDC identity — but then the UI needs an authenticated proxy too.
-- **Credentials**: Cloud Run uses its runtime service account through Application
-  Default Credentials. Identify it with `gcloud run services describe fredy --region "$REGION"
-  --format='value(spec.template.spec.serviceAccountName)'`, grant that principal
-  `roles/datastore.user`, and verify the deployed revision can read Firestore. Do not assume
-  modern or hardened projects grant this role automatically.
-- **Firestore doc limit**: a single debug-log line larger than ~1 MiB cannot
-  be stored (never happens in practice).
-- **Bot detection**: datacenter IPs (Cloud Run egress) are commonly blocked
-  by the portals — same story as any cloud host. A German residential proxy
-  (Administration → Execution → Proxy URL) applies to the headless-browser
-  providers; ImmoScout's mobile API is unaffected.
-- **Working hours**: a trigger outside the configured window returns
-  `{ran: false}`-style success without scraping, so the Scheduler cadence
-  can stay dumb.
-- **Free tier math** (2 providers, 15-min cadence, ~45 s/run):
-  96 runs/day x 45 s ≈ 130k vCPU-s/month of 240k free; requests and
-  Firestore ops are far below their free quotas; Cloud Scheduler's first
-  3 jobs are free. Cloud Build gives 120 free build-minutes/day.
+- **Trigger auth:** without `TRIGGER_TOKEN`, `/api/trigger` answers 404. Keep
+  the service publicly reachable only when the trigger token is protected and
+  use the scheduler header exactly as configured.
+- **ADC:** Cloud Run uses its runtime service account. Identify it with:
+  `gcloud run services describe fredy --region "$REGION" --format='value(spec.template.spec.serviceAccountName)'`.
+- **Firebase config:** `FIREBASE_WEB_CONFIG` is client configuration, not a
+  service-account secret, but it is still required and must be valid JSON.
+- **Browser auth:** authorized-domain errors, missing allowlist documents, and
+  clock-skewed/expired ID tokens fail authentication before any tenant data is
+  accessed.
+- **Bot detection:** datacenter IPs can be blocked by portals. A German
+  residential proxy may be required for browser-based providers.
+- **Working hours:** a trigger outside the configured window returns success
+  without scraping, so Scheduler cadence can stay simple.
 
 ## Local verification
 
+The local emulator path validates storage and machine triggering only. It does
+not emulate Google popup sign-in, Firebase token refresh, or cross-origin
+browser persistence:
+
 ```bash
-# Firestore emulator
-docker run -d --name fredy-firestore-emulator -p 127.0.0.1:8144:8144 \
-  gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators \
-  gcloud emulators firestore start --host-port=0.0.0.0:8144
+./docker-test.sh
+```
 
-# Boot Fredy against it
-FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 \
-EXTERNAL_SCHEDULER=true TRIGGER_TOKEN=dev-token node index.js
+For the Firestore contract suite:
 
-# Trigger a run
-curl -X POST -H 'X-Trigger-Token: dev-token' http://localhost:9998/api/trigger
-
-# Firestore contract suite
+```bash
+# Start the official emulator, then:
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract
 ```
 
-## Multi-tenant mode (Firebase Auth)
-
-See `doc/prd-multi-tenant-auth.md`. To enable on Cloud Run:
-
-```bash
-# 1. In the Firebase console: add Firebase to the GCP project, enable the
-#    Google sign-in provider, and copy the web app config JSON.
-# 2. Seed the allowlist (your email as instance admin):
-#    Firestore -> allowed_users/{urlencoded-email} -> { email, isAdmin: true, addedAt }
-# 3. Redeploy with:
-gcloud run services update fredy --region $REGION \
-  --update-env-vars AUTH_MODE=firebase,FIREBASE_WEB_CONFIG="$(cat firebase-web-config.json)"
-```
-
-In firebase mode the password login answers 404, no admin/admin bootstrap
-user is created, and sign-in is Google-only, gated by the `allowed_users`
-collection. Removing an allowlist entry takes effect at next session expiry.
+To test real browser authentication, use a Firebase project, a valid
+`FIREBASE_WEB_CONFIG`, the Firebase authorized local origin, and an allowlisted
+email. Do not point local tests at a production Firestore project merely to
+exercise the emulator contracts.

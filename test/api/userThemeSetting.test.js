@@ -81,13 +81,13 @@ describe('POST /api/user/settings/theme', () => {
   async function post(theme, stored = {}) {
     handler = await loadThemeHandler(stored);
     const reply = replyDouble();
-    await handler({ session: { currentUser: 'user-1' }, body: { theme } }, reply);
+    await handler({ currentUser: { id: 'user-1', isAdmin: true }, body: { theme } }, reply);
     return reply.recorded;
   }
 
   it.each(['dark', 'light'])('stores %s against the calling user', async (theme) => {
     const reply = replyDouble();
-    const result = await handler({ session: { currentUser: 'user-1' }, body: { theme } }, reply);
+    const result = await handler({ currentUser: { id: 'user-1', isAdmin: true }, body: { theme } }, reply);
 
     expect(result).toEqual({ success: true });
     expect(upserted).toEqual([{ settings: { theme }, userId: 'user-1' }]);
@@ -97,7 +97,7 @@ describe('POST /api/user/settings/theme', () => {
     'rejects %s, because the value ends up on an attribute with only two palettes behind it',
     async (theme) => {
       const reply = replyDouble();
-      await handler({ session: { currentUser: 'user-1' }, body: { theme } }, reply);
+      await handler({ currentUser: { id: 'user-1', isAdmin: true }, body: { theme } }, reply);
 
       expect(reply.recorded.status).toBe(400);
       expect(upserted).toEqual([]);
@@ -106,7 +106,7 @@ describe('POST /api/user/settings/theme', () => {
 
   it('ignores a userId in the body and writes only the session own preference', async () => {
     const reply = replyDouble();
-    await handler({ session: { currentUser: 'user-2' }, body: { theme: 'light', userId: 'user-1' } }, reply);
+    await handler({ currentUser: { id: 'user-2', isAdmin: true }, body: { theme: 'light', userId: 'user-1' } }, reply);
 
     expect(upserted).toEqual([{ settings: { theme: 'light' }, userId: 'user-2' }]);
   });

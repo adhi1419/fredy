@@ -1,172 +1,116 @@
-# PRD: Fredy Multi-Tenant Auth (rev. 2)
+# PRD: Fredy direct Firebase bearer authentication
 
 ## Context
 
-Fredy is an open-source apartment-hunting bot (Node.js + Chromium). It has been
-uses Firestore for all persistence (contract-tested — see
-`doc/firestore-data-model.md`) and deploys on GCP Cloud Run
-(`doc/cloud-run-deployment.md`). This PRD adds multi-tenant auth so multiple
-users can share a single hosted instance, each managing their own jobs and
-listings independently.
-
-**This is a personal learning project, not a commercial product.** No
-monetization, no scale ambitions, Germany-only.
-
-Rev. 2 changes vs rev. 1: auth transport switched from per-request Bearer
-tokens to a Firebase→session-cookie login exchange (SSE compatibility, less
-surgery); data-model section reframed around Fredy's *existing* multi-user
-model; the three open questions are resolved and baked into the design.
-
-## Prerequisites
-
-- Firestore persistence is available ✅
-- Fredy running on Cloud Run with Firestore backend ✅
+Fredy is an open-source apartment-hunting bot that uses Firestore for all
+persistence and deploys on GCP Cloud Run. Authentication is provided directly
+by Firebase Authentication. This design covers multi-user ownership and
+allowlist enforcement without a Fredy cookie or server-side browser session.
 
 ## Goals
 
-1. Replace Fredy's built-in username/password login with Firebase Auth
-   (Google sign-in only)
-2. Map Firebase UIDs to Fredy's internal user model
-3. Guarantee per-user data isolation (jobs, listings, watch list, settings,
-   notification channels)
-4. Restrict access to an allowlist of approved emails
+1. Replace the built-in username/password login with Firebase Authentication.
+2. Persist browser authentication with Firebase `browserLocalPersistence`.
+3. Send a refreshed Firebase ID token as `Authorization: Bearer <token>` on
+   every API request and authenticated event stream.
+4. Map Firebase UIDs to Fredy's existing user model.
+5. Guarantee per-user isolation for jobs, listings, settings, watch lists,
+   notification channels, and inquiry state.
+6. Enforce an email allowlist on every authenticated request.
 
-## Non-Goals
+## Non-goals
 
-- Registration flows, password management, email verification (Google handles it)
-- Admin UI for the allowlist (manual Firestore edits)
-- Shared/collaborative features between tenants (Fredy's `shared_with_user`
-  stays dormant)
-- Billing, rate limiting, abuse prevention (allowlist is sufficient)
-- Mobile app or PWA
-- Instant lockout on allowlist removal (sessions live until TTL; acceptable
-  for ~5 trusted users)
+- Fredy password registration, password changes, or password login.
+- Fredy cookies, server-side browser sessions, session TTLs, or session cleanup.
+- Admin UI for the allowlist; allowlist edits remain manual Firestore changes.
+- Shared/collaborative tenant features.
+- Mobile app or PWA.
 
-## Users
-
-- You (instance admin) + up to ~5 friends/invitees, manually allowlisted
-- Non-technical — they see exactly one "Sign in with Google" button
-
-## Key Design Decisions
+## Key design decisions
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Sign-in method | Google only | Zero password UX, verified emails, one button |
-| Auth transport | **Login exchange → Fredy session cookie** (NOT Bearer-per-request) | Fredy's live updates use Server-Sent Events; `EventSource` cannot send an Authorization header. The session layer already works on Firestore. Only the login step changes; `authHook`, SSE, session TTL, and every frontend fetch stay untouched. |
-| Allowlist | `allowedUsers` Firestore collection, manually edited | <5 users, no admin UI needed |
-| Tenant isolation | **Reuse Fredy's existing per-user model** | Jobs carry `userId`; listings scope through their job's owner (`accessibleJobIds`); settings/watch list/channels are per-user — all contract-tested. No schema change needed. |
-| Internal user id | **Firebase UID becomes the Fredy user id** at provisioning | `upsertUser` accepts an explicit `userId`; no mapping table, no join |
-| Admin semantics | Invitees provisioned `isAdmin: false`; admin flag comes from the allowlist entry | Fredy's `isAdmin` means "sees everyone's data" — it is instance-admin, not per-tenant admin |
-| Allowlist enforcement | At the login exchange (before any session exists) | Single enforcement point; removal takes effect at next session expiry |
+| Sign-in | Firebase provider configured by the instance | Firebase owns identity and refresh behavior |
+| Browser persistence | `browserLocalPersistence` | Reloads preserve the Firebase user without a Fredy cookie |
+| Transport | `Authorization: Bearer <Firebase ID token>` | Works for normal requests and authenticated fetch-based streams |
+| Verification | Firebase Admin `verifyIdToken` | The server never trusts a client-supplied user id |
+| Allowlist | `allowed_users/{lowercase-email}` | Small trusted installations need no registration UI |
+| Tenant id | Firebase UID | Stable server-derived owner id for all Fredy data |
+| Admin | `isAdmin` on the allowlist entry, reflected server-side | Instance-admin status is controlled outside the browser |
+| Machine trigger | `X-Trigger-Token` on `/api/trigger` | Scheduler is not a browser and does not use Firebase user auth |
 
-## Architecture
+## Runtime requirements
 
-### Auth flow
+Production startup requires a valid `FIREBASE_WEB_CONFIG` JSON object with
+`projectId`, `appId`, and `apiKey`. Firestore and Firebase Admin use Application
+Default Credentials. Cloud Run obtains ADC from its runtime service account;
+local production-mode runs must provide equivalent ADC. The Firestore emulator
+is development-only.
 
-1. Frontend loads the Firebase Auth SDK → "Sign in with Google" button
-2. User signs in → Firebase returns an ID token (JWT)
-3. Frontend POSTs the token once to `POST /api/login/firebase`
-4. Backend: verify token (Firebase Admin SDK) → look up
-   `allowedUsers/{email}` → reject 403 if absent → provision-or-touch the
-   Fredy user → **issue the standard Fredy session cookie**
-5. Every subsequent request (API, SSE) authenticates via the existing
-   session mechanism — no other endpoint changes
+## Auth flow
 
-### Provisioning (first login)
+1. The frontend initializes Firebase once and calls
+   `setPersistence(auth, browserLocalPersistence)` before sign-in.
+2. The user signs in with the configured Firebase provider.
+3. Each API request obtains the current ID token, refreshing it when needed,
+   and sends it in the `Authorization` header.
+4. The backend rejects missing, malformed, expired, or unverifiable tokens with
+   `401`.
+5. The backend derives the UID/email from verified claims, reads the matching
+   `allowed_users` document, and rejects an absent or revoked entry with `403`.
+6. The backend provisions or updates the Fredy user using the verified UID and
+   allowlist admin flag, then exposes the existing Fredy user shape to routes.
+7. Authenticated event streams use fetch-based streaming so the bearer header
+   is present; reconnects obtain a current token and abort cleanly on logout.
 
-- `users/{firebaseUid}` created via existing `upsertUser` with
-  `userId = firebaseUid`, `username = email`, `isAdmin` from the allowlist
-  entry, and profile extras `{ displayName, createdAt }`; `lastLogin` via the
-  existing `setLastLoginToNow`
-- Second login: no duplicate (upsert semantics), `lastLogin` updated
-- `ensureAdminUserExists()` (admin/admin bootstrap) is **disabled when
-  Firebase auth is enabled** — the instance admin is whoever's allowlist
-  entry has `isAdmin: true`
+Removing an allowlist entry takes effect on the next request, not at a later
+cookie/session expiry. Logging out clears Firebase's browser state and stops
+future authenticated streams.
 
-### Data model
+## Tenant isolation
 
-New collection only:
+Existing storage contracts remain the source of truth:
 
-- `allowedUsers/{email}` → `{ email, isAdmin: boolean, addedAt }` (manual)
+- jobs are owned by `userId`;
+- listings are reached through accessible owning jobs;
+- settings, watch lists, configured channels, and inquiry safety state are
+  scoped by the verified user id;
+- admin visibility is derived server-side from the allowlist, never from a
+  request body or query parameter.
 
-Everything else already exists and stays:
+## Removed legacy behavior
 
-- `jobs` — already per-user (`userId`); UI already scopes via `queryJobs`
-- `listings` — already scoped through the owning job (`accessibleJobIds`);
-  no denormalized `userId` needed
-- `watch_list`, `settings`, `configured_adapters` — already per-user
-- `sessions` — **kept** (Firestore-backed session store)
-- `users` — kept; doc id becomes the Firebase UID for new users
+The migration removes the `AUTH_MODE` feature flag and password-default
+startup path, Fastify cookie/session dependencies, Firestore session documents,
+session cleanup, and reverse-proxy identity sign-in. Existing browser cookies
+are not a migration credential; users must sign in through Firebase again.
 
-### Config / feature flag
+## Testing strategy
 
-`AUTH_MODE=firebase` env var (or `authMode` in config). Default `password`
-keeps classic behavior and does not require a Firebase project. Password-auth
-code is only deleted once firebase mode has run in production for a while
-(cheap insurance, near-zero maintenance cost).
+- Unit/API ownership covers missing, malformed, expired, and revoked tokens;
+  UID/email derivation; admin derivation; first-login provisioning; token
+  refresh; authenticated streaming; and logout.
+- The Firestore emulator backs storage contracts. Tests must never fall back to
+  a real Firestore project.
+- Offline tests do not open a real Google popup or prove browser storage
+  partitioning behavior.
+- A browser acceptance test against a Firebase project must verify persistence
+  across reload, bearer headers on API/stream requests, revoked allowlist
+  behavior, and logout.
+- Docker smoke validates health and emulator read/write behavior without a
+  password login or admin bootstrap document.
 
-### What gets added
+## Rollout and migration risks
 
-- `firebase-admin` (backend) + `firebase/auth` (frontend) dependencies
-- `POST /api/login/firebase` route (verify → allowlist → provision → session)
-- Frontend: replace the login form with the Google button + token POST
-  (login page only; no other frontend changes)
-- Startup gating: skip admin/admin bootstrap and hide password login when
-  `AUTH_MODE=firebase`
-
-### What gets removed (later, once firebase mode is proven)
-
-- Password login UI + `POST /api/login` password path
-- Password hashing/validation (`lib/services/security/hash.js` usage in login)
-- NOT removed: sessionStore, authHook, session TTL — they are the transport
-
-## Resolved questions (were open in rev. 1)
-
-1. **Scrape scheduling** — already solved: `POST /api/trigger` → `runAll()`
-   runs every enabled job across all users sequentially. Run duration grows
-   linearly with users; nothing to change.
-2. **Chromium concurrency** — non-issue: `executeJob` runs jobs sequentially
-   with one browser at a time. 5 users × 2 providers ≈ 200s per run — well
-   inside the 900s trigger/Scheduler deadline on 1 GiB.
-3. **Notifications** — already multi-tenant: adapters resolve per job via the
-   owner's own configured channels (ownership + visibility contract-tested).
-
-## Testing Strategy
-
-The Firestore contract suite remains the backbone. New tests:
-
-1. **Login exchange** — valid token + allowlisted → session cookie set;
-   valid token + not allowlisted → 403, no user created; invalid/expired
-   token → 401; `AUTH_MODE=password` → route absent (404)
-2. **Provisioning** — first login creates the user with UID as id and correct
-   `isAdmin`; second login updates `lastLogin` without duplicating
-3. **Tenant isolation** — already covered by contract tests
-   (owner/shared/admin visibility in jobs + listings); add one end-to-end
-   API test: user A's session cannot list or mutate user B's jobs/listings
-4. **Admin bootstrap** — with `AUTH_MODE=firebase`, no admin/admin user is
-   created on empty DB
-
-Firebase Admin's `verifyIdToken` is mocked in unit tests (fake JWT issuer);
-the Firestore emulator (already wired) backs everything else. The Firebase
-**Auth** emulator can be added for one end-to-end happy-path test if desired.
-
-## Scope Estimate (agent-driven TDD)
-
-| Component | Effort | Notes |
-|---|---|---|
-| `/api/login/firebase` route + allowlist check | Small | single file, well-defined contract |
-| Provisioning on first login | Small | reuses `upsertUser` |
-| Startup gating (`AUTH_MODE`, admin bootstrap) | Small | |
-| Storage userId scoping | **None→Small** | audit only — isolation already exists and is tested |
-| Frontend login swap | Small | login page only (session cookie does the rest) |
-| Remove old auth | Deferred | flag-gated; delete after firebase mode is proven |
-| Tests | Medium | login exchange + provisioning + one isolation E2E |
-
-## Rollout
-
-1. Land behind `AUTH_MODE` (default `password`) — zero behavior change
-2. Create Firebase project, enable Google provider, seed `allowedUsers` with
-   your email (`isAdmin: true`)
-3. Flip Cloud Run env to `AUTH_MODE=firebase`, sign in, verify
-4. Add friends' emails to `allowedUsers`
-5. After a comfortable soak: delete the password path
+1. Configure Firebase, authorized domains, ADC, and the first allowlist entry
+   before deploying the production image.
+2. Deploy the immutable image with `FIREBASE_WEB_CONFIG` and retain the machine
+   trigger token.
+3. Have every browser user sign in again through Firebase; old Fredy cookies
+   are intentionally ignored.
+4. Verify UID ownership against existing Firestore data before inviting more
+   users. A mismatched UID or email allowlist id can make existing data appear
+   absent without deleting it.
+5. Keep a Firestore backup before the first multi-tenant rollout. Incorrect
+   allowlist admin flags change visibility immediately, and revocation is
+   enforced on the next request.

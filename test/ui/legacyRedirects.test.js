@@ -61,7 +61,7 @@ describe('legacyRedirects', () => {
     for (const tab of ['preferences', 'travel-time', 'listings', 'notifications']) {
       expect(routes.has(`/settings/${tab}`)).toBe(true);
     }
-    for (const tab of ['system', 'execution', 'users', 'backup', 'debug']) {
+    for (const tab of ['system', 'execution', 'backup', 'debug']) {
       expect(routes.has(`/admin/${tab}`)).toBe(true);
     }
   });
@@ -78,7 +78,7 @@ describe('legacyRedirects', () => {
   });
 
   it('keeps every address that has actually moved working', () => {
-    for (const old of ['/generalSettings', '/userSettings', '/settings/addresses', '/users', '/users/new']) {
+    for (const old of ['/generalSettings', '/userSettings', '/settings/addresses']) {
       expect(resolveLegacyPath(old)).not.toBeNull();
     }
   });
@@ -93,14 +93,6 @@ describe('legacyRedirects', () => {
   it('turns the watchlist page into the filter that replaced it', () => {
     expect(resolveLegacyPath('/listings/watchlist')).toBe('/listings?watch=true');
     expect(resolveLegacyPath('/watchlistManagement')).toBe('/listings?watch=true');
-  });
-
-  it('leaves the parameterised user edit URL to App.jsx', () => {
-    // It cannot live in the table - the id has to be read and put back - so App.jsx keeps a small
-    // component for it. If that ever goes, this is the test that notices.
-    expect(resolveLegacyPath('/users/edit/:userId')).toBeNull();
-    expect(appSource).toContain('LegacyUserEditRedirect');
-    expect(routes.has('/users/edit/:userId')).toBe(true);
   });
 
   it('answers null for a path that was never moved', () => {

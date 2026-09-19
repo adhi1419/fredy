@@ -41,7 +41,7 @@ import listingsPlugin from '../../lib/api/routes/listingsRouter.js';
 async function buildApp() {
   const app = Fastify();
   app.addHook('onRequest', async (request) => {
-    request.session = { currentUser: 'user-1' };
+    request.currentUser = { id: 'user-1', isAdmin: false };
     request.currentUser = { id: 'user-1' };
   });
   await app.register(listingsPlugin);

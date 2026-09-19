@@ -17,7 +17,8 @@ import {
 } from '@douyinfe/semi-icons';
 import { useNavigate, useSearchParams } from 'react-router';
 import ListingDeletionModal from '../ListingDeletionModal.jsx';
-import { xhrDelete, xhrPost, errorMessage } from '../../services/xhr.js';
+import { createAuthenticatedEventStream } from '../../services/sse/authenticatedEventStream.js';
+import { errorMessage, xhrDelete, xhrPost } from '../../services/xhr.js';
 import { useActions, useSelector } from '../../services/state/store.js';
 import { debounce, getAddresses } from '../../utils';
 import { parseCommuteFilter } from '../transit/travelTimeFormat.js';
@@ -218,34 +219,24 @@ const ListingsOverview = () => {
     loadDataRef.current = loadData;
   }, [loadData]);
 
-  // SSE connection for live listings updates
+  // Authenticated SSE connection for live listings updates.
   useEffect(() => {
-    const src = new EventSource('/api/jobs/events');
-
-    const onNewListings = (e) => {
-      try {
-        const data = JSON.parse(e.data || '{}');
-        if (data && data.count) {
-          setNewAvailableCount((prev) => prev + data.count);
+    const stream = createAuthenticatedEventStream('/api/jobs/events', {
+      onEvent: (event) => {
+        if (event.type !== 'listings:new') return;
+        try {
+          const data = JSON.parse(event.data || '{}');
+          if (data && data.count) {
+            setNewAvailableCount((prev) => prev + data.count);
+          }
+        } catch {
+          // ignore malformed events
         }
-      } catch {
-        // ignore malformed events
-      }
-    };
+      },
+    });
+    stream.start();
 
-    src.addEventListener('listings:new', onNewListings);
-    src.onerror = () => {
-      // Let browser auto-reconnect
-    };
-
-    return () => {
-      try {
-        src.removeEventListener('listings:new', onNewListings);
-        src.close();
-      } catch {
-        // noop
-      }
-    };
+    return () => stream.close();
   }, [t]);
 
   const handleFilterChange = useMemo(

@@ -90,7 +90,7 @@ export function routeKeysOf(tree) {
 /**
  * Which sidebar entry a path counts as.
  *
- * Longest prefix wins, so `/listings/listing/42` marks Overview and `/admin/users/edit/7` marks
+ * Longest prefix wins, so `/listings/listing/42` marks Overview and an Administration child marks
  * Administration. A path under no entry at all - `/403`, say - falls back to its first segment,
  * which simply matches nothing and leaves the sidebar unselected rather than lighting up an
  * unrelated entry.
