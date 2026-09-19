@@ -29,14 +29,22 @@ describe('combined pull request workflow', () => {
     expect(job('backend-image', 'gate')).toContain('needs: changes');
   });
 
-  it('runs formatting and lint inside the frontend build job', () => {
+  it('runs Bun-based frontend checks while retaining Yarn backend ownership', () => {
     const frontend = job('frontend', 'backend-tests');
-    expect(frontend).toContain('yarn install --frozen-lockfile --ignore-scripts');
-    expect(frontend).toContain('run: yarn format:check');
-    expect(frontend).toContain('run: yarn lint');
+    const backend = job('backend-tests', 'backend-image');
+    expect(frontend).toContain('oven-sh/setup-bun@v2');
+    expect(frontend).toContain('bun install --frozen-lockfile --ignore-scripts');
+    expect(frontend).toContain('run: bun run check:lockfiles');
+    expect(frontend).toContain('run: bun run typecheck:frontend');
+    expect(frontend).toContain('run: bun run test:foundation');
+    expect(frontend).toContain('run: bun run format:check');
+    expect(frontend).toContain('run: bun run lint');
     expect(frontend).toContain("if: needs.changes.outputs.frontend == 'true'");
-    expect(frontend).toContain('run: npx vitest run test/ui');
-    expect(frontend).toContain('run: yarn build:frontend');
+    expect(frontend).toContain('run: bun run test:frontend');
+    expect(frontend).toContain('run: bun run build:frontend');
+    expect(backend).toContain('actions/setup-node@v5');
+    expect(backend).toContain('yarn install --frozen-lockfile --ignore-scripts');
+    expect(backend).toContain('npx vitest run --exclude');
   });
 
   it('forces conditional suites on for manual validation', () => {

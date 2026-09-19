@@ -21,10 +21,10 @@ describe('combined deployment workflow', () => {
     expect(fs.existsSync('.github/workflows/pages.yml')).toBe(false);
   });
 
-  it('uses Node 24-compatible actions on pinned runners', () => {
+  it('uses Bun for Pages and pinned actions on pinned runners', () => {
     expect(workflow).toContain('runs-on: ubuntu-24.04');
     expect(workflow).toContain('actions/checkout@v5');
-    expect(workflow).toContain('actions/setup-node@v5');
+    expect(workflow).toContain('oven-sh/setup-bun@v2');
     expect(workflow).toContain('google-github-actions/auth@v3');
     expect(workflow).toContain('google-github-actions/deploy-cloudrun@v3');
     expect(workflow).toContain('docker/login-action@v4');
@@ -97,7 +97,8 @@ describe('combined deployment workflow', () => {
     expect(workflow).toContain('actions/configure-pages@v5');
     expect(workflow).toContain('actions/upload-pages-artifact@v3');
     expect(workflow).toContain('actions/deploy-pages@v4');
-    expect(workflow).toContain('run: yarn install --frozen-lockfile --ignore-scripts');
+    expect(workflow).toContain('run: bun install --frozen-lockfile --ignore-scripts');
+    expect(workflow).toContain('run: bun run check:lockfiles');
     expect(workflow).toContain('VITE_API_BASE_URL: ${{ vars.CLOUD_RUN_API_ORIGIN }}');
   });
 });
