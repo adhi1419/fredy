@@ -74,7 +74,9 @@ describe('combined deployment workflow', () => {
   });
 
   it('promotes the exact validated PR image with a cached-build fallback', () => {
-    expect(prWorkflow).toContain('push: ${{ github.event.pull_request.head.repo.full_name == github.repository }}');
+    expect(prWorkflow).toContain(
+      "push: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}",
+    );
     expect(prWorkflow).toContain('candidate-${{ steps.context.outputs.hash }}');
     expect(workflow).toContain('candidate-${{ steps.context.outputs.hash }}');
     expect(workflow).toContain('docker buildx imagetools create --tag "$IMAGE" "$CANDIDATE_REF"');

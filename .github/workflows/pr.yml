@@ -1,25 +1,43 @@
-name: PR Build
+name: Pull Request
 
 on:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pr-build-${{ github.event.pull_request.number }}
+  group: pull-request-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
+  source:
+    name: Check the source code
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Check formatting
+        run: yarn format:check
+      - name: Lint
+        run: yarn lint
+
   changes:
     name: Detect changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend }}
-      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.frontend }}
+      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
     steps:
       - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v3
+        if: github.event_name == 'pull_request'
         id: filter
         with:
           filters: |
@@ -49,7 +67,7 @@ jobs:
     name: Frontend tests and build
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -71,7 +89,7 @@ jobs:
     name: Backend tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -88,7 +106,7 @@ jobs:
     name: Backend image build
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -110,16 +128,16 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           context: .
-          push: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+          push: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
           tags: ghcr.io/${{ github.repository }}:candidate-${{ steps.context.outputs.hash }}
           cache-from: type=registry,ref=${{ env.CACHE_REF }}
-          cache-to: ${{ github.event.pull_request.head.repo.full_name == github.repository && format('type=registry,ref={0},mode=min', env.CACHE_REF) || '' }}
+          cache-to: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && format('type=registry,ref={0},mode=min', env.CACHE_REF) || '' }}
 
   gate:
     name: PR Gate
     if: always()
     needs: [changes, frontend, backend-tests, backend-image]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       CHANGES_RESULT: ${{ needs.changes.result }}
       FRONTEND_RESULT: ${{ needs.frontend.result }}
