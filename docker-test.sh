@@ -61,7 +61,7 @@ fi
 
 printf '%s\n' 'Waiting for Fredy...'
 for i in $(seq 1 30); do
-  if docker exec "$APP_CONTAINER" curl -sf http://localhost:9998/ >/dev/null 2>&1; then
+  if docker exec "$APP_CONTAINER" curl -sf http://localhost:9998/health >/dev/null 2>&1; then
     break
   fi
   if [ "$i" = "30" ]; then

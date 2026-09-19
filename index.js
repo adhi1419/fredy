@@ -48,6 +48,10 @@ function validateProductionAuthConfiguration() {
     throw new Error('FIREBASE_WEB_CONFIG must contain projectId, appId, and apiKey');
   }
 
+  if (!process.env.FRONTEND_ORIGIN) {
+    throw new Error('FRONTEND_ORIGIN is required in production');
+  }
+
   if (process.env.FIRESTORE_EMULATOR_HOST) {
     throw new Error('FIRESTORE_EMULATOR_HOST is not allowed in production');
   }

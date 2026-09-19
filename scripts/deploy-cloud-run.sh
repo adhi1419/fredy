@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Build + deploy Fredy to Cloud Run with direct Firebase bearer auth.
+# Build + deploy Fredy's API-only backend to Cloud Run with direct Firebase bearer auth.
+# The frontend is built and deployed separately by GitHub Pages.
 # Run from the repo root, wherever gcloud is authenticated.
 #
 # Usage:
@@ -125,6 +126,8 @@ env = {
     'EXTERNAL_SCHEDULER': 'true',
     'TRIGGER_TOKEN': token,
     'FIREBASE_WEB_CONFIG': web_config,
+    'FRONTEND_ORIGIN': 'https://adhi1419.github.io',
+    'FRONTEND_URL': 'https://adhi1419.github.io/fredy/',
 }
 with open(envfile, 'w') as f:
     for key, value in env.items():
@@ -180,8 +183,8 @@ echo ""
 echo "======================================================================"
 echo "Deployed: $SERVICE_URL"
 echo ""
-echo "FINAL STEP — authorize the domain for Google sign-in (once):"
+echo "FINAL STEP — authorize GitHub Pages for Google sign-in (once):"
 echo "  https://console.firebase.google.com/project/$PROJECT/authentication/settings"
-echo "  -> Authorized domains -> Add domain -> ${SERVICE_URL#https://}"
-echo "  (without it the sign-in popup is rejected with auth/unauthorized-domain)"
+echo "  -> Authorized domains -> Add domain -> adhi1419.github.io"
+echo "  Pages: https://adhi1419.github.io/fredy/"
 echo "======================================================================"

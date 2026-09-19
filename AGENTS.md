@@ -122,7 +122,9 @@ Firebase token refresh, or cross-origin persistence.
 
 ### Frontend
 
-- React 19 SPA, Vite build → `ui/public/` (served as static by backend)
+- React 19 SPA, Vite build → `ui/public/`, deployed to GitHub Pages at `https://adhi1419.github.io/fredy/`
+- The Pages build receives the Cloud Run API origin through `VITE_API_BASE_URL`
+- Cloud Run is API-only and exposes `/api` plus `/health`; it does not serve the SPA
 - State: Zustand single store with per-domain slices
 - UI library: `@douyinfe/semi-ui`
 - Map: MapLibre GL + `@mapbox/mapbox-gl-draw` + `@turf/boolean-point-in-polygon` for GeoJSON polygon filters

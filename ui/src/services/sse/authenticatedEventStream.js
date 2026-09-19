@@ -4,6 +4,7 @@
  */
 
 import { getIdToken } from '../auth/firebaseAuth.js';
+import { resolveApiUrl } from '../apiUrl.js';
 import { headersWithBearer } from '../authenticatedFetch.js';
 
 export const DEFAULT_RECONNECT_DELAY_MS = 500;
@@ -75,6 +76,7 @@ export async function* parseSseEvents(body) {
  *   clearTimeoutImpl?: typeof clearTimeout,
  *   baseDelayMs?: number,
  *   maxDelayMs?: number,
+ *   apiBaseUrl?: string,
  *   signal?: AbortSignal,
  * }} [options]
  * @returns {{start: () => void, close: () => void}}
@@ -86,6 +88,7 @@ export function createAuthenticatedEventStream(url, options = {}) {
   const clearTimeoutImpl = options.clearTimeoutImpl ?? globalThis.clearTimeout;
   const baseDelayMs = options.baseDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
   const maxDelayMs = options.maxDelayMs ?? MAX_RECONNECT_DELAY_MS;
+  const resolvedUrl = resolveApiUrl(url, options.apiBaseUrl);
 
   let stopped = false;
   let started = false;
@@ -113,7 +116,7 @@ export function createAuthenticatedEventStream(url, options = {}) {
     controller = new AbortController();
     try {
       const token = await tokenGetter(isReconnect);
-      const response = await fetchImpl(url, {
+      const response = await fetchImpl(resolvedUrl, {
         credentials: 'omit',
         headers: headersWithBearer({ Accept: 'text/event-stream' }, token),
         signal: controller.signal,

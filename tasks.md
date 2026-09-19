@@ -26,9 +26,23 @@ Architecture: Firebase Authentication is the browser session authority. The brow
 - [x] Trigger immutable commit `21eda21` deployment to GCP through Actions run 35465344034.
 - [ ] Verify deployed Google sign-in and authenticated API/SSE after the user-observed deployment finishes.
 
+## Active feature: GitHub Pages frontend + API-only Cloud Run
+
+Architecture: GitHub Pages serves the hash-routed SPA under `/fredy/`. A build-time API origin routes browser requests and authenticated fetch streams to Cloud Run. Cloud Run serves only `/api` plus `/health`, accepts CORS only from the exact Pages origin, and no longer installs or builds frontend dependencies. Pages performs the single frontend production build; Cloud Build performs the single backend image build.
+
+- [x] Frontend: add one API URL resolver for requests, Firebase config, and authenticated SSE.
+- [x] Frontend: build correctly under the `/fredy/` Pages base and keep asset/deep-link behavior.
+- [x] Backend: add exact-origin CORS and preflight handling for Authorization/Content-Type.
+- [x] Backend: replace SPA/static serving with an API health endpoint.
+- [x] Deployment: add GitHub Pages workflow and inject API origin without duplicating frontend builds.
+- [x] Deployment: remove frontend build layers and static dependency from the Cloud Run image.
+- [x] Tests: cover API URL resolution, exact-origin CORS, preflight rejection, and API-only health.
+- [x] Validate: 2,135 offline tests, 298 Firestore contracts, Pages asset path, and 49-second API image build.
+- [ ] Commit/push the stacked branch, open its PR, and trigger API + Pages deployments.
+- [ ] Verify the live Pages URL, Google sign-in, CORS, authenticated API, and SSE.
+
 ## Next
 
-- [ ] Host the frontend on GitHub Pages with exact-origin CORS.
 - [ ] Add mandatory profile setup after first Firebase registration; keep Settings edit-only afterward.
 - [ ] Remove upstream phone-home/update integrations.
 - [ ] Implement the selected Paper / forest visual system from the approved light and dark screenshots.

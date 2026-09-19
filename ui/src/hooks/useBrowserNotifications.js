@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useMemo } from 'react';
+import heart from '../assets/heart.png';
 import { useSelector } from '../services/state/store';
 import { usesBrowserAdapter } from '../services/notifications/browserAdapter.js';
 import { createAuthenticatedEventStream } from '../services/sse/authenticatedEventStream.js';
@@ -48,7 +49,7 @@ export function useBrowserNotifications() {
           if (data && 'Notification' in window && Notification.permission === 'granted') {
             const notification = new Notification(data.title, {
               body: data.body,
-              icon: data.image || '/ui/src/assets/heart.png',
+              icon: data.image || heart,
             });
             notification.onclick = () => {
               window.focus();

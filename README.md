@@ -113,7 +113,8 @@ The zero-configuration local path starts Fredy and a Firestore emulator together
 docker compose up -d
 ```
 
-Open <http://localhost:9998> to check the health page and Firestore-backed public probe.
+Check the API with `curl http://localhost:9998/health`. To use the browser UI locally, run
+`yarn start:frontend:dev` and open the Vite URL it prints; Vite proxies `/api` to this container.
 Compose runs with a disposable Firestore emulator and does not provide a Google sign-in
 configuration. Browser authentication therefore requires a Firebase project and web config; use
 `./docker-test.sh` for the local health/storage smoke test. Emulator data is **disposable and is
@@ -129,10 +130,14 @@ Application Default Credentials with access to the selected Firestore project:
 gcloud auth application-default login
 export GOOGLE_CLOUD_PROJECT=your-project-id
 export FIREBASE_WEB_CONFIG="$(cat firebase-web-config.json)"
+export FRONTEND_ORIGIN=https://adhi1419.github.io
+export FRONTEND_URL=https://adhi1419.github.io/fredy/
 
 docker run -d --name fredy \
   -e GOOGLE_CLOUD_PROJECT \
   -e FIREBASE_WEB_CONFIG \
+  -e FRONTEND_ORIGIN \
+  -e FRONTEND_URL \
   -e GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-adc.json \
   -v "$HOME/.config/gcloud/application_default_credentials.json:/run/secrets/gcp-adc.json:ro" \
   -v fredy_conf:/conf \
@@ -148,12 +153,30 @@ Use Node.js 22.22.0 or newer. Authenticate ADC and select the Firestore project 
 gcloud auth application-default login
 export GOOGLE_CLOUD_PROJECT=your-project-id
 export FIREBASE_WEB_CONFIG="$(cat firebase-web-config.json)"
+export FRONTEND_ORIGIN=https://adhi1419.github.io
+export FRONTEND_URL=https://adhi1419.github.io/fredy/
 yarn install --frozen-lockfile
-yarn build:frontend
 yarn start:backend
 ```
 
-Open <http://localhost:9998>.
+Check the API at <http://localhost:9998/health>. Build and run the frontend separately with
+`yarn build:frontend` or `yarn start:frontend:dev`.
+
+### Split deployment: GitHub Pages frontend + Cloud Run API
+
+The hosted frontend is deployed to [https://adhi1419.github.io/fredy/](https://adhi1419.github.io/fredy/).
+Cloud Run is API-only: it serves `/api` and `/health`, retains the CloakBrowser runtime for
+provider scraping, and does not copy or build `ui/`.
+
+The Pages workflow performs the one frontend build. Set the GitHub Actions variable
+`CLOUD_RUN_API_ORIGIN` to the deployed Cloud Run service origin (for example,
+`https://fredy-xxxxx-ew.a.run.app`) before deploying Pages. The workflow builds `ui/public` once,
+uploads it as the Pages artifact, and deploys that artifact.
+
+The Cloud Run deploy script performs the one Cloud Build backend image build and sets the exact
+`FRONTEND_ORIGIN=https://adhi1419.github.io` environment variable for CORS. Add
+`adhi1419.github.io` to Firebase Authentication's **Authorized domains**; the `/fredy/` path is
+not part of the Firebase domain entry.
 
 ### With Unraid
 
