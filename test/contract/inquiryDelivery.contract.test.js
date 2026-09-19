@@ -67,6 +67,8 @@ describe('inquiry delivery storage contract', () => {
       inquiry_send_status: 'sent',
       inquiry_request_id: 'request-1',
       inquiry_sent_at: 5678,
+      lifecycle: { state: 'applied', source: 'provider-confirmed', changedAt: 5678 },
+      application: { attempt: { state: 'confirmed', requestId: 'request-1', finishedAt: 5678 } },
     });
     expect(await listingsStorage.reserveInquirySend(id)).toBe(false);
   });
@@ -82,6 +84,17 @@ describe('inquiry delivery storage contract', () => {
     const id = await seedListing();
     await listingsStorage.reserveInquirySend(id);
     await listingsStorage.finishInquirySend(id, { status: 'unknown', error: 'Connection closed' });
+    expect(await listingsStorage.reserveInquirySend(id)).toBe(false);
+  });
+
+  it('keeps unknown delivery internal and leaves the user lifecycle unchanged', async () => {
+    const id = await seedListing();
+    await listingsStorage.reserveInquirySend(id);
+    await listingsStorage.finishInquirySend(id, { status: 'unknown', error: 'Connection closed' });
+
+    const row = await listingsStorage.getListingById(id, 'u1', true);
+    expect(row.lifecycle.state).toBe('new');
+    expect(row.application.attempt).toMatchObject({ state: 'unknown', error: 'Connection closed' });
     expect(await listingsStorage.reserveInquirySend(id)).toBe(false);
   });
 
