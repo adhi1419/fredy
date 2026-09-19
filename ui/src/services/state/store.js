@@ -345,18 +345,6 @@ export const useFredyState = create(
             }
           },
         },
-        versionUpdate: {
-          async getVersionUpdate() {
-            try {
-              const response = await xhrGet('/api/version');
-              set((state) => ({
-                versionUpdate: { ...state.versionUpdate, versionUpdate: response.json },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/version. Error:', Exception);
-            }
-          },
-        },
         listingsData: {
           async getListingsData({
             page = 1,
@@ -724,7 +712,6 @@ export const useFredyState = create(
         generalSettings: { settings: {} },
         userSettings: { settings: {}, loaded: false },
         demoMode: { demoMode: false },
-        versionUpdate: {},
         provider: [],
         jobsData: {
           jobs: [],
@@ -744,7 +731,6 @@ export const useFredyState = create(
         notificationChannels: { ...effects.notificationChannels },
         generalSettings: { ...effects.generalSettings },
         demoMode: { ...effects.demoMode },
-        versionUpdate: { ...effects.versionUpdate },
         listingsData: { ...effects.listingsData },
         provider: { ...effects.provider },
         jobsData: { ...effects.jobsData },
