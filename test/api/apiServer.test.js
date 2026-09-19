@@ -5,7 +5,7 @@
 
 import Fastify from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerHttpSupport } from '../../lib/api/http.js';
+import { copyReplyHeadersToRaw, registerHttpSupport } from '../../lib/api/http.js';
 
 const FRONTEND_ORIGIN = 'https://pages.example.com';
 
@@ -145,5 +145,24 @@ describe('local development CORS', () => {
       process.env.NODE_ENV = previous;
       await local.close();
     }
+  });
+});
+
+describe('hijacked response headers', () => {
+  it('copies the approved CORS headers to an SSE raw response', () => {
+    const headers = new Map([
+      ['vary', 'Origin'],
+      ['access-control-allow-origin', FRONTEND_ORIGIN],
+      ['access-control-allow-methods', 'GET,POST,PUT,DELETE,OPTIONS'],
+      ['access-control-allow-headers', 'Authorization,Content-Type'],
+      ['access-control-max-age', '86400'],
+    ]);
+    const raw = { setHeader: vi.fn() };
+
+    copyReplyHeadersToRaw({ getHeader: (name) => headers.get(name) }, raw);
+
+    expect(raw.setHeader).toHaveBeenCalledWith('access-control-allow-origin', FRONTEND_ORIGIN);
+    expect(raw.setHeader).toHaveBeenCalledWith('vary', 'Origin');
+    expect(raw.setHeader).toHaveBeenCalledTimes(5);
   });
 });
