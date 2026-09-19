@@ -112,6 +112,16 @@ describe('jobStorage contract', () => {
       expect((await jobStorage.getJob('j-buy')).dealType).toBe('buy');
     });
 
+    it('defaults automatic inquiry sending to off', async () => {
+      await jobStorage.upsertJob(makeJob({ jobId: 'j-auto-default' }));
+      expect((await jobStorage.getJob('j-auto-default')).autoSendInquiry).toBe(false);
+    });
+
+    it('persists explicit automatic inquiry sending', async () => {
+      await jobStorage.upsertJob(makeJob({ jobId: 'j-auto', autoSendInquiry: true }));
+      expect((await jobStorage.getJob('j-auto')).autoSendInquiry).toBe(true);
+    });
+
     it('round-trips all fields: blacklist, provider, spatialFilter, specFilter, commuteFilter, shareWithUsers', async () => {
       // A real GeoJSON polygon: coordinates are [[[lng,lat], ...]] — nested
       // arrays, which Firestore cannot store natively. This is exactly the
@@ -179,6 +189,14 @@ describe('jobStorage contract', () => {
       await jobStorage.upsertJob(makeJob({ jobId: 'j1', dealType: 'rent' }));
       await jobStorage.upsertJob(makeJob({ jobId: 'j1', dealType: 'buy' }));
       expect((await jobStorage.getJob('j1')).dealType).toBe('buy');
+    });
+
+    it('preserves auto-send when an update omits it and applies an explicit false', async () => {
+      await jobStorage.upsertJob(makeJob({ jobId: 'j1', autoSendInquiry: true }));
+      await jobStorage.upsertJob(makeJob({ jobId: 'j1' }));
+      expect((await jobStorage.getJob('j1')).autoSendInquiry).toBe(true);
+      await jobStorage.upsertJob(makeJob({ jobId: 'j1', autoSendInquiry: false }));
+      expect((await jobStorage.getJob('j1')).autoSendInquiry).toBe(false);
     });
 
     it('updates all mutable fields', async () => {

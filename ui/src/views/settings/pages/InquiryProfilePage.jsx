@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Button, Input, TextArea, Toast } from '@douyinfe/semi-ui-19';
+import { Button, Checkbox, Input, TextArea, Toast } from '@douyinfe/semi-ui-19';
 import { IconSave } from '@douyinfe/semi-icons';
 
 import { SegmentPart } from '../../../components/segment/SegmentPart';
@@ -35,6 +35,12 @@ export default function InquiryProfilePage() {
     netIncome: '',
     moveInDate: '',
     extraFacts: '',
+    phoneNumber: '',
+    street: '',
+    houseNumber: '',
+    postcode: '',
+    city: '',
+    immoscoutPrivacyAccepted: false,
   });
 
   useEffect(() => {
@@ -47,20 +53,21 @@ export default function InquiryProfilePage() {
         netIncome: stored.netIncome ?? '',
         moveInDate: stored.moveInDate ?? '',
         extraFacts: stored.extraFacts ?? '',
+        phoneNumber: stored.phoneNumber ?? '',
+        street: stored.street ?? '',
+        houseNumber: stored.houseNumber ?? '',
+        postcode: stored.postcode ?? '',
+        city: stored.city ?? '',
+        immoscoutPrivacyAccepted: stored.immoscoutPrivacyAccepted === true,
       });
     }
   }, [stored]);
 
   const field = (key, value) => setDraft((prev) => ({ ...prev, [key]: value }));
 
-  const dirty =
-    (draft.name ?? '') !== (stored?.name ?? '') ||
-    (draft.employmentType ?? '') !== (stored?.employmentType ?? '') ||
-    (draft.jobTitle ?? '') !== (stored?.jobTitle ?? '') ||
-    (draft.employer ?? '') !== (stored?.employer ?? '') ||
-    (draft.netIncome ?? '') !== (stored?.netIncome ?? '') ||
-    (draft.moveInDate ?? '') !== (stored?.moveInDate ?? '') ||
-    (draft.extraFacts ?? '') !== (stored?.extraFacts ?? '');
+  const dirty = Object.entries(draft).some(
+    ([key, value]) => value !== (stored?.[key] ?? (typeof value === 'boolean' ? false : '')),
+  );
 
   const handleSave = async () => {
     try {
@@ -132,6 +139,46 @@ export default function InquiryProfilePage() {
               autosize={{ minRows: 3, maxRows: 8 }}
             />
           </label>
+        </div>
+      </SegmentPart>
+
+      <SegmentPart name={t('settings.inquiryProfile.contactTitle')} helpText={t('settings.inquiryProfile.contactHelp')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <label>
+            {t('settings.inquiryProfile.phoneNumber')}
+            <Input
+              type="tel"
+              value={draft.phoneNumber}
+              onChange={(val) => field('phoneNumber', val)}
+              placeholder={t('settings.inquiryProfile.phoneNumberPlaceholder')}
+            />
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(7rem, 1fr)', gap: 12 }}>
+            <label>
+              {t('settings.inquiryProfile.street')}
+              <Input value={draft.street} onChange={(val) => field('street', val)} />
+            </label>
+            <label>
+              {t('settings.inquiryProfile.houseNumber')}
+              <Input value={draft.houseNumber} onChange={(val) => field('houseNumber', val)} />
+            </label>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(7rem, 1fr) minmax(0, 3fr)', gap: 12 }}>
+            <label>
+              {t('settings.inquiryProfile.postcode')}
+              <Input value={draft.postcode} onChange={(val) => field('postcode', val)} />
+            </label>
+            <label>
+              {t('settings.inquiryProfile.city')}
+              <Input value={draft.city} onChange={(val) => field('city', val)} />
+            </label>
+          </div>
+          <Checkbox
+            checked={draft.immoscoutPrivacyAccepted}
+            onChange={(event) => field('immoscoutPrivacyAccepted', event.target.checked)}
+          >
+            {t('settings.inquiryProfile.privacyConsent')}
+          </Checkbox>
         </div>
       </SegmentPart>
 

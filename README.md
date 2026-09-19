@@ -69,6 +69,8 @@ On top of the listing itself, Fredy answers two questions:
     the headline - no two portals write that the same way
 -   ⏱️ Configurable search intervals and working hours
 -   💶 **Financing calculator**: which listings you can afford, for renting and for buying
+-   ✉️ **Guarded ImmoScout inquiries**: review and send a generated draft, or opt a job into
+    automatic sending with duplicate and unknown-outcome protection
 -   🚆 **Real travel times** from your addresses by public transport, car, bike or on foot,
     plus a filter to match
 -   🗺️ **Public transport on the map**: the network, every stop, and live departures
@@ -240,6 +242,30 @@ Example: "Search apartments on ImmoScout24 + Immowelt and send results
 to Slack + Telegram."\
 Jobs run automatically at the interval you configure under **Administration → Execution**,
 where you can also restrict them to working hours.
+
+### Guarded ImmoScout inquiries ✉️
+
+Fredy can send its generated rental inquiry through ImmoScout instead of leaving it as copyable
+text. The feature is **off by default**. Fill in the contact address and consent under
+**Settings → Inquiry profile**; the email address always comes from the signed-in Fredy account and
+cannot be overridden by an API request.
+
+There are two ways to send:
+
+- open an ImmoScout listing, edit the generated draft and confirm **Send via ImmoScout**
+- enable **Automatic inquiries** in one job's optional settings; only that job sends its generated
+  drafts automatically
+
+Before every real request Fredy asks ImmoScout to validate the same payload without sending it. A
+listing that requires profile fields Fredy does not have is skipped rather than filled with guesses.
+Each listing is reserved before delivery so a double-click and the scheduled run cannot both send.
+Confirmed requests are stored with their provider request id. A timeout or other ambiguous outcome
+is marked **unknown** and is never retried automatically, because ImmoScout may already have received
+it. Telegram reports a successful automatic application as one message beginning with `[Applied]`
+instead of following the listing with a second copyable draft.
+
+Only ImmoScout is supported initially. The delivery boundary is provider-neutral so other portals
+can add their own sender without changing the pipeline's duplicate and outcome protections.
 
 ### MCP Server 🤖
 

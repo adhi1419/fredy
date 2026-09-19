@@ -446,6 +446,34 @@ describe('telegram send() - inquiry draft second message', () => {
     expect(JSON.parse(draftCall[1].body).chat_id).toBe('999');
   });
 
+  it('sends only one message prefixed Applied after an automatic application', async () => {
+    mockNodeFetch.mockResolvedValue(jsonOk());
+
+    await send({
+      serviceName: 'immoscout',
+      newListings: [
+        {
+          id: 'a',
+          title: 'Listing',
+          link: 'https://example.com/a',
+          address: 'Addr',
+          price: '500€',
+          size: '50m²',
+          image: 'https://example.com/x/abc.jpg',
+          inquiryMessage: 'Already sent draft',
+          inquirySendStatus: 'sent',
+        },
+      ],
+      notificationConfig: [baseConfig],
+      jobKey: 'Berlin',
+    });
+
+    expect(mockNodeFetch).toHaveBeenCalledTimes(1);
+    expect(mockNodeFetch.mock.calls[0][0]).toBe('https://api.telegram.org/botTKN/sendPhoto');
+    const payload = JSON.parse(mockNodeFetch.mock.calls[0][1].body);
+    expect(payload.caption).toMatch(/^\[Applied\]/);
+  });
+
   it('sends only the listing (no second message) when there is no inquiry draft', async () => {
     mockNodeFetch.mockResolvedValue(jsonOk());
 

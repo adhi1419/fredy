@@ -25,6 +25,7 @@ import { countCommuteLimits } from './commuteFilter.js';
  * @param {{action?: string, limits?: Record<string, number>}|null} [job.commuteFilter]
  * @param {string[]} [job.shareWithUsers]
  * @param {boolean} [job.enabled]
+ * @param {boolean} [job.autoSendInquiry]
  * @param {Object} context
  * @param {(key: string, vars?: Object) => string} context.t
  * @param {(value: number) => string} context.formatPrice
@@ -56,6 +57,9 @@ export function describeJobRefinements(job, { t, formatPrice }) {
   const commuteLimits = countCommuteLimits(job?.commuteFilter);
   if (commuteLimits > 0) {
     parts.push(t('jobs.mutation.summaryCommute', { count: commuteLimits }));
+  }
+  if (job?.autoSendInquiry === true) {
+    parts.push(t('jobs.mutation.summaryAutoSendInquiry'));
   }
   if ((job?.shareWithUsers?.length ?? 0) > 0) {
     parts.push(t('jobs.mutation.summaryShared', { count: job.shareWithUsers.length }));

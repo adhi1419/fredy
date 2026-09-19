@@ -22,12 +22,32 @@ vi.mock('../lib/services/geocoding/geoCodingService.js', () => ({
 vi.mock('../lib/services/storage/jobStorage.js', () => ({
   getJob: (jobKey) => ({ id: jobKey, userId: 'user1' }),
 }));
+vi.mock('../lib/services/storage/userStorage.js', () => ({
+  getUser: (userId) => ({ id: userId, username: 'user1@example.com' }),
+}));
 vi.mock('../lib/services/sse/sse-broker.js', () => ({
   sendToUser: (userId, event, data) => {
     sseEvents.push({ userId, event, data });
   },
 }));
 vi.mock('../lib/notification/notify.js', () => ({ send }));
+
+export const inquiryDeliveries = [];
+let inquiryDeliveryError = null;
+export function setInquiryDeliveryError(error) {
+  inquiryDeliveryError = error;
+}
+vi.mock('../lib/services/inquiries/sendInquiry.js', () => ({
+  supportsInquirySending: (providerId) => providerId === 'immoscout',
+}));
+vi.mock('../lib/services/inquiries/deliverInquiry.js', () => ({
+  deliverInquiry: async (params) => {
+    inquiryDeliveries.push(params);
+    if (inquiryDeliveryError) throw inquiryDeliveryError;
+    params.listing.inquirySendStatus = 'sent';
+    return { started: true, status: 'sent', requestId: 'request-test', sentAt: 1234 };
+  },
+}));
 
 vi.mock('../lib/services/extractor/puppeteerExtractor.js', async (importOriginal) => {
   if (process.env.TEST_MODE !== 'offline') {

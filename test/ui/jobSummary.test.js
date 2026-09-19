@@ -35,6 +35,7 @@ describe('jobSummary', () => {
     ['a room count', { specFilter: { minRooms: 3 } }, 'jobs.mutation.summaryMinRooms'],
     ['blocked words', { blacklist: ['Tausch'] }, 'jobs.mutation.summaryBlacklist'],
     ['a drawn area', { spatialFilter: { type: 'Polygon' } }, 'jobs.mutation.summaryArea'],
+    ['automatic inquiries', { autoSendInquiry: true }, 'jobs.mutation.summaryAutoSendInquiry'],
     ['sharing', { shareWithUsers: ['user-1'] }, 'jobs.mutation.summaryShared'],
     ['being switched off', { enabled: false }, 'jobs.mutation.summaryPaused'],
   ])('mentions %s', (_what, job, expected) => {
@@ -61,6 +62,7 @@ describe('jobSummary', () => {
       specFilter: { maxPrice: 1200, minSize: 60, minRooms: 3 },
       blacklist: ['Tausch', 'WG'],
       spatialFilter: { type: 'Polygon' },
+      autoSendInquiry: true,
       shareWithUsers: ['user-1'],
       enabled: false,
     };
@@ -70,6 +72,7 @@ describe('jobSummary', () => {
       'jobs.mutation.summaryMinRooms',
       'jobs.mutation.summaryBlacklist',
       'jobs.mutation.summaryArea',
+      'jobs.mutation.summaryAutoSendInquiry',
       'jobs.mutation.summaryShared',
       'jobs.mutation.summaryPaused',
     ]);
@@ -97,6 +100,7 @@ describe('jobSummary', () => {
       'jobs.mutation.summaryMinRooms',
       'jobs.mutation.summaryBlacklist',
       'jobs.mutation.summaryArea',
+      'jobs.mutation.summaryAutoSendInquiry',
       'jobs.mutation.summaryShared',
       'jobs.mutation.summaryPaused',
     ]) {

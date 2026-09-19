@@ -64,14 +64,15 @@ describe('jobStorage.getJobs', () => {
     expect(jobs.find((j) => j.id === 'disabled-job').enabled).toBe(false);
   });
 
-  it('selects the deal type on every read path', () => {
+  it('selects deal type and auto-send state on every read path', () => {
     jobStorage.getJobs();
     jobStorage.getJob('job-1');
     jobStorage.queryJobs({ userId: 'u1' });
-    // Every query that projects job columns (not the bare COUNT) must carry the deal type.
+    // Every query that projects job columns (not the bare COUNT) must carry both fields.
     for (const call of calls.query) {
       if (call.sql.includes('j.notification_adapter')) {
         expect(call.sql).toContain('j.deal_type AS dealType');
+        expect(call.sql).toContain('j.auto_send_inquiry AS autoSendInquiry');
       }
     }
   });
@@ -143,6 +144,7 @@ describe('jobStorage.upsertJob binds nothing it does not write', () => {
     spatialFilter: { type: 'FeatureCollection' },
     specFilter: { maxPrice: 1200 },
     commuteFilter: { action: 'notify', limits: { Work: 35 } },
+    autoSendInquiry: true,
     dealType: 'rent',
   };
 

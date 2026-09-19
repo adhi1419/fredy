@@ -18,6 +18,7 @@ import {
   Divider,
   Descriptions,
   Banner,
+  Popconfirm,
   Spin,
   Toast,
   TextArea,
@@ -39,6 +40,7 @@ import {
   IconGridView,
   IconCalendar,
   IconBolt,
+  IconSend,
   IconRefresh,
   IconEdit,
   IconCopy,
@@ -69,6 +71,7 @@ import './ListingDetail.less';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
 import { useFinanceProfile } from '../../hooks/useFinanceProfile.js';
 import { VERDICT_COLORS, formatEuro, withAlpha } from '../../components/cards/chartTheme.js';
+import { isInquiryContactProfileReady } from '../../services/inquiries/profile.js';
 
 const { Title, Text } = Typography;
 
@@ -97,6 +100,7 @@ export default function ListingDetail() {
   const { isComplete: buyComplete, rentComplete, thresholds: financeThresholds } = useFinanceProfile();
   const listing = useSelector((state) => state.listingsData.currentListing);
   const userSettings = useSelector((state) => state.userSettings.settings);
+  const contactProfileReady = isInquiryContactProfileReady(userSettings?.inquiry_profile);
   const connectivityEnabled = useSelector((state) => state.generalSettings.settings?.connectivityEnabled === true);
   const homeAddresses = useMemo(() => getAddresses(userSettings), [userSettings]);
   const listingDeletionPref = userSettings?.listing_deletion_preference;
@@ -132,6 +136,7 @@ export default function ListingDetail() {
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftError, setDraftError] = useState(null);
   const [draftCopied, setDraftCopied] = useState(false);
+  const [inquirySending, setInquirySending] = useState(false);
 
   useEffect(() => {
     setRouteTimes(listing?.travelTimes ?? []);
@@ -373,6 +378,21 @@ export default function ListingDetail() {
       setTimeout(() => setDraftCopied(false), 2000);
     } catch {
       Toast.error(t('listing.detail.draftMessage.error'));
+    }
+  };
+
+  const handleSendInquiry = async () => {
+    if (!listing || !draftMessage?.trim()) return;
+    setInquirySending(true);
+    try {
+      await xhrPost(`/api/listings/${listing.id}/send-inquiry`, { message: draftMessage });
+      await actions.listingsData.getListing(listingId);
+      Toast.success(t('listing.detail.inquirySend.success'));
+    } catch (error) {
+      await actions.listingsData.getListing(listingId);
+      Toast.error(errorMessage(error, t('listing.detail.inquirySend.error')));
+    } finally {
+      setInquirySending(false);
     }
   };
 
@@ -688,13 +708,67 @@ export default function ListingDetail() {
                 <div>
                   <TextArea
                     value={draftMessage}
-                    readonly
+                    onChange={setDraftMessage}
+                    disabled={listing.inquiry_send_status === 'sending'}
                     autosize={{ minRows: 4, maxRows: 12 }}
                     style={{ marginBottom: 8 }}
                   />
-                  <Button icon={<IconCopy />} onClick={handleCopyDraft} size="small" theme="light">
-                    {draftCopied ? t('listing.detail.draftMessage.copied') : t('listing.detail.draftMessage.copy')}
-                  </Button>
+                  <Space wrap>
+                    <Button icon={<IconCopy />} onClick={handleCopyDraft} size="small" theme="light">
+                      {draftCopied ? t('listing.detail.draftMessage.copied') : t('listing.detail.draftMessage.copy')}
+                    </Button>
+                    {listing.provider === 'immoscout' &&
+                      !['sending', 'sent', 'unknown'].includes(listing.inquiry_send_status) &&
+                      (contactProfileReady ? (
+                        <Popconfirm
+                          title={t('listing.detail.inquirySend.confirmTitle')}
+                          content={t('listing.detail.inquirySend.confirmBody')}
+                          onConfirm={handleSendInquiry}
+                        >
+                          <Button icon={<IconSend />} size="small" theme="solid" loading={inquirySending}>
+                            {t('listing.detail.inquirySend.button')}
+                          </Button>
+                        </Popconfirm>
+                      ) : (
+                        <Button
+                          icon={<IconEdit />}
+                          size="small"
+                          theme="light"
+                          onClick={() => navigate('/settings/inquiry-profile')}
+                        >
+                          {t('listing.detail.inquirySend.completeProfile')}
+                        </Button>
+                      ))}
+                    {listing.inquiry_send_status && (
+                      <Tag
+                        color={
+                          listing.inquiry_send_status === 'sent'
+                            ? 'green'
+                            : listing.inquiry_send_status === 'sending'
+                              ? 'blue'
+                              : 'orange'
+                        }
+                      >
+                        {t(`listing.detail.inquirySend.status.${listing.inquiry_send_status}`)}
+                      </Tag>
+                    )}
+                  </Space>
+                  {listing.inquiry_send_status === 'failed' && (
+                    <Banner
+                      type="warning"
+                      description={t('listing.detail.inquirySend.failedWarning')}
+                      closeIcon={null}
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
+                  {listing.inquiry_send_status === 'unknown' && (
+                    <Banner
+                      type="warning"
+                      description={t('listing.detail.inquirySend.unknownWarning')}
+                      closeIcon={null}
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
                 </div>
               )}
             </div>
