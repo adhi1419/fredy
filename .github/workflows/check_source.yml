@@ -1,9 +1,8 @@
 name: Check the source code
 on:
-  push:
-    branches: [master]
   pull_request:
     branches: [master, develop]
+  workflow_dispatch:
 jobs:
   check_source_code:
     name: Check the source code
@@ -17,7 +16,7 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn install
+        run: yarn install --frozen-lockfile
 
       - name: Check formatting
         run: yarn format:check
