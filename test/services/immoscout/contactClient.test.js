@@ -96,6 +96,45 @@ describe('sendImmoscoutInquiry', () => {
     expect(fetchImpl.mock.calls[2][1].headers.Authorization).toBeUndefined();
   });
 
+  it('reports contact-requirements HTTP status and returned provider error', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(jsonResponse({ message: 'Expose not found' }, 404));
+
+    await expect(
+      sendImmoscoutInquiry({
+        listing,
+        profile,
+        accountEmail: 'applicant@example.com',
+        message: 'Hallo',
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({
+      status: 404,
+      outcome: 'failed',
+      phase: 'requirements',
+      providerError: 'Expose not found',
+      message: 'ImmoScout contact requirements request failed (HTTP 404): Expose not found.',
+    });
+  });
+
+  it('reports contact-requirements transport failures without applicant data', async () => {
+    const fetchImpl = vi.fn().mockRejectedValueOnce(new Error('socket closed'));
+
+    await expect(
+      sendImmoscoutInquiry({
+        listing,
+        profile,
+        accountEmail: 'applicant@example.com',
+        message: 'Hallo',
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({
+      outcome: 'failed',
+      phase: 'requirements',
+      providerError: 'Error: socket closed',
+      message: 'Could not read the ImmoScout contact requirements: Error: socket closed.',
+    });
+  });
+
   it('does not POST when mandatory profile fields are missing', async () => {
     const fetchImpl = vi.fn().mockResolvedValueOnce(jsonResponse(detail));
     await expect(
