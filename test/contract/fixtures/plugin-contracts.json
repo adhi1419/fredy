@@ -1,0 +1,764 @@
+{
+  "contractVersion": 1,
+  "countryDefaults": {
+    "default": [
+      "de"
+    ],
+    "normalization": "lowercase, deduplicate, sort valid ISO alpha-2 codes; fallback to default when none survive"
+  },
+  "providers": [
+    {
+      "id": "deutscheWohnen",
+      "name": "Deutsche Wohnen",
+      "baseUrl": "https://www.deutsche-wohnen.com/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "einsAImmobilien",
+      "name": "1a Immobilien",
+      "baseUrl": "https://www.1a-immobilienmarkt.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "engelVoelkers",
+      "name": "Engel & Völkers",
+      "baseUrl": "https://www.engelvoelkers.com/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "flatfox",
+      "name": "Flatfox",
+      "baseUrl": "https://flatfox.ch/",
+      "countries": [
+        "ch"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "title",
+        "link",
+        "price",
+        "size",
+        "rooms",
+        "address"
+      ]
+    },
+    {
+      "id": "imaxx",
+      "name": "IMAXX",
+      "baseUrl": "https://www.imaxx.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "immobilienDe",
+      "name": "Immobilien.de",
+      "baseUrl": "https://www.immobilien.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "immoscout",
+      "name": "Immoscout",
+      "baseUrl": "https://www.immobilienscout24.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "immoswp",
+      "name": "Immo Südwest Presse",
+      "baseUrl": "https://immo.swp.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "immowelt",
+      "name": "Immowelt",
+      "baseUrl": "https://www.immowelt.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "inberlinwohnen",
+      "name": "InBerlinWohnen",
+      "baseUrl": "https://inberlinwohnen.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "kleinanzeigen",
+      "name": "Kleinanzeigen",
+      "baseUrl": "https://www.kleinanzeigen.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "mcMakler",
+      "name": "McMakler",
+      "baseUrl": "https://www.mcmakler.de/immobilien/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "neubauKompass",
+      "name": "Neubau Kompass",
+      "baseUrl": "https://www.neubaukompass.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "ohneMakler",
+      "name": "OhneMakler",
+      "baseUrl": "https://www.ohne-makler.net",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "regionalimmobilien24",
+      "name": "Regionalimmobilien24",
+      "baseUrl": "https://www.regionalimmobilien24.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "schwarzesbrett",
+      "name": "Schwarzes Brett Bremen",
+      "baseUrl": "https://schwarzesbrett.bremen.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "sparkasse",
+      "name": "Sparkasse Immobilien",
+      "baseUrl": "https://immobilien.sparkasse.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "wgGesucht",
+      "name": "Wg gesucht",
+      "baseUrl": "https://www.wg-gesucht.de/",
+      "countries": [
+        "de"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "link",
+        "title",
+        "price",
+        "size",
+        "rooms",
+        "address",
+        "image",
+        "description"
+      ]
+    },
+    {
+      "id": "willhaben",
+      "name": "willhaben",
+      "baseUrl": "https://www.willhaben.at/",
+      "countries": [
+        "at"
+      ],
+      "requiredFieldNames": [
+        "id",
+        "title",
+        "link",
+        "price",
+        "size",
+        "rooms",
+        "address"
+      ]
+    }
+  ],
+  "notificationAdapters": [
+    {
+      "id": "apprise",
+      "name": "Apprise",
+      "fields": {
+        "server": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": true
+        }
+      }
+    },
+    {
+      "id": "browser",
+      "name": "Browser Notifications",
+      "fields": {}
+    },
+    {
+      "id": "console",
+      "name": "Console",
+      "fields": {}
+    },
+    {
+      "id": "demo",
+      "name": "Demo Adapter",
+      "fields": {}
+    },
+    {
+      "id": "discord_webhook",
+      "name": "Discord Webhook",
+      "fields": {
+        "webhookUrl": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        }
+      }
+    },
+    {
+      "id": "http",
+      "name": "HTTP",
+      "fields": {
+        "endpointUrl": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": true
+        },
+        "selfSignedCerts": {
+          "type": "boolean",
+          "optional": false,
+          "secret": false,
+          "target": false
+        },
+        "authToken": {
+          "type": "text",
+          "optional": true,
+          "secret": true,
+          "target": false
+        }
+      }
+    },
+    {
+      "id": "mailjet",
+      "name": "MailJet",
+      "fields": {
+        "apiPublicKey": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "apiPrivateKey": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "receiver": {
+          "type": "email",
+          "optional": false,
+          "secret": false,
+          "target": true
+        },
+        "from": {
+          "type": "email",
+          "optional": false,
+          "secret": false,
+          "target": false
+        }
+      }
+    },
+    {
+      "id": "mattermost",
+      "name": "Mattermost",
+      "fields": {
+        "webhook": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "channel": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": true
+        }
+      }
+    },
+    {
+      "id": "ntfy",
+      "name": "ntfy",
+      "fields": {
+        "priority": {
+          "type": "number",
+          "optional": false,
+          "secret": false,
+          "target": false
+        },
+        "server": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": true
+        },
+        "topic": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "accessToken": {
+          "type": "text",
+          "optional": true,
+          "secret": true,
+          "target": false
+        },
+        "username": {
+          "type": "text",
+          "optional": true,
+          "secret": false,
+          "target": false
+        },
+        "password": {
+          "type": "text",
+          "optional": true,
+          "secret": true,
+          "target": false
+        }
+      }
+    },
+    {
+      "id": "pushover",
+      "name": "Pushover",
+      "fields": {
+        "token": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "user": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "device": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": true
+        }
+      }
+    },
+    {
+      "id": "resend",
+      "name": "Resend",
+      "fields": {
+        "apiKey": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "receiver": {
+          "type": "email",
+          "optional": false,
+          "secret": false,
+          "target": true
+        },
+        "from": {
+          "type": "email",
+          "optional": false,
+          "secret": false,
+          "target": false
+        }
+      }
+    },
+    {
+      "id": "sendgrid",
+      "name": "SendGrid",
+      "fields": {
+        "apiKey": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "receiver": {
+          "type": "email",
+          "optional": false,
+          "secret": false,
+          "target": true
+        },
+        "from": {
+          "type": "email",
+          "optional": false,
+          "secret": false,
+          "target": false
+        },
+        "templateId": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": false
+        }
+      }
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "fields": {
+        "token": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "channel": {
+          "type": "channel",
+          "optional": false,
+          "secret": false,
+          "target": true
+        }
+      }
+    },
+    {
+      "id": "slack_with_webhooks",
+      "name": "Slack with Webhooks",
+      "fields": {
+        "webhookUrl": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        }
+      }
+    },
+    {
+      "id": "smtp",
+      "name": "SMTP",
+      "fields": {
+        "host": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": false
+        },
+        "port": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": false
+        },
+        "secure": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": false
+        },
+        "username": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": false
+        },
+        "password": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "receiver": {
+          "type": "text",
+          "optional": false,
+          "secret": false,
+          "target": true
+        },
+        "from": {
+          "type": "email",
+          "optional": false,
+          "secret": false,
+          "target": false
+        }
+      }
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram",
+      "fields": {
+        "token": {
+          "type": "text",
+          "optional": false,
+          "secret": true,
+          "target": false
+        },
+        "chatId": {
+          "type": "chatId",
+          "optional": false,
+          "secret": false,
+          "target": true
+        },
+        "messageThreadId": {
+          "type": "text",
+          "optional": true,
+          "secret": false,
+          "target": false
+        },
+        "plainText": {
+          "type": "boolean",
+          "optional": true,
+          "secret": false,
+          "target": false
+        }
+      }
+    }
+  ],
+  "sendCall": {
+    "method": "send",
+    "arguments": [
+      "serviceName",
+      "newListings",
+      "notificationConfig",
+      "jobKey",
+      "baseUrl"
+    ],
+    "object": [
+      "serviceName",
+      "newListings",
+      "notificationConfig",
+      "jobKey",
+      "baseUrl"
+    ]
+  },
+  "schedules": [
+    {
+      "id": "active-checker",
+      "cron": "0 */4 * * *",
+      "startup": true
+    },
+    {
+      "id": "geocoding",
+      "cron": "0 */6 * * *",
+      "startup": true
+    },
+    {
+      "id": "demo-cleanup",
+      "cron": "0 0 * * *",
+      "startup": false,
+      "condition": "demoMode"
+    },
+    {
+      "id": "listing-retention",
+      "cron": "30 3 * * *",
+      "startup": true
+    },
+    {
+      "id": "price-tracking",
+      "cron": "0 5 */2 * *",
+      "startup": false
+    },
+    {
+      "id": "travel-time",
+      "cron": "20 */2 * * *",
+      "startup": false
+    },
+    {
+      "id": "connectivity",
+      "cron": "40 * * * *",
+      "startup": true
+    }
+  ]
+}
