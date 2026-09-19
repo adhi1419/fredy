@@ -1,4 +1,4 @@
-name: Deploy to Cloud Run
+name: Deploy
 
 on:
   push:
@@ -7,28 +7,60 @@ on:
       - 'lib/**'
       - 'index.js'
       - 'Dockerfile'
+      - 'scripts/backend-image-key.sh'
+      - 'ui/**'
+      - 'index.html'
+      - 'vite.config.js'
       - 'package.json'
       - 'yarn.lock'
       - '.github/workflows/deploy.yml'
-      - '.github/workflows/pr.yml'
-      - 'scripts/backend-image-key.sh'
   workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write
-  packages: read
 
-concurrency:
-  group: deploy
-  cancel-in-progress: false
-
-# Pull requests publish a runnable image tagged by the exact Docker-input hash.
-# Main promotes that validated image without rebuilding. A cache-backed build is
-# retained for manual dispatches and any commit that has no matching candidate.
 jobs:
-  deploy:
+  changes:
+    name: Detect deployment changes
     runs-on: ubuntu-24.04
+    outputs:
+      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
+      frontend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        if: github.event_name == 'push'
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'lib/**'
+              - 'index.js'
+              - 'Dockerfile'
+              - 'scripts/backend-image-key.sh'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.github/workflows/deploy.yml'
+            frontend:
+              - 'ui/**'
+              - 'index.html'
+              - 'vite.config.js'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.github/workflows/deploy.yml'
+
+  cloud-run:
+    name: Cloud Run API
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    concurrency:
+      group: deploy-cloud-run
+      cancel-in-progress: false
     env:
       IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/fredy/fredy:${{ github.sha }}
       CACHE_REF: ghcr.io/${{ github.repository }}:buildcache
@@ -103,4 +135,60 @@ jobs:
       - name: Publish deployment URL
         env:
           SERVICE_URL: ${{ steps.deploy.outputs.url }}
-        run: printf '### Deployed\n%s\n' "$SERVICE_URL" >> "$GITHUB_STEP_SUMMARY"
+        run: printf '### Cloud Run API\n%s\n' "$SERVICE_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  pages-build:
+    name: Build Pages
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Validate API origin
+        env:
+          CLOUD_RUN_API_ORIGIN: ${{ vars.CLOUD_RUN_API_ORIGIN }}
+        run: test -n "$CLOUD_RUN_API_ORIGIN"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build frontend
+        env:
+          VITE_API_BASE_URL: ${{ vars.CLOUD_RUN_API_ORIGIN }}
+          VITE_PAGES: 'true'
+        run: yarn build:frontend
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ui/public
+
+  pages-deploy:
+    name: Deploy Pages
+    needs: pages-build
+    if: needs.pages-build.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: deploy-pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

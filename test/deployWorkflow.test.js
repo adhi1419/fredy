@@ -9,26 +9,68 @@ import { describe, expect, it } from 'vitest';
 const workflow = fs.readFileSync('.github/workflows/deploy.yml', 'utf8');
 const prWorkflow = fs.readFileSync('.github/workflows/pr.yml', 'utf8');
 
-describe('fast Cloud Run deployment workflow', () => {
-  it('uses Node 24-compatible actions on a pinned runner', () => {
+function job(name, next = null) {
+  const start = workflow.indexOf(`  ${name}:\n`);
+  const end = next == null ? workflow.length : workflow.indexOf(`  ${next}:\n`, start);
+  return workflow.slice(start, end);
+}
+
+describe('combined deployment workflow', () => {
+  it('replaces the standalone Pages workflow', () => {
+    expect(workflow).toContain('name: Deploy\n');
+    expect(fs.existsSync('.github/workflows/pages.yml')).toBe(false);
+  });
+
+  it('uses Node 24-compatible actions on pinned runners', () => {
     expect(workflow).toContain('runs-on: ubuntu-24.04');
     expect(workflow).toContain('actions/checkout@v5');
+    expect(workflow).toContain('actions/setup-node@v5');
     expect(workflow).toContain('google-github-actions/auth@v3');
     expect(workflow).toContain('google-github-actions/deploy-cloudrun@v3');
     expect(workflow).toContain('docker/login-action@v4');
     expect(prWorkflow).toContain('actions/checkout@v5');
-    expect(prWorkflow).toContain('actions/setup-node@v5');
-    expect(prWorkflow).toContain('docker/login-action@v4');
     expect(`${workflow}\n${prWorkflow}`).not.toMatch(
       /actions\/checkout@v4|actions\/setup-node@v4|docker\/login-action@v3/,
     );
   });
 
-  it('builds on the GitHub runner from the shared cross-PR cache', () => {
-    expect(workflow).toContain('docker/build-push-action@v7');
-    expect(workflow).toContain('push: true');
-    expect(workflow).toContain('cache-from: type=registry,ref=${{ env.CACHE_REF }}');
-    expect(workflow).toContain('ghcr.io/${{ github.repository }}:buildcache');
+  it('forces both surfaces on for a manual deployment', () => {
+    expect(workflow).toContain(
+      "backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}",
+    );
+    expect(workflow).toContain(
+      "frontend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.frontend }}",
+    );
+  });
+
+  it('starts Cloud Run and the Pages build in parallel after detection', () => {
+    expect(job('cloud-run', 'pages-build')).toContain('needs: changes');
+    expect(job('pages-build', 'pages-deploy')).toContain('needs: changes');
+    expect(job('pages-deploy')).toContain('needs: pages-build');
+    expect(job('pages-deploy')).not.toContain('needs: cloud-run');
+  });
+
+  it('keeps concurrency and credentials isolated by deployment surface', () => {
+    const cloudRun = job('cloud-run', 'pages-build');
+    const pagesBuild = job('pages-build', 'pages-deploy');
+    const pagesDeploy = job('pages-deploy');
+
+    expect(cloudRun).toContain('id-token: write');
+    expect(cloudRun).toContain('packages: read');
+    expect(cloudRun).toContain('cancel-in-progress: false');
+    expect(pagesBuild).toContain('contents: read');
+    expect(pagesBuild).not.toContain('id-token: write');
+    expect(pagesDeploy).toContain('pages: write');
+    expect(pagesDeploy).toContain('id-token: write');
+    expect(pagesDeploy).toContain('cancel-in-progress: true');
+  });
+
+  it('deploys only for production inputs, not tests or documentation', () => {
+    expect(workflow).toContain("- 'lib/**'");
+    expect(workflow).toContain("- 'ui/**'");
+    expect(workflow).toContain("- 'scripts/backend-image-key.sh'");
+    expect(workflow).not.toContain("- 'test/**'");
+    expect(workflow).not.toContain("- 'doc/**'");
   });
 
   it('promotes the exact validated PR image with a cached-build fallback', () => {
@@ -46,9 +88,14 @@ describe('fast Cloud Run deployment workflow', () => {
     expect(workflow).not.toContain('deploy-cloud-run.sh');
   });
 
-  it('deploys an immutable image and verifies the service health', () => {
+  it('preserves Cloud Run health verification and Pages publication', () => {
     expect(workflow).toContain('fredy/fredy:${{ github.sha }}');
     expect(workflow).toContain('image: ${{ env.IMAGE }}');
     expect(workflow).toContain('"$SERVICE_URL/health"');
+    expect(workflow).toContain('actions/configure-pages@v5');
+    expect(workflow).toContain('actions/upload-pages-artifact@v3');
+    expect(workflow).toContain('actions/deploy-pages@v4');
+    expect(workflow).toContain('run: yarn install --frozen-lockfile --ignore-scripts');
+    expect(workflow).toContain('VITE_API_BASE_URL: ${{ vars.CLOUD_RUN_API_ORIGIN }}');
   });
 });
