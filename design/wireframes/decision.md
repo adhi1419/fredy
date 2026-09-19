@@ -76,9 +76,10 @@ Every product surface except the Saved Searches index uses a compact heading: sm
 Mobile primary navigation is frozen at the bottom, not the top. Listing detail has a second frozen action row immediately above it:
 
 - primary **Apply** action on the left
+- icon-only **Open in Google Maps** in the middle, with an accessible label
 - icon-only **Open provider listing** on the right, with an accessible label
 
-The listing owns one lifecycle: New, Applied, Viewed, Archived, offer, or rejected. A confirmed provider application automatically moves the listing to **Applied**. The same screen provides **I applied myself**, **Add notes**, and **Got a viewing**, and **Archive**; these update that lifecycle instead of maintaining a separate inquiry status.
+The listing owns one lifecycle: New, Applied, Viewed, Archived, offer, or rejected. A confirmed provider application automatically moves the listing to **Applied**. The Apply control becomes **Applied** and opens a scrollable popover containing the submitted application message; the message is evidence attached to the applied listing rather than another status. The same screen provides **I applied myself**, **Add notes**, and **Got a viewing**, and **Archive**; these update that lifecycle instead of maintaining a separate inquiry status.
 
 ## Guided Saved Search and provider capability model
 
