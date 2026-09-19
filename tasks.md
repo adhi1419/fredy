@@ -48,7 +48,8 @@ Architecture: GitHub Pages serves the hash-routed SPA under `/fredy/`. A build-t
 - [ ] Add mandatory profile setup after first Firebase registration; keep Settings edit-only afterward.
 - [x] Remove upstream phone-home/update integrations and the in-app donation surface.
 - [ ] Map core user journeys and approve responsive UX wireframes for dashboard, listings, listing detail, job creation, and settings.
-- [ ] Add Bun and strict TypeScript foundations, then migrate services, store, hooks, components, and pages by approved UX slice with cached CI under 60 seconds.
+- [x] Add Bun 1.3.14 and strict TypeScript foundations: exact dev-tool pins, frozen Bun lock, Yarn lock compatibility, deterministic lock drift checks, a narrow strict API URL seam, Bun frontend CI/Pages commands, and foundation/workflow tests; broad frontend migration remains.
+- [ ] Migrate services, store, hooks, components, and pages by approved UX slice with cached CI under 60 seconds.
 - [ ] Implement the selected Paper / forest visual system from the approved wireframes and light/dark direction.
 - [ ] Rewrite the customer README with final UI screenshots and move technical setup into the developer guide.
 - [ ] Rewrite the backend in Rust behind frozen API/provider/Firestore contracts.

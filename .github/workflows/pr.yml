@@ -32,6 +32,12 @@ jobs:
               - 'vite.config.js'
               - 'package.json'
               - 'yarn.lock'
+              - 'bun.lock'
+              - '.bun-version'
+              - 'bunfig.toml'
+              - 'tsconfig.frontend.json'
+              - 'scripts/check-lockfiles.js'
+              - 'test/toolchainFoundation.test.js'
               - '.github/workflows/pr.yml'
             backend:
               - 'lib/**'
@@ -53,23 +59,26 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: yarn
-      - run: yarn install --frozen-lockfile --ignore-scripts
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Check lock policy
+        run: bun run check:lockfiles
+      - name: Frontend typecheck
+        run: bun run typecheck:frontend
+      - name: Foundation tests
+        run: bun run test:foundation
       - name: Check formatting
-        run: yarn format:check
+        run: bun run format:check
       - name: Lint
-        run: yarn lint
+        run: bun run lint
       - name: Frontend tests
         if: needs.changes.outputs.frontend == 'true'
-        run: npx vitest run test/ui
-        env:
-          TEST_MODE: offline
+        run: bun run test:frontend
       - name: Pages production build
         if: needs.changes.outputs.frontend == 'true'
-        run: yarn build:frontend
+        run: bun run build:frontend
         env:
           VITE_PAGES: 'true'
           VITE_API_BASE_URL: https://api.example.invalid

@@ -13,6 +13,10 @@ on:
       - 'vite.config.js'
       - 'package.json'
       - 'yarn.lock'
+      - 'bun.lock'
+      - '.bun-version'
+      - 'bunfig.toml'
+      - 'tsconfig.frontend.json'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
@@ -47,6 +51,10 @@ jobs:
               - 'vite.config.js'
               - 'package.json'
               - 'yarn.lock'
+              - 'bun.lock'
+              - '.bun-version'
+              - 'bunfig.toml'
+              - 'tsconfig.frontend.json'
               - '.github/workflows/deploy.yml'
 
   cloud-run:
@@ -147,10 +155,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v5
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: yarn
+          bun-version-file: .bun-version
 
       - name: Validate API origin
         env:
@@ -158,7 +165,10 @@ jobs:
         run: test -n "$CLOUD_RUN_API_ORIGIN"
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Check lock policy
+        run: bun run check:lockfiles
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -167,7 +177,7 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ vars.CLOUD_RUN_API_ORIGIN }}
           VITE_PAGES: 'true'
-        run: yarn build:frontend
+        run: bun run build:frontend
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
