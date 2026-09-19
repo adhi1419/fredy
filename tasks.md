@@ -38,7 +38,9 @@ Architecture: GitHub Pages serves the hash-routed SPA under `/fredy/`. A build-t
 - [x] Deployment: remove frontend build layers and static dependency from the Cloud Run image.
 - [x] Tests: cover API URL resolution, exact-origin CORS, preflight rejection, and API-only health.
 - [x] Validate: 2,135 offline tests, 298 Firestore contracts, Pages asset path, and 49-second API image build.
-- [ ] Commit/push the stacked branch, open its PR, and trigger API + Pages deployments.
+- [x] Commit/push the stacked branch and open PR #6 against `firebase-bearer-auth`.
+- [x] Set `CLOUD_RUN_API_ORIGIN` and enable GitHub Actions as the Pages source.
+- [ ] Merge PR #5, retarget PR #6 to `main`, then merge it so API and Pages deploy together.
 - [ ] Verify the live Pages URL, Google sign-in, CORS, authenticated API, and SSE.
 
 ## Next
