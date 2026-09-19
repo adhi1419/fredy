@@ -11,7 +11,7 @@ The API image still includes CloakBrowser and its browser/runtime dependencies f
 - Every authenticated request rechecks the Firestore `allowed_users` collection.
 - `EXTERNAL_SCHEDULER=true` disables the internal timer and scrape-on-boot.
 - Cloud Scheduler calls `POST /api/trigger` with `X-Trigger-Token`.
-- GitHub Pages performs the only frontend build.
+- One GitHub Actions `Deploy` run detects changed production inputs, then starts Cloud Run API and Pages build jobs in parallel. Unchanged surfaces are skipped.
 - Pull requests build the real backend image, publish a minimal BuildKit cache at `ghcr.io/adhi1419/fredy:buildcache`, and push the runnable image under `candidate-<backend-context-hash>`.
 - A push to `main` computes the same hash and promotes that exact validated candidate to an immutable Artifact Registry SHA tag without rebuilding. If no exact candidate exists, a GitHub-runner Buildx fallback imports the shared cache. Cloud Run then performs an image-only rollout and preserves existing environment variables and secrets.
 
@@ -58,31 +58,36 @@ Store the printed `WIF_PROVIDER` and `GCP_SA_EMAIL` as repository Actions variab
 
 The GitHub deployer only needs Artifact Registry write, Cloud Run administration, service-usage consumption, and permission to act as the runtime service account. Bootstrap remains a human-administered operation rather than part of every merge.
 
-## Steady-state deployment
+## Combined steady-state deployment
 
-`.github/workflows/deploy.yml` runs only when API image inputs change:
+`.github/workflows/deploy.yml` is the only automatic deployment workflow. A short change-detection job classifies the merged commit, then the applicable jobs fan out:
 
-- `lib/**`
-- `index.js`
-- `Dockerfile`
-- `package.json`
-- `yarn.lock`
-- the deploy workflow itself
+- **Cloud Run API:** `lib/**`, `index.js`, `Dockerfile`, `scripts/backend-image-key.sh`, `package.json`, `yarn.lock`, or the deploy workflow.
+- **GitHub Pages:** `ui/**`, `index.html`, `vite.config.js`, `package.json`, `yarn.lock`, or the deploy workflow.
+- **Manual dispatch:** runs both surfaces.
 
-The workflow:
+Cloud Run and the Pages build both depend only on change detection, so they run in parallel. Pages publication depends only on its build and does not wait for Cloud Run. Each surface keeps separate job-level permissions and concurrency: an active API rollout is never cancelled, while a newer Pages rollout may replace an older one.
+
+The Cloud Run job:
 
 1. Authenticates with Workload Identity Federation.
-2. Logs in to Artifact Registry with a short-lived OAuth access token.
-3. Imports the cross-PR GHCR BuildKit cache.
-4. Builds and pushes `<region>-docker.pkg.dev/<project>/fredy/fredy:<main-sha>`.
-5. Updates only the Cloud Run image through `google-github-actions/deploy-cloudrun`.
-6. Verifies `/health`.
+2. Logs in to Artifact Registry and GHCR with short-lived credentials.
+3. Promotes the exact PR-validated image when its backend-context hash matches.
+4. Falls back to a shared-cache Buildx build when no exact candidate exists.
+5. Updates only the Cloud Run image and verifies `/health`.
 
-It deliberately does **not** rewrite repository cleanup policy, bucket lifecycle, service environment, secrets, trigger token, or Scheduler configuration. Re-run the bootstrap helper when those infrastructure settings intentionally change.
+The Pages jobs:
+
+1. Validate `CLOUD_RUN_API_ORIGIN`.
+2. Install locked dependencies with lifecycle scripts disabled.
+3. Build the `/fredy/` production bundle.
+4. Upload and publish the Pages artifact.
+
+Neither surface runs for tests or documentation alone. The workflow deliberately does **not** rewrite repository cleanup policy, bucket lifecycle, service environment, secrets, trigger token, or Scheduler configuration. Re-run the bootstrap helper when those infrastructure settings intentionally change.
 
 ## Pages setup
 
-Set repository variable `CLOUD_RUN_API_ORIGIN` to the Cloud Run origin without an API path. The Pages workflow exposes it to Vite as `VITE_API_BASE_URL` and publishes `ui/public` at:
+Set repository variable `CLOUD_RUN_API_ORIGIN` to the Cloud Run origin without an API path. The combined Deploy workflow exposes it to Vite as `VITE_API_BASE_URL` and publishes `ui/public` at:
 
 ```text
 https://adhi1419.github.io/fredy/
