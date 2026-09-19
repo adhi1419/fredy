@@ -10,6 +10,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { xhrGet, xhrPost, xhrDelete } from '../xhr.js';
 import queryString from 'query-string';
+import { createListingsDataState, createListingsEffects } from './listingsState.js';
 
 /**
  * Optional state-change logging, off unless VITE_DEBUG_STORE is set.
@@ -100,6 +101,8 @@ const loadingTracker = (config) => (set, get, api) => {
 export const useFredyState = create(
   logger(
     loadingTracker((set) => {
+      const listingsEffects = createListingsEffects(set, { get: xhrGet, post: xhrPost }, queryString.stringify);
+
       // Async actions that directly set state (no separate reducer concept)
       const effects = {
         dashboard: {
@@ -345,127 +348,7 @@ export const useFredyState = create(
             }
           },
         },
-        listingsData: {
-          async getListingsData({
-            page = 1,
-            pageSize = 20,
-            freeTextFilter = null,
-            sortfield = null,
-            sortdir = 'asc',
-            filter,
-          }) {
-            try {
-              const qryString = queryString.stringify(
-                {
-                  page,
-                  pageSize,
-                  freeTextFilter,
-                  sortfield,
-                  sortdir,
-                  ...filter,
-                },
-                { skipNull: true, skipEmptyString: true },
-              );
-              const response = await xhrGet(`/api/listings/table?${qryString}`);
-              set((state) => ({
-                listingsData: { ...state.listingsData, ...response.json },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/listings. Error:', Exception);
-            }
-          },
-          async getListing(listingId) {
-            try {
-              const response = await xhrGet(`/api/listings/${listingId}`);
-              set((state) => ({
-                listingsData: { ...state.listingsData, currentListing: response.json },
-              }));
-              return response.json;
-            } catch (Exception) {
-              console.error(`Error while trying to get resource for api/listings/${listingId}. Error:`, Exception);
-              throw Exception;
-            }
-          },
-          async getListingsForMap({ jobId, minPrice, maxPrice } = {}) {
-            try {
-              const qryString = queryString.stringify(
-                {
-                  jobId,
-                  minPrice,
-                  maxPrice,
-                },
-                { skipNull: true, skipEmptyString: true },
-              );
-              const response = await xhrGet(`/api/listings/map?${qryString}`);
-              set((state) => ({
-                listingsData: {
-                  ...state.listingsData,
-                  mapListings: response.json?.listings || [],
-                  maxPrice: response.json?.maxPrice || 0,
-                },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/listings/map. Error:', Exception);
-            }
-          },
-          async setListingStatus(listingId, status) {
-            try {
-              await xhrPost(`/api/listings/${listingId}/status`, { status });
-            } catch (Exception) {
-              console.error(`Error while trying to set status for listing ${listingId}. Error:`, Exception);
-              throw Exception;
-            }
-          },
-          async setListingNotes(listingId, notes) {
-            try {
-              await xhrPost(`/api/listings/${listingId}/notes`, { notes });
-            } catch (Exception) {
-              console.error(`Error while trying to set notes for listing ${listingId}. Error:`, Exception);
-              throw Exception;
-            }
-          },
-          /**
-           * Replace a listing's address and position with one the user picked.
-           *
-           * The route answers with the stored row, but the detail view is re-read through
-           * `getListing` anyway: only that endpoint adds the affordability verdict, and a listing
-           * in the store without it would drop the chip until the next navigation.
-           *
-           * @param {string} listingId
-           * @param {{address: string, latitude: number, longitude: number}} position
-           */
-          async setListingAddress(listingId, { address, latitude, longitude }) {
-            try {
-              await xhrPost(`/api/listings/${listingId}/address`, { address, latitude, longitude });
-            } catch (Exception) {
-              console.error(`Error while trying to set address for listing ${listingId}. Error:`, Exception);
-              throw Exception;
-            }
-          },
-          async restoreListings(ids) {
-            try {
-              await xhrPost('/api/listings/restore', { ids });
-            } catch (Exception) {
-              console.error('Error while trying to restore listings. Error:', Exception);
-              throw Exception;
-            }
-          },
-          /**
-           * Mark listings the alive-checker wrongly gave up on as available again.
-           *
-           * Distinct from `restoreListings`, which undoes a deletion the user made themselves.
-           *
-           * @param {string[]} ids
-           */
-          async reactivateListings(ids) {
-            try {
-              await xhrPost('/api/listings/reactivate', { ids });
-            } catch (Exception) {
-              console.error('Error while trying to reactivate listings. Error:', Exception);
-              throw Exception;
-            }
-          },
-        },
+        listingsData: listingsEffects,
         userSettings: {
           async getUserSettings() {
             try {
@@ -681,14 +564,7 @@ export const useFredyState = create(
         finance: { data: null, loading: false, summary: null },
         notificationAdapter: [],
         notificationChannels: { channels: [], loaded: false },
-        listingsData: {
-          totalNumber: 0,
-          page: 1,
-          result: [],
-          mapListings: [],
-          currentListing: null,
-          maxPrice: 0,
-        },
+        listingsData: createListingsDataState(),
         generalSettings: { settings: {} },
         userSettings: { settings: {}, loaded: false },
         demoMode: { demoMode: false },

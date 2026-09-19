@@ -18,7 +18,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router';
 import ListingDeletionModal from '../ListingDeletionModal.jsx';
 import { createAuthenticatedEventStream } from '../../services/sse/authenticatedEventStream.js';
-import { errorMessage, xhrDelete, xhrPost } from '../../services/xhr.js';
+import { errorMessage, xhrDelete } from '../../services/xhr.js';
 import { useActions, useSelector } from '../../services/state/store.js';
 import { debounce, getAddresses } from '../../utils';
 import { parseCommuteFilter } from '../transit/travelTimeFormat.js';
@@ -256,7 +256,7 @@ const ListingsOverview = () => {
     e.preventDefault();
     e.stopPropagation();
     try {
-      await xhrPost('/api/listings/watch', { listingId: item.id });
+      await actions.listingsData.toggleListingWatch(item.id);
       Toast.success(
         item.isWatched === 1 ? t('listings.toastRemovedFromWatchlist') : t('listings.toastAddedToWatchlist'),
       );
