@@ -336,13 +336,56 @@ describe('jobStorage contract', () => {
       expect(await jobStorage.getJob('j1')).toBeNull();
     });
 
-    it('cascades deletion to listings', async () => {
+    it('cascades deletion to listings, watches, and listing subcollections', async () => {
       await jobStorage.upsertJob(makeJob({ jobId: 'j1' }));
-      await seedListings('j1', 'immoscout', ['h1', 'h2']);
-      // Confirm listings exist before delete
+      const items = [
+        {
+          id: 'h1',
+          price: 800,
+          size: 60,
+          rooms: 2,
+          title: 'Listing h1',
+          image: null,
+          description: 'desc',
+          address: 'Berlin',
+          link: 'https://example.com/h1',
+        },
+        {
+          id: 'h2',
+          price: 900,
+          size: 65,
+          rooms: 2,
+          title: 'Listing h2',
+          image: null,
+          description: 'desc',
+          address: 'Berlin',
+          link: 'https://example.com/h2',
+        },
+      ];
+      await listingsStorage.storeListings('j1', 'immoscout', items);
+      const watchListStorage = await loadStorageModule('watchListStorage');
+      await watchListStorage.createWatch(items[0].id, 'u1');
+      await listingsStorage.saveListingTravelTimes(
+        items[0].id,
+        [{ label: 'Home', transitMinutes: 20, isEstimate: true, referenceTime: 1000 }],
+        1000,
+      );
+      await listingsStorage.recordPriceObservation(items[0].id, 800, 1000, 'contract');
+
       expect(await listingsStorage.getKnownListingHashesForJobAndProvider('j1', 'immoscout')).toHaveLength(2);
       await jobStorage.removeJob('j1');
+
       expect(await listingsStorage.getKnownListingHashesForJobAndProvider('j1', 'immoscout')).toHaveLength(0);
+      expect((await listingsStorage.getTravelTimesForListings([items[0].id])).size).toBe(0);
+      expect(await listingsStorage.getPriceHistory(items[0].id)).toEqual([]);
+
+      // Recreate the deterministic listing id and verify its old watch row did not survive.
+      await jobStorage.upsertJob(makeJob({ jobId: 'j1' }));
+      const recreated = [structuredClone(items[0])];
+      await listingsStorage.storeListings('j1', 'immoscout', recreated);
+      const queried = await listingsStorage.queryListings({ userId: 'u1' });
+      expect(queried.result).toHaveLength(1);
+      expect(queried.result[0].isWatched).toBe(0);
     });
 
     it('is a no-op for a non-existent job', async () => {
@@ -422,6 +465,24 @@ describe('jobStorage contract', () => {
         await jobStorage.upsertJob(makeJob({ jobId: 'j1', userId: 'u1' }));
         const { page } = await jobStorage.queryJobs({ userId: 'u1' });
         expect(page).toBe(1);
+      });
+
+      it.each([
+        { input: { page: 0, pageSize: 0 }, expectedPage: 1, expectedLength: 5 },
+        { input: { page: -2, pageSize: 2 }, expectedPage: 1, expectedLength: 2 },
+        { input: { page: 1, pageSize: 1001 }, expectedPage: 1, expectedLength: 5 },
+      ])('normalizes pagination input %#', async ({ input, expectedPage, expectedLength }) => {
+        for (let i = 0; i < 5; i++) {
+          await jobStorage.upsertJob(
+            makeJob({ jobId: `pagination-boundary-${i}`, userId: 'u1', name: `Job ${String(i).padStart(2, '0')}` }),
+          );
+        }
+
+        const result = await jobStorage.queryJobs({ ...input, userId: 'u1' });
+
+        expect(result.page).toBe(expectedPage);
+        expect(result.result).toHaveLength(expectedLength);
+        expect(result.totalNumber).toBe(5);
       });
     });
 

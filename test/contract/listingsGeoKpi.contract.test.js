@@ -241,6 +241,47 @@ describe('listingsStorage contract – travel times', () => {
     expect(result[0].travelTimes[0].estimate).toBe(false);
   });
 
+  it('projects JSON-backed route fields to the public travel-time shape', async () => {
+    await seedContext();
+    const listing = makeListing();
+    await listingsStorage.storeListings(JOB.jobId, 'immoscout', [listing]);
+
+    await listingsStorage.saveListingTravelTimes(
+      listing.id,
+      [
+        {
+          label: 'Transit',
+          transitMinutes: 35,
+          transitTransfers: 2,
+          transitLegs: [{ mode: 'train', line: 'S7', geometry: { type: 'LineString', coordinates: [[13.4, 52.5]] } }],
+          viaStops: ['Alexanderplatz', 'Ostbahnhof'],
+          isEstimate: true,
+          referenceTime: 1700000000,
+        },
+      ],
+      1700000001,
+    );
+
+    const rows = [{ id: listing.id }];
+    await listingsStorage.attachTravelTimes(rows);
+
+    expect(rows[0].travelTimes).toEqual([
+      {
+        label: 'Transit',
+        mode: null,
+        estimate: true,
+        referenceTime: 1700000000,
+        computedAt: 1700000001,
+        transit: {
+          minutes: 35,
+          transfers: 2,
+          legs: [{ mode: 'train', line: 'S7' }],
+        },
+        via: ['Alexanderplatz', 'Ostbahnhof'],
+      },
+    ]);
+  });
+
   it('attachTravelTimes leaves listings without travel times unchanged', async () => {
     await seedContext();
     const listing = makeListing();
