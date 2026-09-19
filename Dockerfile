@@ -27,20 +27,14 @@ ENV NODE_ENV=production \
 
 COPY package.json yarn.lock ./
 
-# Install dev dependencies explicitly because NODE_ENV=production is set above,
-# but Vite and Less are required to build the frontend.
+# Install only backend runtime dependencies. The frontend is built and deployed by
+# GitHub Pages, so this image must not copy UI sources or install frontend tooling.
 RUN yarn config set network-timeout 600000 \
-  && yarn install --frozen-lockfile --production=false --ignore-scripts
+  && yarn install --frozen-lockfile --production=true --ignore-scripts
 
-# Pre-download the CloakBrowser stealth Chromium binary (supports x86_64 and arm64)
-RUN node --input-type=module -e "import { ensureBinary } from 'cloakbrowser'; await ensureBinary();"
-
-# Keep the frontend build layer independent from backend source changes.
-COPY index.html vite.config.js ./
-COPY ui ./ui
-
-RUN yarn build:frontend \
-  && yarn install --frozen-lockfile --production=true --ignore-scripts \
+# Pre-download the CloakBrowser stealth Chromium binary (supports x86_64 and arm64).
+# CloakBrowser remains part of the API runtime for browser-based providers.
+RUN node --input-type=module -e "import { ensureBinary } from 'cloakbrowser'; await ensureBinary();" \
   && yarn cache clean
 
 COPY lib ./lib
@@ -52,7 +46,7 @@ EXPOSE 9998
 VOLUME /conf
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:9998/ || exit 1
+  CMD curl -f http://localhost:9998/health || exit 1
 
 # Run node under tini instead of as pid 1.
 #

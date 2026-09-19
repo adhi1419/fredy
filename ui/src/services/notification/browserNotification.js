@@ -3,6 +3,8 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import heart from '../../assets/heart.png';
+
 /**
  * Triggers a test browser notification, requesting permission if needed.
  *
@@ -15,7 +17,7 @@ export function triggerTestNotification(t, onSuccess, onError) {
     if (Notification.permission === 'granted') {
       const notification = new Notification('Test Call from Fredy', {
         body: 'Everything works perfectly! Real-time listings will appear here.',
-        icon: '/ui/src/assets/heart.png',
+        icon: heart,
       });
       notification.onclick = () => {
         window.focus();
@@ -28,7 +30,7 @@ export function triggerTestNotification(t, onSuccess, onError) {
         if (permission === 'granted') {
           const notification = new Notification('Test Call from Fredy', {
             body: 'Everything works perfectly! Real-time listings will appear here.',
-            icon: '/ui/src/assets/heart.png',
+            icon: heart,
           });
           notification.onclick = () => {
             window.focus();

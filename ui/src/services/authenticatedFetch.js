@@ -4,6 +4,7 @@
  */
 
 import { getIdToken } from './auth/firebaseAuth.js';
+import { resolveApiUrl } from './apiUrl.js';
 
 /**
  * Add or remove the bearer header without mutating caller-owned headers.
@@ -31,7 +32,7 @@ export function headersWithBearer(headers, token) {
  *
  * @param {RequestInfo|URL} input
  * @param {RequestInit} [options]
- * @param {{fetchImpl?: typeof fetch, tokenGetter?: (forceRefresh?: boolean) => Promise<string|null>}} [dependencies]
+ * @param {{fetchImpl?: typeof fetch, tokenGetter?: (forceRefresh?: boolean) => Promise<string|null>, apiBaseUrl?: string}} [dependencies]
  * @returns {Promise<Response>}
  */
 export async function authenticatedFetch(input, options = {}, dependencies = {}) {
@@ -39,7 +40,7 @@ export async function authenticatedFetch(input, options = {}, dependencies = {})
   const tokenGetter = dependencies.tokenGetter ?? getIdToken;
   const token = await tokenGetter(false);
 
-  return fetchImpl(input, {
+  return fetchImpl(resolveApiUrl(input, dependencies.apiBaseUrl), {
     ...options,
     credentials: 'omit',
     headers: headersWithBearer(options.headers, token),
@@ -55,7 +56,7 @@ export async function authenticatedFetch(input, options = {}, dependencies = {})
  * @returns {Promise<Response>}
  */
 export function publicFetch(input, options = {}, fetchImpl = globalThis.fetch) {
-  return fetchImpl(input, {
+  return fetchImpl(resolveApiUrl(input), {
     ...options,
     credentials: 'omit',
     headers: headersWithBearer(options.headers, null),

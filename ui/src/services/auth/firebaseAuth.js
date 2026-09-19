@@ -13,6 +13,7 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
+import { resolveApiUrl } from '../apiUrl.js';
 
 /**
  * The Firebase client is initialized exactly once for the lifetime of this module. The config is
@@ -22,7 +23,7 @@ import {
  * @returns {Promise<Object>}
  */
 async function createAuthClient() {
-  const response = await fetch('/api/auth/config', {
+  const response = await fetch(resolveApiUrl('/api/auth/config'), {
     credentials: 'omit',
     headers: { Accept: 'application/json' },
   });
