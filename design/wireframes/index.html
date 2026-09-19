@@ -219,6 +219,11 @@
       .detail-actions { display: grid; align-content: start; gap: 8px; padding: 14px; border: 1px solid var(--line-strong); border-radius: 11px; background: var(--surface-2); }
       .detail-actions h4 { margin-bottom: 0; font-family: var(--serif); font-size: 20px; }
       .guard { padding: 10px; border: 1px solid var(--amber); border-radius: 8px; background: var(--amber-soft); color: var(--amber); font-size: 9px; }
+      .application-popover { position: absolute; z-index: 12; right: 24px; bottom: 82px; width: min(380px, calc(100% - 48px)); overflow: hidden; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+      .application-popover header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 13px; border-bottom: 1px solid var(--line); }
+      .application-popover header strong { font-size: 11px; }
+      .application-popover header button { width: 30px; height: 30px; border: 0; border-radius: 6px; background: var(--surface-2); }
+      .message-scroll { max-height: 220px; overflow-y: auto; padding: 13px; color: var(--muted); font-size: 10px; white-space: pre-line; }
 
       .account-stage { min-height: 520px; padding: 24px; background: color-mix(in srgb, var(--surface-2) 78%, var(--surface)); }
       .account-menu { width: min(340px, 100%); margin-left: auto; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
@@ -249,9 +254,11 @@
       body[data-mode="mobile"] .mobile-nav { display: flex; z-index: 8; min-height: 58px; padding: 5px 8px max(5px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -8px 24px rgb(0 0 0 / 9%); }
       body[data-mode="mobile"] .mobile-nav button { flex: 1; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 800; }
       body[data-mode="mobile"] .mobile-nav button.active { background: var(--forest-soft); color: var(--forest-dark); }
-      body[data-mode="mobile"] .mobile-cta { display: grid; z-index: 7; grid-template-columns: minmax(0, 1fr) 54px; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -8px 24px rgb(0 0 0 / 8%); }
+      body[data-mode="mobile"] .mobile-cta { display: grid; z-index: 7; grid-template-columns: minmax(0, 1fr) 54px 54px; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--surface); box-shadow: 0 -8px 24px rgb(0 0 0 / 8%); }
       body[data-mode="mobile"] .mobile-cta button { min-height: 48px; }
       body[data-mode="mobile"] .mobile-cta .icon-action { padding: 7px; font-size: 18px; }
+      body[data-mode="mobile"] .application-popover { right: 12px; bottom: 132px; left: 12px; width: auto; }
+      body[data-mode="mobile"] .message-scroll { max-height: 260px; }
       body[data-mode="mobile"] .primary-tab { flex: 1; min-width: 0; }
       body[data-mode="mobile"] .page-heading { display: block; }
       body[data-mode="mobile"] .heading-actions { justify-content: flex-start; margin-top: 10px; }
@@ -334,7 +341,7 @@
     </main>
 
     <script>
-      const state = { surface: 'home', application: 'new', activity: 'new', homeView: 'feed' };
+      const state = { surface: 'home', application: 'new', applicationMessageOpen: false, activity: 'new', homeView: 'feed' };
       const direction = {
         name: 'Quiet feed + map',
         description: 'A calm feed by default, with synchronized list and map available without leaving Home.',
@@ -359,9 +366,28 @@
         return `<nav class="mobile-nav" aria-label="Primary"><button class="${homeActive ? 'active' : ''}" data-product-nav="home">⌂ Home</button><button class="${active === 'saved' ? 'active' : ''}" data-product-nav="saved">⌕ Saved Searches</button></nav>`;
       }
 
+      const mapIcon = `<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Zm0 0V3m6 18V6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+      const openIcon = `<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M14 4h6v6m0-6L10 14m8-1v7H4V6h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
       function mobileListingCta() {
-        const applied = state.application !== 'new';
-        return `<div class="mobile-cta" aria-label="Listing actions"><button class="primary-action" data-application="applied" ${applied ? 'disabled' : ''}>${applied ? 'Applied ✓' : 'Apply'}</button><button class="icon-action" aria-label="Open provider listing">↗</button></div>`;
+        const primary = state.application === 'new'
+          ? `<button class="primary-action" data-application="applied">Apply</button>`
+          : state.application === 'applied'
+            ? `<button class="primary-action" data-message-popover>Applied ✓</button>`
+            : `<button class="primary-action" disabled>${state.application === 'viewed' ? 'Viewed ✓' : 'Archived'}</button>`;
+        return `<div class="mobile-cta" aria-label="Listing actions">${primary}<button class="icon-action" aria-label="Open location in Google Maps">${mapIcon}</button><button class="icon-action" aria-label="Open provider listing">${openIcon}</button></div>`;
+      }
+
+      function applicationMessagePopover() {
+        if (!state.applicationMessageOpen || state.application !== 'applied') return '';
+        return `<aside class="application-popover" role="dialog" aria-label="Submitted application message"><header><strong>Application message</strong><button data-close-message aria-label="Close application message">×</button></header><div class="message-scroll">Hello,
+
+I am very interested in the apartment near Viktoriapark. The location and commute are a strong fit for me, and I would be happy to provide the requested documents.
+
+Could we arrange a viewing? I am flexible during the week and can also attend at short notice.
+
+Kind regards,
+Alex</div></aside>`;
       }
 
       function homeSurface() {
@@ -410,7 +436,11 @@
 
       function listingDetail() {
         const lifecycle = state.application === 'viewed' ? tag('Viewed', 'good') : state.application === 'archived' ? tag('Archived') : state.application === 'applied' ? tag('Applied', 'good') : tag('New');
-        const applyAction = state.application === 'new' ? button('Apply', true, 'data-application="applied"') : button(state.application === 'viewed' ? 'Viewed ✓' : state.application === 'archived' ? 'Archived' : 'Applied ✓', true, 'disabled');
+        const applyAction = state.application === 'new'
+          ? button('Apply', true, 'data-application="applied"')
+          : state.application === 'applied'
+            ? button('Applied ✓', true, 'data-message-popover')
+            : button(state.application === 'viewed' ? 'Viewed ✓' : 'Archived', true, 'disabled');
         return pageHeading('Home / Listing', 'Altbau by Viktoriapark', 'Details preserve the Home query and return position.', lifecycle + button('Back to Home')) +
           `<section class="detail-layout"><div class="detail-main">${photo('LISTING GALLERY')}<div class="detail-section"><h4>Fit</h4><div class="metric-grid"><div class="metric"><small>Warm rent</small><strong>€1,420</strong></div><div class="metric"><small>Affordability</small><strong>Comfortable</strong></div><div class="metric"><small>Commute</small><strong>24 min</strong></div></div></div><div class="detail-section"><h4>Route, stops, and source facts</h4><p>Reveal exact route, nearby transit, price history, and provider details progressively.</p></div><div class="detail-section"><h4>Your activity</h4><div class="row-actions">${button('Add notes')}${button('I applied myself', false, 'data-application="applied"')}${button('Got a viewing', false, 'data-application="viewed"')}</div><p style="margin-top:8px">One lifecycle owns New, Applied, Viewed, Archived, offer, and rejected states—provider delivery no longer has a separate competing status.</p></div></div><aside class="detail-actions">${lifecycle}<h4>Next action</h4>${applyAction}${button('Open listing ↗')}${button('Save home')}${button('Add notes')}${button('I applied myself', false, 'data-application="applied"')}${button('Got a viewing', false, 'data-application="viewed"')}${button('Archive', false, 'data-application="archived"')}<div class="guard"><strong>Guarded application</strong><br />Profile, provider capability, consent, and validation must pass. Unknown outcomes remain explicit and non-retryable.</div></aside></section>` +
           stateNote('Application outcomes update the listing lifecycle automatically.');
@@ -430,7 +460,7 @@
         const active = state.surface === 'saved' || state.surface === 'search' ? 'saved' : state.surface === 'account' ? 'account' : 'home';
         const body = state.surface === 'account' ? content : `<main class="app-main">${content}</main>`;
         const listingCta = state.surface === 'detail' ? mobileListingCta() : '';
-        document.querySelector('#wireframe').innerHTML = `<header class="option-note"><div><div class="eyebrow">Selected Home direction</div><h2>${direction.name}</h2><p>${direction.description}</p></div><span class="option-badge">Selected</span></header><div class="app">${appbar(active)}${body}${listingCta}${mobileNav(active)}</div><footer class="rationale">${direction.rationale.map((item, index) => `<div><strong>0${index + 1}</strong><span>${item}</span></div>`).join('')}</footer>`;
+        document.querySelector('#wireframe').innerHTML = `<header class="option-note"><div><div class="eyebrow">Selected Home direction</div><h2>${direction.name}</h2><p>${direction.description}</p></div><span class="option-badge">Selected</span></header><div class="app">${appbar(active)}${body}${applicationMessagePopover()}${listingCta}${mobileNav(active)}</div><footer class="rationale">${direction.rationale.map((item, index) => `<div><strong>0${index + 1}</strong><span>${item}</span></div>`).join('')}</footer>`;
         document.querySelectorAll('[data-product-nav]').forEach((control) => control.addEventListener('click', () => {
           state.surface = control.dataset.productNav;
           syncControls();
@@ -438,6 +468,15 @@
         }));
         document.querySelectorAll('[data-application]').forEach((control) => control.addEventListener('click', () => {
           state.application = control.dataset.application;
+          state.applicationMessageOpen = state.application === 'applied';
+          render();
+        }));
+        document.querySelectorAll('[data-message-popover]').forEach((control) => control.addEventListener('click', () => {
+          state.applicationMessageOpen = !state.applicationMessageOpen;
+          render();
+        }));
+        document.querySelectorAll('[data-close-message]').forEach((control) => control.addEventListener('click', () => {
+          state.applicationMessageOpen = false;
           render();
         }));
         document.querySelectorAll('[data-home-view]').forEach((control) => control.addEventListener('click', () => {
@@ -475,6 +514,7 @@
       if (['light', 'dark'].includes(initial.get('theme'))) document.documentElement.dataset.theme = initial.get('theme');
       if (['desktop', 'mobile'].includes(initial.get('mode'))) document.body.dataset.mode = initial.get('mode');
       if (['new', 'applied', 'viewed', 'archived'].includes(initial.get('application'))) state.application = initial.get('application');
+      if (initial.get('message') === '1' && state.application === 'applied') state.applicationMessageOpen = true;
       if (initial.get('embed') === '1') document.body.classList.add('embed');
 
       syncControls();

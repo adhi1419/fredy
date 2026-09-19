@@ -1,6 +1,6 @@
 # Fredy modernization tasks
 
-This is the canonical working tracker. Current location: `/home/adhitr/workspace/fredy-wireframes-luna/tasks.md` until the selected UX specification is rebased and merged to `main`.
+The canonical tracker is now `tasks.md` on `main` through PR #24. This working copy records in-flight PR status until the next program update is published.
 
 ## Completed architecture and delivery
 
@@ -32,11 +32,14 @@ This is the canonical working tracker. Current location: `/home/adhitr/workspace
 - [x] PR #22: authenticated transport deep module — merged and deployed in 39 seconds.
 - [x] PR #23: home-address/travel-time settings deep module — merged and deployed successfully.
 - [x] Draft unified application lifecycle/provider capability architecture; publication remains pending the separate persistence-model gate.
-- [ ] **IN PROGRESS:** Freeze the first Rust wire contract for health, Firebase auth, CORS, and SSE.
-- [ ] **IN PROGRESS:** Extract listings state as the first strict TypeScript domain-state module.
-- [ ] **IN PROGRESS:** Implement phase-one listing/application lifecycle unification with real production callers.
+- [x] PR #25: freeze the first Rust wire contract for health, Firebase auth, CORS, and SSE — merged; test/document-only change correctly did not deploy.
+- [x] PR #27: extract listings state as the first strict TypeScript domain-state module — merged and deployed in 35 seconds.
+- [x] PR #26: implement phase-one listing/application lifecycle unification with real production callers — merged and deployed successfully.
 - [ ] Confirm per-Saved-Search provider-source policy → per-job-listing lifecycle model before migrating the job-level auto-apply flag.
-- [ ] Freeze remaining provider, notification, schedule, and Cloud Run deploy contracts.
+- [ ] PR #28: freeze provider, notification, and schedule Rust parity contracts — open with rebase auto-merge.
+- [ ] PR #29: expose conservative provider application capabilities and listing-dependent eligibility — open with rebase auto-merge.
+- [ ] PR #30: extract Saved Searches state as the next strict TypeScript domain module — open with rebase auto-merge.
+- [ ] Freeze the remaining Cloud Run deployment contract.
 - [ ] Continue splitting frontend state into deep domain modules while preserving selector/action compatibility.
 - [ ] Migrate nonvisual frontend services, state, and hooks to strict TypeScript in small PRs.
 - [ ] Replace backend route groups incrementally with Rust behind frozen contracts; avoid a big-bang rewrite.
@@ -50,7 +53,9 @@ This is the canonical working tracker. Current location: `/home/adhitr/workspace
 - [x] Add provider multi-select and sorting by newest, travel time, distance, price, and size.
 - [x] Reduce the account menu to My account, optional Admin panel, and Sign out.
 - [x] Freeze Home/Saved Searches navigation at the bottom on mobile.
-- [x] Freeze mobile listing CTAs above navigation: Apply on the left, icon-only Open listing on the right.
+- [x] Freeze mobile listing CTAs above navigation: Apply on the left, Google Maps icon in the middle, Open listing icon on the right.
+- [x] Make Applied open a scrollable popover containing the submitted application message.
+- [x] Apply operator-directed post-approval polish and validate CTA order as Apply → Google Maps → Open listing.
 - [x] Unify provider/manual application outcomes with listing status; include I applied myself, notes, viewing, and archive actions.
 - [x] Use a guided Saved Search add/edit flow and a minimal mobile Step N of 4 indicator.
 - [x] Use compact heading regions everywhere except the Saved Searches index.
@@ -61,7 +66,7 @@ This is the canonical working tracker. Current location: `/home/adhitr/workspace
 - [ ] Confirm provider-source application policy, capability, and future Connect account interaction.
 - [x] Perform final human interaction review and approve the UX specification — approved by the operator on 2026-09-19.
 - [x] Freeze the approved decision document and interactive HTML for rebase-auto-merge publication.
-- [ ] Merge the approved design specification PR.
+- [x] PR #24: merge the approved simplified two-tab UX specification.
 
 ## After UX approval
 
