@@ -261,7 +261,8 @@ listing that requires profile fields Fredy does not have is skipped rather than 
 Each listing is reserved before delivery so a double-click and the scheduled run cannot both send.
 Confirmed requests are stored with their provider request id. A timeout or other ambiguous outcome
 is marked **unknown** and is never retried automatically, because ImmoScout may already have received
-it. Telegram reports a successful automatic application as one message beginning with `[Applied]`
+it. Rejections record the provider phase, HTTP status and a short redacted provider error without
+logging applicant contact fields. Telegram reports a successful automatic application as one message beginning with `[Applied]`
 instead of following the listing with a second copyable draft.
 
 Only ImmoScout and Deutsche Wohnen can currently carry generated messages. Deutsche Wohnen asks for

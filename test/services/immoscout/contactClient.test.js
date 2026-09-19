@@ -234,21 +234,50 @@ describe('sendImmoscoutInquiry', () => {
     }
   });
 
+  it('reports validation HTTP status and a redacted provider error', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(jsonResponse({ error: { message: 'Invalid email applicant@example.com' } }, 422));
+
+    await expect(
+      sendImmoscoutInquiry({
+        listing,
+        profile,
+        accountEmail: 'applicant@example.com',
+        message: 'Hallo',
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({
+      status: 422,
+      outcome: 'failed',
+      phase: 'validation',
+      providerError: 'Invalid email [redacted-email]',
+      message: expect.stringMatching(
+        /^ImmoScout rejected the inquiry during validation \(HTTP 422\): Invalid email \[redacted-email\]\.$/,
+      ),
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it('classifies a real-send 4xx as failed and a 5xx as unknown', async () => {
-    for (const [status, outcome] of [
-      [400, 'failed'],
-      [503, 'unknown'],
+    for (const [status, outcome, returnedError] of [
+      [409, 'failed', 'Contact request already exists'],
+      [503, 'unknown', 'Service temporarily unavailable'],
     ]) {
       const fetchImpl = vi
         .fn()
         .mockResolvedValueOnce(jsonResponse(detail))
         .mockResolvedValueOnce(jsonResponse({}))
-        .mockResolvedValueOnce(jsonResponse({}, status));
+        .mockResolvedValueOnce(jsonResponse({ message: returnedError }, status));
       await expect(
         sendImmoscoutInquiry({ listing, profile, accountEmail: 'applicant@example.com', message: 'Hallo', fetchImpl }),
       ).rejects.toMatchObject({
         status,
         outcome,
+        phase: 'send',
+        providerError: returnedError,
+        message: expect.stringContaining(`real send (HTTP ${status}): ${returnedError}`),
       });
     }
   });
