@@ -4,6 +4,7 @@
  */
 
 import { authenticatedFetch } from './authenticatedFetch.js';
+import { dispatchHttpUnauthorized } from './authenticatedTransport.js';
 
 /**
  * post something to our backend.
@@ -93,12 +94,7 @@ function parseJSON(response) {
         if (response.ok) {
           resolve({ status: response.status, json });
         } else {
-          if (
-            (response.status === 401 || (response.status === 403 && json?.reason === 'not allowed')) &&
-            typeof window !== 'undefined'
-          ) {
-            window.dispatchEvent(new CustomEvent('fredy:unauthorized'));
-          }
+          dispatchHttpUnauthorized(response.status, json?.reason);
           reject({ status: response.status, json });
         }
       })

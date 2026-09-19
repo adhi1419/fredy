@@ -32,7 +32,11 @@ describe('Bun and TypeScript foundation', () => {
     expect(config.compilerOptions.strict).toBe(true);
     expect(config.compilerOptions.noEmit).toBe(true);
     expect(config.compilerOptions.allowJs).toBe(false);
-    expect(config.include).toEqual(['ui/src/services/apiUrl.ts', 'ui/src/vite-env.d.ts']);
+    expect(config.include).toEqual([
+      'ui/src/services/apiUrl.ts',
+      'ui/src/services/authenticatedTransport.ts',
+      'ui/src/vite-env.d.ts',
+    ]);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.js'))).toBe(false);
   });

@@ -4,8 +4,7 @@
  */
 
 import { getIdToken } from '../auth/firebaseAuth.js';
-import { resolveApiUrl } from '../apiUrl.js';
-import { headersWithBearer } from '../authenticatedFetch.js';
+import { createAuthenticatedRequestPolicy } from '../authenticatedTransport.js';
 
 export const DEFAULT_RECONNECT_DELAY_MS = 500;
 export const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -82,13 +81,15 @@ export async function* parseSseEvents(body) {
  * @returns {{start: () => void, close: () => void}}
  */
 export function createAuthenticatedEventStream(url, options = {}) {
-  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
-  const tokenGetter = options.tokenGetter ?? getIdToken;
+  const policy = createAuthenticatedRequestPolicy({
+    fetchImpl: options.fetchImpl,
+    tokenGetter: options.tokenGetter ?? getIdToken,
+    apiBaseUrl: options.apiBaseUrl,
+  });
   const setTimeoutImpl = options.setTimeoutImpl ?? globalThis.setTimeout;
   const clearTimeoutImpl = options.clearTimeoutImpl ?? globalThis.clearTimeout;
   const baseDelayMs = options.baseDelayMs ?? DEFAULT_RECONNECT_DELAY_MS;
   const maxDelayMs = options.maxDelayMs ?? MAX_RECONNECT_DELAY_MS;
-  const resolvedUrl = resolveApiUrl(url, options.apiBaseUrl);
 
   let stopped = false;
   let started = false;
@@ -115,16 +116,16 @@ export function createAuthenticatedEventStream(url, options = {}) {
 
     controller = new AbortController();
     try {
-      const token = await tokenGetter(isReconnect);
-      const response = await fetchImpl(resolvedUrl, {
-        credentials: 'omit',
-        headers: headersWithBearer({ Accept: 'text/event-stream' }, token),
-        signal: controller.signal,
-      });
+      const response = await policy.request(
+        url,
+        {
+          headers: { Accept: 'text/event-stream' },
+          signal: controller.signal,
+        },
+        isReconnect,
+      );
       if (!response.ok) {
-        if ((response.status === 401 || response.status === 403) && typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('fredy:unauthorized'));
-        }
+        policy.handleSse(response.status);
         throw new Error(`SSE request failed with status ${response.status}`);
       }
       if (!response.body) throw new Error('SSE response has no body');
