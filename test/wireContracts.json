@@ -1,0 +1,63 @@
+{
+  "assumptions": {
+    "frontendOrigin": "https://adhi1419.github.io",
+    "authentication": "Direct Firebase ID bearer token in Authorization",
+    "credentials": "omit",
+    "deployment": "Cloud Run API-only; GitHub Pages serves the SPA"
+  },
+  "http": {
+    "health": {
+      "method": "GET",
+      "path": "/health",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": { "status": "ok" }
+    },
+    "apiOnlyFallback": {
+      "method": "GET",
+      "path": "/not-a-route",
+      "status": 404,
+      "contentType": "application/json; charset=utf-8",
+      "body": { "error": "Not found" }
+    },
+    "authConfig": {
+      "method": "GET",
+      "path": "/api/auth/config",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "body": {
+        "enabled": true,
+        "firebaseConfig": { "apiKey": "public-key", "projectId": "fredy" }
+      }
+    },
+    "authMe": {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "success": {
+        "status": 200,
+        "body": { "userId": "uid-alice", "username": "alice@example.com", "isAdmin": false }
+      },
+      "failures": {
+        "missingBearer": { "status": 401, "body": { "reason": "invalid authorization" } },
+        "invalidToken": { "status": 401, "body": { "reason": "invalid token" } },
+        "invalidClaims": { "status": 401, "body": { "reason": "invalid token claims" } },
+        "notAllowed": { "status": 403, "body": { "reason": "not allowed" } }
+      }
+    }
+  },
+  "cors": {
+    "allowOrigin": "https://adhi1419.github.io",
+    "allowMethods": "GET,POST,PUT,DELETE,OPTIONS",
+    "allowHeaders": "Authorization,Content-Type",
+    "maxAge": "86400",
+    "vary": "Origin"
+  },
+  "sse": {
+    "contentType": "text/event-stream",
+    "heartbeatIntervalMs": 25000,
+    "handshake": ": connected\n\n",
+    "hello": "event: hello\ndata: {\"ok\":true}\n\n",
+    "jobStatus": "event: jobStatus\ndata: {\"running\":true}\n\n",
+    "heartbeatPattern": "^: ping [0-9]+\\n\\n$"
+  }
+}
