@@ -3,10 +3,8 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import fs from 'fs';
 import { checkIfConfigIsAccessible, getProviders, refreshConfig } from './lib/utils.js';
 import * as similarityCache from './lib/services/similarity-check/similarityCache.js';
-import { runMigrations } from './lib/services/storage/migrations/migrate.js';
 import { ensureDemoUserExists, ensureAdminUserExists } from './lib/services/storage/userStorage.js';
 import { initTrackerCron } from './lib/services/crons/tracker-cron.js';
 import logger from './lib/services/logger.js';
@@ -14,8 +12,7 @@ import { reloadEnabledFromSettings } from './lib/services/debug/debugLogStorage.
 import { initActiveCheckerCron } from './lib/services/crons/listing-alive-cron.js';
 import { initGeocodingCron } from './lib/services/crons/geocoding-cron.js';
 import { getSettings } from './lib/services/storage/settingsStorage.js';
-import SqliteConnection, { computeDbPath } from './lib/services/storage/SqliteConnection.js';
-import { isFirestore } from './lib/services/storage/backendResolver.js';
+import FirestoreConnection from './lib/services/storage/firestore/FirestoreConnection.js';
 import { isFirebaseAuth, AUTH_MODE } from './lib/services/authMode.js';
 import { initJobExecutionService } from './lib/services/jobs/jobExecutionService.js';
 import { ensureValidBinary } from './lib/services/ensureValidBinary.js';
@@ -36,14 +33,7 @@ logger.info('Checking CloakBrowser binary...');
 await ensureValidBinary();
 logger.info('CloakBrowser binary ready.');
 
-// Configuration comes first, because everything below reads it - SqliteConnection.init() in
-// particular resolves the database directory from `sqlitepath`.
-//
-// This used to run one step later, after SqliteConnection.init(), which made a fresh Docker
-// container unstartable: the image ships no conf/config.json (`.dockerignore` excludes `conf/`, the
-// Dockerfile only creates an empty /conf volume), so the very first read threw ENOENT and the
-// create-with-defaults below never got the chance to run. A source checkout has the file committed,
-// which is why this only ever showed up in containers.
+// Configuration is loaded before Firestore and the services that consume it.
 if (!(await checkIfConfigIsAccessible())) {
   logger.error('Configuration exists, but is not accessible. Please check the file permission');
   process.exit(1);
@@ -56,24 +46,8 @@ try {
   process.exit(1);
 }
 
-if (isFirestore()) {
-  // Firestore backend: no local DB file, no schema, no migrations.
-  const { default: FirestoreConnection } = await import('./lib/services/storage/firestore/FirestoreConnection.js');
-  await FirestoreConnection.init();
-  logger.info('Storage backend: firestore');
-} else {
-  await SqliteConnection.init();
-
-  // Run DB migrations once at startup and block until finished. A failure here is fatal: continuing
-  // would start the API and the schedulers against a schema that is missing the failed migration and
-  // everything after it.
-  try {
-    await runMigrations();
-  } catch (err) {
-    logger.error('Database migration failed. Refusing to start.', err.cause ?? err);
-    process.exit(1);
-  }
-}
+await FirestoreConnection.init();
+logger.info('Storage: Firestore');
 
 const settings = await getSettings();
 
@@ -82,14 +56,6 @@ const settings = await getSettings();
 // on the restored flag, so the logger hot path stays cost-free when nobody enabled
 // the feature.
 await reloadEnabledFromSettings();
-
-// Ensure the sqlite directory exists before loading anything else (based on config.sqlitepath)
-if (!isFirestore()) {
-  const { dir: sqliteDir } = await computeDbPath();
-  if (!fs.existsSync(sqliteDir)) {
-    fs.mkdirSync(sqliteDir, { recursive: true });
-  }
-}
 
 // Load provider modules once at startup
 const providers = await getProviders();
@@ -120,13 +86,7 @@ if (settings.demoMode) {
 }
 
 if (isFirebaseAuth()) {
-  // Multi-tenant firebase auth: the allowlist requires Firestore, and the
-  // admin/admin bootstrap must not exist — the instance admin is whichever
-  // allowlist entry carries isAdmin: true (doc/prd-multi-tenant-auth.md).
-  if (!isFirestore()) {
-    logger.error('AUTH_MODE=firebase requires STORAGE_BACKEND=firestore. Refusing to start.');
-    process.exit(1);
-  }
+  // Multi-tenant Firebase auth: the instance admin is whichever allowlist entry carries isAdmin: true.
   logger.info(`Auth mode: ${AUTH_MODE}`);
 } else {
   await ensureAdminUserExists();

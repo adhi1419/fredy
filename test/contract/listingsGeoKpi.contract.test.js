@@ -6,9 +6,8 @@
 /*
  * Contract tests: listingsStorage GEO / TRAVEL / KPI / CONNECTIVITY
  *
- * Backend-agnostic behavioral contract for distance, travel-time, KPI, and
- * connectivity operations. Seeds and asserts ONLY through the public storage
- * API. Must pass unchanged against every storage backend.
+ * Firestore behavioral contract for distance, travel-time, KPI, and connectivity
+ * operations. Seeds and asserts ONLY through the public storage API.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';

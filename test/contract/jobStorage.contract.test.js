@@ -6,10 +6,9 @@
 /*
  * Contract tests: jobStorage
  *
- * Backend-agnostic behavioral contract for the jobs module. Seeds and asserts
- * ONLY through the public storage API (loaded via the harness so the same
- * suite runs against every backend). Every storage call is awaited: the sqlite
- * implementation is synchronous (await is a no-op), the firestore one is async.
+ * Firestore behavioral contract for the jobs module. Seeds and asserts ONLY
+ * through the public storage API loaded by the Firestore contract harness.
+ * Every storage call is awaited because Firestore is async.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
@@ -125,7 +124,7 @@ describe('jobStorage contract', () => {
     it('round-trips all fields: blacklist, provider, spatialFilter, specFilter, commuteFilter, shareWithUsers', async () => {
       // A real GeoJSON polygon: coordinates are [[[lng,lat], ...]] — nested
       // arrays, which Firestore cannot store natively. This is exactly the
-      // shape a drawn map bound produces and must round-trip on every backend.
+      // shape a drawn map bound produces and must round-trip through Firestore.
       const spatialFilter = {
         type: 'FeatureCollection',
         features: [

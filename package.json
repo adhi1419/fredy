@@ -16,8 +16,6 @@
     "test:download-fixtures": "node tools/testFixtures/downloadFixtures.js",
     "lint": "eslint .",
     "lint:fix": "yarn lint --fix",
-    "migratedb": "node lib/services/storage/migrations/migrate.js",
-    "migratedb:overwrite": "x-var MIGRATION_ALLOW_CHECKSUM_UPDATE=true node lib/services/storage/migrations/migrate.js",
     "copyright": "node ./copyright.js",
     "release": "node ./tools/release/release.js",
     "release:pre": "node ./tools/release/release.js --pre",
@@ -30,9 +28,6 @@
       "yarn format",
       "yarn copyright"
     ]
-  },
-  "resolutions": {
-    "vite": "8.1.5"
   },
   "main": "index.js",
   "author": "Christian Kellner",
@@ -71,9 +66,7 @@
     "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@sendgrid/mail": "8.1.6",
     "@turf/boolean-point-in-polygon": "^7.4.0",
-    "@vitejs/plugin-react": "6.1.1",
     "adm-zip": "^0.6.0",
-    "better-sqlite3": "^13.0.3",
     "chart.js": "^4.5.1",
     "cheerio": "^1.2.0",
     "cloakbrowser": "^0.5.9",
@@ -99,23 +92,23 @@
     "resend": "^6.25.0",
     "semver": "^7.8.5",
     "slack": "11.0.2",
-    "vite": "8.2.2",
     "x-var": "^3.0.1",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-react": "6.1.1",
     "chalk": "^6.0.0",
     "eslint": "10.9.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-react": "7.37.5",
     "globals": "^17.11.0",
-    "history": "5.3.0",
     "husky": "9.1.7",
     "less": "4.9.0",
     "lint-staged": "17.4.1",
     "nodemon": "^3.1.14",
     "prettier": "3.9.6",
+    "vite": "8.2.2",
     "vitest": "^4.1.11"
   }
 }

@@ -7,8 +7,8 @@ always-free tier (~130k of 240k free vCPU-seconds/month).
 
 ## How it works
 
-- `STORAGE_BACKEND=firestore` switches the whole storage layer to Firestore
-  (no SQLite file, no volume, no migrations).
+- Firestore is Fredy's only persistence layer. Cloud Run uses Application
+  Default Credentials; no local database file or storage volume is required.
 - `EXTERNAL_SCHEDULER=true` disables Fredy's internal timer and the
   scrape-on-boot; **every** scrape is driven by `POST /api/trigger`.
 - Cloud Scheduler calls `/api/trigger` with a shared secret
@@ -36,18 +36,22 @@ gcloud services enable run.googleapis.com firestore.googleapis.com \
 # Firestore in Native mode (free tier: 1 GiB, 50k reads / 20k writes per day)
 gcloud firestore databases create --location=$REGION
 
-# Build + push the image (uses the repo's regular Dockerfile)
-gcloud builds submit --tag $REGION-docker.pkg.dev/$PROJECT/fredy/fredy:latest .
+# Build an immutable revision image while refreshing :latest as the cache alias
+REVISION=$(git rev-parse --verify HEAD)
+IMAGE=$REGION-docker.pkg.dev/$PROJECT/fredy/fredy:$REVISION
+CACHE_IMAGE=$REGION-docker.pkg.dev/$PROJECT/fredy/fredy:latest
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions="_IMAGE=$IMAGE,_CACHE_IMAGE=$CACHE_IMAGE" .
 
-# Deploy: scale-to-zero, single instance, generous timeout for slow scrapes
+# Deploy the exact revision: scale-to-zero, single instance, generous timeout
 gcloud run deploy fredy \
-  --image $REGION-docker.pkg.dev/$PROJECT/fredy/fredy:latest \
+  --image $IMAGE \
   --region $REGION \
   --memory 1Gi --cpu 1 \
   --min-instances 0 --max-instances 1 \
   --timeout 900 \
   --allow-unauthenticated \
-  --set-env-vars STORAGE_BACKEND=firestore,EXTERNAL_SCHEDULER=true,TRIGGER_TOKEN=$TRIGGER_TOKEN
+  --set-env-vars EXTERNAL_SCHEDULER=true,TRIGGER_TOKEN=$TRIGGER_TOKEN
 
 SERVICE_URL=$(gcloud run services describe fredy --region $REGION --format 'value(status.url)')
 
@@ -70,12 +74,11 @@ immediately** (the service is public), and configure your search jobs.
   `TRIGGER_TOKEN` set, the endpoint answers 404. For belt-and-braces, switch
   the service to `--no-allow-unauthenticated` and give the Scheduler job an
   OIDC identity — but then the UI needs an authenticated proxy too.
-- **Credentials**: Cloud Run's service account gets Firestore access via
-  Application Default Credentials — nothing to configure with the default
-  compute service account (roles/datastore.user is included in Editor;
-  narrow it if you harden the project).
-- **The sqlite notification adapter is hidden** on the Firestore backend
-  (there is no persistent disk to write to).
+- **Credentials**: Cloud Run uses its runtime service account through Application
+  Default Credentials. Identify it with `gcloud run services describe fredy --region "$REGION"
+  --format='value(spec.template.spec.serviceAccountName)'`, grant that principal
+  `roles/datastore.user`, and verify the deployed revision can read Firestore. Do not assume
+  modern or hardened projects grant this role automatically.
 - **Firestore doc limit**: a single debug-log line larger than ~1 MiB cannot
   be stored (never happens in practice).
 - **Bot detection**: datacenter IPs (Cloud Run egress) are commonly blocked
@@ -99,15 +102,14 @@ docker run -d --name fredy-firestore-emulator -p 127.0.0.1:8144:8144 \
   gcloud emulators firestore start --host-port=0.0.0.0:8144
 
 # Boot Fredy against it
-STORAGE_BACKEND=firestore FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 \
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 \
 EXTERNAL_SCHEDULER=true TRIGGER_TOKEN=dev-token node index.js
 
 # Trigger a run
 curl -X POST -H 'X-Trigger-Token: dev-token' http://localhost:9998/api/trigger
 
-# Contract suite against both backends
-yarn test:contract
-STORAGE_BACKEND=firestore FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract
+# Firestore contract suite
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract
 ```
 
 ## Multi-tenant mode (Firebase Auth)

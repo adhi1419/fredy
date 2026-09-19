@@ -17,7 +17,6 @@ const STORED_SETTINGS = {
   port: 9998,
   baseUrl: 'https://fredy.example',
   sessionTTL: 4,
-  sqlitepath: '/db',
   proxyUrl: 'http://user:hunter2@proxy.example:8080',
   workingHours: { from: '08:00', to: '20:00' },
   session_secret: 'super-secret-signing-key',
@@ -29,12 +28,14 @@ const settingsRows = Object.entries(STORED_SETTINGS).map(([name, value]) => ({
   value: JSON.stringify(value),
 }));
 
-vi.mock('../../lib/services/storage/SqliteConnection.js', () => ({
-  default: { query: () => settingsRows, execute: () => ({ changes: 1 }) },
-}));
-vi.mock('../../lib/utils.js', async (importOriginal) => ({
-  ...(await importOriginal()),
-  readConfigFromStorage: async () => ({ sqlitepath: '/db' }),
+vi.mock('../../lib/services/storage/firestore/FirestoreConnection.js', () => ({
+  default: {
+    collection: () => ({
+      where: () => ({
+        get: async () => ({ docs: settingsRows.map((row) => ({ data: () => ({ ...row, userId: null }) })) }),
+      }),
+    }),
+  },
 }));
 
 const { getSettings, getPublicSettings } = await import('../../lib/services/storage/settingsStorage.js');
@@ -75,13 +76,6 @@ describe('settings exposure', () => {
      */
     async function loadGetHandler(isAdmin) {
       vi.resetModules();
-      vi.doMock('../../lib/services/storage/SqliteConnection.js', () => ({
-        default: { query: () => settingsRows, execute: () => ({ changes: 1 }) },
-      }));
-      vi.doMock('../../lib/utils.js', async (importOriginal) => ({
-        ...(await importOriginal()),
-        readConfigFromStorage: async () => ({ sqlitepath: '/db' }),
-      }));
       vi.doMock('../../lib/api/security.js', () => ({ isAdmin: () => isAdmin }));
       vi.doMock('../../lib/services/tracking/Tracker.js', () => ({ trackPoi: vi.fn() }));
 
@@ -102,14 +96,13 @@ describe('settings exposure', () => {
       const handler = await loadGetHandler(true);
       const payload = await handler({});
       expect(payload.proxyUrl).toBe(STORED_SETTINGS.proxyUrl);
-      expect(payload.sqlitepath).toBe('/db');
       expect(payload.sessionTTL).toBe(4);
     });
 
     it('withholds operator configuration from a non-admin', async () => {
       const handler = await loadGetHandler(false);
       const payload = await handler({});
-      for (const secret of ['proxyUrl', 'sqlitepath', 'sessionTTL', 'port', 'baseUrl', 'session_secret']) {
+      for (const secret of ['proxyUrl', 'sessionTTL', 'port', 'baseUrl', 'session_secret']) {
         expect(payload).not.toHaveProperty(secret);
       }
     });

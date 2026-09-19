@@ -6,11 +6,9 @@
 /*
  * Contract tests: configuredAdapterStorage
  *
- * Backend-agnostic behavioral contract for configured adapter (channel) storage.
- * Seeds and asserts ONLY through the public storage API (loaded via the harness
- * so the same suite runs against every backend). Every storage call is awaited:
- * the sqlite implementation is synchronous (await is a no-op), the firestore
- * one is async.
+ * Firestore behavioral contract for configured adapter (channel) storage.
+ * Seeds and asserts ONLY through the public storage API loaded by the Firestore
+ * contract harness. Every storage call is awaited because Firestore is async.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';

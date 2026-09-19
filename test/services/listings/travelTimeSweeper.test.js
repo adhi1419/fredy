@@ -81,7 +81,7 @@ async function loadSweeper() {
 }
 
 /**
- * A stored row as it comes back from SQLite, in snake_case.
+ * A stored travel-time record in the storage layer's snake_case shape.
  *
  * @param {Object} overrides
  * @returns {Object}

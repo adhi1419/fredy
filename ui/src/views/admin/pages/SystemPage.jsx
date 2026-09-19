@@ -23,7 +23,7 @@ const PROXY_AUTH_FIELDS = [
 
 /**
  * How the instance runs: the port it listens on, where it thinks it lives, how long a session
- * lasts, how long listings are kept, where the database file is.
+ * lasts, and how long offline listings are kept.
  *
  * @returns {React.ReactElement}
  */
@@ -72,22 +72,6 @@ export default function SystemPage() {
           onChange={(value) => setField('listingRetentionDays', value)}
           suffix={t('settings.listingRetentionSuffix')}
           style={{ maxWidth: 200 }}
-        />
-      </SegmentPart>
-
-      <SegmentPart name={t('settings.sqlitePath')} helpText={t('settings.sqlitePathHelp')}>
-        <Banner
-          fullMode={false}
-          type="warning"
-          closeIcon={null}
-          style={{ marginBottom: '12px' }}
-          description={t('settings.sqlitePathWarning')}
-        />
-        <Input
-          type="text"
-          placeholder={t('settings.sqlitePathPlaceholder')}
-          value={form.sqlitepath}
-          onChange={(value) => setField('sqlitepath', value)}
         />
       </SegmentPart>
 

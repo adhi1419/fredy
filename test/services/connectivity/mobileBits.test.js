@@ -28,8 +28,8 @@ describe('services/connectivity/mobileBits', () => {
     ];
 
     expect(new Set(bits).size).toBe(bits.length);
-    // Beyond 31 bits the bitwise operators start dealing in negative numbers, and SQLite would be
-    // comparing something other than what was stored.
+    // Beyond 31 bits the bitwise operators start dealing in negative numbers, so keep the mask
+    // within the signed 32-bit range.
     expect(Math.max(...bits)).toBeLessThan(2 ** 31);
   });
 

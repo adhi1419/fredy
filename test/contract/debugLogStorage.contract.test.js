@@ -6,12 +6,12 @@
 /*
  * Contract tests: debugLogStorage
  *
- * Backend-agnostic behavioral contract for the debug log recording feature.
- * Seeds and asserts ONLY through the public storage API (loaded via the harness
- * so the same suite runs against every backend). Every storage call is awaited.
+ * Firestore behavioral contract for the debug log recording feature.
+ * Seeds and asserts ONLY through the public storage API loaded by the Firestore
+ * contract harness. Every storage call is awaited.
  *
  * The debug log module interacts with settingsStorage for the enable/disable
- * flag — both modules are loaded through the harness for backend neutrality.
+ * flag — both modules are loaded through the Firestore contract harness.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';

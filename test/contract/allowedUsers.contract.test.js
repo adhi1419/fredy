@@ -10,13 +10,11 @@
  * requires the firestore backend (index.js refuses any other combination).
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { initBackend, resetBackend, teardownBackend, backendName } from './harness.js';
-
-const firestoreOnly = describe.skipIf(backendName() !== 'firestore');
+import { initBackend, resetBackend, teardownBackend } from './harness.js';
 
 let allowedUsers;
 
-firestoreOnly('allowedUsersStorage contract', () => {
+describe('allowedUsersStorage contract', () => {
   beforeAll(async () => {
     await initBackend();
     allowedUsers = await import('../../lib/services/storage/firestore/allowedUsersStorage.js');

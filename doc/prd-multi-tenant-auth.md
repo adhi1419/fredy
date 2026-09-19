@@ -3,7 +3,7 @@
 ## Context
 
 Fredy is an open-source apartment-hunting bot (Node.js + Chromium). It has been
-migrated from SQLite to Firestore (dual-backend, contract-tested — see
+uses Firestore for all persistence (contract-tested — see
 `doc/firestore-data-model.md`) and deploys on GCP Cloud Run
 (`doc/cloud-run-deployment.md`). This PRD adds multi-tenant auth so multiple
 users can share a single hosted instance, each managing their own jobs and
@@ -19,7 +19,7 @@ model; the three open questions are resolved and baked into the design.
 
 ## Prerequisites
 
-- Firestore migration complete (branch `firestore-migration`) ✅
+- Firestore persistence is available ✅
 - Fredy running on Cloud Run with Firestore backend ✅
 
 ## Goals
@@ -95,15 +95,15 @@ Everything else already exists and stays:
 - `listings` — already scoped through the owning job (`accessibleJobIds`);
   no denormalized `userId` needed
 - `watch_list`, `settings`, `configured_adapters` — already per-user
-- `sessions` — **kept** (Firestore-backed session store from the migration)
+- `sessions` — **kept** (Firestore-backed session store)
 - `users` — kept; doc id becomes the Firebase UID for new users
 
 ### Config / feature flag
 
 `AUTH_MODE=firebase` env var (or `authMode` in config). Default `password`
-keeps classic behavior — local dev and the sqlite backend never need a
-Firebase project. Password-auth code is only deleted once firebase mode has
-run in production for a while (cheap insurance, near-zero maintenance cost).
+keeps classic behavior and does not require a Firebase project. Password-auth
+code is only deleted once firebase mode has run in production for a while
+(cheap insurance, near-zero maintenance cost).
 
 ### What gets added
 
@@ -133,7 +133,7 @@ run in production for a while (cheap insurance, near-zero maintenance cost).
 
 ## Testing Strategy
 
-The 341-test dual-backend contract suite remains the backbone. New tests:
+The Firestore contract suite remains the backbone. New tests:
 
 1. **Login exchange** — valid token + allowlisted → session cookie set;
    valid token + not allowlisted → 403, no user created; invalid/expired

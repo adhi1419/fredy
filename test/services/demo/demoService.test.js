@@ -10,7 +10,6 @@ const jobStoragePath = root + '/lib/services/storage/jobStorage.js';
 const userStoragePath = root + '/lib/services/storage/userStorage.js';
 const settingsStoragePath = root + '/lib/services/storage/settingsStorage.js';
 const listingsStoragePath = root + '/lib/services/storage/listingsStorage.js';
-const sqlitePath = root + '/lib/services/storage/SqliteConnection.js';
 const geocodingCronPath = root + '/lib/services/crons/geocoding-cron.js';
 const loggerPath = root + '/lib/services/logger.js';
 const configuredAdapterStoragePath = root + '/lib/services/storage/configuredAdapterStorage.js';
@@ -63,9 +62,6 @@ async function loadService() {
     deleteInactiveListingsByJobId: (jobId) => {
       state.inactiveDeletes.push(jobId);
     },
-  }));
-  vi.doMock(sqlitePath, () => ({
-    default: { withTransaction: (cb) => cb() },
   }));
   vi.doMock(geocodingCronPath, () => ({
     runGeoCordTask: () => {

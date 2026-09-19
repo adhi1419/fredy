@@ -6,13 +6,12 @@
 /*
  * Contract tests: watchListStorage
  *
- * Backend-agnostic behavioral contract for the watch list module. Seeds and
- * asserts ONLY through the public storage API. Every storage call is awaited
- * so the same test body works against both sync (sqlite) and async (firestore)
- * backends.
+ * Firestore behavioral contract for the watch list module. Seeds and asserts
+ * ONLY through the public storage API. Every storage call is awaited because
+ * Firestore is async.
  *
- * watch_list has FK to listings(id), which has FK to jobs(id) ON DELETE CASCADE,
- * and jobs has FK to users(id). So we must seed: user -> job -> listing -> watch.
+ * Watch-list documents depend on their user, job, and listing documents, so we
+ * seed them in that order.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';

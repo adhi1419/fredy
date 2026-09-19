@@ -105,46 +105,50 @@ You can try out Fredy here: [Fredy Demo](https://fredy-demo.orange-coding.net/)
 
 ## 🚀 Quick Start
 
-### With Docker
+### Local Docker (recommended)
 
-> [!NOTE]
-> No configuration file is needed to start. Fredy creates `/conf/config.json` on first run if it is missing. That file only holds the database path, everything else is configured in the Web UI and stored in the database.
+The zero-configuration local path starts Fredy and a Firestore emulator together:
 
 ``` bash
+docker compose up -d
+```
+
+Open <http://localhost:9998> and sign in with `admin` / `admin`, then change the password.
+The Compose emulator is for development: its users, jobs, listings, sessions and settings are
+**disposable and are removed when the emulator container is deleted**. Production data belongs in
+a real Firestore project, not this local emulator.
+
+### Production Docker
+
+Firestore is the only persistence layer. A standalone production container needs Google
+Application Default Credentials with access to the selected Firestore project:
+
+``` bash
+gcloud auth application-default login
+export GOOGLE_CLOUD_PROJECT=your-project-id
+
 docker run -d --name fredy \
+  -e GOOGLE_CLOUD_PROJECT \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-adc.json \
+  -v "$HOME/.config/gcloud/application_default_credentials.json:/run/secrets/gcp-adc.json:ro" \
   -v fredy_conf:/conf \
-  -v fredy_db:/db \
   -p 9998:9998 \
   ghcr.io/orangecoding/fredy:master
 ```
 
-`:master` follows the master branch. To pin a release instead, use its version tag, for example
-`ghcr.io/orangecoding/fredy:26.5.1`. Images are built for `linux/amd64` and `linux/arm64`.
-
-There is also a pre-release channel that follows the `develop` branch:
-`ghcr.io/orangecoding/fredy-pre-release:latest`. It is built from the same pipeline (lint, format
-check and the offline test suite all have to pass first), but the changes in it have not been
-through master yet. Use it to try upcoming features or to verify a fix, not for an instance you
-rely on.
-
-Logs:
-
-``` bash
-docker logs fredy -f
-```
-
 ### Manual (Node.js)
 
--   Requirement: **Node.js 22.22.0 or higher** (see `engines` in `package.json`)
--   Install dependencies and start:
+Use Node.js 22.22.0 or newer. Authenticate ADC and select the Firestore project before startup:
 
 ``` bash
-yarn
-yarn run build:frontend  # builds the Web UI into ui/public
-yarn run start:backend   # serves the UI and the API on port 9998
+gcloud auth application-default login
+export GOOGLE_CLOUD_PROJECT=your-project-id
+yarn install --frozen-lockfile
+yarn build:frontend
+yarn start:backend
 ```
 
-👉 Open <http://localhost:9998>
+Open <http://localhost:9998>.
 
 ### With Unraid
 
@@ -517,7 +521,7 @@ a debug bundle due to privacy reasons!
 - Debug logging is **opt-in** and admin-only. As long as it is off, Fredy behaves exactly
   as before (console output only, nothing in the DB).
 - When you turn it on, every log line (`debug`, `info`, `warn`, `error`) is additionally
-  written into the `debug_logs` SQLite table. The console keeps logging at its usual level.
+  written into the `debug_logs` Firestore collection. The console keeps logging at its usual level.
 - The recorded data is hard-capped at **5 MiB** via a rolling buffer: once the cap is hit,
   the oldest entries are dropped automatically so the newest ones always survive.
 - The on/off flag is persisted, so debug logging stays on across restarts (and you'll see

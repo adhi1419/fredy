@@ -119,9 +119,9 @@ describe('services/debug/debugBundleService.js', () => {
 
     it('leaves non-URL settings untouched', async () => {
       const sys = await svc.buildSystemInfo({
-        settings: { sqlitepath: '/db', interval: 60, workingHours: { from: '', to: '', timeZone: null } },
+        settings: { port: 9998, interval: 60, workingHours: { from: '', to: '', timeZone: null } },
       });
-      expect(sys).toContain('sqlitepath: /db');
+      expect(sys).toContain('port: 9998');
       expect(sys).toContain('interval: 60');
       expect(sys).toContain('workingHours: {"from":"","to":"","timeZone":null}');
     });

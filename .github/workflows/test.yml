@@ -18,5 +18,26 @@ jobs:
           node-version: 22
           cache: 'yarn'
 
-      - run: yarn install
+      - run: yarn install --frozen-lockfile
+
+      - name: Start Firestore emulator
+        run: |
+          docker run -d --name firestore-emulator -p 127.0.0.1:8144:8144 \
+            gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators \
+            gcloud emulators firestore start --host-port=0.0.0.0:8144
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8144/ > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != true ]; then
+            docker logs firestore-emulator
+            exit 1
+          fi
+
       - run: yarn test:offline
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8144

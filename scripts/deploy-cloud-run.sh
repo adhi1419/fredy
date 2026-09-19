@@ -15,6 +15,18 @@ set -euo pipefail
 PROJECT="${1:?usage: $0 <project-id> [region]}"
 REGION="${2:-europe-west1}"
 SERVICE=fredy
+CLEANUP=""
+LIFECYCLE=""
+ENVFILE=""
+SERVICE_ERROR=""
+
+cleanup() {
+  [ -z "$CLEANUP" ] || rm -f "$CLEANUP"
+  [ -z "$LIFECYCLE" ] || rm -f "$LIFECYCLE"
+  [ -z "$ENVFILE" ] || rm -f "$ENVFILE"
+  [ -z "$SERVICE_ERROR" ] || rm -f "$SERVICE_ERROR"
+}
+trap cleanup EXIT
 
 [ -f firebase-web-config.json ] || { echo "firebase-web-config.json not found (run setup-firebase-project.sh first)"; exit 1; }
 
@@ -46,17 +58,24 @@ cat > "$CLEANUP" << 'JSON'
 JSON
 gcloud artifacts repositories set-cleanup-policies fredy \
   --location="$REGION" --policy="$CLEANUP" --no-dry-run > /dev/null
-rm -f "$CLEANUP"
 echo "   cleanup policy set (keep newest version only)"
 
 echo "== Build (Cloud Build) =="
-IMAGE="$REGION-docker.pkg.dev/$PROJECT/fredy/fredy:latest"
+IMAGE_REPOSITORY="$REGION-docker.pkg.dev/$PROJECT/fredy/fredy"
+REVISION=$(git rev-parse --verify HEAD)
+IMAGE="$IMAGE_REPOSITORY:$REVISION"
+CACHE_IMAGE="$IMAGE_REPOSITORY:latest"
+# Cloud Build pulls :latest for caching, then pushes both the immutable revision
+# tag and the refreshed cache alias. Cloud Run deploys only the immutable tag.
 # --suppress-logs: streaming logs from the default bucket needs project
 # Viewer, which the lean CI deployer SA lacks; without the flag gcloud
-# exits 1 even though the build keeps running. The command still waits
-# for completion and fails on build failure — inspect failures in the
-# Cloud Build console.
-gcloud builds submit --tag "$IMAGE" --suppress-logs .
+# exits 1 even though the build keeps running. No --async is used: gcloud
+# waits for completion and fails on a failed Cloud Build.
+gcloud builds submit \
+  --config cloudbuild.yaml \
+  --substitutions="_IMAGE=$IMAGE,_CACHE_IMAGE=$CACHE_IMAGE" \
+  --suppress-logs \
+  .
 
 echo "== Staging bucket lifecycle =="
 # Every `builds submit` leaves its source tarball in the staging bucket
@@ -72,11 +91,21 @@ fi
 rm -f "$LIFECYCLE"
 
 echo "== Trigger token =="
-# Reuse the existing token when the service already has one, so the
-# scheduler job keeps working across redeploys.
-TRIGGER_TOKEN=$(gcloud run services describe $SERVICE --region "$REGION" \
-  --format 'value(spec.template.spec.containers[0].env)' 2>/dev/null \
-  | tr ';' '\n' | grep -oP "(?<='TRIGGER_TOKEN': ')[^']+" || true)
+# Only a genuine not-found result may create a token. Permission, transport and
+# parse failures stop instead of silently invalidating existing callers.
+SERVICE_ERROR=$(mktemp)
+if SERVICE_JSON=$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json 2>"$SERVICE_ERROR"); then
+  if ! TRIGGER_TOKEN=$(printf '%s' "$SERVICE_JSON" \
+    | python3 -c 'import json, sys; service = json.load(sys.stdin); containers = service.get("spec", {}).get("template", {}).get("spec", {}).get("containers", []); env = containers[0].get("env", []) if containers else []; print(next((item.get("value", "") for item in env if item.get("name") == "TRIGGER_TOKEN"), ""))'); then
+    echo "Failed to parse the existing Cloud Run service configuration." >&2
+    exit 1
+  fi
+elif grep -qiE 'not found|does not exist' "$SERVICE_ERROR"; then
+  TRIGGER_TOKEN=""
+else
+  cat "$SERVICE_ERROR" >&2
+  exit 1
+fi
 if [ -z "$TRIGGER_TOKEN" ]; then
   TRIGGER_TOKEN=$(openssl rand -hex 32)
   echo "   generated new trigger token"
@@ -93,7 +122,6 @@ import json, sys
 envfile, token = sys.argv[1], sys.argv[2]
 web_config = json.dumps(json.load(open('firebase-web-config.json')), separators=(',', ':'))
 env = {
-    'STORAGE_BACKEND': 'firestore',
     'AUTH_MODE': 'firebase',
     'EXTERNAL_SCHEDULER': 'true',
     'TRIGGER_TOKEN': token,
@@ -122,7 +150,7 @@ else
   echo "   gemini-api-key secret absent — inquiry drafting stays disabled in prod"
 fi
 
-gcloud run deploy $SERVICE \
+gcloud run deploy "$SERVICE" \
   --image "$IMAGE" \
   --region "$REGION" \
   --memory 1Gi --cpu 1 \
@@ -131,9 +159,7 @@ gcloud run deploy $SERVICE \
   --allow-unauthenticated \
   --env-vars-file "$ENVFILE" \
   "${SECRET_FLAGS[@]}"
-rm -f "$ENVFILE"
-
-SERVICE_URL=$(gcloud run services describe $SERVICE --region "$REGION" --format 'value(status.url)')
+SERVICE_URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')
 
 echo "== Scheduler =="
 if gcloud scheduler jobs describe fredy-scrape --location "$REGION" > /dev/null 2>&1; then

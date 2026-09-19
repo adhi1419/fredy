@@ -6,11 +6,9 @@
 /*
  * Contract tests: settingsStorage
  *
- * Backend-agnostic behavioral contract for the settings module. Seeds and
- * asserts ONLY through the public storage API (loaded via the harness so the
- * same suite runs against every backend). Every storage call is awaited:
- * the sqlite implementation is synchronous (await is a no-op), the firestore
- * one is async.
+ * Firestore behavioral contract for the settings module. Seeds and asserts
+ * ONLY through the public storage API loaded by the Firestore contract harness.
+ * Every storage call is awaited because Firestore is async.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
@@ -32,11 +30,13 @@ afterAll(async () => {
 
 describe('settingsStorage contract', () => {
   describe('global settings', () => {
-    it('returns config-file values when nothing is stored', async () => {
-      const settings = await settingsStorage.getSettings();
-      // Values injected by the contract setup config.
-      expect(settings.interval).toBe(60);
-      expect(settings.port).toBe(9998);
+    it('returns effective application defaults when nothing is stored', async () => {
+      expect(await settingsStorage.getSettings()).toMatchObject({
+        interval: 60,
+        port: 9998,
+        sessionTTL: 2,
+        workingHours: { from: null, to: null },
+      });
     });
 
     it('round-trips a stored value through upsert + get', async () => {
@@ -45,10 +45,11 @@ describe('settingsStorage contract', () => {
       expect(settings.workingHourFrom).toBe('08:00');
     });
 
-    it('stored settings override config-file values of the same name', async () => {
+    it('stored values override effective defaults', async () => {
       await settingsStorage.upsertSettings({ interval: 5 });
       const settings = await settingsStorage.getSettings();
       expect(settings.interval).toBe(5);
+      expect(settings.port).toBe(9998);
     });
 
     it('updates an existing setting in place (upsert semantics)', async () => {

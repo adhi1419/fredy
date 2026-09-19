@@ -7,8 +7,8 @@
  * Contract test: setInquiryMessage / inquiry_message round-trip.
  *
  * The eager pipeline stores a generated inquiry draft on the listing; the
- * Telegram second message and the detail view read it back. Both backends
- * must round-trip it via getListingById and normalise empty -> null.
+ * Telegram second message and the detail view read it back. Firestore must
+ * round-trip it via getListingById and normalise empty -> null.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
