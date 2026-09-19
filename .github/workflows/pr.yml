@@ -1,0 +1,126 @@
+name: PR Build
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'ui/**'
+              - 'test/ui/**'
+              - 'index.html'
+              - 'vite.config.js'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.github/workflows/pr.yml'
+            backend:
+              - 'lib/**'
+              - 'test/**'
+              - '!test/ui/**'
+              - 'index.js'
+              - 'Dockerfile'
+              - 'docker-compose.yml'
+              - 'docker-test.sh'
+              - 'cloudbuild.yaml'
+              - 'scripts/**'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.github/workflows/pr.yml'
+
+  frontend:
+    name: Frontend tests and build
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Frontend tests
+        run: npx vitest run test/ui
+        env:
+          TEST_MODE: offline
+      - name: Pages production build
+        run: yarn build:frontend
+        env:
+          VITE_PAGES: 'true'
+          VITE_API_BASE_URL: https://api.example.invalid
+
+  backend:
+    name: Backend tests and image build
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - name: Start Firestore emulator
+        run: |
+          docker run -d --name firestore-emulator -p 127.0.0.1:8144:8144 \
+            gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators \
+            gcloud emulators firestore start --host-port=0.0.0.0:8144
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8144/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          docker logs firestore-emulator
+          exit 1
+      - name: Backend offline tests
+        run: npx vitest run --exclude 'test/ui/**'
+        env:
+          TEST_MODE: offline
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8144
+      - name: Firestore contracts
+        run: yarn test:contract
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8144
+      - uses: docker/setup-buildx-action@v4
+      - name: Build backend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          cache-from: type=gha,scope=backend-pr
+          cache-to: type=gha,mode=max,scope=backend-pr
+
+  gate:
+    name: PR Gate
+    if: always()
+    needs: [changes, frontend, backend]
+    runs-on: ubuntu-latest
+    env:
+      CHANGES_RESULT: ${{ needs.changes.result }}
+      FRONTEND_RESULT: ${{ needs.frontend.result }}
+      BACKEND_RESULT: ${{ needs.backend.result }}
+    steps:
+      - name: Require applicable checks
+        run: |
+          echo "changes=$CHANGES_RESULT frontend=$FRONTEND_RESULT backend=$BACKEND_RESULT"
+          test "$CHANGES_RESULT" = success
+          case "$FRONTEND_RESULT" in success|skipped) ;; *) exit 1 ;; esac
+          case "$BACKEND_RESULT" in success|skipped) ;; *) exit 1 ;; esac
