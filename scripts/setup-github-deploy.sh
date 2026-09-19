@@ -30,12 +30,11 @@ if ! gcloud iam service-accounts describe "$SA_EMAIL" > /dev/null 2>&1; then
 fi
 
 echo "== Roles =="
-# What the deploy script needs: Cloud Build submit (build + staging bucket),
-# Artifact Registry repo admin (create repo + cleanup policy), Cloud Run
-# deploy, Scheduler job upsert, and actAs on the runtime service account.
-for role in roles/cloudbuild.builds.editor roles/storage.admin \
-            roles/artifactregistry.admin roles/run.admin \
-            roles/cloudscheduler.admin roles/serviceusage.serviceUsageConsumer; do
+# Steady-state GitHub deployment builds on the runner, pushes an immutable image,
+# and updates the existing Cloud Run service. Repository creation, cleanup policy,
+# secrets, environment variables, and Scheduler setup stay in the human-run bootstrap.
+for role in roles/artifactregistry.writer roles/run.admin \
+            roles/serviceusage.serviceUsageConsumer; do
   gcloud projects add-iam-policy-binding "$PROJECT" \
     --member="serviceAccount:$SA_EMAIL" --role="$role" --condition=None --quiet > /dev/null
 done
