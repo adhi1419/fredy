@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Button, Checkbox, Input, TextArea, Toast } from '@douyinfe/semi-ui-19';
+import { Button, Checkbox, Input, Select, TextArea, Toast } from '@douyinfe/semi-ui-19';
 import { IconSave } from '@douyinfe/semi-icons';
 
 import { SegmentPart } from '../../../components/segment/SegmentPart';
@@ -41,6 +41,10 @@ export default function InquiryProfilePage() {
     postcode: '',
     city: '',
     immoscoutPrivacyAccepted: false,
+    deutscheWohnenIncomeType: '',
+    deutscheWohnenMonthlyNetIncome: '',
+    deutscheWohnenPrivacyAccepted: false,
+    howogeApplicationAccepted: false,
   });
 
   useEffect(() => {
@@ -59,6 +63,10 @@ export default function InquiryProfilePage() {
         postcode: stored.postcode ?? '',
         city: stored.city ?? '',
         immoscoutPrivacyAccepted: stored.immoscoutPrivacyAccepted === true,
+        deutscheWohnenIncomeType: stored.deutscheWohnenIncomeType ?? '',
+        deutscheWohnenMonthlyNetIncome: stored.deutscheWohnenMonthlyNetIncome ?? '',
+        deutscheWohnenPrivacyAccepted: stored.deutscheWohnenPrivacyAccepted === true,
+        howogeApplicationAccepted: stored.howogeApplicationAccepted === true,
       });
     }
   }, [stored]);
@@ -180,6 +188,57 @@ export default function InquiryProfilePage() {
             {t('settings.inquiryProfile.privacyConsent')}
           </Checkbox>
         </div>
+      </SegmentPart>
+
+      <SegmentPart
+        name={t('settings.inquiryProfile.deutscheWohnenTitle')}
+        helpText={t('settings.inquiryProfile.deutscheWohnenHelp')}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <label>
+            {t('settings.inquiryProfile.deutscheWohnenIncomeType')}
+            <Select
+              value={draft.deutscheWohnenIncomeType}
+              onChange={(val) => field('deutscheWohnenIncomeType', val)}
+              style={{ width: '100%' }}
+              optionList={[
+                { value: '1', label: t('settings.inquiryProfile.deutscheWohnenIncomeType.salary') },
+                { value: '2', label: t('settings.inquiryProfile.deutscheWohnenIncomeType.benefits') },
+                { value: '3', label: t('settings.inquiryProfile.deutscheWohnenIncomeType.pension') },
+                { value: '4', label: t('settings.inquiryProfile.deutscheWohnenIncomeType.citizenBenefit') },
+              ]}
+            />
+          </label>
+          <label>
+            {t('settings.inquiryProfile.deutscheWohnenMonthlyNetIncome')}
+            <Select
+              value={draft.deutscheWohnenMonthlyNetIncome}
+              onChange={(val) => field('deutscheWohnenMonthlyNetIncome', val)}
+              style={{ width: '100%' }}
+              optionList={[
+                { value: 'M_1', label: t('settings.inquiryProfile.deutscheWohnenMonthlyNetIncome.low') },
+                { value: 'M_2', label: t('settings.inquiryProfile.deutscheWohnenMonthlyNetIncome.medium') },
+                { value: 'M_3', label: t('settings.inquiryProfile.deutscheWohnenMonthlyNetIncome.high') },
+                { value: 'M_A', label: t('settings.inquiryProfile.deutscheWohnenMonthlyNetIncome.unspecified') },
+              ]}
+            />
+          </label>
+          <Checkbox
+            checked={draft.deutscheWohnenPrivacyAccepted}
+            onChange={(event) => field('deutscheWohnenPrivacyAccepted', event.target.checked)}
+          >
+            {t('settings.inquiryProfile.deutscheWohnenPrivacyConsent')}
+          </Checkbox>
+        </div>
+      </SegmentPart>
+
+      <SegmentPart name={t('settings.inquiryProfile.howogeTitle')} helpText={t('settings.inquiryProfile.howogeHelp')}>
+        <Checkbox
+          checked={draft.howogeApplicationAccepted}
+          onChange={(event) => field('howogeApplicationAccepted', event.target.checked)}
+        >
+          {t('settings.inquiryProfile.howogeApplicationConsent')}
+        </Checkbox>
       </SegmentPart>
 
       <div className="settingsShell__saveRow">

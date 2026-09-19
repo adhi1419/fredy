@@ -439,6 +439,8 @@ describe('telegram send() - inquiry draft second message', () => {
     const urls = mockNodeFetch.mock.calls.map((c) => c[0]);
     // First the listing (sendPhoto), then the draft (sendMessage).
     expect(urls).toContain('https://api.telegram.org/botTKN/sendMessage');
+    const listingPayload = JSON.parse(mockNodeFetch.mock.calls.find((c) => c[0].endsWith('/sendPhoto'))[1].body);
+    expect(listingPayload.caption).not.toMatch(/^\[Applied\]/);
     const draftCall = mockNodeFetch.mock.calls.find(
       (c) => c[0].endsWith('/sendMessage') && JSON.parse(c[1].body).text?.startsWith('Sehr geehrte'),
     );

@@ -69,8 +69,8 @@ On top of the listing itself, Fredy answers two questions:
     the headline - no two portals write that the same way
 -   ⏱️ Configurable search intervals and working hours
 -   💶 **Financing calculator**: which listings you can afford, for renting and for buying
--   ✉️ **Guarded ImmoScout inquiries**: review and send a generated draft, or opt a job into
-    automatic sending with duplicate and unknown-outcome protection
+-   ✉️ **Guarded rental inquiries**: review and send a generated draft through ImmoScout or
+    Deutsche Wohnen, or opt a job into automatic sending with duplicate and unknown-outcome protection
 -   🚆 **Real travel times** from your addresses by public transport, car, bike or on foot,
     plus a filter to match
 -   🗺️ **Public transport on the map**: the network, every stop, and live departures
@@ -243,16 +243,16 @@ to Slack + Telegram."\
 Jobs run automatically at the interval you configure under **Administration → Execution**,
 where you can also restrict them to working hours.
 
-### Guarded ImmoScout inquiries ✉️
+### Guarded rental inquiries ✉️
 
-Fredy can send its generated rental inquiry through ImmoScout instead of leaving it as copyable
-text. The feature is **off by default**. Fill in the contact address and consent under
-**Settings → Inquiry profile**; the email address always comes from the signed-in Fredy account and
-cannot be overridden by an API request.
+Fredy can send its generated rental inquiry through a supported provider instead of leaving it as
+copyable text. The feature is **off by default**. Fill in the provider's contact fields and consent
+under **Settings → Inquiry profile**; the email address always comes from the signed-in Fredy account
+and cannot be overridden by an API request.
 
 There are two ways to send:
 
-- open an ImmoScout listing, edit the generated draft and confirm **Send via ImmoScout**
+- open a supported listing, edit the generated draft and confirm the provider-specific send action
 - enable **Automatic inquiries** in one job's optional settings; only that job sends its generated
   drafts automatically
 
@@ -264,8 +264,16 @@ is marked **unknown** and is never retried automatically, because ImmoScout may 
 it. Telegram reports a successful automatic application as one message beginning with `[Applied]`
 instead of following the listing with a second copyable draft.
 
-Only ImmoScout is supported initially. The delivery boundary is provider-neutral so other portals
-can add their own sender without changing the pipeline's duplicate and outcome protections.
+Only ImmoScout and Deutsche Wohnen can currently carry generated messages. Deutsche Wohnen asks for
+a phone number plus provider-defined income categories; configure those and grant its separate consent
+under **Settings → Inquiry profile**. Unlike ImmoScout, its contact endpoint has no validation-only mode,
+so Fredy validates locally and makes one real request; ambiguous results remain non-retryable.
+
+InBerlinWohnen links HOWOGE offers to HOWOGE's own application workflow. That workflow accepts only
+name and email, sends a double-opt-in confirmation email, and exposes no field for the generated message.
+For HOWOGE partner links, Fredy submits the fresh signed form once and treats the server-accepted DOI
+request as **Applied**; the applicant must still confirm HOWOGE's email. Other InBerlinWohnen partner
+hosts remain notification-only until their application flows are implemented.
 
 ### MCP Server 🤖
 

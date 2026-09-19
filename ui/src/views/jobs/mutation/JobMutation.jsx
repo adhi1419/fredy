@@ -28,7 +28,7 @@ import { formatEuro } from '../../../components/cards/chartTheme.js';
 // own when a job carries no deal type, so a form that guessed differently would show one thing and
 // store another. Kept in step by test/ui/dealTypeCopyInSync.test.js.
 import { detectDealTypeFromUrl } from '../../../services/jobs/dealType.js';
-import { isInquiryContactProfileReady } from '../../../services/inquiries/profile.js';
+import { isInquiryContactProfileReady, isInquiryProviderSupported } from '../../../services/inquiries/profile.js';
 import {
   IconArrowLeft,
   IconBell,
@@ -57,7 +57,6 @@ export default function JobMutator() {
   const shareableUserList = useSelector((state) => state.jobsData.shareableUserList);
   const allChannels = useSelector((state) => state.notificationChannels.channels);
   const inquiryProfile = useSelector((state) => state.userSettings.settings?.inquiry_profile);
-  const contactProfileReady = isInquiryContactProfileReady(inquiryProfile);
   const params = useParams();
   const location = useLocation();
 
@@ -103,6 +102,13 @@ export default function JobMutator() {
   const [dealType, setDealType] = useState(defaultDealType);
   /** Whether the value in the deal type field was guessed rather than chosen. */
   const [dealTypeWasInferred, setDealTypeWasInferred] = useState(false);
+  const inquiryProviderIds = providerData
+    .filter((provider) => provider.enabled !== false && isInquiryProviderSupported(provider.id))
+    .map((provider) => provider.id);
+  const hasInquiryProvider = inquiryProviderIds.length > 0;
+  const contactProfileReady =
+    hasInquiryProvider &&
+    inquiryProviderIds.every((providerId) => isInquiryContactProfileReady(inquiryProfile, providerId));
 
   // Derived on every render rather than kept alongside the ids. A second copy of the selection in
   // state is a copy that has to be resolved once the channels load and then kept in step, and the
@@ -559,9 +565,12 @@ export default function JobMutator() {
                 className="jobMutation__spaceTop"
                 onChange={(checked) => setAutoSendInquiry(checked)}
                 checked={autoSendInquiry}
-                disabled={!contactProfileReady && !autoSendInquiry}
+                disabled={(!hasInquiryProvider || !contactProfileReady) && !autoSendInquiry}
               />
-              {!contactProfileReady && (
+              {!hasInquiryProvider && (
+                <p className="jobMutation__inferredHint">{t('jobs.mutation.autoSendInquiryUnsupported')}</p>
+              )}
+              {hasInquiryProvider && !contactProfileReady && (
                 <div>
                   <p className="jobMutation__inferredHint">{t('jobs.mutation.autoSendInquiryProfileMissing')}</p>
                   <Button size="small" theme="light" onClick={() => leaveWithReturnPath('/settings/inquiry-profile')}>

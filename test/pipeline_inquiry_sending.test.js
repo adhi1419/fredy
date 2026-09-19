@@ -38,7 +38,12 @@ describe('pipeline automatic inquiry sending', () => {
         houseNumber: '1',
         postcode: '10115',
         city: 'Berlin',
+        phoneNumber: '+49 30 123456',
         immoscoutPrivacyAccepted: true,
+        deutscheWohnenIncomeType: '1',
+        deutscheWohnenMonthlyNetIncome: 'M_3',
+        deutscheWohnenPrivacyAccepted: true,
+        howogeApplicationAccepted: true,
       },
     });
   });
@@ -57,6 +62,54 @@ describe('pipeline automatic inquiry sending', () => {
       message: item.inquiryMessage,
     });
     expect(item.inquirySendStatus).toBe('sent');
+  });
+
+  it('delivers a generated draft for an enabled Deutsche Wohnen rental job', async () => {
+    const Fredy = await mockFredy();
+    const instance = new Fredy(providerConfig, job(), 'deutscheWohnen', {}, undefined);
+    const item = {
+      ...listing(),
+      link: 'https://www.deutsche-wohnen.com/mieten/mietangebote/test-89-1471120007',
+    };
+
+    await instance._sendInquiryMessages([item]);
+
+    expect(inquiryDeliveries).toHaveLength(1);
+    expect(inquiryDeliveries[0]).toMatchObject({
+      providerId: 'deutscheWohnen',
+      accountEmail: 'user1@example.com',
+      message: item.inquiryMessage,
+    });
+  });
+
+  it('applies to a HOWOGE partner listing without requiring a generated message', async () => {
+    const Fredy = await mockFredy();
+    const instance = new Fredy(providerConfig, job(), 'inberlinwohnen', {}, undefined);
+    const item = {
+      ...listing(),
+      link: 'https://www.howoge.de/immobiliensuche/wohnungssuche/detail/1770-20776-16.html?t=ibw',
+      inquiryMessage: null,
+    };
+
+    await instance._sendInquiryMessages([item]);
+
+    expect(inquiryDeliveries).toHaveLength(1);
+    expect(inquiryDeliveries[0]).toMatchObject({
+      providerId: 'inberlinwohnen',
+      accountEmail: 'user1@example.com',
+      message: '',
+    });
+    expect(item.inquirySendStatus).toBe('sent');
+  });
+
+  it('skips newly supported providers until their profile fields and consent are configured', async () => {
+    setUserSettings({ inquiry_profile: { name: 'Alice Example' } });
+    const Fredy = await mockFredy();
+    const instance = new Fredy(providerConfig, job(), 'deutscheWohnen', {}, undefined);
+
+    await instance._sendInquiryMessages([listing()]);
+
+    expect(inquiryDeliveries).toEqual([]);
   });
 
   it('does nothing when the job did not explicitly enable auto-send', async () => {

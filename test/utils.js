@@ -38,7 +38,16 @@ export function setInquiryDeliveryError(error) {
   inquiryDeliveryError = error;
 }
 vi.mock('../lib/services/inquiries/sendInquiry.js', () => ({
-  supportsInquirySending: (providerId) => providerId === 'immoscout',
+  supportsInquirySending: (providerId, listing) =>
+    ['deutscheWohnen', 'immoscout'].includes(providerId) ||
+    (providerId === 'inberlinwohnen' &&
+      (listing == null || new URL(listing.link).hostname.toLowerCase().endsWith('howoge.de'))),
+  inquiryRequiresMessage: (providerId, listing) =>
+    !(
+      providerId === 'inberlinwohnen' &&
+      listing != null &&
+      new URL(listing.link).hostname.toLowerCase().endsWith('howoge.de')
+    ),
 }));
 vi.mock('../lib/services/inquiries/deliverInquiry.js', () => ({
   deliverInquiry: async (params) => {

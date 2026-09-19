@@ -48,7 +48,11 @@ vi.mock('../../lib/services/messageGenerator.js', () => ({
   generateInquiryMessage: vi.fn(),
 }));
 vi.mock('../../lib/services/inquiries/sendInquiry.js', () => ({
-  supportsInquirySending: (providerId) => providerId === 'immoscout',
+  supportsInquirySending: (providerId, candidate) =>
+    ['deutscheWohnen', 'immoscout'].includes(providerId) ||
+    (providerId === 'inberlinwohnen' && candidate?.link?.includes('howoge.de')),
+  inquiryRequiresMessage: (providerId, candidate) =>
+    !(providerId === 'inberlinwohnen' && candidate?.link?.includes('howoge.de')),
 }));
 vi.mock('../../lib/services/inquiries/deliverInquiry.js', () => ({
   deliverInquiry: async (params) => {
@@ -98,6 +102,30 @@ describe('POST /api/listings/:listingId/send-inquiry', () => {
       profile,
       accountEmail: 'alice@example.com',
       message: 'Edited inquiry',
+    });
+  });
+
+  it('routes Deutsche Wohnen through the same owner-only delivery coordinator', async () => {
+    listing.provider = 'deutscheWohnen';
+    listing.link = 'https://www.deutsche-wohnen.com/mieten/mietangebote/test-89-1471120007';
+    const response = await send('Edited Deutsche Wohnen inquiry');
+    expect(response.statusCode).toBe(200);
+    expect(deliveryCalls[0]).toMatchObject({
+      providerId: 'deutscheWohnen',
+      accountEmail: 'alice@example.com',
+      message: 'Edited Deutsche Wohnen inquiry',
+    });
+  });
+
+  it('allows a HOWOGE application without custom message text', async () => {
+    listing.provider = 'inberlinwohnen';
+    listing.link = 'https://www.howoge.de/immobiliensuche/wohnungssuche/detail/1770-20776-16.html?t=ibw';
+    const response = await send('');
+    expect(response.statusCode).toBe(200);
+    expect(deliveryCalls[0]).toMatchObject({
+      providerId: 'inberlinwohnen',
+      accountEmail: 'alice@example.com',
+      message: '',
     });
   });
 

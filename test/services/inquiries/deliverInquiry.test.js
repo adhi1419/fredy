@@ -12,16 +12,21 @@ let finishImpl;
 let storeMessageImpl;
 const finishCalls = [];
 const sendCalls = [];
+const storeMessageCalls = [];
 
 vi.mock('../../../lib/services/storage/listingsStorage.js', () => ({
   reserveInquirySend: async () => reserveResult,
-  setInquiryMessage: async (...args) => storeMessageImpl(...args),
+  setInquiryMessage: async (...args) => {
+    storeMessageCalls.push(args);
+    return storeMessageImpl(...args);
+  },
   finishInquirySend: async (...args) => {
     finishCalls.push(args);
     return finishImpl(...args);
   },
 }));
 vi.mock('../../../lib/services/inquiries/sendInquiry.js', () => ({
+  inquiryRequiresMessage: (providerId) => providerId !== 'inberlinwohnen',
   sendInquiry: async (params) => {
     sendCalls.push(params);
     return sendImpl(params);
@@ -46,6 +51,7 @@ describe('deliverInquiry', () => {
     finishImpl = async () => 1;
     finishCalls.length = 0;
     sendCalls.length = 0;
+    storeMessageCalls.length = 0;
   });
 
   it('records a confirmed send and annotates the in-memory listing', async () => {
@@ -53,6 +59,21 @@ describe('deliverInquiry', () => {
     await expect(deliverInquiry(input)).resolves.toMatchObject({ status: 'sent', requestId: 'request-1' });
     expect(finishCalls[0][1]).toMatchObject({ status: 'sent', requestId: 'request-1', sentAt: 1234 });
     expect(input.listing.inquirySendStatus).toBe('sent');
+  });
+
+  it('delivers a form-only HOWOGE application without persisting an empty message', async () => {
+    const input = {
+      ...params(),
+      providerId: 'inberlinwohnen',
+      listing: { id: 'L1', link: 'https://www.howoge.de/immobiliensuche/wohnungssuche/detail/test.html' },
+      message: '',
+    };
+
+    await expect(deliverInquiry(input)).resolves.toMatchObject({ status: 'sent' });
+    expect(storeMessageCalls).toEqual([]);
+    expect(sendCalls[0].message).toBe('');
+    expect(input.listing.inquirySendStatus).toBe('sent');
+    expect(input.listing).not.toHaveProperty('inquiryMessage');
   });
 
   it('does not call the provider when another attempt owns the reservation', async () => {

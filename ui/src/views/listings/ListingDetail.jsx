@@ -71,7 +71,11 @@ import './ListingDetail.less';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
 import { useFinanceProfile } from '../../hooks/useFinanceProfile.js';
 import { VERDICT_COLORS, formatEuro, withAlpha } from '../../components/cards/chartTheme.js';
-import { isInquiryContactProfileReady } from '../../services/inquiries/profile.js';
+import {
+  inquiryProviderRequiresMessage,
+  isInquiryContactProfileReady,
+  isInquiryProviderSupported,
+} from '../../services/inquiries/profile.js';
 
 const { Title, Text } = Typography;
 
@@ -99,8 +103,17 @@ export default function ListingDetail() {
   const actions = useActions();
   const { isComplete: buyComplete, rentComplete, thresholds: financeThresholds } = useFinanceProfile();
   const listing = useSelector((state) => state.listingsData.currentListing);
+  const inquiryProviderName =
+    listing?.provider === 'deutscheWohnen'
+      ? 'Deutsche Wohnen'
+      : listing?.provider === 'inberlinwohnen'
+        ? 'HOWOGE'
+        : 'ImmoScout';
   const userSettings = useSelector((state) => state.userSettings.settings);
-  const contactProfileReady = isInquiryContactProfileReady(userSettings?.inquiry_profile);
+  const contactProfileReady = isInquiryContactProfileReady(userSettings?.inquiry_profile, listing?.provider);
+  const canApplyWithoutMessage =
+    isInquiryProviderSupported(listing?.provider, listing) &&
+    !inquiryProviderRequiresMessage(listing?.provider, listing);
   const connectivityEnabled = useSelector((state) => state.generalSettings.settings?.connectivityEnabled === true);
   const homeAddresses = useMemo(() => getAddresses(userSettings), [userSettings]);
   const listingDeletionPref = userSettings?.listing_deletion_preference;
@@ -699,25 +712,29 @@ export default function ListingDetail() {
           </Space>
 
           {/* Draft inquiry message result */}
-          {(draftMessage || draftError) && (
+          {(draftMessage || draftError || canApplyWithoutMessage || listing.inquiry_send_status) && (
             <div style={{ marginTop: 12, maxWidth: 600 }}>
               {draftError && (
                 <Banner type="warning" description={draftError} closeIcon={null} style={{ marginBottom: 8 }} />
               )}
-              {draftMessage && (
+              {(draftMessage || canApplyWithoutMessage || listing.inquiry_send_status) && (
                 <div>
-                  <TextArea
-                    value={draftMessage}
-                    onChange={setDraftMessage}
-                    disabled={listing.inquiry_send_status === 'sending'}
-                    autosize={{ minRows: 4, maxRows: 12 }}
-                    style={{ marginBottom: 8 }}
-                  />
+                  {draftMessage && (
+                    <TextArea
+                      value={draftMessage}
+                      onChange={setDraftMessage}
+                      disabled={listing.inquiry_send_status === 'sending'}
+                      autosize={{ minRows: 4, maxRows: 12 }}
+                      style={{ marginBottom: 8 }}
+                    />
+                  )}
                   <Space wrap>
-                    <Button icon={<IconCopy />} onClick={handleCopyDraft} size="small" theme="light">
-                      {draftCopied ? t('listing.detail.draftMessage.copied') : t('listing.detail.draftMessage.copy')}
-                    </Button>
-                    {listing.provider === 'immoscout' &&
+                    {draftMessage && (
+                      <Button icon={<IconCopy />} onClick={handleCopyDraft} size="small" theme="light">
+                        {draftCopied ? t('listing.detail.draftMessage.copied') : t('listing.detail.draftMessage.copy')}
+                      </Button>
+                    )}
+                    {isInquiryProviderSupported(listing.provider, listing) &&
                       !['sending', 'sent', 'unknown'].includes(listing.inquiry_send_status) &&
                       (contactProfileReady ? (
                         <Popconfirm
@@ -726,7 +743,7 @@ export default function ListingDetail() {
                           onConfirm={handleSendInquiry}
                         >
                           <Button icon={<IconSend />} size="small" theme="solid" loading={inquirySending}>
-                            {t('listing.detail.inquirySend.button')}
+                            {t('listing.detail.inquirySend.button', { provider: inquiryProviderName })}
                           </Button>
                         </Popconfirm>
                       ) : (
