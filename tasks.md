@@ -22,8 +22,9 @@ Architecture: Firebase Authentication is the browser session authority. The brow
 - [x] Cleanup: remove password login, Firebase token exchange, session storage/cleanup, reverse-proxy auth, session TTL UI, and obsolete dependencies.
 - [x] Tests: cover missing/malformed/expired tokens, allowlist revocation, admin derivation, user provisioning, token refresh, authenticated streaming, and logout.
 - [x] Validate: offline suite, Firestore contracts, frontend build, lint, format, Docker smoke, and rendered Google-login flow.
-- [ ] Commit and push the `firebase-bearer-auth` branch; open its protected-mainline PR.
-- [ ] Deploy the immutable commit image to GCP and smoke-test authentication without waiting on monitoring.
+- [x] Commit and push the `firebase-bearer-auth` branch; open protected-mainline PR #5.
+- [x] Trigger immutable commit `21eda21` deployment to GCP through Actions run 35465344034.
+- [ ] Verify deployed Google sign-in and authenticated API/SSE after the user-observed deployment finishes.
 
 ## Next
 
