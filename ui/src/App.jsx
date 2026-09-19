@@ -36,7 +36,6 @@ import FredyFooter from './components/footer/FredyFooter.jsx';
 import Dashboard from './views/dashboard/Dashboard.jsx';
 import FinanceCalculator from './views/finance/FinanceCalculator.jsx';
 import ListingDetail from './views/listings/ListingDetail.jsx';
-import NewsModal from './components/news/NewsModal.jsx';
 import { I18nProvider, availableLanguages } from './services/i18n/i18n.jsx';
 import DebugLoggingBanner from './components/debug/DebugLoggingBanner.jsx';
 import DemoBanner from './components/demo/DemoBanner.jsx';
@@ -197,7 +196,6 @@ export default function FredyApp() {
               <Content className="app__content">
                 <DebugLoggingBanner />
                 {settings.demoMode && <DemoBanner />}
-                {!settings.demoMode && <NewsModal />}
                 <Routes>
                   <Route path="/403" element={<InsufficientPermission />} />
                   <Route path="/jobs/new" element={<JobMutation />} />

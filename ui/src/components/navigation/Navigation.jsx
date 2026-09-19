@@ -17,7 +17,6 @@ import logo from '../../assets/logo.png';
 import logoWhite from '../../assets/logo_white.png';
 import heart from '../../assets/heart.png';
 import Logout from '../logout/Logout.jsx';
-import NewsHistory from '../news/NewsHistory.jsx';
 import { useLocation, useNavigate } from 'react-router';
 
 import './Navigate.less';
@@ -101,9 +100,6 @@ export default function Navigation({ isAdmin }) {
       }
       footer={
         <Nav.Footer className="navigate__footer">
-          <div className="navigate__footer-news">
-            <NewsHistory collapsed={collapsed} />
-          </div>
           <div className={`navigate__footer-actions${collapsed ? ' navigate__footer-actions--collapsed' : ''}`}>
             <Logout text={!collapsed} />
             <button

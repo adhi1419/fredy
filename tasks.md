@@ -47,8 +47,10 @@ Architecture: GitHub Pages serves the hash-routed SPA under `/fredy/`. A build-t
 
 - [ ] Add mandatory profile setup after first Firebase registration; keep Settings edit-only afterward.
 - [x] Remove upstream phone-home/update integrations and the in-app donation surface.
-- [ ] Implement the selected Paper / forest visual system from the approved light and dark screenshots.
-- [ ] Migrate frontend tooling to Bun and frontend source/tests to strict TypeScript with cached CI under 60 seconds.
+- [ ] Map core user journeys and approve responsive UX wireframes for dashboard, listings, listing detail, job creation, and settings.
+- [ ] Add Bun and strict TypeScript foundations, then migrate services, store, hooks, components, and pages by approved UX slice with cached CI under 60 seconds.
+- [ ] Implement the selected Paper / forest visual system from the approved wireframes and light/dark direction.
+- [ ] Rewrite the customer README with final UI screenshots and move technical setup into the developer guide.
 - [ ] Rewrite the backend in Rust behind frozen API/provider/Firestore contracts.
 
 ## Completed feature: remove in-app donation surface
@@ -57,3 +59,10 @@ Architecture: GitHub Pages serves the hash-routed SPA under `/fredy/`. A build-t
 - [x] Add a static UI regression test preventing the in-app donation surface and donation translation references from returning.
 - [x] Preserve README sponsorship/attribution content, Fredy identity, LICENSE, copyright attribution, and image-404 behavior.
 - [x] Validate: focused UI tests (3 files, 24 passed); offline suite (180 files passed, 1 skipped; 2,127 passed, 32 skipped); ESLint passed; scoped Prettier check passed; Pages production frontend build passed. Build emitted only the existing third-party `lottie-web` direct-eval warning.
+
+## Completed feature: remove bundled What's New surface
+
+- [x] Remove the runtime modal/history mounts and all bundled What's New components, styles, selection service, payload, transit image, state action, marker endpoint, legacy hash compatibility path, development mock, locale keys, and feature-specific tests.
+- [x] Add a static UI regression test preventing runtime components, bundled payload, marker API, state action, and locale references from returning.
+- [x] Preserve unrelated browser notification wording, release tooling, shared heart artwork, README, LICENSE, Fredy/Christian Kellner attribution, and image-404 behavior.
+- [x] Validate: targeted removal and locale tests (2 files, 16 passed); offline suite (182 files passed, 1 skipped; 2,123 passed, 32 skipped); ESLint passed; Prettier check passed; copyright check passed; Pages production frontend build passed. Build emitted only the existing third-party `lottie-web` direct-eval warning.
