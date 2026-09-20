@@ -23,6 +23,36 @@ export function inquiryProviderRequiresMessage(providerId, listing) {
   return !(providerId === 'inberlinwohnen' && isInquiryProviderSupported(providerId, listing));
 }
 
+const BLOCKED_INQUIRY_SEND_STATUSES = new Set(['sending', 'sent', 'unknown']);
+
+/**
+ * Calculate the one send decision shared by every listing-detail inquiry control.
+ *
+ * A missing status is the initial state. Once a listing has a persisted status, only an explicit
+ * `failed` outcome may be sent again; `sending`, `sent`, `unknown`, and any other persisted value
+ * are deliberately blocked because the provider may already have received the request.
+ *
+ * @param {{providerId?: string, listing?: unknown, profile?: unknown, message?: unknown, status?: unknown}} input
+ * @returns {{providerSupported: boolean, profileReady: boolean, messageReady: boolean, statusAllowsSend: boolean, canRetry: boolean, canSend: boolean}}
+ */
+export function getInquirySendEligibility({ providerId, listing, profile, message, status } = {}) {
+  const persistedStatus = status == null ? '' : String(status).trim();
+  const providerSupported = isInquiryProviderSupported(providerId, listing);
+  const profileReady = isInquiryContactProfileReady(profile, providerId);
+  const messageReady = !inquiryProviderRequiresMessage(providerId, listing) || present(message);
+  const statusAllowsSend = persistedStatus === '' || persistedStatus === 'failed';
+  const canRetry = persistedStatus === 'failed';
+
+  return {
+    providerSupported,
+    profileReady,
+    messageReady,
+    statusAllowsSend: statusAllowsSend && !BLOCKED_INQUIRY_SEND_STATUSES.has(persistedStatus),
+    canRetry,
+    canSend: providerSupported && profileReady && messageReady && statusAllowsSend,
+  };
+}
+
 /**
  * Whether the profile can attempt the selected provider's contact form.
  *

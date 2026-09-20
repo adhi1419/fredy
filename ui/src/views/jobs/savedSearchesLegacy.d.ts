@@ -97,9 +97,17 @@ declare module '*components/map/Map.jsx' {
     initialZoom?: number;
     controlsMode?: string;
     onMapReady?: (map: import('maplibre-gl').Map) => void;
+    children?: import('react').ReactNode;
+    defaultShowTransit?: boolean;
+    cooperativeGestures?: boolean;
+    expanded?: boolean;
+    onExpandedChange?: (expanded: boolean) => void;
+    pickMode?: boolean;
+    onPick?: (coords: { lat: number; lng: number }) => void;
   }
 
   const MapCanvas: import('react').ComponentType<HomeMapProps>;
+  export const HOME_MARKER_COLOR: string;
   export default MapCanvas;
 }
 
@@ -166,7 +174,8 @@ declare module '*services/xhr.js' {
 
   export function errorMessage(error: unknown, fallback: string): string;
   export function xhrDelete(path: string, payload: Record<string, unknown>): Promise<XhrResponse>;
-  export function xhrPost(path: string, payload: unknown): Promise<XhrResponse>;
+  export function xhrGet(url: string, contentType?: string, isJson?: boolean): Promise<XhrResponse>;
+  export function xhrPost(path: string, payload?: unknown): Promise<XhrResponse>;
   export function xhrPut(path: string, payload: Record<string, unknown>): Promise<XhrResponse>;
 }
 
@@ -184,4 +193,127 @@ declare module '*utils.js' {
     callback: (...arguments_: Arguments) => void,
     waitMilliseconds: number,
   ): Debounced<Arguments>;
+}
+
+declare module '*.png' {
+  const source: string;
+  export default source;
+}
+
+declare module '*detailMapLayers.js' {
+  export function applyRouteLayers(map: import('maplibre-gl').Map, data: unknown): void;
+  export function buildRouteData(
+    listing: { latitude: number; longitude: number },
+    homeAddresses: readonly unknown[],
+    travelTimes?: readonly unknown[],
+    routeMode?: string,
+  ): unknown;
+}
+
+declare module '*travelTimeFormat.js' {
+  export const TRAVEL_MODES: readonly { key: string; icon: string; labelKey: string }[];
+}
+
+declare module '*utils.js' {
+  export function getAddresses(settings: unknown): Array<{
+    label: string;
+    address: string;
+    coords: { lat: number; lng: number };
+  }>;
+}
+
+declare module '*components/icons/IconEuro.jsx' {
+  const IconEuro: import('react').ComponentType<Record<string, unknown>>;
+  export default IconEuro;
+}
+
+declare module '*components/listings/StatusControl.jsx' {
+  const StatusControl: import('react').ComponentType<{
+    status: string | null;
+    onChange: (value: string | null) => void;
+  }>;
+  export default StatusControl;
+}
+
+declare module '*ListingFinanceCard.jsx' {
+  const ListingFinanceCard: import('react').ComponentType<{
+    listing: { id: string; price?: number | string | null; dealType?: 'rent' | 'buy' };
+  }>;
+  export default ListingFinanceCard;
+}
+
+declare module '*PriceHistoryChart.jsx' {
+  const PriceHistoryChart: import('react').ComponentType<{ data: readonly unknown[]; locale: string }>;
+  export default PriceHistoryChart;
+}
+
+declare module '*components/transit/NearbyStops.jsx' {
+  const NearbyStops: import('react').ComponentType<{
+    lat: number;
+    lng: number;
+    limit?: number;
+    expandFirst?: boolean;
+  }>;
+  export default NearbyStops;
+}
+
+declare module '*components/connectivity/ConnectivityCard.jsx' {
+  const ConnectivityCard: import('react').ComponentType<{ connectivity?: unknown }>;
+  export default ConnectivityCard;
+}
+
+declare module '*components/transit/TravelTimes.jsx' {
+  const TravelTimes: import('react').ComponentType<{
+    listingId: string;
+    travelTimes?: readonly unknown[];
+    refine?: boolean;
+    onLoaded?: (entries: readonly unknown[]) => void;
+  }>;
+  export default TravelTimes;
+}
+
+declare module '*AddressEditor.jsx' {
+  const AddressEditor: import('react').ComponentType<{
+    isManual?: boolean;
+    onSave: (position: { address: string; latitude: number; longitude: number }) => Promise<void>;
+    onPickOnMap: (address: string) => void;
+  }>;
+  export default AddressEditor;
+}
+
+declare module '*hooks/useFinanceProfile.js' {
+  export function useFinanceProfile(): {
+    isComplete: boolean;
+    rentComplete: boolean;
+    thresholds: {
+      buy: { affordableMaxPrice: number; stretchMaxPrice: number; purchasePriceThreshold: number } | null;
+      rent: { affordableMaxRent: number } | null;
+    };
+  };
+}
+
+declare module '*components/cards/chartTheme.js' {
+  export const VERDICT_COLORS: Record<string, string>;
+  export function formatEuro(value: number, locale?: string): string;
+  export function withAlpha(color: string, alpha: number): string;
+}
+
+declare module '*services/inquiries/profile.js' {
+  export function inquiryProviderRequiresMessage(providerId: string | undefined, listing: unknown): boolean;
+  export function isInquiryContactProfileReady(profile: unknown, providerId?: string): boolean;
+  export function isInquiryProviderSupported(providerId: string | undefined, listing: unknown): boolean;
+  export function getInquirySendEligibility(input: {
+    providerId?: string;
+    listing?: unknown;
+    profile?: unknown;
+    message?: unknown;
+    status?: unknown;
+  }): {
+    providerSupported: boolean;
+    profileReady: boolean;
+    messageReady: boolean;
+    statusAllowsSend: boolean;
+    canRetry: boolean;
+    canSend: boolean;
+  };
 }

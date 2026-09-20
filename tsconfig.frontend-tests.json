@@ -8,6 +8,8 @@
     "test/ui/homeSurface.test.ts",
     "test/ui/homeConvergence.test.ts",
     "test/ui/mapGrouping.test.ts",
+    "test/ui/listingDetailSlice.test.ts",
+    "test/ui/listingActions.test.ts",
     "test/ui/listingFilters.test.ts",
     "test/ui/guidedSearchForm.test.ts",
     "test/ui/providerUrl.test.ts",

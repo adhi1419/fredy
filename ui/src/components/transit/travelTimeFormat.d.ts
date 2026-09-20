@@ -11,3 +11,6 @@ export interface ParsedCommuteFilter {
 
 /** Parse the existing `mode:minutes` commute URL encoding. */
 export function parseCommuteFilter(value: string | null | undefined): ParsedCommuteFilter | null;
+
+/** The display modes offered by Listing Detail's route picker. */
+export const TRAVEL_MODES: readonly { key: string; icon: string; labelKey: string }[];

@@ -35,7 +35,7 @@ import { Layout } from '@douyinfe/semi-ui-19';
 import FredyFooter from './components/footer/FredyFooter.jsx';
 import Home from './views/home/Home';
 import FinanceCalculator from './views/finance/FinanceCalculator.jsx';
-import ListingDetail from './views/listings/ListingDetail.jsx';
+import ListingDetail from './views/listings/ListingDetail.tsx';
 import { I18nProvider, availableLanguages } from './services/i18n/i18n.jsx';
 import DebugLoggingBanner from './components/debug/DebugLoggingBanner.jsx';
 import DemoBanner from './components/demo/DemoBanner.jsx';
