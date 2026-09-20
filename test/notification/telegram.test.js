@@ -553,4 +553,33 @@ describe('telegram send() - 429 retry_after handling', () => {
     // 1 initial attempt + 4 retries = 5, then it stops.
     expect(sendMessageCalls).toHaveLength(5);
   });
+
+  it('keeps delivering the rest of the batch when one message is permanently refused', async () => {
+    vi.useFakeTimers();
+    // The first listing's message is refused outright (not a 429, so no retry); the second succeeds.
+    mockNodeFetch
+      .mockResolvedValueOnce(jsonErr(400, { ok: false, error_code: 400, description: 'Bad Request: chat not found' }))
+      .mockResolvedValue(jsonOk());
+
+    const done = send({
+      serviceName: 'immoscout',
+      newListings: [
+        { id: 'a', title: 'First', link: 'https://example.com/a', address: 'Addr' },
+        { id: 'b', title: 'Second', link: 'https://example.com/b', address: 'Addr' },
+      ],
+      notificationConfig: [baseConfig],
+      jobKey: 'Berlin',
+    });
+
+    // Must RESOLVE: a dead message used to reject the whole batch and abort the remaining listings.
+    const results = await settle(done);
+    expect(Array.isArray(results)).toBe(true);
+    expect(results).toHaveLength(2);
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+
+    // The second listing was still attempted despite the first one failing.
+    const sendMessageCalls = mockNodeFetch.mock.calls.filter((c) => c[0].endsWith('/sendMessage'));
+    expect(sendMessageCalls.length).toBeGreaterThanOrEqual(2);
+  });
 });

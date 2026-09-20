@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { backoffDelay, retryWithBackoff } from '../../lib/utils/retry.js';
+import { backoffDelay, hintedDelay, retryWithBackoff } from '../../lib/utils/retry.js';
 
 describe('backoffDelay', () => {
   it('grows exponentially and is capped', () => {
@@ -54,18 +54,59 @@ describe('retryWithBackoff', () => {
     expect(op).toHaveBeenCalledTimes(3); // 1 + 2 retries
   });
 
-  it('honors a server-dictated retryAfterMs over the computed backoff, capped at maxDelayMs', async () => {
+  it('honors a server-dictated retryAfterMs, capping the hint at maxDelayMs', async () => {
     const waits = [];
     const op = vi.fn().mockRejectedValueOnce(new Error('429')).mockResolvedValue('ok');
     await retryWithBackoff(op, {
       retries: 3,
       maxDelayMs: 10_000,
       retryAfterMs: () => 999_999, // absurdly long hint
+      random: () => 0, // no jitter, so the cap itself is what is asserted
       sleepImpl: (ms) => {
         waits.push(ms);
         return Promise.resolve();
       },
     });
     expect(waits).toEqual([10_000]); // hint capped to maxDelayMs
+  });
+});
+
+describe('hintedDelay', () => {
+  it('never waits less than the server asked for', () => {
+    // Waiting less than the hint just earns another refusal, so the jitter only ever adds.
+    expect(hintedDelay(10_000, 30_000, () => 0)).toBe(10_000);
+    expect(hintedDelay(10_000, 30_000, () => 0.999)).toBeGreaterThan(10_000);
+  });
+
+  it('spreads the same hint across callers so they do not wake together', () => {
+    // The defect this closes: a verbatim hint gave every concurrent retrier the identical delay,
+    // so they re-synchronised into a burst on every cycle.
+    const delays = [0.1, 0.4, 0.9].map((r) => hintedDelay(10_000, 30_000, () => r));
+    expect(new Set(delays).size).toBe(3);
+    for (const d of delays) {
+      expect(d).toBeGreaterThanOrEqual(10_000);
+      expect(d).toBeLessThanOrEqual(15_000); // hint + 50%
+    }
+  });
+
+  it('caps the hint at maxDelayMs before adding jitter', () => {
+    expect(hintedDelay(999_999, 10_000, () => 0)).toBe(10_000);
+    expect(hintedDelay(999_999, 10_000, () => 0.5)).toBe(12_500);
+  });
+
+  it('applies the jittered hint through retryWithBackoff', async () => {
+    const waits = [];
+    const op = vi.fn().mockRejectedValueOnce(new Error('429')).mockResolvedValue('ok');
+    await retryWithBackoff(op, {
+      retries: 2,
+      maxDelayMs: 30_000,
+      retryAfterMs: () => 10_000,
+      random: () => 0.5,
+      sleepImpl: (ms) => {
+        waits.push(ms);
+        return Promise.resolve();
+      },
+    });
+    expect(waits).toEqual([12_500]); // 10s hint + 50% of 10s * 0.5
   });
 });
