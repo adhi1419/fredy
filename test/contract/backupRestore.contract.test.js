@@ -102,6 +102,7 @@ describe('backupRestoreService contract (Firestore)', () => {
       expect(names).toContain('users.json');
       expect(names).toContain('jobs.json');
       expect(names).toContain('listings.json');
+      expect(names).toContain('notification_deliveries.json');
       expect(names).toContain('manifest.json');
       expect(names).toContain('travel_times.json');
       expect(names).toContain('price_history.json');

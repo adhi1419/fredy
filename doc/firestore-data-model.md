@@ -16,6 +16,7 @@ There is no `sessions` collection and no cookie/session document to expire.
 | `listings` | sha1(jobId + NUL + hash) | see "Dedup" below |
 | `listings/{id}/travel_times` | address key | replace-semantics per listing |
 | `listings/{id}/price_history` | auto id | insert-only log |
+| `notification_deliveries` | sha1(listingId + NUL + configuredAdapterId + NUL + eventKey) | per-listing/per-channel external-side-effect ledger; never contains channel secrets or raw errors |
 | `watch_list` | `${listingId}__${userId}` | idempotent create for free |
 
 ## Authentication and ownership
@@ -34,6 +35,36 @@ listing id (`item.id` at store time). `create()` fails when the doc exists —
 exactly ON CONFLICT DO NOTHING. Because the ID is deterministic, new and
 existing resolve to the same id.
 
+## Notification delivery ledger
+
+Every initial listing notification is represented by one `notification_deliveries` document per
+configured channel. The deterministic key is derived from the job-scoped listing ID, the immutable
+configured-channel ID, and the event key `initial-listing-notification-v1`.
+
+The state machine is deliberately conservative:
+
+```text
+absent -> sending -> sent
+                  -> unknown
+                  -> failed
+```
+
+A Firestore transaction creates `sending` before the adapter is called. `sent`, `sending`, and
+`unknown` block another automatic attempt. Only `failed`, reserved for a proven pre-side-effect
+failure, may be reserved again. Adapter rejections, rejected `allSettled` entries, non-2xx responses,
+and persistence ambiguity become `unknown` or remain `sending`; they are never blindly retried.
+
+Each record stores `ownerUserId`, `jobId`, `listingId`, channel/adapter IDs, schema/timestamps, and a
+sorted snapshot of all intended channel IDs for that listing event. It stores neither channel field
+values nor free-form adapter errors. The listing-level `notificationComplete` projection is written
+only after every intended channel is durably `sent`; a listing with no channels is not described as
+notified.
+
+The ledger is initially authoritative only for notifications attempted after deployment. Legacy
+listings without `notificationComplete`/`notifiedAt` remain unconfirmed and are not replayed. A later
+repair implementation may use the intended-channel snapshots to finish never-attempted work, but
+must keep `unknown` outcomes manual-review-only.
+
 ## Compatibility semantics
 
 - `getKnownListingHashesForJobAndProvider` returns hashes of all rows,
@@ -48,8 +79,10 @@ existing resolve to the same id.
 
 ## Cascades
 
-- `removeJob` deletes the job, owned listings, subcollections, and watch-list
-  entries.
+- `removeJob` deletes the job, owned listings, subcollections, watch-list
+  entries, and `notification_deliveries` records.
+- Soft-deleting a listing retains its delivery records as duplicate-prevention evidence; every hard
+  listing deletion and retention purge removes them.
 - `removeUser` deletes the user and cascades every owned job as above.
 - Bulk deletes are chunked into batches of at most 500 operations.
 
