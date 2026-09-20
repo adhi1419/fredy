@@ -1,6 +1,6 @@
 # Fredy modernization tasks
 
-The canonical tracker is current through PR #50.
+The canonical tracker is current through PR #51.
 
 ## Completed architecture and delivery
 
@@ -92,4 +92,4 @@ The canonical tracker is current through PR #50.
 - [x] PR #45: add mandatory applicant-profile setup after first registration while keeping My account edit-only afterward — merged via rebase and deployed to Pages and Cloud Run successfully in 65 seconds; all live probes returned HTTP 200.
 - [x] Rewrite the customer README for the finished product — PR #50.
 - [ ] Capture final product screenshots only from the finished UI — delegated on `docs/final-production-screenshots`.
-- [ ] Create and link a separate developer/operator guide — implemented and parent-reviewed on `docs/developer-operator-guide`; publication pending.
+- [x] Create and link a separate developer/operator guide — PR #51.
