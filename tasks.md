@@ -1,6 +1,6 @@
 # Fredy modernization tasks
 
-The canonical tracker is now `tasks.md` on `main` through PR #31. This working copy records in-flight PR status until the next program update is published.
+The canonical tracker is current through PR #46.
 
 ## Completed architecture and delivery
 
@@ -36,14 +36,20 @@ The canonical tracker is now `tasks.md` on `main` through PR #31. This working c
 - [x] PR #27: extract listings state as the first strict TypeScript domain-state module — merged and deployed in 35 seconds.
 - [x] PR #26: implement phase-one listing/application lifecycle unification with real production callers — merged and deployed successfully.
 - [x] PR #33: define per-Saved-Search provider-source application policy with legacy compatibility and sensitive-field exclusion — merged and deployed to Cloud Run successfully in 59 seconds; execution cutover remains separate.
+- [x] PR #39: cut automatic inquiry execution over to exact provider-source policy with capability and listing-eligibility checks — merged and deployed to Cloud Run successfully in 52 seconds.
 - [x] PR #29: freeze provider, notification, and schedule Rust parity contracts — merged; test/document-only change correctly did not deploy.
 - [x] PR #28: expose conservative provider application capabilities and listing-dependent eligibility — merged and deployed successfully in 61 seconds.
 - [x] PR #30: extract Saved Searches state as the next strict TypeScript domain module — merged and deployed successfully in 39 seconds.
 - [x] PR #32: extract the complete user-settings state/effect contract as the next strict TypeScript domain module — merged and deployed to Pages successfully in 47 seconds.
-- [ ] Freeze the remaining Cloud Run deployment contract.
+- [x] PR #36: freeze the remaining Cloud Run deployment and Rust cutover contract — merged; test/document-only change correctly did not deploy.
+- [x] PR #35: extract finance state as the next strict TypeScript domain module — merged and deployed to Pages successfully in 48 seconds.
+- [x] PR #38: extract notification adapter/channel state as the next strict TypeScript domain module — merged and deployed to Pages successfully in 51 seconds.
 - [ ] Continue splitting frontend state into deep domain modules while preserving selector/action compatibility.
-- [ ] Migrate nonvisual frontend services, state, and hooks to strict TypeScript in small PRs.
-- [ ] Replace backend route groups incrementally with Rust behind frozen contracts; avoid a big-bang rewrite.
+- [x] PR #41: migrate the deep Home URL/query/lifecycle model into the path-sorted strict TypeScript seam — merged and deployed to Pages successfully in 44 seconds.
+- [ ] Migrate remaining nonvisual frontend services, state, and hooks to strict TypeScript in small PRs.
+- [x] PR #42: implement the first executable Rust health route and parity test behind the frozen contract without production cutover — merged after native fmt/check/test/clippy validation; correctly did not deploy.
+- [x] PR #46: implement dormant Rust `/api/auth/config` parity with exact public wire behavior and no production cutover — merged after native fmt/check/test/clippy validation; correctly did not deploy.
+- [ ] Replace remaining backend route groups incrementally with Rust behind frozen contracts; avoid a big-bang rewrite.
 - [x] Keep `FredyPipelineExecutioner` architectural refactoring explicitly out of this program; only separately approved feature integration may touch it.
 
 ## Selected UX direction
@@ -72,16 +78,16 @@ The canonical tracker is now `tasks.md` on `main` through PR #31. This working c
 
 ## After UX approval
 
-- [ ] PR #34: publish the implemented, parent-validated, and isolated-review-corrected two-tab shell/account entry points — open with rebase auto-merge.
-- [ ] Implement Home feed/map/activity/provider/sort state.
-- [ ] Implement one-handed mobile listing detail and unified lifecycle actions.
-- [ ] Implement guided Saved Search add/edit flow.
-- [ ] Apply final Paper/forest styling through theme tokens only.
+- [x] PR #34: publish the implemented, parent-validated, and isolated-review-corrected two-tab shell/account entry points — merged and deployed to Pages successfully in 42 seconds.
+- [x] PR #40: implement Home Quiet feed with state-preserving List + map, exclusive activity, provider multi-select, and sorting — merged and deployed to Pages and Cloud Run successfully in 63 seconds.
+- [x] PR #37: implement one-handed mobile listing detail and unified lifecycle actions — merged and deployed to Pages successfully in 34 seconds.
+- [x] PR #43: implement the four-step guided Saved Search add/edit flow with per-source application policy controls — merged and deployed to Pages successfully in 51 seconds.
+- [x] PR #44: apply and visually validate the final Paper/forest styling through centralized theme tokens only — merged and deployed to Pages successfully in 38 seconds.
 - [ ] Run accessibility, responsive, and new-user usability review with screenshots/recordings.
 
 ## Last-mile product work
 
-- [ ] Add mandatory applicant-profile setup after first registration; keep My account edit-only afterward.
+- [x] PR #45: add mandatory applicant-profile setup after first registration while keeping My account edit-only afterward — merged via rebase and deployed to Pages and Cloud Run successfully in 65 seconds; all live probes returned HTTP 200.
 - [ ] Rewrite the customer README only after TypeScript migration and UI modernization are complete.
 - [ ] Capture final product screenshots only from the finished UI.
 - [ ] Create and link a separate developer/operator guide.
