@@ -3,10 +3,6 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-/*
- * Copyright (c) 2026 by Christian Kellner.
- * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
- */
 import { authenticatedFetch } from './authenticatedFetch.js';
 
 /**
@@ -21,7 +17,37 @@ import { authenticatedFetch } from './authenticatedFetch.js';
  * ```
  */
 
-function extractFileNameFromDisposition(disposition) {
+/** The compatibility verdict returned by a dry-run restore. */
+export interface RestorePrecheck {
+  compatible: boolean;
+  severity: string;
+  message: string;
+  backupMigration: number | null;
+  requiredMigration: number;
+  fredyVersion?: string | null;
+}
+
+/** The result of a completed restore. */
+export interface RestoreResult {
+  restored: true;
+  warning: string | null;
+  details: unknown;
+}
+
+/** The zip payload the browser can upload. */
+type BackupFile = Blob | ArrayBuffer | Uint8Array;
+
+/** An error raised when a restore is refused by the server, carrying the server payload. */
+export class RestoreError extends Error {
+  readonly payload: unknown;
+
+  constructor(message: string, payload: unknown) {
+    super(message);
+    this.payload = payload;
+  }
+}
+
+function extractFileNameFromDisposition(disposition: string | null): string {
   const dispo = disposition || '';
   const match = dispo.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/);
   return decodeURIComponent(match?.[1] || match?.[2] || 'FredyBackup.zip');
@@ -30,9 +56,8 @@ function extractFileNameFromDisposition(disposition) {
 export class BackupRestoreClient {
   /**
    * Trigger a backup download and save it using the filename provided by the server.
-   * @returns {Promise<void>}
    */
-  static async downloadBackup() {
+  static async downloadBackup(): Promise<void> {
     const resp = await authenticatedFetch('/api/admin/backup', {});
     if (!resp.ok) throw new Error('Failed to create backup');
     const blob = await resp.blob();
@@ -49,41 +74,39 @@ export class BackupRestoreClient {
 
   /**
    * Upload a backup zip for analysis without restoring.
-   * @param {Blob|ArrayBuffer|Buffer} file - Backup zip content.
-   * @returns {Promise<{compatible:boolean,severity:string,message:string,backupMigration:number|null,requiredMigration:number,fredyVersion?:string|null}>>}
+   * @param file - Backup zip content.
    */
-  static async precheckRestore(file) {
+  static async precheckRestore(file: BackupFile): Promise<RestorePrecheck> {
     const resp = await authenticatedFetch('/api/admin/backup/restore?dryRun=true', {
       method: 'POST',
       headers: { 'Content-Type': 'application/zip' },
-      body: file,
+      body: file as BodyInit,
     });
-    return resp.json();
+    return resp.json() as Promise<RestorePrecheck>;
   }
 
   /**
    * Perform a database restore from a backup zip.
-   * @param {Blob|ArrayBuffer|Buffer} file - Backup zip content.
-   * @param {boolean} force - When true, proceed even if reported incompatible.
-   * @returns {Promise<{restored:true,warning:string|null,details:any}>}
+   * @param file - Backup zip content.
+   * @param force - When true, proceed even if reported incompatible.
    */
-  static async restore(file, force) {
+  static async restore(file: BackupFile, force: boolean): Promise<RestoreResult> {
     const resp = await authenticatedFetch(`/api/admin/backup/restore?force=${force ? 'true' : 'false'}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/zip' },
-      body: file,
+      body: file as BodyInit,
     });
-    const data = await resp.json();
+    const data = (await resp.json()) as RestoreResult & { message?: string };
     if (!resp.ok) {
-      const err = new Error(data?.message || 'Restore failed');
-      err.payload = data;
-      throw err;
+      throw new RestoreError(data?.message || 'Restore failed', data);
     }
     return data;
   }
 }
 
 // Convenience named exports
-export const downloadBackup = (...args) => BackupRestoreClient.downloadBackup(...args);
-export const precheckRestore = (...args) => BackupRestoreClient.precheckRestore(...args);
-export const restore = (...args) => BackupRestoreClient.restore(...args);
+export const downloadBackup = (): Promise<void> => BackupRestoreClient.downloadBackup();
+export const precheckRestore = (file: BackupFile): Promise<RestorePrecheck> =>
+  BackupRestoreClient.precheckRestore(file);
+export const restore = (file: BackupFile, force: boolean): Promise<RestoreResult> =>
+  BackupRestoreClient.restore(file, force);

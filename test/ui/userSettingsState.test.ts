@@ -5,14 +5,18 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createUserSettingsEffects, createUserSettingsState } from '../../ui/src/services/state/userSettingsState.js';
+import {
+  createUserSettingsEffects,
+  createUserSettingsState,
+  type UserSettingsStateSetter,
+} from '../../ui/src/services/state/userSettingsState.js';
 
 function setup() {
   const state = { userSettings: createUserSettingsState() };
   const get = vi.fn();
   const post = vi.fn();
   const refreshFinanceSummary = vi.fn().mockResolvedValue(undefined);
-  const set = (updater) => Object.assign(state, updater(state));
+  const set: UserSettingsStateSetter = (updater) => Object.assign(state, updater(state));
   const effects = createUserSettingsEffects(set, { get, post }, refreshFinanceSummary);
   return { state, get, post, refreshFinanceSummary, effects };
 }

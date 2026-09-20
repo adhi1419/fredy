@@ -5,26 +5,40 @@
 
 /**
  * The channel editor's state, kept out of the component so it can be tested without rendering.
- *
- * @typedef {Object} ChannelDraft
- * @property {string|null} id - null for create and for clone.
- * @property {string} adapterId
- * @property {string} name
- * @property {Record<string, any>} fields
- * @property {string} visibility
  */
+export interface ChannelDraft {
+  /** null for create and for clone. */
+  id: string | null;
+  adapterId: string;
+  name: string;
+  fields: Record<string, unknown>;
+  visibility: string;
+}
+
+/** One declared field on an adapter's config. */
+interface FieldDefinition {
+  type?: string;
+  secret?: boolean;
+  optional?: boolean;
+  // Adapter field definitions also carry presentation keys (label, help, ...) this module ignores.
+  [key: string]: unknown;
+}
+
+interface AdapterConfig {
+  id: string;
+  fields?: Record<string, FieldDefinition>;
+}
+
+type Translate = (key: string) => string;
 
 /**
  * A blank draft for one adapter type.
  *
  * Every declared field is seeded, so the form is controlled from the first render and a boolean
  * never starts as `undefined`.
- *
- * @param {{id: string, fields?: Record<string, {type?: string}>}} adapterConfig
- * @returns {ChannelDraft}
  */
-export function emptyChannel(adapterConfig) {
-  const fields = {};
+export function emptyChannel(adapterConfig: AdapterConfig): ChannelDraft {
+  const fields: Record<string, unknown> = {};
   for (const [key, definition] of Object.entries(adapterConfig?.fields ?? {})) {
     fields[key] = definition?.type === 'boolean' ? false : '';
   }
@@ -38,13 +52,12 @@ export function emptyChannel(adapterConfig) {
  * their own variant of somebody else's channel, and inheriting `everyone` would re-share it on
  * their behalf. Secrets only come along when the server was willing to reveal them, which is the
  * same rule the editor uses.
- *
- * @param {{adapterId: string, name: string, fields?: Record<string, any>}} channel
- * @param {{canRevealSecrets: boolean, adapterConfig: {fields?: Record<string, {secret?: boolean, type?: string}>}}} options
- * @returns {ChannelDraft}
  */
-export function toCloneDraft(channel, { canRevealSecrets, adapterConfig }) {
-  const fields = {};
+export function toCloneDraft(
+  channel: { adapterId: string; name: string; fields?: Record<string, unknown> },
+  { canRevealSecrets, adapterConfig }: { canRevealSecrets: boolean; adapterConfig: AdapterConfig },
+): ChannelDraft {
+  const fields: Record<string, unknown> = {};
   for (const [key, definition] of Object.entries(adapterConfig?.fields ?? {})) {
     if (definition?.secret === true && !canRevealSecrets) {
       fields[key] = '';
@@ -64,13 +77,15 @@ export function toCloneDraft(channel, { canRevealSecrets, adapterConfig }) {
 /**
  * Validate a draft. Returns translated messages, de-duplicated, in a stable order.
  *
- * @param {ChannelDraft} draft
- * @param {{fields?: Record<string, {type?: string, optional?: boolean}>}} adapterConfig
- * @param {(key: string) => string} t
- * @returns {string[]}
+ * Takes only the parts of a draft it reads - the name and the field values - so a caller can
+ * validate a work-in-progress draft that has not yet been given an id, adapter, or visibility.
  */
-export function validateChannel(draft, adapterConfig, t) {
-  const messages = [];
+export function validateChannel(
+  draft: { name?: unknown; fields?: Record<string, unknown> },
+  adapterConfig: AdapterConfig,
+  t: Translate,
+): string[] {
+  const messages: string[] = [];
   if (typeof draft?.name !== 'string' || draft.name.trim().length === 0) {
     messages.push(t('notification.channels.validationName'));
   }
@@ -80,7 +95,7 @@ export function validateChannel(draft, adapterConfig, t) {
     if (definition?.type === 'boolean') continue;
 
     if (definition?.type === 'number' && value !== '' && value != null) {
-      const parsed = parseFloat(value);
+      const parsed = parseFloat(String(value));
       if (Number.isNaN(parsed) || parsed < 0) {
         messages.push(t('notification.validationNumberField'));
         continue;
@@ -100,11 +115,14 @@ export function validateChannel(draft, adapterConfig, t) {
  *
  * `fields` and `visibility` are always sent. The route treats an absent key as "keep what is
  * stored", so omitting them here would make an edit silently no-op instead of applying.
- *
- * @param {ChannelDraft} draft
- * @returns {{id: string|null, adapterId: string, name: string, fields: Record<string, any>, visibility: string}}
  */
-export function toPayload(draft) {
+export function toPayload(draft: ChannelDraft): {
+  id: string | null;
+  adapterId: string;
+  name: string;
+  fields: Record<string, unknown>;
+  visibility: string;
+} {
   return {
     id: draft.id,
     adapterId: draft.adapterId,

@@ -126,6 +126,22 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/views/listings/listingActions.ts',
       'ui/src/views/listings/listingPopupContent.tsx',
       'ui/src/views/listings/polyline.ts',
+      'ui/src/services/routes/returnTo.ts',
+      'ui/src/services/time/timeService.ts',
+      'ui/src/services/notificationChannels/channelForm.ts',
+      'ui/src/services/jobs/commuteFilter.ts',
+      'ui/src/services/inquiries/profile.ts',
+      'ui/src/hooks/useSearchParamState.ts',
+      'ui/src/hooks/useScrollRestoration.ts',
+      'ui/src/hooks/screenWidth.ts',
+      'ui/src/services/countryFlags.ts',
+      'ui/src/services/developmentMode.ts',
+      'ui/src/services/authenticatedFetch.ts',
+      'ui/src/services/notification/browserNotification.ts',
+      'ui/src/components/connectivity/connectivityFormat.ts',
+      'ui/src/services/transformer/providerTransformer.ts',
+      'ui/src/services/debugLoggingClient.ts',
+      'ui/src/services/backupRestoreClient.ts',
     ]);
     const testConfig = JSON.parse(read('tsconfig.frontend-tests.json'));
     expect(testConfig.extends).toBe('./tsconfig.frontend.json');
@@ -169,6 +185,20 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/travelTimeFormat.test.ts',
       'test/ui/detailMapLayers.test.ts',
       'test/ui/polyline.test.ts',
+      'test/ui/returnTo.test.ts',
+      'test/ui/timeZoneOptions.test.ts',
+      'test/ui/channelForm.test.ts',
+      'test/ui/commuteFilter.test.ts',
+      'test/ui/inquiryProfile.test.ts',
+      'test/ui/useUrlState.test.ts',
+      'test/ui/notificationState.test.ts',
+      'test/ui/userSettingsState.test.ts',
+      'test/ui/jobsState.test.ts',
+      'test/ui/listingsState.test.ts',
+      'test/ui/authenticatedFetch.test.ts',
+      'test/ui/authenticatedTransport.test.ts',
+      'test/ui/apiUrl.test.ts',
+      'test/ui/locales.test.ts',
     ]);
     const waveOneMigrations = [
       ['ui/src/components/cards/KpiCard.tsx', 'ui/src/components/cards/KpiCard.jsx'],
@@ -253,6 +283,48 @@ describe('Bun and TypeScript foundation', () => {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
     }
+    const waveThreeMigrations = [
+      ['ui/src/services/routes/returnTo.ts', 'ui/src/services/routes/returnTo.js'],
+      ['ui/src/services/time/timeService.ts', 'ui/src/services/time/timeService.js'],
+      ['ui/src/services/notificationChannels/channelForm.ts', 'ui/src/services/notificationChannels/channelForm.js'],
+      ['ui/src/services/jobs/commuteFilter.ts', 'ui/src/services/jobs/commuteFilter.js'],
+      ['ui/src/services/inquiries/profile.ts', 'ui/src/services/inquiries/profile.js'],
+      ['ui/src/hooks/useSearchParamState.ts', 'ui/src/hooks/useSearchParamState.js'],
+      ['ui/src/hooks/useScrollRestoration.ts', 'ui/src/hooks/useScrollRestoration.js'],
+      ['ui/src/hooks/screenWidth.ts', 'ui/src/hooks/screenWidth.js'],
+      ['ui/src/services/countryFlags.ts', 'ui/src/services/countryFlags.js'],
+      ['ui/src/services/developmentMode.ts', 'ui/src/services/developmentMode.js'],
+      ['ui/src/services/authenticatedFetch.ts', 'ui/src/services/authenticatedFetch.js'],
+      ['ui/src/services/notification/browserNotification.ts', 'ui/src/services/notification/browserNotification.js'],
+      ['ui/src/components/connectivity/connectivityFormat.ts', 'ui/src/components/connectivity/connectivityFormat.js'],
+      ['ui/src/services/transformer/providerTransformer.ts', 'ui/src/services/transformer/providerTransformer.js'],
+      ['ui/src/services/debugLoggingClient.ts', 'ui/src/services/debugLoggingClient.js'],
+      ['ui/src/services/backupRestoreClient.ts', 'ui/src/services/backupRestoreClient.js'],
+      ['test/ui/returnTo.test.ts', 'test/ui/returnTo.test.js'],
+      ['test/ui/timeZoneOptions.test.ts', 'test/ui/timeZoneOptions.test.js'],
+      ['test/ui/channelForm.test.ts', 'test/ui/channelForm.test.js'],
+      ['test/ui/commuteFilter.test.ts', 'test/ui/commuteFilter.test.js'],
+      ['test/ui/inquiryProfile.test.ts', 'test/ui/inquiryProfile.test.js'],
+      ['test/ui/useUrlState.test.ts', 'test/ui/useUrlState.test.js'],
+      ['test/ui/notificationState.test.ts', 'test/ui/notificationState.test.js'],
+      ['test/ui/userSettingsState.test.ts', 'test/ui/userSettingsState.test.js'],
+      ['test/ui/jobsState.test.ts', 'test/ui/jobsState.test.js'],
+      ['test/ui/listingsState.test.ts', 'test/ui/listingsState.test.js'],
+      ['test/ui/authenticatedFetch.test.ts', 'test/ui/authenticatedFetch.test.js'],
+      ['test/ui/authenticatedTransport.test.ts', 'test/ui/authenticatedTransport.test.js'],
+      ['test/ui/apiUrl.test.ts', 'test/ui/apiUrl.test.js'],
+      ['test/ui/locales.test.ts', 'test/ui/locales.test.js'],
+    ];
+    expect(waveThreeMigrations).toHaveLength(30);
+    for (const [typedPath, legacyPath] of waveThreeMigrations) {
+      expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
+      expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
+    }
+    // The ambient shims those real modules replaced are gone, so nothing can resolve the stale
+    // untyped shape ahead of the typed source.
+    const legacyShims = read('ui/src/views/jobs/savedSearchesLegacy.d.ts');
+    expect(legacyShims).not.toContain("declare module '*services/time/timeService.js'");
+    expect(legacyShims).not.toContain("declare module '*services/inquiries/profile.js'");
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/guidedSearchForm.ts'))).toBe(true);

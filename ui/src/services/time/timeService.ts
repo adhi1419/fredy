@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-export function format(ts, showSeconds = true, locale = 'default') {
+export function format(ts: number | string | Date | null | undefined, showSeconds = true, locale = 'default'): string {
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'numeric',
@@ -11,7 +11,10 @@ export function format(ts, showSeconds = true, locale = 'default') {
     hour: 'numeric',
     minute: 'numeric',
     ...(showSeconds ? { second: 'numeric' } : {}),
-  }).format(ts);
+    // Callers pass a stored timestamp (epoch millis) or a Date; the broader input union mirrors the
+    // untyped call sites this replaced. Intl coerces a string via its own Date parsing, matching the
+    // prior runtime, so the value is handed through unchanged rather than pre-normalised here.
+  }).format(ts as number | Date | undefined);
 }
 
 /**
@@ -24,12 +27,14 @@ export function format(ts, showSeconds = true, locale = 'default') {
  * silently renders nothing for a value that has no matching option, making a configured zone look
  * unset.
  *
- * @param {string|null} [current] The stored zone.
- * @returns {{value: string, label: string}[]} Sorted options.
+ * @param current The stored zone.
+ * @returns Sorted options.
  */
-export function timeZoneOptions(current) {
+export function timeZoneOptions(current?: string | null): { value: string; label: string }[] {
   const supported = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
-  const zones = new Set(supported.length > 0 ? supported : ['UTC', Intl.DateTimeFormat().resolvedOptions().timeZone]);
+  const zones = new Set<string>(
+    supported.length > 0 ? supported : ['UTC', Intl.DateTimeFormat().resolvedOptions().timeZone],
+  );
   if (typeof current === 'string' && current.length > 0) {
     zones.add(current);
   }

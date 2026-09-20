@@ -8,7 +8,6 @@ import { useEffect, useRef } from 'react';
 /**
  * The app scrolls inside its content column, not in the window, so a scroll position can only be
  * read from and written to that element.
- * @type {string}
  */
 const SCROLL_CONTAINER_SELECTOR = '.app__content';
 
@@ -16,10 +15,9 @@ const SCROLL_CONTAINER_SELECTOR = '.app__content';
 const STORAGE_PREFIX = 'fredy:scroll:';
 
 /**
- * @param {string} key
- * @returns {number} The last saved offset for that key, 0 when there is none.
+ * @returns The last saved offset for that key, 0 when there is none.
  */
-function readSaved(key) {
+function readSaved(key: string): number {
   try {
     const raw = window.sessionStorage.getItem(STORAGE_PREFIX + key);
     const value = Number(raw);
@@ -29,12 +27,7 @@ function readSaved(key) {
   }
 }
 
-/**
- * @param {string} key
- * @param {number} value
- * @returns {void}
- */
-function writeSaved(key, value) {
+function writeSaved(key: string, value: number): void {
   try {
     window.sessionStorage.setItem(STORAGE_PREFIX + key, String(value));
   } catch {
@@ -50,11 +43,10 @@ function writeSaved(key, value) {
  * has no height until the listings are in the DOM, and scrolling a short element silently clamps
  * to whatever fits.
  *
- * @param {string} key Identifies the view; separate views keep separate positions.
- * @param {boolean} ready Whether the content that gives the container its height is rendered.
- * @returns {void}
+ * @param key Identifies the view; separate views keep separate positions.
+ * @param ready Whether the content that gives the container its height is rendered.
  */
-export function useScrollRestoration(key, ready) {
+export function useScrollRestoration(key: string, ready: boolean): void {
   const restored = useRef(false);
 
   useEffect(() => {

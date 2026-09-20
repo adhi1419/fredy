@@ -41,6 +41,20 @@
     "test/ui/transitFormat.test.ts",
     "test/ui/travelTimeFormat.test.ts",
     "test/ui/detailMapLayers.test.ts",
-    "test/ui/polyline.test.ts"
+    "test/ui/polyline.test.ts",
+    "test/ui/returnTo.test.ts",
+    "test/ui/timeZoneOptions.test.ts",
+    "test/ui/channelForm.test.ts",
+    "test/ui/commuteFilter.test.ts",
+    "test/ui/inquiryProfile.test.ts",
+    "test/ui/useUrlState.test.ts",
+    "test/ui/notificationState.test.ts",
+    "test/ui/userSettingsState.test.ts",
+    "test/ui/jobsState.test.ts",
+    "test/ui/listingsState.test.ts",
+    "test/ui/authenticatedFetch.test.ts",
+    "test/ui/authenticatedTransport.test.ts",
+    "test/ui/apiUrl.test.ts",
+    "test/ui/locales.test.ts"
   ]
 }

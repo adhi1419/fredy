@@ -58,9 +58,9 @@ describe('authenticated request policy', () => {
   });
 
   it('applies distinct HTTP and SSE unauthorized rules and dispatches the stable event', () => {
-    const eventTypes = [];
+    const eventTypes: string[] = [];
     const eventTarget = {
-      dispatchEvent: vi.fn((event) => {
+      dispatchEvent: vi.fn((event: Event) => {
         eventTypes.push(event.type);
         return true;
       }),

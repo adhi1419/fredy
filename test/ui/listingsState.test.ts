@@ -5,14 +5,18 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createListingsDataState, createListingsEffects } from '../../ui/src/services/state/listingsState.js';
+import {
+  createListingsDataState,
+  createListingsEffects,
+  type ListingsStateSetter,
+} from '../../ui/src/services/state/listingsState.js';
 
 function setup() {
   const state = { listingsData: createListingsDataState() };
   const get = vi.fn();
   const post = vi.fn();
   const stringify = vi.fn(() => 'encoded-query');
-  const set = (updater) => Object.assign(state, updater(state));
+  const set: ListingsStateSetter = (updater) => Object.assign(state, updater(state));
   const effects = createListingsEffects(set, { get, post }, stringify);
   return { state, get, post, stringify, effects };
 }

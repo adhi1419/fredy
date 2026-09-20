@@ -5,13 +5,13 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createJobsDataState, createJobsEffects } from '../../ui/src/services/state/jobsState.js';
+import { createJobsDataState, createJobsEffects, type JobsStateSetter } from '../../ui/src/services/state/jobsState.js';
 
 function setup() {
   const state = { jobsData: createJobsDataState() };
   const get = vi.fn();
   const stringify = vi.fn(() => 'encoded-query');
-  const set = (updater) => Object.assign(state, updater(state));
+  const set: JobsStateSetter = (updater) => Object.assign(state, updater(state));
   const effects = createJobsEffects(set, { get }, stringify);
   return { state, get, stringify, effects };
 }
