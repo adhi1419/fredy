@@ -1,0 +1,108 @@
+{
+  "files": {
+    "dockerfile": "Dockerfile",
+    "startup": "index.js",
+    "api": "lib/api/api.js",
+    "http": "lib/api/http.js",
+    "sse": "lib/api/routes/jobRouter.js",
+    "security": "lib/api/security.js",
+    "trigger": "lib/api/routes/triggerRoute.js",
+    "jobs": "lib/services/jobs/jobExecutionService.js",
+    "firestore": "lib/services/storage/firestore/FirestoreConnection.js",
+    "firebaseAdmin": "lib/services/firebaseAdmin.js",
+    "workflow": ".github/workflows/deploy.yml",
+    "imageKey": "scripts/backend-image-key.sh",
+    "bootstrap": "scripts/deploy-cloud-run.sh",
+    "wire": "test/wireContracts.json",
+    "document": "doc/contracts/cloud-run-runtime.md"
+  },
+  "container": {
+    "required": [
+      "FROM node:22-trixie-slim",
+      "tini",
+      "COPY --link lib ./lib",
+      "COPY --link index.js ./",
+      "EXPOSE 9998",
+      "VOLUME /conf",
+      "HEALTHCHECK",
+      "http://localhost:9998/health",
+      "ENTRYPOINT [\"/usr/bin/tini\", \"-g\", \"--\"]",
+      "CMD [\"node\", \"index.js\"]",
+      "cloakbrowser"
+    ],
+    "mustNotCopy": ["COPY ui", "ui/public", "build:frontend"]
+  },
+  "startup": {
+    "required": [
+      "FIREBASE_WEB_CONFIG is required in production",
+      "FIREBASE_WEB_CONFIG must contain valid JSON",
+      "FIREBASE_WEB_CONFIG must contain projectId, appId, and apiKey",
+      "FRONTEND_ORIGIN is required in production",
+      "FIRESTORE_EMULATOR_HOST is not allowed in production",
+      "initJobExecutionService({ providers, intervalMs: INTERVAL });",
+      "await import('./lib/api/api.js');"
+    ],
+    "apiRequired": [
+      "const PORT = Number(process.env.PORT) || settings.port || 9998;",
+      "await fastify.listen({ port: PORT, host: '0.0.0.0' });",
+      "fastify.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: 'Not found' }));"
+    ],
+    "schedulerRequired": [
+      "const externalScheduler = process.env.EXTERNAL_SCHEDULER === 'true';",
+      "_triggerRunner = (respectWorkingHours = true) => runAll(respectWorkingHours);"
+    ]
+  },
+  "adc": {
+    "firestoreRequired": ["new Firestore(", "FIRESTORE_EMULATOR_HOST"],
+    "firebaseAdminRequired": ["credential: applicationDefault()", "FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT"]
+  },
+  "deployment": {
+    "workflowRequired": [
+      "candidate-${{ steps.context.outputs.hash }}",
+      "docker buildx imagetools create --tag \"$IMAGE\" \"$CANDIDATE_REF\"",
+      "cache-from: type=registry,ref=${{ env.CACHE_REF }}",
+      "uses: google-github-actions/deploy-cloudrun@v3",
+      "image: ${{ env.IMAGE }}",
+      "\"$SERVICE_URL/health\""
+    ],
+    "productionInputs": ["'lib/**'", "'index.js'", "'Dockerfile'", "'scripts/backend-image-key.sh'", "'package.json'", "'yarn.lock'"],
+    "workflowMustNotContain": ["- 'test/**'", "- 'doc/**'"],
+    "workflowMustNotReplace": ["env_vars:", "env_vars_file:", "update_env_vars:", "remove_env_vars:"]
+  },
+  "bootstrap": {
+    "required": [
+      "'EXTERNAL_SCHEDULER': 'true'",
+      "'FIREBASE_WEB_CONFIG': web_config",
+      "'FRONTEND_ORIGIN': 'https://adhi1419.github.io'",
+      "'FRONTEND_URL': 'https://adhi1419.github.io/fredy/'",
+      "--env-vars-file \"$ENVFILE\"",
+      "--image \"$IMAGE\"",
+      "\"$SERVICE_URL/api/trigger\"",
+      "--schedule '*/15 * * * *'"
+    ]
+  },
+  "wire": {
+    "requiredAssumptions": {
+      "frontendOrigin": "https://adhi1419.github.io",
+      "authentication": "Direct Firebase ID bearer token in Authorization",
+      "credentials": "omit",
+      "deployment": "Cloud Run API-only; GitHub Pages serves the SPA"
+    },
+    "requiredSse": {
+      "contentType": "text/event-stream",
+      "heartbeatIntervalMs": 25000
+    }
+  },
+  "documentMarkers": [
+    "## Current invariants",
+    "### Container and process boundary",
+    "### Boot, configuration, and scheduling",
+    "### HTTP and browser wire",
+    "### Readiness and termination as actually implemented",
+    "### Image promotion and environment behavior",
+    "## Future route-cutover procedure (not current behavior)",
+    "## Deliberate gaps",
+    "The steady-state Cloud Run deployment does not mount persistent storage there",
+    "There is no separate readiness endpoint, startup probe, or application-level `SIGTERM`/`SIGINT` drain handler"
+  ]
+}
