@@ -12,7 +12,7 @@
  * smoking status / lifestyle claims).
  */
 import { describe, it, expect } from 'vitest';
-import { buildPrompt, isMessageGeneratorEnabled } from '../../lib/services/messageGenerator.js';
+import { buildPrompt, isMessageGeneratorEnabled, geminiRetryDelayMs } from '../../lib/services/messageGenerator.js';
 
 describe('messageGenerator.buildPrompt', () => {
   const profile = {
@@ -78,5 +78,35 @@ describe('messageGenerator.isMessageGeneratorEnabled', () => {
     expect(isMessageGeneratorEnabled()).toBe(true);
     if (original === undefined) delete process.env.GEMINI_API_KEY;
     else process.env.GEMINI_API_KEY = original;
+  });
+});
+
+describe('geminiRetryDelayMs', () => {
+  it('reads the RetryInfo retryDelay from a 429 body', () => {
+    const body = JSON.stringify({
+      error: {
+        code: 429,
+        status: 'RESOURCE_EXHAUSTED',
+        details: [
+          { '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [] },
+          { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '17s' },
+        ],
+      },
+    });
+    expect(geminiRetryDelayMs(body)).toBe(17_000);
+  });
+
+  it('parses a fractional-second delay', () => {
+    const body = JSON.stringify({
+      error: { details: [{ '@type': 'x/google.rpc.RetryInfo', retryDelay: '1.5s' }] },
+    });
+    expect(geminiRetryDelayMs(body)).toBe(1500);
+  });
+
+  it('returns null when there is no RetryInfo, an unparseable body, or nothing', () => {
+    expect(geminiRetryDelayMs(JSON.stringify({ error: { details: [] } }))).toBeNull();
+    expect(geminiRetryDelayMs('not json')).toBeNull();
+    expect(geminiRetryDelayMs('')).toBeNull();
+    expect(geminiRetryDelayMs(undefined)).toBeNull();
   });
 });
