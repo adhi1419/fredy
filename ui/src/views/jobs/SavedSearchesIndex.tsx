@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
-import { Button, Empty, Input, Pagination, Popover, Radio, RadioGroup, Select, Tag, Toast } from '@douyinfe/semi-ui-19';
+import { Button, Empty, Input, Pagination, Popover, Radio, RadioGroup, Select, Toast } from '@douyinfe/semi-ui-19';
 import { IconAlertTriangle, IconArrowDown, IconArrowUp, IconMoreStroked, IconSearch } from '@douyinfe/semi-icons';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
 import { useNavigate } from 'react-router';
@@ -200,6 +200,9 @@ function SavedSearchRow({
         },
       };
 
+  const hasRun = job.lastRunAt != null;
+  const stateTone = job.running === true ? 'running' : job.enabled ? 'active' : 'paused';
+
   return (
     <article
       className={`savedSearches__row${readOnly ? '' : ' savedSearches__row--editable'}`}
@@ -207,24 +210,29 @@ function SavedSearchRow({
       {...editableProps}
     >
       <div className="savedSearches__identity">
-        <span
-          className={`savedSearches__statusDot${job.enabled ? ' savedSearches__statusDot--active' : ''}`}
-          aria-hidden="true"
-        />
         <div className="savedSearches__identityCopy">
           <h2>{name}</h2>
           <p>
             <span className="savedSearches__fieldLabel">{t('jobs.index.criteria')}:</span> {criteriaFor(job, t, locale)}
           </p>
+          {!readOnly && (
+            <span className="savedSearches__editCue" aria-hidden="true">
+              {t('jobs.index.editHint')} →
+            </span>
+          )}
         </div>
       </div>
 
       <div className="savedSearches__state">
         <span className="savedSearches__fieldLabel">{t('jobs.index.state')}</span>
         <div className="savedSearches__stateControl">
-          <Tag color={job.enabled ? 'green' : 'grey'} size="small">
+          <span
+            className={`savedSearches__stateChip savedSearches__stateChip--${stateTone}`}
+            data-testid="savedSearches-state"
+          >
+            <span className="savedSearches__stateDot" aria-hidden="true" />
             {statusLabel}
-          </Tag>
+          </span>
         </div>
         {readOnly && (
           <span className="savedSearches__shared" title={t('jobs.cardSharedReadOnly')}>
@@ -235,8 +243,14 @@ function SavedSearchRow({
 
       <div className="savedSearches__lastRun">
         <span className="savedSearches__fieldLabel">{t('jobs.index.lastRun')}</span>
-        <strong>{lastRunFor(job, locale, t)}</strong>
-        <small>{t('jobs.index.listingsFound', { count: String(job.numberOfFoundListings || 0) })}</small>
+        <strong className={`savedSearches__health savedSearches__health--${hasRun ? 'ready' : 'idle'}`}>
+          {hasRun ? t('jobs.index.runHealthReady') : t('jobs.index.neverRun')}
+        </strong>
+        <small>
+          {lastRunFor(job, locale, t)} ·{' '}
+          {t('jobs.index.listingsFound', { count: String(job.numberOfFoundListings || 0) })}
+        </small>
+        <span className="savedSearches__repairNote">{t('jobs.index.repairPromise')}</span>
       </div>
 
       <div className="savedSearches__rowActions">

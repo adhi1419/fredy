@@ -111,4 +111,23 @@ describe('accessibility action contracts', () => {
     expect(segmentPartStyles).toContain('background: transparent;');
     expect(segmentPartStyles).toContain('cursor: help;');
   });
+
+  it('keeps the fit-status pill a view of the one lifecycle (New/Applied/Viewed/Archived), never a second boolean', () => {
+    // The photo-led fit status must render the shared lifecycle label and mark any non-new state
+    // selected, so the pill, the heading pill, and the Home filter cannot drift apart.
+    expect(listingDetailSource).toContain('listing-detail__fit-status--selected');
+    expect(listingDetailSource).toContain("lifecycle !== 'new' ? ' listing-detail__fit-status--selected' : ''");
+    expect(listingDetailSource).toMatch(/listing-detail__fit-status[\s\S]{0,160}\{lifecycleLabel\}/);
+    // The old Applied/New-only ternary must not come back for the fit status.
+    expect(listingDetailSource).not.toContain("{listingApplied ? t('home.activityApplied') : t('home.activityNew')}");
+    // Travel stays the first fit metric and reads in the accent role; affordability is not primary.
+    expect(styles).toContain('&__fit-metric-value--accent');
+    expect(listingDetailSource).toContain('listing-detail__fit-metric-value--accent');
+    expect(listingDetailSource).toContain('listing-detail__fit-metric--travel');
+    expect(listingDetailSource).toContain('listing-detail__heading-description');
+    expect(styles).toContain('&__fit-status--selected');
+    expect(styles).toContain('color: @color-on-accent;');
+    expect(styles).toContain('&__fit-metric--travel');
+    expect(styles).toContain('grid-column: 1 / -1;');
+  });
 });

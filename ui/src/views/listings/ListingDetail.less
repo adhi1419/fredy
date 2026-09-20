@@ -63,10 +63,10 @@
   }
 
   &__lifecycle--selected,
-  &__fit-status {
-    border-color: @color-accent;
+  &__fit-status--selected {
+    border-color: @color-accent-fill;
     background: @color-accent-fill;
-    color: @color-accent;
+    color: @color-on-accent;
   }
 
   &__composition {
@@ -505,11 +505,16 @@
   @media (max-width: 768px) {
     &__heading {
       display: block;
+      margin-bottom: @space-3;
+    }
+
+    &__heading-description {
+      display: none;
     }
 
     &__heading-actions {
       justify-content: flex-start;
-      margin-top: @space-3;
+      margin-top: @space-2;
     }
 
     &__composition,
@@ -520,11 +525,31 @@
     }
 
     &__fit .listing-detail__image-container {
-      height: 260px;
-      min-height: 260px;
+      height: 220px;
+      min-height: 220px;
     }
 
-    &__fit-summary,
+    &__fit-heading {
+      display: none;
+    }
+
+    &__fit-summary {
+      gap: @space-3;
+      padding: @space-3 @space-4 @space-4;
+    }
+
+    &__fit-metrics {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: @space-2;
+    }
+
+    &__fit-metric--travel {
+      grid-column: 1 / -1;
+      order: -1;
+      padding-bottom: @space-2;
+      border-left-color: @color-accent;
+    }
+
     &__activity,
     &__evidence {
       padding: @space-4;
