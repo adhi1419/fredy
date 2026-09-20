@@ -1,6 +1,6 @@
 # Fredy modernization tasks
 
-The canonical tracker is current through PR #46.
+The repository copy on `main` is published through PR #46. This canonical working copy records final UX review through PR #49 and will be published with the next documentation PR.
 
 ## Completed architecture and delivery
 
@@ -83,11 +83,13 @@ The canonical tracker is current through PR #46.
 - [x] PR #37: implement one-handed mobile listing detail and unified lifecycle actions — merged and deployed to Pages successfully in 34 seconds.
 - [x] PR #43: implement the four-step guided Saved Search add/edit flow with per-source application policy controls — merged and deployed to Pages successfully in 51 seconds.
 - [x] PR #44: apply and visually validate the final Paper/forest styling through centralized theme tokens only — merged and deployed to Pages successfully in 38 seconds.
-- [ ] Run accessibility, responsive, and new-user usability review with screenshots/recordings.
+- [x] Run accessibility, responsive, and new-user usability review with screenshots/recordings — rendered audit complete and verified fixes shipped in PRs #48–#49.
+- [x] PR #49: publish verified accessibility fixes — merged and deployed to Pages successfully in 43 seconds; live frontend returned HTTP 200.
+- [x] PR #48: publish verified responsive fixes — merged and deployed to Pages successfully in 40 seconds; live frontend returned HTTP 200.
 
 ## Last-mile product work
 
 - [x] PR #45: add mandatory applicant-profile setup after first registration while keeping My account edit-only afterward — merged via rebase and deployed to Pages and Cloud Run successfully in 65 seconds; all live probes returned HTTP 200.
-- [ ] Rewrite the customer README only after TypeScript migration and UI modernization are complete.
+- [ ] Rewrite the customer README for the finished product — implemented and parent-reviewed on `docs/final-customer-readme`; publication pending.
 - [ ] Capture final product screenshots only from the finished UI.
 - [ ] Create and link a separate developer/operator guide.
