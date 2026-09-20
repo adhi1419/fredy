@@ -3,10 +3,17 @@ use std::env;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::str;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
 pub mod auth;
 
+pub mod sse;
+
 use auth::{parse_bearer, AuthBackend, AuthFailure, FirebaseAuthenticator};
+use sse::{SseBroker, HEARTBEAT_INTERVAL};
 
 /// The port used when `PORT` is missing or is not a valid non-zero port.
 pub const DEFAULT_PORT: u16 = 9998;
@@ -22,11 +29,69 @@ const CORS_METHOD_DENIED_BODY: &[u8] = br#"{"error":"CORS method denied"}"#;
 const CORS_PREFLIGHT_DENIED_BODY: &[u8] = br#"{"error":"CORS preflight denied"}"#;
 const INTERNAL_ERROR_BODY: &[u8] = br#"{"error":"Internal Server Error"}"#;
 const MAX_REQUEST_BYTES: usize = 8 * 1024;
+const INITIAL_REQUEST_READ_TIMEOUT: Duration = Duration::from_secs(5);
+const MAX_ACTIVE_CONNECTIONS: usize = 128;
+const MAX_ACTIVE_SSE_CONNECTIONS: usize = 96;
+const SERVICE_UNAVAILABLE_BODY: &[u8] = br#"{"error":"Service Unavailable"}"#;
 const JSON_CONTENT_TYPE: &str = "application/json; charset=utf-8";
 const ALLOWED_METHODS: [&str; 5] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"];
 const ALLOWED_METHODS_HEADER: &str = "GET,POST,PUT,DELETE,OPTIONS";
 const ALLOWED_HEADERS: [&str; 2] = ["authorization", "content-type"];
 const ALLOWED_HEADERS_HEADER: &str = "Authorization,Content-Type";
+
+struct ConnectionAdmission {
+    active: AtomicUsize,
+    limit: usize,
+}
+
+impl ConnectionAdmission {
+    fn new(limit: usize) -> Self {
+        assert!(limit > 0, "connection admission limit must be positive");
+        Self {
+            active: AtomicUsize::new(0),
+            limit,
+        }
+    }
+
+    fn try_acquire(self: &Arc<Self>) -> Option<ConnectionPermit> {
+        let mut active = self.active.load(Ordering::Relaxed);
+        loop {
+            if active >= self.limit {
+                return None;
+            }
+            match self.active.compare_exchange_weak(
+                active,
+                active + 1,
+                Ordering::AcqRel,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => {
+                    return Some(ConnectionPermit {
+                        admission: Arc::clone(self),
+                    });
+                }
+                Err(current) => active = current,
+            }
+        }
+    }
+
+    #[cfg(test)]
+    fn active_count(&self) -> usize {
+        self.active.load(Ordering::Acquire)
+    }
+}
+
+struct ConnectionPermit {
+    admission: Arc<ConnectionAdmission>,
+}
+
+impl Drop for ConnectionPermit {
+    fn drop(&mut self) {
+        self.admission.active.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+type SseAdmission = ConnectionAdmission;
 
 /// A deterministic HTTP response used by the dormant route executable.
 #[derive(Debug, PartialEq, Eq)]
@@ -155,6 +220,129 @@ fn auth_config_response(firebase_web_config: Option<&str>) -> HttpResponse {
     }))
     .unwrap_or_else(|_| br#"{"enabled":false,"firebaseConfig":null}"#.to_vec());
     HttpResponse::json("HTTP/1.1 200 OK", body)
+}
+
+fn authenticate_request(
+    request: &HttpRequest<'_>,
+    auth_backend: Option<&dyn AuthBackend>,
+) -> Result<auth::AuthenticatedUser, AuthFailure> {
+    let token = parse_bearer(&request.authorization_values)?;
+    let Some(auth_backend) = auth_backend else {
+        return Err(AuthFailure::Dependency);
+    };
+    auth_backend.authenticate(token)
+}
+
+fn write_sse_headers(stream: &mut TcpStream, allow_origin: Option<&str>) -> io::Result<()> {
+    stream.write_all(b"HTTP/1.1 200 OK\r\nVary: Origin\r\n")?;
+    if let Some(origin) = allow_origin {
+        write!(stream, "Access-Control-Allow-Origin: {origin}\r\n")?;
+        write!(
+            stream,
+            "Access-Control-Allow-Methods: {ALLOWED_METHODS_HEADER}\r\n"
+        )?;
+        write!(
+            stream,
+            "Access-Control-Allow-Headers: {ALLOWED_HEADERS_HEADER}\r\n"
+        )?;
+        stream.write_all(b"Access-Control-Max-Age: 86400\r\n")?;
+    }
+    stream.write_all(
+        b"Content-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\n\r\n",
+    )
+}
+
+fn peer_closed(stream: &TcpStream) -> bool {
+    let mut byte = [0_u8; 1];
+    match stream.peek(&mut byte) {
+        Ok(0) => true,
+        Ok(_) => false,
+        Err(error)
+            if error.kind() == io::ErrorKind::WouldBlock
+                || error.kind() == io::ErrorKind::TimedOut =>
+        {
+            false
+        }
+        Err(_) => true,
+    }
+}
+
+/// Write and flush one SSE frame through an injectable writer.
+pub fn write_sse_frame<W: Write>(writer: &mut W, frame: &[u8]) -> io::Result<()> {
+    writer.write_all(frame)?;
+    writer.flush()
+}
+
+fn serve_sse_connection(
+    mut stream: TcpStream,
+    request: HttpRequest<'_>,
+    frontend_origin: Option<&str>,
+    production: bool,
+    auth_backend: Option<&dyn AuthBackend>,
+    broker: Arc<SseBroker>,
+    sse_admission: Option<Arc<SseAdmission>>,
+) -> io::Result<()> {
+    let user = match authenticate_request(&request, auth_backend) {
+        Ok(user) => user,
+        Err(failure) => {
+            let response = apply_cors(
+                request,
+                auth_failure_response(failure),
+                frontend_origin,
+                production,
+            );
+            return response.write_to(&mut stream);
+        }
+    };
+
+    let sse_permit = match sse_admission {
+        Some(admission) => match admission.try_acquire() {
+            Some(permit) => Some(permit),
+            None => {
+                return apply_cors(
+                    request,
+                    HttpResponse::json(
+                        "HTTP/1.1 503 Service Unavailable",
+                        SERVICE_UNAVAILABLE_BODY,
+                    ),
+                    frontend_origin,
+                    production,
+                )
+                .write_to(&mut stream);
+            }
+        },
+        None => None,
+    };
+
+    let cors = apply_cors(
+        request,
+        HttpResponse::empty("HTTP/1.1 200 OK"),
+        frontend_origin,
+        production,
+    );
+    if cors.status_line != "HTTP/1.1 200 OK" {
+        return cors.write_to(&mut stream);
+    }
+
+    let _sse_permit = sse_permit;
+    write_sse_headers(&mut stream, cors.allow_origin.as_deref())?;
+    stream.write_all(b": connected\n\n")?;
+    let subscription = broker.subscribe(user.user_id);
+    stream.set_read_timeout(Some(Duration::from_millis(250)))?;
+
+    loop {
+        match subscription.recv_timeout(Duration::from_millis(250)) {
+            Ok(frame) => {
+                write_sse_frame(&mut stream, &frame)?;
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                if peer_closed(&stream) {
+                    return Ok(());
+                }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
+        }
+    }
 }
 
 fn auth_me_response(
@@ -348,42 +536,138 @@ pub fn serve_connection_with_config(
 
 /// Handles one HTTP connection with an injectable authentication backend.
 pub fn serve_connection_with_auth_config(
-    mut stream: TcpStream,
+    stream: TcpStream,
     firebase_web_config: Option<&str>,
     frontend_origin: Option<&str>,
     production: bool,
     auth_backend: Option<&dyn AuthBackend>,
 ) -> io::Result<()> {
+    serve_connection_with_optional_broker(
+        stream,
+        firebase_web_config,
+        frontend_origin,
+        production,
+        auth_backend,
+        None,
+        None,
+        INITIAL_REQUEST_READ_TIMEOUT,
+    )
+}
+
+/// Handles one connection with a reusable broker for the authenticated SSE route.
+pub fn serve_connection_with_auth_config_and_broker(
+    stream: TcpStream,
+    firebase_web_config: Option<&str>,
+    frontend_origin: Option<&str>,
+    production: bool,
+    auth_backend: Option<&dyn AuthBackend>,
+    broker: Arc<SseBroker>,
+) -> io::Result<()> {
+    serve_connection_with_optional_broker(
+        stream,
+        firebase_web_config,
+        frontend_origin,
+        production,
+        auth_backend,
+        Some(broker),
+        None,
+        INITIAL_REQUEST_READ_TIMEOUT,
+    )
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "keeps the short timeout and broker seams independently injectable"
+)]
+fn serve_connection_with_optional_broker(
+    mut stream: TcpStream,
+    firebase_web_config: Option<&str>,
+    frontend_origin: Option<&str>,
+    production: bool,
+    auth_backend: Option<&dyn AuthBackend>,
+    broker: Option<Arc<SseBroker>>,
+    sse_admission: Option<Arc<SseAdmission>>,
+    initial_request_read_timeout: Duration,
+) -> io::Result<()> {
+    stream.set_read_timeout(Some(initial_request_read_timeout))?;
     let mut request = [0_u8; MAX_REQUEST_BYTES];
     let bytes_read = stream.read(&mut request)?;
-    let response = parse_request(&request[..bytes_read]).map_or_else(
-        || HttpResponse::json("HTTP/1.1 400 Bad Request", BAD_REQUEST_BODY),
-        |request| {
-            response_for_request(
+    let Some(request) = parse_request(&request[..bytes_read]) else {
+        return HttpResponse::json("HTTP/1.1 400 Bad Request", BAD_REQUEST_BODY)
+            .write_to(&mut stream);
+    };
+
+    if request.method == "GET" && request.target == "/api/jobs/events" {
+        if let Some(broker) = broker {
+            return serve_sse_connection(
+                stream,
                 request,
-                firebase_web_config,
                 frontend_origin,
                 production,
                 auth_backend,
-            )
-        },
-    );
-    response.write_to(&mut stream)
+                broker,
+                sse_admission,
+            );
+        }
+    }
+
+    response_for_request(
+        request,
+        firebase_web_config,
+        frontend_origin,
+        production,
+        auth_backend,
+    )
+    .write_to(&mut stream)
 }
 
-/// Serves connections serially until the listener returns an accept error.
+fn reject_at_capacity(mut stream: TcpStream) {
+    let _ = HttpResponse::json("HTTP/1.1 503 Service Unavailable", SERVICE_UNAVAILABLE_BODY)
+        .write_to(&mut stream);
+}
+
+/// Serves connections concurrently and emits broker heartbeats every 25 seconds.
 pub fn serve_listener(listener: TcpListener) -> io::Result<()> {
-    let auth_backend = FirebaseAuthenticator::from_environment().ok();
+    let auth_backend: Option<Arc<dyn AuthBackend>> = FirebaseAuthenticator::from_environment()
+        .ok()
+        .map(|backend| Arc::new(backend) as Arc<dyn AuthBackend>);
+    let firebase_web_config = env::var("FIREBASE_WEB_CONFIG").ok();
+    let frontend_origin = env::var("FRONTEND_ORIGIN").ok();
+    let production = matches!(env::var("NODE_ENV").as_deref(), Ok("production"));
+    let broker = Arc::new(SseBroker::default());
+    let admission = Arc::new(ConnectionAdmission::new(MAX_ACTIVE_CONNECTIONS));
+    let sse_admission = Arc::new(SseAdmission::new(MAX_ACTIVE_SSE_CONNECTIONS));
+
+    let heartbeat_broker = Arc::clone(&broker);
+    thread::spawn(move || loop {
+        thread::sleep(HEARTBEAT_INTERVAL);
+        heartbeat_broker.heartbeat();
+    });
+
     for stream in listener.incoming() {
-        serve_connection_with_auth_config(
-            stream?,
-            env::var("FIREBASE_WEB_CONFIG").ok().as_deref(),
-            env::var("FRONTEND_ORIGIN").ok().as_deref(),
-            matches!(env::var("NODE_ENV").as_deref(), Ok("production")),
-            auth_backend
-                .as_ref()
-                .map(|backend| backend as &dyn AuthBackend),
-        )?;
+        let stream = stream?;
+        let Some(permit) = admission.try_acquire() else {
+            reject_at_capacity(stream);
+            continue;
+        };
+        let auth_backend = auth_backend.clone();
+        let firebase_web_config = firebase_web_config.clone();
+        let frontend_origin = frontend_origin.clone();
+        let broker = Arc::clone(&broker);
+        let sse_admission = Arc::clone(&sse_admission);
+        thread::spawn(move || {
+            let _permit = permit;
+            let _ = serve_connection_with_optional_broker(
+                stream,
+                firebase_web_config.as_deref(),
+                frontend_origin.as_deref(),
+                production,
+                auth_backend.as_deref(),
+                Some(broker),
+                Some(sse_admission),
+                INITIAL_REQUEST_READ_TIMEOUT,
+            );
+        });
     }
     Ok(())
 }
@@ -397,6 +681,8 @@ pub fn run() -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::AuthenticatedUser;
+    use std::net::Shutdown;
 
     fn serialized(response: &HttpResponse) -> Vec<u8> {
         let mut bytes = Vec::new();
@@ -462,6 +748,194 @@ mod tests {
         assert_eq!(port_from_value(Some("not-a-port")), DEFAULT_PORT);
         assert_eq!(port_from_value(Some("0")), DEFAULT_PORT);
         assert_eq!(port_from_value(Some("8123")), 8123);
+    }
+
+    #[test]
+    fn connection_admission_refuses_at_capacity_and_recovers() {
+        let admission = Arc::new(ConnectionAdmission::new(1));
+        let permit = admission
+            .try_acquire()
+            .expect("first connection is admitted");
+        assert_eq!(admission.active_count(), 1);
+        assert!(
+            admission.try_acquire().is_none(),
+            "capacity must refuse a second connection"
+        );
+
+        drop(permit);
+        assert_eq!(admission.active_count(), 0);
+        let recovered = admission
+            .try_acquire()
+            .expect("capacity recovers after cleanup");
+        assert_eq!(admission.active_count(), 1);
+        drop(recovered);
+        assert_eq!(admission.active_count(), 0);
+    }
+
+    #[test]
+    fn production_initial_request_timeout_is_seconds_scale() {
+        assert_eq!(INITIAL_REQUEST_READ_TIMEOUT, Duration::from_secs(5));
+        assert!(INITIAL_REQUEST_READ_TIMEOUT >= Duration::from_secs(1));
+    }
+
+    #[test]
+    fn idle_initial_request_times_out_and_releases_admission() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("test listener binds");
+        let address = listener.local_addr().expect("test listener has an address");
+        let admission = Arc::new(ConnectionAdmission::new(1));
+        let server_admission = Arc::clone(&admission);
+        let server = thread::spawn(move || {
+            let (stream, _) = listener
+                .accept()
+                .expect("test listener accepts one connection");
+            let _permit = server_admission
+                .try_acquire()
+                .expect("idle connection is admitted before the timeout");
+            serve_connection_with_optional_broker(
+                stream,
+                None,
+                None,
+                false,
+                None,
+                None,
+                None,
+                Duration::from_millis(10),
+            )
+        });
+
+        let client = TcpStream::connect(address).expect("test client connects");
+        let error = server
+            .join()
+            .expect("timeout server thread completes")
+            .expect_err("idle connection must time out before request parsing");
+        assert!(matches!(
+            error.kind(),
+            io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+        ));
+        drop(client);
+        assert_eq!(admission.active_count(), 0);
+    }
+
+    struct AllowBackend;
+
+    impl AuthBackend for AllowBackend {
+        fn authenticate(&self, _id_token: &str) -> Result<AuthenticatedUser, AuthFailure> {
+            Ok(AuthenticatedUser {
+                user_id: "uid-test".to_owned(),
+                username: "test@example.com".to_owned(),
+                is_admin: false,
+            })
+        }
+    }
+
+    fn route_round_trip(
+        request: &'static [u8],
+        admission: Arc<ConnectionAdmission>,
+        broker: Arc<SseBroker>,
+        sse_admission: Arc<SseAdmission>,
+    ) -> Vec<u8> {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("test listener binds");
+        let address = listener.local_addr().expect("test listener has an address");
+        let server = thread::spawn(move || {
+            let (stream, _) = listener
+                .accept()
+                .expect("test listener accepts one request");
+            let _permit = admission
+                .try_acquire()
+                .expect("route test request has total capacity");
+            let backend = AllowBackend;
+            serve_connection_with_optional_broker(
+                stream,
+                None,
+                None,
+                false,
+                Some(&backend),
+                Some(broker),
+                Some(sse_admission),
+                Duration::from_millis(50),
+            )
+            .expect("route response writes");
+        });
+
+        let mut client = TcpStream::connect(address).expect("test client connects");
+        client.write_all(request).expect("test request writes");
+        client
+            .shutdown(Shutdown::Write)
+            .expect("test request closes");
+        let mut response = Vec::new();
+        client
+            .read_to_end(&mut response)
+            .expect("test response reads");
+        server.join().expect("test server completes");
+        response
+    }
+
+    #[test]
+    fn full_sse_capacity_preserves_ordinary_route_capacity_and_recovers() {
+        let total = Arc::new(ConnectionAdmission::new(4));
+        let sse = Arc::new(SseAdmission::new(2));
+        let broker = Arc::new(SseBroker::default());
+        let sse_total_one = total.try_acquire().expect("first SSE total permit");
+        let sse_total_two = total.try_acquire().expect("second SSE total permit");
+        let sse_one = sse.try_acquire().expect("first SSE permit");
+        let sse_two = sse.try_acquire().expect("second SSE permit");
+
+        let ordinary_one = total
+            .try_acquire()
+            .expect("reserved capacity admits an ordinary request");
+        drop(ordinary_one);
+        let health_response = route_round_trip(
+            b"GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            Arc::clone(&total),
+            Arc::clone(&broker),
+            Arc::clone(&sse),
+        );
+        assert!(health_response.starts_with(b"HTTP/1.1 200 OK\r\n"));
+        assert!(
+            health_response
+                .windows(HEALTH_BODY.len())
+                .any(|window| window == HEALTH_BODY),
+            "ordinary health route remains available while SSE is full"
+        );
+
+        let excess_sse_response = route_round_trip(
+            b"GET /api/jobs/events HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer test\r\n\r\n",
+            Arc::clone(&total),
+            Arc::clone(&broker),
+            Arc::clone(&sse),
+        );
+        assert!(excess_sse_response.starts_with(b"HTTP/1.1 503 Service Unavailable\r\n"));
+        assert!(
+            excess_sse_response
+                .windows(SERVICE_UNAVAILABLE_BODY.len())
+                .any(|window| window == SERVICE_UNAVAILABLE_BODY),
+            "excess authenticated SSE is refused at the route boundary"
+        );
+
+        drop(sse_one);
+        drop(sse_two);
+        drop(sse_total_one);
+        drop(sse_total_two);
+        assert_eq!(sse.active_count(), 0);
+        assert_eq!(total.active_count(), 0);
+        let recovered = sse
+            .try_acquire()
+            .expect("SSE capacity recovers on disconnect");
+        drop(recovered);
+    }
+
+    #[test]
+    fn idle_initial_connections_are_bounded_by_total_pre_auth_capacity() {
+        let admission = Arc::new(ConnectionAdmission::new(1));
+        let permit = admission
+            .try_acquire()
+            .expect("first idle socket is bounded");
+        assert!(
+            admission.try_acquire().is_none(),
+            "a second idle unauthenticated socket cannot exceed the pre-auth cap"
+        );
+        drop(permit);
+        assert_eq!(admission.active_count(), 0);
     }
 
     #[test]
