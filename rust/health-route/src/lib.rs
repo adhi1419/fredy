@@ -4,6 +4,10 @@ use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::str;
 
+pub mod auth;
+
+use auth::{parse_bearer, AuthBackend, AuthFailure, FirebaseAuthenticator};
+
 /// The port used when `PORT` is missing or is not a valid non-zero port.
 pub const DEFAULT_PORT: u16 = 9998;
 /// The address used by the executable so Cloud Run can reach the listener.
@@ -16,6 +20,7 @@ const BAD_REQUEST_BODY: &[u8] = br#"{"error":"Bad request"}"#;
 const CORS_ORIGIN_DENIED_BODY: &[u8] = br#"{"error":"CORS origin denied"}"#;
 const CORS_METHOD_DENIED_BODY: &[u8] = br#"{"error":"CORS method denied"}"#;
 const CORS_PREFLIGHT_DENIED_BODY: &[u8] = br#"{"error":"CORS preflight denied"}"#;
+const INTERNAL_ERROR_BODY: &[u8] = br#"{"error":"Internal Server Error"}"#;
 const MAX_REQUEST_BYTES: usize = 8 * 1024;
 const JSON_CONTENT_TYPE: &str = "application/json; charset=utf-8";
 const ALLOWED_METHODS: [&str; 5] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"];
@@ -95,6 +100,7 @@ struct HttpRequest<'a> {
     origin: Option<&'a str>,
     requested_method: Option<&'a str>,
     requested_headers: Option<&'a str>,
+    authorization_values: Vec<&'a str>,
 }
 
 /// Resolves a request without request headers, retaining the original health/fallback API.
@@ -115,10 +121,12 @@ pub fn response_for_with_config(
             origin: None,
             requested_method: None,
             requested_headers: None,
+            authorization_values: Vec::new(),
         },
         firebase_web_config,
         None,
         false,
+        None,
     )
 }
 
@@ -127,20 +135,15 @@ fn response_for_request(
     firebase_web_config: Option<&str>,
     frontend_origin: Option<&str>,
     production: bool,
+    auth_backend: Option<&dyn AuthBackend>,
 ) -> HttpResponse {
-    if request.target == "/api/auth/config" {
-        let response = if request.method == "GET" {
-            auth_config_response(firebase_web_config).with_cors(None)
-        } else {
-            HttpResponse::json("HTTP/1.1 404 Not Found", NOT_FOUND_BODY)
-        };
-        return apply_cors(request, response, frontend_origin, production);
-    }
-
-    match (request.method, request.target) {
+    let response = match (request.method, request.target) {
+        ("GET", "/api/auth/config") => auth_config_response(firebase_web_config),
+        ("GET", "/api/auth/me") => auth_me_response(&request, auth_backend),
         ("GET", "/health") => HttpResponse::json("HTTP/1.1 200 OK", HEALTH_BODY),
         _ => HttpResponse::json("HTTP/1.1 404 Not Found", NOT_FOUND_BODY),
-    }
+    };
+    apply_cors(request, response, frontend_origin, production)
 }
 
 fn auth_config_response(firebase_web_config: Option<&str>) -> HttpResponse {
@@ -152,6 +155,54 @@ fn auth_config_response(firebase_web_config: Option<&str>) -> HttpResponse {
     }))
     .unwrap_or_else(|_| br#"{"enabled":false,"firebaseConfig":null}"#.to_vec());
     HttpResponse::json("HTTP/1.1 200 OK", body)
+}
+
+fn auth_me_response(
+    request: &HttpRequest<'_>,
+    auth_backend: Option<&dyn AuthBackend>,
+) -> HttpResponse {
+    let token = match parse_bearer(&request.authorization_values) {
+        Ok(token) => token,
+        Err(failure) => return auth_failure_response(failure),
+    };
+    let Some(auth_backend) = auth_backend else {
+        return auth_failure_response(AuthFailure::Dependency);
+    };
+    match auth_backend.authenticate(token) {
+        Ok(user) => HttpResponse::json(
+            "HTTP/1.1 200 OK",
+            serde_json::to_vec(&json!({
+                "userId": user.user_id,
+                "username": user.username,
+                "isAdmin": user.is_admin,
+            }))
+            .unwrap_or_else(|_| INTERNAL_ERROR_BODY.to_vec()),
+        ),
+        Err(failure) => auth_failure_response(failure),
+    }
+}
+
+fn auth_failure_response(failure: AuthFailure) -> HttpResponse {
+    match failure {
+        AuthFailure::InvalidAuthorization => HttpResponse::json(
+            "HTTP/1.1 401 Unauthorized",
+            br#"{"reason":"invalid authorization"}"#,
+        ),
+        AuthFailure::InvalidToken => HttpResponse::json(
+            "HTTP/1.1 401 Unauthorized",
+            br#"{"reason":"invalid token"}"#,
+        ),
+        AuthFailure::InvalidClaims => HttpResponse::json(
+            "HTTP/1.1 401 Unauthorized",
+            br#"{"reason":"invalid token claims"}"#,
+        ),
+        AuthFailure::NotAllowed => {
+            HttpResponse::json("HTTP/1.1 403 Forbidden", br#"{"reason":"not allowed"}"#)
+        }
+        AuthFailure::Dependency => {
+            HttpResponse::json("HTTP/1.1 500 Internal Server Error", INTERNAL_ERROR_BODY)
+        }
+    }
 }
 
 fn apply_cors(
@@ -236,6 +287,7 @@ fn parse_request(request: &[u8]) -> Option<HttpRequest<'_>> {
     let mut origin = None;
     let mut requested_method = None;
     let mut requested_headers = None;
+    let mut authorization_values = Vec::new();
     for line in lines {
         let line = line.trim_end_matches('\r');
         if line.is_empty() {
@@ -247,6 +299,7 @@ fn parse_request(request: &[u8]) -> Option<HttpRequest<'_>> {
             "origin" => origin = Some(value),
             "access-control-request-method" => requested_method = Some(value),
             "access-control-request-headers" => requested_headers = Some(value),
+            "authorization" => authorization_values.push(value),
             _ => {}
         }
     }
@@ -256,6 +309,7 @@ fn parse_request(request: &[u8]) -> Option<HttpRequest<'_>> {
         origin,
         requested_method,
         requested_headers,
+        authorization_values,
     })
 }
 
@@ -264,34 +318,72 @@ pub fn serve_connection(stream: TcpStream) -> io::Result<()> {
     let firebase_web_config = env::var("FIREBASE_WEB_CONFIG").ok();
     let frontend_origin = env::var("FRONTEND_ORIGIN").ok();
     let production = matches!(env::var("NODE_ENV").as_deref(), Ok("production"));
-    serve_connection_with_config(
+    let auth_backend = FirebaseAuthenticator::from_environment().ok();
+    serve_connection_with_auth_config(
         stream,
         firebase_web_config.as_deref(),
         frontend_origin.as_deref(),
         production,
+        auth_backend
+            .as_ref()
+            .map(|backend| backend as &dyn AuthBackend),
     )
 }
 
 /// Handles one HTTP connection with explicit configuration for deterministic parity tests.
 pub fn serve_connection_with_config(
+    stream: TcpStream,
+    firebase_web_config: Option<&str>,
+    frontend_origin: Option<&str>,
+    production: bool,
+) -> io::Result<()> {
+    serve_connection_with_auth_config(
+        stream,
+        firebase_web_config,
+        frontend_origin,
+        production,
+        None,
+    )
+}
+
+/// Handles one HTTP connection with an injectable authentication backend.
+pub fn serve_connection_with_auth_config(
     mut stream: TcpStream,
     firebase_web_config: Option<&str>,
     frontend_origin: Option<&str>,
     production: bool,
+    auth_backend: Option<&dyn AuthBackend>,
 ) -> io::Result<()> {
     let mut request = [0_u8; MAX_REQUEST_BYTES];
     let bytes_read = stream.read(&mut request)?;
     let response = parse_request(&request[..bytes_read]).map_or_else(
         || HttpResponse::json("HTTP/1.1 400 Bad Request", BAD_REQUEST_BODY),
-        |request| response_for_request(request, firebase_web_config, frontend_origin, production),
+        |request| {
+            response_for_request(
+                request,
+                firebase_web_config,
+                frontend_origin,
+                production,
+                auth_backend,
+            )
+        },
     );
     response.write_to(&mut stream)
 }
 
 /// Serves connections serially until the listener returns an accept error.
 pub fn serve_listener(listener: TcpListener) -> io::Result<()> {
+    let auth_backend = FirebaseAuthenticator::from_environment().ok();
     for stream in listener.incoming() {
-        serve_connection(stream?)?;
+        serve_connection_with_auth_config(
+            stream?,
+            env::var("FIREBASE_WEB_CONFIG").ok().as_deref(),
+            env::var("FRONTEND_ORIGIN").ok().as_deref(),
+            matches!(env::var("NODE_ENV").as_deref(), Ok("production")),
+            auth_backend
+                .as_ref()
+                .map(|backend| backend as &dyn AuthBackend),
+        )?;
     }
     Ok(())
 }
@@ -323,7 +415,7 @@ mod tests {
         assert_eq!(response.body, HEALTH_BODY);
         assert_eq!(
             bytes,
-            b"HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 15\r\nConnection: close\r\n\r\n{\"status\":\"ok\"}"
+            b"HTTP/1.1 200 OK\r\nVary: Origin\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 15\r\nConnection: close\r\n\r\n{\"status\":\"ok\"}"
         );
     }
 
