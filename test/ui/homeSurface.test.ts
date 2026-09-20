@@ -137,4 +137,20 @@ describe('Home production surface contract', () => {
     expect(homeStyles).not.toMatch(/#[0-9a-f]{3,8}/i);
     expect(homeSource).not.toMatch(/#[0-9a-f]{3,8}/i);
   });
+
+  it('paints the activity pills with the forest/sage semantic roles', () => {
+    // The activity pill scope: inactive text is Fredy's sage/green accent, the selected pill is the
+    // deep forest solid fill with white (on-accent) text. All expressed as tokens, no literals.
+    const activityScope = homeStyles.slice(
+      homeStyles.indexOf('&__activities {'),
+      homeStyles.indexOf('&__sort-provider'),
+    );
+    expect(activityScope).toMatch(/button\s*{[^}]*color:\s*@color-accent;/s);
+    expect(activityScope).toMatch(/&\.is-selected\s*{[^}]*background:\s*@color-accent-fill;/s);
+    expect(activityScope).toMatch(/&\.is-selected\s*{[^}]*color:\s*@color-on-accent;/s);
+    // The white-on-forest foreground token is aliased in tokens.less onto a themed custom property.
+    expect(fs.readFileSync(path.join(root, 'ui/src/tokens.less'), 'utf8')).toContain(
+      '@color-on-accent: var(--f-on-accent);',
+    );
+  });
 });

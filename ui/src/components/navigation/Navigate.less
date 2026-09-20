@@ -73,10 +73,12 @@
 }
 
 .fredy-shell-nav__account-avatar {
+  position: relative;
   display: grid;
   width: 32px;
   height: 32px;
   place-items: center;
+  overflow: hidden;
   border: 1px solid @color-border;
   border-radius: 50%;
   background: @color-accent-fill;
@@ -86,6 +88,17 @@
   font-weight: 900;
   line-height: 1;
   letter-spacing: 0.02em;
+}
+
+// The Firebase profile photo covers the initials when it loads. Initials stay underneath as the
+// fallback for a missing, unsafe, or failed image, so nothing has to toggle to reveal them.
+.fredy-shell-nav__account-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
@@ -208,10 +221,6 @@ body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
 
   .fredy-shell-nav__account-button {
     min-width: 44px;
-  }
-
-  .fredy-shell-nav__account-label {
-    display: none;
   }
 
   .fredy-shell-nav__mobile-primary {

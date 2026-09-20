@@ -42,7 +42,7 @@ import DebugLoggingBanner from './components/debug/DebugLoggingBanner.jsx';
 import DemoBanner from './components/demo/DemoBanner.jsx';
 import { LEGACY_REDIRECTS } from './services/routes/legacyRedirects.js';
 import { applyTheme, normalizeTheme } from './services/theme/theme.js';
-import { signOutFirebase, subscribeToAuthState } from './services/auth/firebaseAuth.js';
+import { signOutFirebase, subscribeToAuthState, safePhotoUrl } from './services/auth/firebaseAuth.js';
 import ApplicantProfileOnboardingPage from './views/onboarding/ApplicantProfileOnboardingPage.jsx';
 import {
   APPLICANT_PROFILE_ONBOARDING_PATH,
@@ -105,6 +105,12 @@ export default function FredyApp() {
    * the empty values it saw and never recovered.
    */
   const initInFlight = React.useRef(false);
+  /**
+   * The signed-in Firebase user's profile photo, sourced from Firebase auth state (photoURL) rather
+   * than the server-side user record. Held as a safe HTTPS URL or null; the account trigger renders
+   * initials whenever it is null.
+   */
+  const [accountPhotoUrl, setAccountPhotoUrl] = React.useState<string | null>(null);
   const currentUser = useSelector<FredyState, FredyUser | null>((state) => state.user.currentUser);
   const settings = useSelector<FredyState, FredyState['generalSettings']['settings']>(
     (state) => state.generalSettings.settings,
@@ -188,6 +194,7 @@ export default function FredyApp() {
   // A Firebase state change to null is authoritative for logout, including logout in another tab.
   useEffect(() => {
     return subscribeToAuthState((firebaseUser) => {
+      setAccountPhotoUrl(safePhotoUrl(firebaseUser?.photoURL));
       if (!firebaseUser) actions.user.resetCurrentUser();
     });
   }, [actions]);
@@ -233,6 +240,7 @@ export default function FredyApp() {
             <Navigation
               currentUser={currentUser}
               isAdmin={isAdmin()}
+              photoUrl={accountPhotoUrl}
               primaryVisible={!onboardingDecision.requiresSetup}
             />
             <Layout className="app__main">

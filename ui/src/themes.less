@@ -31,6 +31,9 @@
   --f-accent-fill: #2f7d5d;
   --f-accent-dim: #1b3023;
   --f-accent-glow: rgb(147 196 165 / 10%);
+  // Foreground for text/icons sitting on the solid forest fill. White in both themes because the
+  // fill is a deep forest in both; the required ratio is asserted in test/ui/theme.test.js.
+  --f-on-accent: #ffffff;
 
   // Text
   --f-text: #eee8da;
@@ -107,6 +110,7 @@ body[theme-mode='light'] {
   --f-accent-fill: #1f624c;
   --f-accent-dim: #dce9df;
   --f-accent-glow: rgb(31 98 76 / 8%);
+  --f-on-accent: #ffffff;
 
   // Text
   --f-text: #1e2922;

@@ -24,12 +24,14 @@ const ICONS: Record<PrimaryDestination['key'], ElementType> = {
 interface NavigationProps {
   currentUser?: AccountIdentity | null;
   isAdmin?: boolean;
+  photoUrl?: string | null;
   primaryVisible?: boolean;
 }
 
 export default function Navigation({
   currentUser,
   isAdmin = false,
+  photoUrl = null,
   primaryVisible = true,
 }: NavigationProps): ReactNode {
   const t = useTranslation();
@@ -81,7 +83,12 @@ export default function Navigation({
           {primaryVisible && PRIMARY_NAV.map((item) => primaryLink(item))}
         </nav>
         <div className="fredy-shell-nav__account-wrap">
-          <MyAccountWireframeMenu currentUser={currentUser} isAdmin={isAdmin} primaryVisible={primaryVisible} />
+          <MyAccountWireframeMenu
+            currentUser={currentUser}
+            isAdmin={isAdmin}
+            photoUrl={photoUrl}
+            primaryVisible={primaryVisible}
+          />
         </div>
       </header>
       {primaryVisible && (

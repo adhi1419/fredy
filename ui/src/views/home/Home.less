@@ -153,6 +153,18 @@
   &__activities {
     overflow-x: auto;
     max-width: 100%;
+
+    // Fredy's forest/sage semantic roles: an inactive pill reads as sage/green accent text, and the
+    // selected pill is the deep forest solid fill with white (on-accent) text. Kept distinct from
+    // the neutral view-switch above, whose selected state is a plain accent chip.
+    button {
+      color: @color-accent;
+
+      &.is-selected {
+        background: @color-accent-fill;
+        color: @color-on-accent;
+      }
+    }
   }
 
   &__sort-provider {

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
-import { signOutFirebase } from '../../services/auth/firebaseAuth.js';
+import { signOutFirebase, safePhotoUrl } from '../../services/auth/firebaseAuth.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import { useActions, useSelector } from '../../services/state/store.js';
 import { ACCOUNT_NAV } from '../navigation/navModel.js';
@@ -37,6 +37,7 @@ interface AccountMenuState {
 interface MyAccountWireframeMenuProps {
   currentUser?: AccountIdentity | null;
   isAdmin?: boolean;
+  photoUrl?: string | null;
   primaryVisible?: boolean;
 }
 
@@ -86,6 +87,7 @@ export function accountDestinationPaths(isAdmin: boolean, primaryVisible: boolea
 export default function MyAccountWireframeMenu({
   currentUser,
   isAdmin = false,
+  photoUrl = null,
   primaryVisible = true,
 }: MyAccountWireframeMenuProps): ReactNode {
   const t = useTranslation();
@@ -100,6 +102,13 @@ export default function MyAccountWireframeMenu({
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const previousPathRef = useRef(location.pathname);
   const [accountOpen, setAccountOpen] = useState(false);
+  // A rendered photo that later fails to load (revoked URL, network error) falls back to initials.
+  // Reset whenever the source URL changes so a new valid photo is given a fresh chance to load.
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const resolvedPhoto = safePhotoUrl(photoUrl);
+  useEffect(() => {
+    setPhotoFailed(false);
+  }, [resolvedPhoto]);
 
   const closeAccountMenu = useCallback((restoreFocus = false) => {
     setAccountOpen(false);
@@ -174,9 +183,17 @@ export default function MyAccountWireframeMenu({
         onClick={() => setAccountOpen((open) => !open)}
       >
         <span className="fredy-shell-nav__account-avatar" aria-hidden="true">
+          {resolvedPhoto && !photoFailed && (
+            <img
+              className="fredy-shell-nav__account-photo"
+              src={resolvedPhoto}
+              alt=""
+              referrerPolicy="no-referrer"
+              onError={() => setPhotoFailed(true)}
+            />
+          )}
           {accountInitials(username)}
         </span>
-        <span className="fredy-shell-nav__account-label">{t('nav.account')}</span>
       </button>
       {accountOpen && (
         <div
