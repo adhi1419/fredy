@@ -1150,5 +1150,20 @@
   "settings.inquiryProfile.deutscheWohnenPrivacyConsent": "I agree that Fredy may send my generated inquiry, name, phone number, income categories and signed-in email to Deutsche Wohnen/Vonovia for a listing application.",
   "settings.inquiryProfile.howogeTitle": "HOWOGE via InBerlinWohnen",
   "settings.inquiryProfile.howogeHelp": "HOWOGE accepts only name and email, then sends a double-opt-in confirmation email. It has no custom-message field. Fredy treats the accepted request as Applied; you must still confirm the email.",
-  "settings.inquiryProfile.howogeApplicationConsent": "I agree that Fredy may submit my name and signed-in email to HOWOGE for matching listings and that each accepted request counts as Applied. I understand that HOWOGE sends a confirmation email."
+  "settings.inquiryProfile.howogeApplicationConsent": "I agree that Fredy may submit my name and signed-in email to HOWOGE for matching listings and that each accepted request counts as Applied. I understand that HOWOGE sends a confirmation email.",
+  "onboarding.applicantProfile.kicker": "First-time setup",
+  "onboarding.applicantProfile.title": "Tell Fredy who is applying",
+  "onboarding.applicantProfile.subtitle": "Add the facts Fredy may use for your applicant profile before you start searching.",
+  "onboarding.applicantProfile.identityTitle": "Your name and address",
+  "onboarding.applicantProfile.identityHelp": "These common facts are required explicitly. Fredy never derives them from inquiry text or provider responses.",
+  "onboarding.applicantProfile.streetPlaceholder": "e.g. Main Street",
+  "onboarding.applicantProfile.houseNumberPlaceholder": "e.g. 1",
+  "onboarding.applicantProfile.postcodePlaceholder": "e.g. 10115",
+  "onboarding.applicantProfile.cityPlaceholder": "e.g. Berlin",
+  "onboarding.applicantProfile.providerNoteTitle": "Provider details stay in My account",
+  "onboarding.applicantProfile.providerNoteBody": "Employment, income, household details and provider consents are not guessed here. Add or change those provider-specific details later under My account when you are ready.",
+  "onboarding.applicantProfile.validation": "Enter your full name and complete address before continuing.",
+  "onboarding.applicantProfile.save": "Save and continue",
+  "onboarding.applicantProfile.saveError": "Your profile could not be saved. Check the fields and try again.",
+  "onboarding.applicantProfile.loading": "Loading your profile…"
 }

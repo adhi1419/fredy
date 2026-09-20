@@ -1135,5 +1135,20 @@
   "settings.inquiryProfile.deutscheWohnenPrivacyConsent": "Fredy'nin oluşturulan başvurumu, adımı, telefon numaramı, gelir kategorilerimi ve oturum e-postamı bir ilan başvurusu için Deutsche Wohnen/Vonovia'ya göndermesini kabul ediyorum.",
   "settings.inquiryProfile.howogeTitle": "InBerlinWohnen üzerinden HOWOGE",
   "settings.inquiryProfile.howogeHelp": "HOWOGE yalnızca ad ve e-posta kabul eder, ardından çift onay e-postası gönderir. Özel mesaj alanı yoktur. Fredy kabul edilen isteği Başvuruldu olarak değerlendirir; e-postayı yine de onaylamalısın.",
-  "settings.inquiryProfile.howogeApplicationConsent": "Fredy'nin adımı ve oturum açtığım e-postayı uygun ilanlar için HOWOGE'ye göndermesini ve kabul edilen her isteği Başvuruldu saymasını kabul ediyorum. HOWOGE'nin bir onay e-postası göndereceğini anlıyorum."
+  "settings.inquiryProfile.howogeApplicationConsent": "Fredy'nin adımı ve oturum açtığım e-postayı uygun ilanlar için HOWOGE'ye göndermesini ve kabul edilen her isteği Başvuruldu saymasını kabul ediyorum. HOWOGE'nin bir onay e-postası göndereceğini anlıyorum.",
+  "onboarding.applicantProfile.kicker": "İlk kurulum",
+  "onboarding.applicantProfile.title": "Başvuracak kişiyi Fredy'ye anlat",
+  "onboarding.applicantProfile.subtitle": "Aramaya başlamadan önce Fredy'nin başvuru profilin için kullanabileceği bilgileri ekle.",
+  "onboarding.applicantProfile.identityTitle": "Adın ve adresin",
+  "onboarding.applicantProfile.identityHelp": "Bu ortak bilgiler açıkça istenir. Fredy bunları başvuru metinlerinden veya sağlayıcı yanıtlarından çıkarmaz.",
+  "onboarding.applicantProfile.streetPlaceholder": "ör. Ana Cadde",
+  "onboarding.applicantProfile.houseNumberPlaceholder": "ör. 1",
+  "onboarding.applicantProfile.postcodePlaceholder": "ör. 10115",
+  "onboarding.applicantProfile.cityPlaceholder": "ör. Berlin",
+  "onboarding.applicantProfile.providerNoteTitle": "Sağlayıcı ayrıntıları Hesabım'da kalır",
+  "onboarding.applicantProfile.providerNoteBody": "Çalışma, gelir, hane bilgileri ve sağlayıcı izinleri burada tahmin edilmez. Hazır olduğunda bu sağlayıcıya özel bilgileri Hesabım bölümünden ekleyebilir veya değiştirebilirsin.",
+  "onboarding.applicantProfile.validation": "Devam etmeden önce tam adını ve eksiksiz adresini gir.",
+  "onboarding.applicantProfile.save": "Kaydet ve devam et",
+  "onboarding.applicantProfile.saveError": "Profilin kaydedilemedi. Alanları kontrol edip tekrar dene.",
+  "onboarding.applicantProfile.loading": "Profilin yükleniyor…"
 }

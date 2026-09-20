@@ -19,7 +19,7 @@ function setup() {
 
 describe('user settings state domain', () => {
   it('starts with the aggregate store settings shape', () => {
-    expect(createUserSettingsState()).toEqual({ settings: {}, loaded: false });
+    expect(createUserSettingsState()).toEqual({ settings: {}, loaded: false, loadFailed: false });
   });
 
   it('maps the settings response and marks it loaded', async () => {
@@ -30,7 +30,7 @@ describe('user settings state domain', () => {
     await effects.getUserSettings();
 
     expect(get).toHaveBeenCalledWith('/api/user/settings');
-    expect(state.userSettings).toEqual({ settings, loaded: true });
+    expect(state.userSettings).toEqual({ settings, loaded: true, loadFailed: false });
   });
 
   it('marks settings loaded when the initial request fails', async () => {
@@ -39,7 +39,7 @@ describe('user settings state domain', () => {
 
     await effects.getUserSettings();
 
-    expect(state.userSettings).toEqual({ settings: {}, loaded: true });
+    expect(state.userSettings).toEqual({ settings: {}, loaded: true, loadFailed: true });
   });
 
   it('preserves valid write payloads and local response mapping', async () => {
@@ -120,4 +120,36 @@ describe('user settings state domain', () => {
     expect(refreshFinanceSummary).toHaveBeenCalledTimes(2);
     expect(state.userSettings.settings.finance_profile).toBe(stored);
   });
+});
+
+it('sends common validation only for onboarding and maps the server-persisted profile', async () => {
+  const { state, post, effects } = setup();
+  const submitted = {
+    name: 'Alice Example',
+    street: 'Main Street',
+    houseNumber: '1',
+    postcode: '10115',
+    city: 'Berlin',
+  };
+  const stored = { ...submitted, deutscheWohnenPrivacyAccepted: false };
+  post.mockResolvedValue({ status: 200, json: { success: true, inquiry_profile: stored } });
+
+  await expect(effects.saveInquiryProfile(submitted, { validateCommon: true })).resolves.toEqual(stored);
+
+  expect(post).toHaveBeenCalledWith('/api/user/settings/inquiry-profile', {
+    inquiry_profile: submitted,
+    validate_common: true,
+  });
+  expect(state.userSettings.settings.inquiry_profile).toEqual(stored);
+});
+
+it('does not update local profile state when the validated save fails', async () => {
+  const { state, post, effects } = setup();
+  post.mockResolvedValue({ status: 400, json: { error: 'Common applicant profile fields are incomplete.' } });
+
+  await expect(effects.saveInquiryProfile({ name: 'Alice Example' }, { validateCommon: true })).rejects.toEqual({
+    status: 400,
+    json: { error: 'Common applicant profile fields are incomplete.' },
+  });
+  expect(state.userSettings.settings.inquiry_profile).toBeUndefined();
 });
