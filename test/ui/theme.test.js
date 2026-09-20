@@ -96,6 +96,115 @@ describe('themes.less', () => {
     return [...block.matchAll(/^\s*(--[\w-]+):/gm)].map((match) => match[1]).sort();
   }
 
+  /**
+   * Read the custom-property values declared inside one selector block.
+   *
+   * @param {string} selector
+   * @returns {Record<string, string>}
+   */
+  function valuesIn(selector) {
+    const start = source.indexOf(`${selector} {`);
+    expect(start, `${selector} block is missing`).toBeGreaterThanOrEqual(0);
+    const end = source.indexOf('\n}', start);
+    const block = source.slice(start, end);
+    return Object.fromEntries(
+      [...block.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((match) => [match[1], match[2].trim()]),
+    );
+  }
+
+  /**
+   * Parse the solid hex colours used by the semantic foreground and background tokens.
+   *
+   * @param {string} value
+   * @returns {[number, number, number]}
+   */
+  function parseHex(value) {
+    const hex = value.trim().slice(1);
+    const expanded = hex.length === 3 ? [...hex].map((part) => part + part).join('') : hex;
+    expect(value, `expected a hex colour, got ${value}`).toMatch(/^#[0-9a-f]{3,6}$/i);
+    return [0, 2, 4].map((offset) => parseInt(expanded.slice(offset, offset + 2), 16));
+  }
+
+  /**
+   * Calculate the WCAG relative luminance contrast ratio for two solid colours.
+   *
+   * @param {string} foreground
+   * @param {string} background
+   * @returns {number}
+   */
+  function contrastRatio(foreground, background) {
+    const luminance = (value) => {
+      const channels = parseHex(value).map((channel) => channel / 255);
+      const linear = channels.map((channel) =>
+        channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+      );
+      return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+    };
+    const foregroundLuminance = luminance(foreground);
+    const backgroundLuminance = luminance(background);
+    return (
+      (Math.max(foregroundLuminance, backgroundLuminance) + 0.05) /
+      (Math.min(foregroundLuminance, backgroundLuminance) + 0.05)
+    );
+  }
+
+  const contrastRequirements = [
+    ['body text on base', '--f-text', '--f-base', 4.5],
+    ['body text on surface', '--f-text', '--f-surface', 4.5],
+    ['muted text on base', '--f-muted', '--f-base', 4.5],
+    ['muted text on surface', '--f-muted', '--f-surface', 4.5],
+    ['accent text on base', '--f-accent', '--f-base', 4.5],
+    ['accent text on surface', '--f-accent', '--f-surface', 4.5],
+    ['primary button foreground on accent fill', '#ffffff', '--f-accent-fill', 4.5],
+    ['success text on base', '--f-success', '--f-base', 4.5],
+    ['error text on base', '--f-error', '--f-base', 4.5],
+    ['warning text on base', '--f-warning', '--f-base', 4.5],
+    ['info text on base', '--f-info', '--f-base', 4.5],
+    ['focus outline on base', '--f-accent', '--f-base', 3],
+    ['selected navigation on base', '--f-accent', '--f-base', 4.5],
+  ];
+
+  it('keeps the semantic palette aliases wired to the solid-control fill', () => {
+    const tokenSource = fs.readFileSync(path.join(uiSrc, 'tokens.less'), 'utf-8');
+    const indexSource = fs.readFileSync(path.join(uiSrc, 'Index.less'), 'utf-8');
+    expect(tokenSource).toContain('@color-accent-fill: var(--f-accent-fill);');
+    expect(indexSource).toContain('--semi-color-primary: @color-accent-fill !important;');
+  });
+
+  it('keeps required light and dark semantic pairs above WCAG contrast thresholds', () => {
+    for (const selector of [':root', "body[theme-mode='light']"]) {
+      const values = valuesIn(selector);
+      for (const [label, foregroundToken, backgroundToken, minimum] of contrastRequirements) {
+        const foreground = foregroundToken.startsWith('--') ? values[foregroundToken] : foregroundToken;
+        const background = values[backgroundToken];
+        const ratio = contrastRatio(foreground, background);
+        expect(ratio, `${selector}: ${label}`).toBeGreaterThanOrEqual(minimum);
+      }
+    }
+  });
+
+  it('keeps non-DOM chart fallbacks synchronized with the dark theme tokens', () => {
+    const chartSource = fs.readFileSync(path.join(uiSrc, 'components/cards/chartTheme.js'), 'utf8');
+    const dark = valuesIn(':root');
+    for (const token of [
+      '--f-accent',
+      '--f-border',
+      '--f-border-bright',
+      '--f-muted',
+      '--f-text',
+      '--f-elevated',
+      '--f-blue-text',
+      '--f-green-text',
+      '--f-purple-text',
+      '--f-orange-text',
+      '--f-warning',
+      '--f-success',
+      '--f-error',
+    ]) {
+      expect(chartSource, `${token} chart fallback`).toContain(`token('${token}', '${dark[token]}')`);
+    }
+  });
+
   it('defines every token in both themes', () => {
     // The failure this guards against is silent: a token added to one block only inherits whatever
     // the other theme happened to leave behind, and nothing looks wrong until someone switches.
@@ -118,7 +227,7 @@ describe('themes.less', () => {
      *  - scrims, and the hairlines drawn on them, where the surface underneath is a photograph and
      *    stays a photograph in both themes
      *  - `#000` used as a mask stencil, where the value is an on/off switch and not a colour
-     *  - white on the accent, which is dark red in both themes
+     *  - white on the dedicated forest control fill, whose contrast is asserted above
      *  - the dead `.chartCard` block, which renders nowhere (only its `__no__data` child is used)
      */
     const allowed = [

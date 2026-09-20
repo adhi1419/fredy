@@ -50,8 +50,8 @@ const FONT_UI = "'Outfit', system-ui, sans-serif";
 const FONT_MONO = "'JetBrains Mono', monospace";
 
 /**
- * Series colours, accent first so the primary scenario is always Fredy red and every other
- * scenario reads as a comparison against it.
+ * Series colours, forest accent first so the primary scenario is always recognizably Fredy and every
+ * other scenario reads as a comparison against it.
  *
  * A function rather than a constant: the colours belong to whichever theme is on screen when the
  * chart draws, and an array captured at import time would be the wrong one after a switch.
@@ -80,13 +80,13 @@ export function chartPalette() {
  */
 export const VERDICT_COLORS = {
   get affordable() {
-    return token('--f-success', '#4bab86');
+    return token('--f-success', '#9bcfae');
   },
   get stretch() {
-    return token('--f-warning', '#d8a34a');
+    return token('--f-warning', '#dfb96f');
   },
   get unaffordable() {
-    return token('--f-error', '#d4707c');
+    return token('--f-error', '#e3a098');
   },
 };
 
@@ -100,43 +100,43 @@ export const VERDICT_COLORS = {
  */
 export const CHART_COLORS = {
   get ACCENT() {
-    return token('--f-accent', '#c0564a');
+    return token('--f-accent', '#93c4a5');
   },
   get GRID() {
-    return token('--f-border', '#2a2a2a');
+    return token('--f-border', '#2b322c');
   },
   get GRID_BRIGHT() {
-    return token('--f-border-bright', '#383838');
+    return token('--f-border-bright', '#465047');
   },
   get MUTED() {
-    return token('--f-muted', '#909090');
+    return token('--f-muted', '#a5aaa1');
   },
   get TEXT() {
-    return token('--f-text', '#efefef');
+    return token('--f-text', '#eee8da');
   },
   get ELEVATED() {
-    return token('--f-elevated', '#1e1e1e');
+    return token('--f-elevated', '#171b17');
   },
   get BLUE() {
-    return token('--f-blue-text', '#7ba7d4');
+    return token('--f-blue-text', '#9cc7df');
   },
   get GREEN() {
-    return token('--f-green-text', '#6cb597');
+    return token('--f-green-text', '#9bcfae');
   },
   get PURPLE() {
-    return token('--f-purple-text', '#9d8fc9');
+    return token('--f-purple-text', '#b8a9d7');
   },
   get ORANGE() {
-    return token('--f-orange-text', '#d69460');
+    return token('--f-orange-text', '#e2aa70');
   },
   get WARNING() {
-    return token('--f-warning', '#d8a34a');
+    return token('--f-warning', '#dfb96f');
   },
   get SUCCESS() {
-    return token('--f-success', '#4bab86');
+    return token('--f-success', '#9bcfae');
   },
   get ERROR() {
-    return token('--f-error', '#d4707c');
+    return token('--f-error', '#e3a098');
   },
   FONT_UI,
   FONT_MONO,
