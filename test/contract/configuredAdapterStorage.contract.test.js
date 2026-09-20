@@ -125,6 +125,76 @@ describe('configuredAdapterStorage contract', () => {
     });
   });
 
+  describe('getChannelsVisibleTo', () => {
+    // A second tenant to prove isolation: user-2 owns channels user-1 must never see unless shared.
+    const OWNER = { id: 'user-1', isAdmin: false };
+    const STRANGER = { id: 'user-2', isAdmin: false };
+    const ADMIN = { id: 'admin-1', isAdmin: true };
+
+    const seedForOther = (visibility, name) =>
+      channelStorage.upsertChannel(makeChannel({ userId: 'user-2', visibility, name }));
+
+    it('returns an empty array for a null user', async () => {
+      await channelStorage.upsertChannel(makeChannel({ visibility: 'everyone' }));
+      expect(await channelStorage.getChannelsVisibleTo(null)).toEqual([]);
+    });
+
+    it('gives an owner their own private channel', async () => {
+      const id = await channelStorage.upsertChannel(makeChannel({ userId: 'user-1', visibility: 'private' }));
+      const visible = await channelStorage.getChannelsVisibleTo(OWNER);
+      expect(visible.map((c) => c.id)).toEqual([id]);
+    });
+
+    it('hides another tenant private channel from a stranger', async () => {
+      await seedForOther('private', 'Other Private');
+      expect(await channelStorage.getChannelsVisibleTo(OWNER)).toEqual([]);
+    });
+
+    it('does not expose another tenant private channel to an admin (admin status is not visibility)', async () => {
+      await seedForOther('private', 'Other Private');
+      expect(await channelStorage.getChannelsVisibleTo(ADMIN)).toEqual([]);
+    });
+
+    it('shows an everyone channel to any tenant, including a stranger and an admin', async () => {
+      const id = await seedForOther('everyone', 'Shared With All');
+      expect((await channelStorage.getChannelsVisibleTo(OWNER)).map((c) => c.id)).toEqual([id]);
+      expect((await channelStorage.getChannelsVisibleTo(ADMIN)).map((c) => c.id)).toEqual([id]);
+    });
+
+    it('shows an admin-visibility channel to an admin but not to an ordinary tenant', async () => {
+      const id = await seedForOther('admin', 'Admin Only');
+      expect(await channelStorage.getChannelsVisibleTo(OWNER)).toEqual([]);
+      expect((await channelStorage.getChannelsVisibleTo(ADMIN)).map((c) => c.id)).toEqual([id]);
+    });
+
+    it('scopes a mixed set correctly per caller and preserves the name ordering of getAllChannels', async () => {
+      // Names chosen so the underlying getAllChannels order (by name) is deterministic.
+      const ownPrivate = await channelStorage.upsertChannel(
+        makeChannel({ userId: 'user-1', visibility: 'private', name: 'A own private' }),
+      );
+      const everyone = await seedForOther('everyone', 'B everyone');
+      const adminOnly = await seedForOther('admin', 'C admin');
+      await seedForOther('private', 'D other private');
+
+      const ownerView = (await channelStorage.getChannelsVisibleTo(OWNER)).map((c) => c.id);
+      expect(ownerView).toEqual([ownPrivate, everyone]);
+
+      const strangerView = (await channelStorage.getChannelsVisibleTo(STRANGER)).map((c) => c.name);
+      // user-2 owns everything except ownPrivate: sees its own private + admin + everyone, ordered by name.
+      expect(strangerView).toEqual(['B everyone', 'C admin', 'D other private']);
+
+      const adminView = (await channelStorage.getChannelsVisibleTo(ADMIN)).map((c) => c.id);
+      // Admin sees everyone + admin-visibility, but not either tenant's private channels.
+      expect(adminView).toEqual([everyone, adminOnly]);
+    });
+
+    it('leaves getAllChannels unscoped so job hydration still sees every channel', async () => {
+      await channelStorage.upsertChannel(makeChannel({ userId: 'user-1', visibility: 'private', name: 'One' }));
+      await seedForOther('private', 'Two');
+      expect((await channelStorage.getAllChannels()).length).toBe(2);
+    });
+  });
+
   describe('removeChannel', () => {
     it('deletes the channel so getChannel returns null', async () => {
       const id = await channelStorage.upsertChannel(makeChannel());

@@ -17,6 +17,18 @@ const channelStorageMock = {
   normaliseVisibility: (value) =>
     ['private', 'admin', 'everyone'].includes(value) ? value : channelStorageMock.VISIBILITY.PRIVATE,
   getAllChannels: vi.fn(async () => [...channels.values()].map(clone)),
+  getChannelsVisibleTo: vi.fn(async (user) => {
+    if (user == null) return [];
+    const isAdmin = user.isAdmin === true;
+    const userId = user.id ?? null;
+    return [...channels.values()]
+      .filter((channel) => {
+        if (userId != null && channel.userId === userId) return true;
+        if (channel.visibility === 'everyone') return true;
+        return channel.visibility === 'admin' && isAdmin;
+      })
+      .map(clone);
+  }),
   getChannel: vi.fn(async (id) => clone(channels.get(id) ?? null)),
   upsertChannel: vi.fn(async ({ id, userId, adapterId, name, fields = {}, visibility }) => {
     const existing = id ? channels.get(id) : null;
@@ -165,6 +177,28 @@ describe('notificationChannelRouter', () => {
       expect(body[0]).toMatchObject({ canEdit: false, isOwner: false });
     });
 
+    it('does not list another user private channel to an admin - admin status is not visibility', async () => {
+      await seed(); // u1, private
+      currentUser = ADMIN;
+      expect((await get('/api/notificationChannels')).json()).toHaveLength(0);
+    });
+
+    it('lists an admin-visibility channel to an admin but not to an ordinary user', async () => {
+      await seed({ visibility: 'admin' }); // owned by u1
+      currentUser = BOB;
+      expect((await get('/api/notificationChannels')).json()).toHaveLength(0);
+      currentUser = ADMIN;
+      const body = (await get('/api/notificationChannels')).json();
+      expect(body).toHaveLength(1);
+      expect(body[0]).toMatchObject({ visibility: 'admin', canEdit: false, isOwner: false });
+    });
+
+    it('never leaks field values in the list, not even on a shared channel', async () => {
+      await seed({ visibility: 'everyone' });
+      currentUser = BOB;
+      expect((await get('/api/notificationChannels')).json()[0].fields).toBeUndefined();
+    });
+
     it('counts the jobs using a channel', async () => {
       const id = await seed();
       jobs.set('j1', { id: 'j1', name: 'Job 1', notificationAdapter: [{ configuredAdapterId: id }] });
@@ -178,10 +212,19 @@ describe('notificationChannelRouter', () => {
       expect((await get(`/api/notificationChannels/${id}`)).json().fields).toEqual({ token: 'tok', chatId: '123' });
     });
 
-    it('reveals secrets to an admin', async () => {
-      const id = await seed();
+    it('is 403 for an admin on a private channel they do not own - admin status is not visibility', async () => {
+      const id = await seed(); // owned by u1, private
       currentUser = ADMIN;
-      expect((await get(`/api/notificationChannels/${id}`)).json().fields.token).toBe('tok');
+      expect((await get(`/api/notificationChannels/${id}`)).statusCode).toBe(403);
+    });
+
+    it('lets an admin read an admin-visibility channel but never reveals its secrets', async () => {
+      const id = await seed({ visibility: 'admin' }); // owned by u1
+      currentUser = ADMIN;
+      const response = await get(`/api/notificationChannels/${id}`);
+      expect(response.statusCode).toBe(200);
+      // Summary is visible; the secret comes back blanked because the admin is not the owner.
+      expect(response.json().fields).toEqual({ token: '', chatId: '123' });
     });
 
     it('blanks secrets for a non-owner who may only use the channel', async () => {
@@ -190,7 +233,7 @@ describe('notificationChannelRouter', () => {
       expect((await get(`/api/notificationChannels/${id}`)).json().fields).toEqual({ token: '', chatId: '123' });
     });
 
-    it('is 403 for a channel the caller cannot even use', async () => {
+    it('is 403 for a channel the caller cannot even see', async () => {
       const id = await seed();
       currentUser = BOB;
       expect((await get(`/api/notificationChannels/${id}`)).statusCode).toBe(403);
@@ -234,6 +277,12 @@ describe('notificationChannelRouter', () => {
       expect((await post('/api/notificationChannels', { id, name: 'Hijacked', fields: {} })).statusCode).toBe(403);
     });
 
+    it('does not let administrator status edit another owner channel', async () => {
+      const id = await seed({ visibility: 'admin' });
+      currentUser = ADMIN;
+      expect((await post('/api/notificationChannels', { id, name: 'Hijacked', fields: {} })).statusCode).toBe(403);
+    });
+
     it('keeps the adapter type when updating', async () => {
       const id = await seed();
       await post('/api/notificationChannels', { id, adapterId: 'slack', name: 'Family', fields: {} });
@@ -255,9 +304,8 @@ describe('notificationChannelRouter', () => {
       expect((await storage.getChannel(id)).fields).toEqual({ token: 'rotated', chatId: '123' });
     });
 
-    it('keeps an everyone channel everyone when an admin omits visibility', async () => {
+    it('keeps an everyone channel everyone when its owner omits visibility', async () => {
       const id = await seed({ visibility: 'everyone' });
-      currentUser = ADMIN;
       await post('/api/notificationChannels', { id, name: 'Family', fields: { token: 'tok', chatId: '123' } });
       expect((await storage.getChannel(id)).visibility).toBe('everyone');
     });
@@ -289,6 +337,12 @@ describe('notificationChannelRouter', () => {
     it('refuses for a non-owner', async () => {
       const id = await seed({ visibility: 'everyone' });
       currentUser = BOB;
+      expect((await del(`/api/notificationChannels/${id}`)).statusCode).toBe(403);
+    });
+
+    it('does not let administrator status delete another owner channel', async () => {
+      const id = await seed({ visibility: 'admin' });
+      currentUser = ADMIN;
       expect((await del(`/api/notificationChannels/${id}`)).statusCode).toBe(403);
     });
   });
