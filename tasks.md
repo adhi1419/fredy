@@ -91,5 +91,5 @@ The canonical tracker is current through PR #51.
 
 - [x] PR #45: add mandatory applicant-profile setup after first registration while keeping My account edit-only afterward — merged via rebase and deployed to Pages and Cloud Run successfully in 65 seconds; all live probes returned HTTP 200.
 - [x] Rewrite the customer README for the finished product — PR #50.
-- [ ] Capture final product screenshots only from the finished UI — delegated on `docs/final-production-screenshots`.
+- [ ] Capture final product screenshots only from the finished UI — implemented and parent-reviewed on `docs/final-production-screenshots`; publication pending.
 - [x] Create and link a separate developer/operator guide — PR #51.
