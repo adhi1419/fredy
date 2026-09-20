@@ -1,0 +1,95 @@
+@import '../../tokens.less';
+
+.myAccountWireframeMenu {
+  position: relative;
+
+  &__menu {
+    position: absolute;
+    top: calc(100% + @space-2);
+    right: 0;
+    z-index: 40;
+    width: min(340px, calc(100vw - @space-6));
+    overflow: hidden;
+    border: 1px solid @color-border-bright;
+    border-radius: @radius-card;
+    background: @color-elevated;
+    box-shadow: @shadow-lg;
+    color: @color-text;
+  }
+
+  &__head {
+    display: grid;
+    gap: 2px;
+    padding: @space-4;
+    border-bottom: 1px solid @color-border;
+
+    strong {
+      font-family: @font-ui;
+      font-size: @text-base;
+    }
+
+    span {
+      overflow-wrap: anywhere;
+      color: @color-muted;
+      font-family: @font-ui;
+      font-size: @text-sm;
+    }
+  }
+
+  &__group {
+    display: grid;
+    gap: @space-1;
+    padding: @space-2;
+    border-bottom: 1px solid @color-border;
+
+    button {
+      display: flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: space-between;
+      gap: @space-3;
+      padding: @space-2 @space-3;
+      border: 0;
+      border-radius: @radius-btn;
+      background: transparent;
+      color: @color-text;
+      font-family: @font-ui;
+      font-size: @text-sm;
+      text-align: left;
+      cursor: pointer;
+
+      &:hover {
+        background: @color-fill-1;
+      }
+
+      &:focus-visible {
+        outline: 2px solid @color-accent;
+        outline-offset: 1px;
+      }
+    }
+  }
+
+  &__signOut {
+    color: @color-error !important;
+  }
+
+  &__criticalNote {
+    display: grid;
+    gap: @space-1;
+    margin: @space-2;
+    padding: @space-3;
+    border: 1px solid @color-error;
+    border-radius: @radius-btn;
+    background: @color-error-dim;
+    color: @color-error;
+    font-family: @font-ui;
+    font-size: @text-sm;
+  }
+}
+
+@media (max-width: 768px) {
+  .myAccountWireframeMenu__menu {
+    right: -@space-1;
+    width: min(340px, calc(100vw - @space-4));
+  }
+}

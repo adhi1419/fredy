@@ -90,7 +90,7 @@ describe('applicant profile onboarding decision seam', () => {
 });
 
 describe('authenticated app route contract', () => {
-  const appSource = fs.readFileSync(path.resolve('ui/src/App.jsx'), 'utf8');
+  const appSource = fs.readFileSync(path.resolve('ui/src/App.tsx'), 'utf8');
 
   it('leaves login outside the authenticated onboarding gate', () => {
     expect(appSource).toContain('<Route path="/login" element={<Login />} />');

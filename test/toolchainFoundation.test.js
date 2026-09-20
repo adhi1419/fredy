@@ -43,10 +43,15 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/jobs/jobDraft.ts',
       'ui/src/services/jobs/jobSummary.ts',
       'ui/src/services/jobs/jobFilters.ts',
+      'ui/src/services/auth/firebaseAuth.d.ts',
       'ui/src/services/authenticatedTransport.ts',
       'ui/src/services/jobs/providerUrl.ts',
       'ui/src/services/home/homeViewState.ts',
       'ui/src/views/listings/mapUtils.ts',
+      'ui/src/App.tsx',
+      'ui/src/AppLegacyComponents.d.ts',
+      'ui/src/components/navigation/Navigation.tsx',
+      'ui/src/components/navigation/navModel.d.ts',
       'ui/src/views/home/Home.tsx',
       'ui/src/views/listings/ListingDetail.tsx',
       'ui/src/services/listings/listingFilters.ts',
@@ -59,6 +64,8 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/views/jobs/SavedSearchesIndex.tsx',
       'ui/src/views/jobs/savedSearchActions.ts',
       'ui/src/views/jobs/savedSearchesLegacy.d.ts',
+      'ui/src/views/settings/SettingsLayout.tsx',
+      'ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx',
       'ui/src/vite-env.d.ts',
     ]);
     const testConfig = JSON.parse(read('tsconfig.frontend-tests.json'));
@@ -67,6 +74,10 @@ describe('Bun and TypeScript foundation', () => {
     expect(testConfig.include).toEqual([
       'test/ui/finalResponsiveSlice.test.ts',
       'test/ui/homeSurface.test.ts',
+      'test/ui/applicantProfileOnboarding.test.ts',
+      'test/ui/legacyRedirects.test.ts',
+      'test/ui/navigationShell.test.tsx',
+      'test/ui/noDonationSurface.test.ts',
       'test/ui/homeConvergence.test.ts',
       'test/ui/mapGrouping.test.ts',
       'test/ui/listingDetailSlice.test.ts',
@@ -101,6 +112,14 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'ui/src/views/listings/mapUtils.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/views/home/Home.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/views/home/Home.jsx'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/App.tsx'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/App.jsx'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/components/navigation/Navigation.tsx'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/components/navigation/Navigation.jsx'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/settings/SettingsLayout.tsx'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/settings/SettingsLayout.jsx'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/navigationShell.test.tsx'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'test/ui/navigationShell.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/views/listings/ListingDetail.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/views/listings/ListingDetail.jsx'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/listings/listingFilters.ts'))).toBe(true);
