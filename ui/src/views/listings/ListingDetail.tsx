@@ -96,6 +96,31 @@ interface ListingDistance {
   meters: number;
 }
 
+interface PriceHistoryEntry {
+  price: number;
+  observed_at: number;
+}
+
+interface ListingTechnologyCoverage {
+  maxDownMbit?: number | null;
+  sharePercent?: number | null;
+}
+
+interface ListingMobileConnectivity {
+  neutral?: Record<string, boolean | undefined>;
+  operators?: Record<string, Record<string, boolean | undefined>>;
+  roamingOnly?: readonly string[];
+  operatorCount?: number | null;
+}
+
+interface ListingConnectivity {
+  maxDownMbit?: number | null;
+  sharePercent?: number | null;
+  source?: string;
+  technologies?: Record<string, ListingTechnologyCoverage | undefined>;
+  mobile?: ListingMobileConnectivity | null;
+}
+
 interface UserSettings {
   inquiry_profile?: unknown;
   home_addresses?: readonly unknown[];
@@ -125,7 +150,7 @@ interface ListingRecord {
   notes?: string | null;
   distances?: readonly ListingDistance[];
   travelTimes?: readonly TravelTimeEntry[];
-  connectivity?: unknown;
+  connectivity?: ListingConnectivity | null;
   is_active?: number;
   description?: string | null;
 }
@@ -212,7 +237,7 @@ export default function ListingDetail(): ReactNode {
   const [loading, setLoading] = useState(true);
   const [notesDraft, setNotesDraft] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
-  const [priceHistory, setPriceHistory] = useState<readonly unknown[]>([]);
+  const [priceHistory, setPriceHistory] = useState<readonly PriceHistoryEntry[]>([]);
   // Set while the user is placing the listing by hand: carries the address text they typed, waiting
   // for the coordinates the map is about to give it.
   const [pinDrop, setPinDrop] = useState<{ address: string } | null>(null);
@@ -315,7 +340,7 @@ export default function ListingDetail(): ReactNode {
       try {
         // xhrGet resolves { status, json }, not the payload itself.
         const { json } = await xhrGet(`/api/listings/${listingId}/priceHistory`);
-        if (!cancelled) setPriceHistory(Array.isArray(json) ? json : []);
+        if (!cancelled) setPriceHistory(Array.isArray(json) ? (json as readonly PriceHistoryEntry[]) : []);
       } catch {
         // A missing history is not an error worth interrupting the page for - the chart simply
         // does not render.
@@ -466,7 +491,7 @@ export default function ListingDetail(): ReactNode {
     setDraftMessage(null);
     setDraftCopied(false);
     try {
-      const response = await xhrPost(`/api/listings/${listing.id}/draft-message`);
+      const response = await xhrPost(`/api/listings/${listing.id}/draft-message`, {});
       const payload = response.json as { message?: string };
       setDraftMessage(payload.message ?? null);
     } catch (e) {
@@ -1129,7 +1154,16 @@ export default function ListingDetail(): ReactNode {
 
                   {/* The costing answers "can I have this?", which is the question asked right
                   after the price - so it comes before the sales copy, not after it. */}
-                  <ListingFinanceCard listing={listing} />
+                  {(() => {
+                    // The finance card only computes with a numeric price; a null/absent price
+                    // makes it render nothing anyway, so match that by not mounting it.
+                    const financePrice = typeof listing.price === 'number' ? listing.price : Number(listing.price);
+                    return Number.isFinite(financePrice) ? (
+                      <ListingFinanceCard
+                        listing={{ id: listing.id, price: financePrice, dealType: listing.dealType }}
+                      />
+                    ) : null;
+                  })()}
 
                   {/* Without the matching half of the profile there is nothing to compute, so offer
                   the way to create it instead of hiding the feature completely. */}

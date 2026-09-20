@@ -26,7 +26,7 @@ const cardsSource = fs.readFileSync(
 const formSource = fs.readFileSync(path.join(root, 'ui/src/views/jobs/mutation/GuidedJobForm.tsx'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'ui/src/views/jobs/mutation/GuidedJobForm.less'), 'utf8');
 const mutatorSource = fs.readFileSync(
-  path.join(root, 'ui/src/views/jobs/mutation/components/provider/ProviderMutator.jsx'),
+  path.join(root, 'ui/src/views/jobs/mutation/components/provider/ProviderMutator.tsx'),
   'utf8',
 );
 
@@ -136,7 +136,7 @@ describe('provider choice cards', () => {
   });
 
   it('preserves provider selection, URL validation, removal, and edit hydration seams', () => {
-    expect(mutatorSource).toContain('setSelectedProvider(provider.find((pro) => pro.id === value))');
+    expect(mutatorSource).toContain('setSelectedProvider(provider.find((pro) => pro.id === value) ?? null)');
     expect(mutatorSource).toContain('validateProviderUrl(providerUrl, selectedProvider)');
     expect(mutatorSource).toContain('applicationPolicy: providerToEdit.applicationPolicy');
     expect(cardsSource).toContain('onRemove(displaySource.url)');

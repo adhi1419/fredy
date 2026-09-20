@@ -55,6 +55,10 @@
     "test/ui/authenticatedFetch.test.ts",
     "test/ui/authenticatedTransport.test.ts",
     "test/ui/apiUrl.test.ts",
-    "test/ui/locales.test.ts"
+    "test/ui/locales.test.ts",
+    "test/ui/authenticatedEventStream.test.ts",
+    "test/ui/globalShadowing.test.ts",
+    "test/ui/homeViewState.test.ts",
+    "test/ui/noWhatsNewSurface.test.ts"
   ]
 }

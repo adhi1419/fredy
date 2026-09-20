@@ -19,6 +19,13 @@ function workflowJob(workflow, job, nextJob) {
   return workflow.slice(start, end);
 }
 
+function filesBelow(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(directory, entry.name);
+    return entry.isDirectory() ? filesBelow(entryPath) : [entryPath];
+  });
+}
+
 describe('Bun and TypeScript foundation', () => {
   it('pins Bun and frontend tooling exactly', () => {
     expect(read('.bun-version').trim()).toMatch(/^\d+\.\d+\.\d+$/);
@@ -49,7 +56,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/home/homeViewState.ts',
       'ui/src/views/listings/mapUtils.ts',
       'ui/src/App.tsx',
-      'ui/src/AppLegacyComponents.d.ts',
       'ui/src/components/navigation/Navigation.tsx',
       'ui/src/components/navigation/navModel.ts',
       'ui/src/views/home/Home.tsx',
@@ -60,7 +66,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/state/listingsState.ts',
       'ui/src/services/state/notificationState.ts',
       'ui/src/services/state/userSettingsState.ts',
-      'ui/src/services/state/store.d.ts',
       'ui/src/views/jobs/Jobs.tsx',
       'ui/src/views/jobs/SavedSearchesIndex.tsx',
       'ui/src/views/jobs/savedSearchActions.ts',
@@ -74,7 +79,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/onboarding/applicantProfileOnboarding.ts',
       'ui/src/services/routes/legacyRedirects.ts',
       'ui/src/services/theme/theme.ts',
-      'ui/src/services/notifications/browserAdapter.d.ts',
       'ui/src/hooks/useBrowserNotifications.ts',
       'ui/src/services/finance/constants.ts',
       'ui/src/services/price/priceService.ts',
@@ -142,6 +146,55 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/transformer/providerTransformer.ts',
       'ui/src/services/debugLoggingClient.ts',
       'ui/src/services/backupRestoreClient.ts',
+      'ui/src/Index.tsx',
+      'ui/src/components/ListingDeletionModal.tsx',
+      'ui/src/components/connectivity/ConnectivityCard.tsx',
+      'ui/src/components/debug/DebugLoggingBanner.tsx',
+      'ui/src/components/demo/DemoBanner.tsx',
+      'ui/src/components/filters/ActiveFilterChips.tsx',
+      'ui/src/components/filters/FilterButton.tsx',
+      'ui/src/components/filters/FilterDrawer.tsx',
+      'ui/src/components/footer/FredyFooter.tsx',
+      'ui/src/components/grid/listings/ListingsGrid.tsx',
+      'ui/src/components/headline/Headline.tsx',
+      'ui/src/components/icons/IconEuro.tsx',
+      'ui/src/components/listings/ListingsFilterPanel.tsx',
+      'ui/src/components/listings/ListingsOverview.tsx',
+      'ui/src/components/logo/Logo.tsx',
+      'ui/src/components/logout/Logout.tsx',
+      'ui/src/components/permission/InsufficientPermission.tsx',
+      'ui/src/components/permission/PermissionAwareRoute.tsx',
+      'ui/src/components/placeholder/Placeholder.tsx',
+      'ui/src/components/segment/SegmentPart.tsx',
+      'ui/src/components/settingsShell/SettingsShell.tsx',
+      'ui/src/components/table/ListingsTable.tsx',
+      'ui/src/components/table/NotificationChannelTable.tsx',
+      'ui/src/services/i18n/i18n.tsx',
+      'ui/src/services/notifications/browserAdapter.ts',
+      'ui/src/services/sse/authenticatedEventStream.ts',
+      'ui/src/services/state/store.ts',
+      'ui/src/services/transitClient.ts',
+      'ui/src/services/xhr.ts',
+      'ui/src/utils.ts',
+      'ui/src/views/admin/AdminLayout.tsx',
+      'ui/src/views/admin/ScopeBanner.tsx',
+      'ui/src/views/admin/pages/BackupPage.tsx',
+      'ui/src/views/admin/pages/ConnectivityPage.tsx',
+      'ui/src/views/admin/pages/DebugPage.tsx',
+      'ui/src/views/admin/pages/ExecutionPage.tsx',
+      'ui/src/views/admin/pages/SystemPage.tsx',
+      'ui/src/views/admin/useAdminSettings.ts',
+      'ui/src/views/dashboard/Dashboard.tsx',
+      'ui/src/views/listings/Listings.tsx',
+      'ui/src/views/listings/Map.tsx',
+      'ui/src/views/listings/components/AddressEditor.tsx',
+      'ui/src/views/listings/components/ListingFinanceCard.tsx',
+      'ui/src/views/listings/components/PriceHistoryChart.tsx',
+      'ui/src/views/login/Login.tsx',
+      'ui/src/views/onboarding/ApplicantProfileOnboardingPage.tsx',
+      'ui/src/views/settings/pages/InquiryProfilePage.tsx',
+      'ui/src/views/settings/pages/NotificationsPage.tsx',
+      'ui/src/views/settings/pages/TravelTimePage.tsx',
     ]);
     const testConfig = JSON.parse(read('tsconfig.frontend-tests.json'));
     expect(testConfig.extends).toBe('./tsconfig.frontend.json');
@@ -199,6 +252,10 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/authenticatedTransport.test.ts',
       'test/ui/apiUrl.test.ts',
       'test/ui/locales.test.ts',
+      'test/ui/authenticatedEventStream.test.ts',
+      'test/ui/globalShadowing.test.ts',
+      'test/ui/homeViewState.test.ts',
+      'test/ui/noWhatsNewSurface.test.ts',
     ]);
     const waveOneMigrations = [
       ['ui/src/components/cards/KpiCard.tsx', 'ui/src/components/cards/KpiCard.jsx'],
@@ -320,6 +377,107 @@ describe('Bun and TypeScript foundation', () => {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
     }
+    const finalMigrations = [
+      ['ui/src/Index.tsx', 'ui/src/Index.jsx'],
+      ['ui/src/components/ListingDeletionModal.tsx', 'ui/src/components/ListingDeletionModal.jsx'],
+      ['ui/src/components/connectivity/ConnectivityCard.tsx', 'ui/src/components/connectivity/ConnectivityCard.jsx'],
+      ['ui/src/components/debug/DebugLoggingBanner.tsx', 'ui/src/components/debug/DebugLoggingBanner.jsx'],
+      ['ui/src/components/demo/DemoBanner.tsx', 'ui/src/components/demo/DemoBanner.jsx'],
+      ['ui/src/components/filters/ActiveFilterChips.tsx', 'ui/src/components/filters/ActiveFilterChips.jsx'],
+      ['ui/src/components/filters/FilterButton.tsx', 'ui/src/components/filters/FilterButton.jsx'],
+      ['ui/src/components/filters/FilterDrawer.tsx', 'ui/src/components/filters/FilterDrawer.jsx'],
+      ['ui/src/components/footer/FredyFooter.tsx', 'ui/src/components/footer/FredyFooter.jsx'],
+      ['ui/src/components/grid/listings/ListingsGrid.tsx', 'ui/src/components/grid/listings/ListingsGrid.jsx'],
+      ['ui/src/components/headline/Headline.tsx', 'ui/src/components/headline/Headline.jsx'],
+      ['ui/src/components/icons/IconEuro.tsx', 'ui/src/components/icons/IconEuro.jsx'],
+      ['ui/src/components/listings/ListingsFilterPanel.tsx', 'ui/src/components/listings/ListingsFilterPanel.jsx'],
+      ['ui/src/components/listings/ListingsOverview.tsx', 'ui/src/components/listings/ListingsOverview.jsx'],
+      ['ui/src/components/logo/Logo.tsx', 'ui/src/components/logo/Logo.jsx'],
+      ['ui/src/components/logout/Logout.tsx', 'ui/src/components/logout/Logout.jsx'],
+      [
+        'ui/src/components/permission/InsufficientPermission.tsx',
+        'ui/src/components/permission/InsufficientPermission.jsx',
+      ],
+      [
+        'ui/src/components/permission/PermissionAwareRoute.tsx',
+        'ui/src/components/permission/PermissionAwareRoute.jsx',
+      ],
+      ['ui/src/components/placeholder/Placeholder.tsx', 'ui/src/components/placeholder/Placeholder.jsx'],
+      ['ui/src/components/segment/SegmentPart.tsx', 'ui/src/components/segment/SegmentPart.jsx'],
+      ['ui/src/components/settingsShell/SettingsShell.tsx', 'ui/src/components/settingsShell/SettingsShell.jsx'],
+      ['ui/src/components/table/ListingsTable.tsx', 'ui/src/components/table/ListingsTable.jsx'],
+      ['ui/src/components/table/NotificationChannelTable.tsx', 'ui/src/components/table/NotificationChannelTable.jsx'],
+      ['ui/src/services/i18n/i18n.tsx', 'ui/src/services/i18n/i18n.jsx'],
+      ['ui/src/services/notifications/browserAdapter.ts', 'ui/src/services/notifications/browserAdapter.js'],
+      ['ui/src/services/sse/authenticatedEventStream.ts', 'ui/src/services/sse/authenticatedEventStream.js'],
+      ['ui/src/services/state/store.ts', 'ui/src/services/state/store.js'],
+      ['ui/src/services/transitClient.ts', 'ui/src/services/transitClient.js'],
+      ['ui/src/services/xhr.ts', 'ui/src/services/xhr.js'],
+      ['ui/src/utils.ts', 'ui/src/utils.js'],
+      ['ui/src/views/admin/AdminLayout.tsx', 'ui/src/views/admin/AdminLayout.jsx'],
+      ['ui/src/views/admin/ScopeBanner.tsx', 'ui/src/views/admin/ScopeBanner.jsx'],
+      ['ui/src/views/admin/pages/BackupPage.tsx', 'ui/src/views/admin/pages/BackupPage.jsx'],
+      ['ui/src/views/admin/pages/ConnectivityPage.tsx', 'ui/src/views/admin/pages/ConnectivityPage.jsx'],
+      ['ui/src/views/admin/pages/DebugPage.tsx', 'ui/src/views/admin/pages/DebugPage.jsx'],
+      ['ui/src/views/admin/pages/ExecutionPage.tsx', 'ui/src/views/admin/pages/ExecutionPage.jsx'],
+      ['ui/src/views/admin/pages/SystemPage.tsx', 'ui/src/views/admin/pages/SystemPage.jsx'],
+      ['ui/src/views/admin/useAdminSettings.ts', 'ui/src/views/admin/useAdminSettings.js'],
+      ['ui/src/views/dashboard/Dashboard.tsx', 'ui/src/views/dashboard/Dashboard.jsx'],
+      [
+        'ui/src/views/jobs/mutation/components/CommuteFilter.tsx',
+        'ui/src/views/jobs/mutation/components/CommuteFilter.jsx',
+      ],
+      [
+        'ui/src/views/jobs/mutation/components/areaFilter/AreaFilter.tsx',
+        'ui/src/views/jobs/mutation/components/areaFilter/AreaFilter.jsx',
+      ],
+      [
+        'ui/src/views/jobs/mutation/components/notificationAdapter/NotificationChannelEditor.tsx',
+        'ui/src/views/jobs/mutation/components/notificationAdapter/NotificationChannelEditor.jsx',
+      ],
+      [
+        'ui/src/views/jobs/mutation/components/notificationAdapter/NotificationChannelPicker.tsx',
+        'ui/src/views/jobs/mutation/components/notificationAdapter/NotificationChannelPicker.jsx',
+      ],
+      [
+        'ui/src/views/jobs/mutation/components/notificationAdapter/NotificationHelpDisplay.tsx',
+        'ui/src/views/jobs/mutation/components/notificationAdapter/NotificationHelpDisplay.jsx',
+      ],
+      [
+        'ui/src/views/jobs/mutation/components/provider/ProviderMutator.tsx',
+        'ui/src/views/jobs/mutation/components/provider/ProviderMutator.jsx',
+      ],
+      ['ui/src/views/listings/Listings.tsx', 'ui/src/views/listings/Listings.jsx'],
+      ['ui/src/views/listings/Map.tsx', 'ui/src/views/listings/Map.jsx'],
+      ['ui/src/views/listings/components/AddressEditor.tsx', 'ui/src/views/listings/components/AddressEditor.jsx'],
+      [
+        'ui/src/views/listings/components/ListingFinanceCard.tsx',
+        'ui/src/views/listings/components/ListingFinanceCard.jsx',
+      ],
+      [
+        'ui/src/views/listings/components/PriceHistoryChart.tsx',
+        'ui/src/views/listings/components/PriceHistoryChart.jsx',
+      ],
+      ['ui/src/views/login/Login.tsx', 'ui/src/views/login/Login.jsx'],
+      [
+        'ui/src/views/onboarding/ApplicantProfileOnboardingPage.tsx',
+        'ui/src/views/onboarding/ApplicantProfileOnboardingPage.jsx',
+      ],
+      ['ui/src/views/settings/pages/InquiryProfilePage.tsx', 'ui/src/views/settings/pages/InquiryProfilePage.jsx'],
+      ['ui/src/views/settings/pages/NotificationsPage.tsx', 'ui/src/views/settings/pages/NotificationsPage.jsx'],
+      ['ui/src/views/settings/pages/TravelTimePage.tsx', 'ui/src/views/settings/pages/TravelTimePage.jsx'],
+      ['test/ui/authenticatedEventStream.test.ts', 'test/ui/authenticatedEventStream.test.js'],
+      ['test/ui/globalShadowing.test.ts', 'test/ui/globalShadowing.test.js'],
+      ['test/ui/homeViewState.test.ts', 'test/ui/homeViewState.test.js'],
+      ['test/ui/noWhatsNewSurface.test.ts', 'test/ui/noWhatsNewSurface.test.js'],
+    ];
+    expect(finalMigrations).toHaveLength(59);
+    for (const [typedPath, legacyPath] of finalMigrations) {
+      expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
+      expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
+    }
+    expect(filesBelow(path.join(root, 'ui/src')).filter((file) => /\.(?:js|jsx)$/.test(file))).toEqual([]);
+    expect(filesBelow(path.join(root, 'test/ui')).filter((file) => /\.test\.js$/.test(file))).toEqual([]);
     // The ambient shims those real modules replaced are gone, so nothing can resolve the stale
     // untyped shape ahead of the typed source.
     const legacyShims = read('ui/src/views/jobs/savedSearchesLegacy.d.ts');
@@ -419,8 +577,9 @@ describe('Bun and TypeScript foundation', () => {
       expect(fs.existsSync(path.join(root, `test/ui/${testPath}.test.ts`)), testPath).toBe(true);
       expect(fs.existsSync(path.join(root, `test/ui/${testPath}.test.js`)), testPath).toBe(false);
     }
-    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.js'))).toBe(true);
-    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.d.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.d.ts'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/browserNotificationGate.d.ts'))).toBe(true);
     expect(read('ui/src/views/jobs/savedSearchesLegacy.d.ts')).not.toContain("declare module '*mapUtils.js'");
   });

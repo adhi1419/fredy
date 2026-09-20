@@ -188,7 +188,7 @@ describe('locales', () => {
   });
 
   it('translates every key the login screen uses', () => {
-    const login = fs.readFileSync(path.join(localeDir, '../views/login/Login.jsx'), 'utf-8');
+    const login = fs.readFileSync(path.join(localeDir, '../views/login/Login.tsx'), 'utf-8');
     const usedKeys = [...login.matchAll(TRANSLATION_CALL)].map((match) => match[1]);
 
     expect(usedKeys.length).toBeGreaterThan(0);

@@ -83,7 +83,7 @@ const settingsStyles = read('ui/src/views/settings/SettingsLayout.less');
 const appSource = read('ui/src/App.tsx');
 const menuSource = read('ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx');
 const settingsSource = read('ui/src/views/settings/SettingsLayout.tsx');
-const adminSource = read('ui/src/views/admin/AdminLayout.jsx');
+const adminSource = read('ui/src/views/admin/AdminLayout.tsx');
 
 function renderNavigation(pathname: string, primaryVisible = true, photoUrl: string | null = null): string {
   return renderToStaticMarkup(
