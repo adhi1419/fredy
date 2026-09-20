@@ -37,11 +37,15 @@
     "ui/src/services/state/listingsState.ts",
     "ui/src/services/state/notificationState.ts",
     "ui/src/services/state/userSettingsState.ts",
+    "ui/src/services/state/store.d.ts",
     "ui/src/views/jobs/Jobs.tsx",
     "ui/src/views/jobs/SavedSearchesIndex.tsx",
     "ui/src/views/jobs/savedSearchActions.ts",
     "ui/src/views/jobs/savedSearchesLegacy.d.ts",
     "ui/src/views/settings/SettingsLayout.tsx",
+    "ui/src/views/settings/pages/PreferencesPage.tsx",
+    "ui/src/views/settings/pages/ListingDetailsPage.tsx",
+    "ui/src/views/settings/pages/personalSettingsDrafts.ts",
     "ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx",
     "ui/src/vite-env.d.ts"
   ]

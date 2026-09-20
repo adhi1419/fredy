@@ -10,6 +10,7 @@
     "test/ui/legacyRedirects.test.ts",
     "test/ui/navigationShell.test.tsx",
     "test/ui/noDonationSurface.test.ts",
+    "test/ui/personalSettingsPages.test.ts",
     "test/ui/homeConvergence.test.ts",
     "test/ui/mapGrouping.test.ts",
     "test/ui/listingDetailSlice.test.ts",

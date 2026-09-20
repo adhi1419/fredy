@@ -60,11 +60,15 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/state/listingsState.ts',
       'ui/src/services/state/notificationState.ts',
       'ui/src/services/state/userSettingsState.ts',
+      'ui/src/services/state/store.d.ts',
       'ui/src/views/jobs/Jobs.tsx',
       'ui/src/views/jobs/SavedSearchesIndex.tsx',
       'ui/src/views/jobs/savedSearchActions.ts',
       'ui/src/views/jobs/savedSearchesLegacy.d.ts',
       'ui/src/views/settings/SettingsLayout.tsx',
+      'ui/src/views/settings/pages/PreferencesPage.tsx',
+      'ui/src/views/settings/pages/ListingDetailsPage.tsx',
+      'ui/src/views/settings/pages/personalSettingsDrafts.ts',
       'ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx',
       'ui/src/vite-env.d.ts',
     ]);
@@ -78,6 +82,7 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/legacyRedirects.test.ts',
       'test/ui/navigationShell.test.tsx',
       'test/ui/noDonationSurface.test.ts',
+      'test/ui/personalSettingsPages.test.ts',
       'test/ui/homeConvergence.test.ts',
       'test/ui/mapGrouping.test.ts',
       'test/ui/listingDetailSlice.test.ts',
@@ -120,6 +125,11 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'ui/src/views/settings/SettingsLayout.jsx'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/navigationShell.test.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'test/ui/navigationShell.test.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/settings/pages/PreferencesPage.tsx'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/settings/pages/PreferencesPage.jsx'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/settings/pages/ListingDetailsPage.tsx'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/settings/pages/ListingDetailsPage.jsx'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/personalSettingsPages.test.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/views/listings/ListingDetail.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/views/listings/ListingDetail.jsx'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/listings/listingFilters.ts'))).toBe(true);
