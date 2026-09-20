@@ -249,14 +249,6 @@ function HomeMap({ listings, onNavigate }: HomeMapProps) {
   }, [activeGroup, closeGroupChooser]);
 
   useEffect(() => {
-    // Clear stale refs when navigating away from Home view
-    return () => {
-      setActiveGroup(null);
-      activeGroupTrigger.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!map) return undefined;
 
     const markerColor = getComputedStyle(document.body).getPropertyValue('--f-accent').trim();
