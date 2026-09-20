@@ -76,6 +76,15 @@ import {
   isInquiryContactProfileReady,
   isInquiryProviderSupported,
 } from '../../services/inquiries/profile.js';
+import {
+  getAppliedMessage,
+  getGoogleMapsUrl,
+  getSafeExternalUrl,
+  isListingApplied,
+  LISTING_LIFECYCLE_ACTIONS,
+  MOBILE_LISTING_ACTION_LABELS,
+  MOBILE_LISTING_ACTION_ORDER,
+} from './listingActions.js';
 
 const { Title, Text } = Typography;
 
@@ -150,6 +159,9 @@ export default function ListingDetail() {
   const [draftError, setDraftError] = useState(null);
   const [draftCopied, setDraftCopied] = useState(false);
   const [inquirySending, setInquirySending] = useState(false);
+  const [appliedPopoverOpen, setAppliedPopoverOpen] = useState(false);
+  const notesSectionRef = useRef(null);
+  const notesInputRef = useRef(null);
 
   useEffect(() => {
     setRouteTimes(listing?.travelTimes ?? []);
@@ -395,10 +407,10 @@ export default function ListingDetail() {
   };
 
   const handleSendInquiry = async () => {
-    if (!listing || !draftMessage?.trim()) return;
+    if (!listing || (inquiryProviderRequiresMessage(listing.provider, listing) && !draftMessage?.trim())) return;
     setInquirySending(true);
     try {
-      await xhrPost(`/api/listings/${listing.id}/send-inquiry`, { message: draftMessage });
+      await xhrPost(`/api/listings/${listing.id}/send-inquiry`, { message: draftMessage ?? '' });
       await actions.listingsData.getListing(listingId);
       Toast.success(t('listing.detail.inquirySend.success'));
     } catch (error) {
@@ -423,6 +435,44 @@ export default function ListingDetail() {
       setNotesSaving(false);
     }
   };
+
+  const handleLifecycleAction = async (action, successKey) => {
+    try {
+      await actions.listingsData.setListingLifecycleAction(listing.id, action);
+      await actions.listingsData.getListing(listingId);
+      Toast.success(t(successKey));
+    } catch (error) {
+      console.error(`Failed to apply listing lifecycle action ${action}:`, error);
+      Toast.error(errorMessage(error, t('listing.detail.mobile.lifecycleError')));
+    }
+  };
+
+  const focusNotes = () => {
+    notesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    requestAnimationFrame(() => notesInputRef.current?.focus?.());
+  };
+
+  const handleMobileApply = () => {
+    if (isListingApplied(listing)) {
+      setAppliedPopoverOpen((open) => !open);
+      return;
+    }
+    if (!isInquiryProviderSupported(listing.provider, listing)) return;
+    if (!contactProfileReady) {
+      navigate('/settings/inquiry-profile');
+      return;
+    }
+    if (inquiryProviderRequiresMessage(listing.provider, listing) && !draftMessage?.trim()) {
+      void handleDraftMessage();
+    }
+  };
+
+  const handleManualApply = () =>
+    handleLifecycleAction(LISTING_LIFECYCLE_ACTIONS.appliedSelf, 'listing.detail.mobile.appliedToast');
+  const handleViewing = () =>
+    handleLifecycleAction(LISTING_LIFECYCLE_ACTIONS.viewing, 'listing.detail.mobile.viewingToast');
+  const handleArchive = () =>
+    handleLifecycleAction(LISTING_LIFECYCLE_ACTIONS.archive, 'listing.detail.mobile.archiveToast');
 
   /**
    * Store an address the user picked, then re-read the listing so map, distances and the nearby
@@ -518,6 +568,13 @@ export default function ListingDetail() {
     rejected: 'listing.detail.statusRejected',
   };
   const statusLabel = listing.status?.status ? t(statusKeyMap[listing.status.status] ?? listing.status.status) : null;
+  const listingApplied = isListingApplied(listing);
+  const appliedMessage = getAppliedMessage(listing);
+  const googleMapsUrl = getGoogleMapsUrl(listing);
+  const providerListingUrl = getSafeExternalUrl(listing.link);
+  const inquirySupported = isInquiryProviderSupported(listing.provider, listing);
+  const applyNeedsConfirmation =
+    inquirySupported && contactProfileReady && (canApplyWithoutMessage || Boolean(draftMessage?.trim()));
 
   const data = [
     {
@@ -643,6 +700,121 @@ export default function ListingDetail() {
         }
       />
 
+      <div className="listing-detail__mobile-action-dock" data-testid="listing-mobile-actions">
+        {MOBILE_LISTING_ACTION_ORDER.map((action) => {
+          if (action === 'apply') {
+            const applyButton = (
+              <Button
+                type="primary"
+                theme="solid"
+                className="listing-detail__mobile-apply"
+                loading={inquirySending || draftLoading}
+                disabled={!listingApplied && !inquirySupported}
+                aria-label={listingApplied ? t('listing.detail.mobile.applied') : t(MOBILE_LISTING_ACTION_LABELS.apply)}
+                onClick={handleMobileApply}
+              >
+                {listingApplied ? t('listing.detail.mobile.applied') : t(MOBILE_LISTING_ACTION_LABELS.apply)}
+              </Button>
+            );
+            return applyNeedsConfirmation ? (
+              <Popconfirm
+                key={action}
+                title={t('listing.detail.inquirySend.confirmTitle')}
+                content={t('listing.detail.inquirySend.confirmBody')}
+                onConfirm={handleSendInquiry}
+              >
+                {applyButton}
+              </Popconfirm>
+            ) : (
+              <span key={action}>{applyButton}</span>
+            );
+          }
+
+          if (action === 'maps') {
+            return googleMapsUrl ? (
+              <a
+                key={action}
+                className="listing-detail__mobile-icon-action"
+                href={googleMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t(MOBILE_LISTING_ACTION_LABELS.maps)}
+              >
+                <IconMapPin aria-hidden="true" />
+              </a>
+            ) : (
+              <Button
+                key={action}
+                className="listing-detail__mobile-icon-action"
+                theme="light"
+                disabled
+                aria-label={t(MOBILE_LISTING_ACTION_LABELS.maps)}
+              >
+                <IconMapPin aria-hidden="true" />
+              </Button>
+            );
+          }
+
+          return providerListingUrl ? (
+            <a
+              key={action}
+              className="listing-detail__mobile-icon-action"
+              href={providerListingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t(MOBILE_LISTING_ACTION_LABELS.provider)}
+            >
+              <IconLink aria-hidden="true" />
+            </a>
+          ) : (
+            <Button
+              key={action}
+              className="listing-detail__mobile-icon-action"
+              theme="light"
+              disabled
+              aria-label={t(MOBILE_LISTING_ACTION_LABELS.provider)}
+            >
+              <IconLink aria-hidden="true" />
+            </Button>
+          );
+        })}
+      </div>
+
+      {listingApplied && appliedPopoverOpen && (
+        <div
+          className="listing-detail__applied-popover"
+          role="dialog"
+          aria-label={t('listing.detail.mobile.appliedMessageTitle')}
+        >
+          <div className="listing-detail__applied-popover-header">
+            <strong>{t('listing.detail.mobile.appliedMessageTitle')}</strong>
+            <button
+              type="button"
+              aria-label={t('listing.detail.mobile.closeAppliedMessage')}
+              onClick={() => setAppliedPopoverOpen(false)}
+            >
+              ×
+            </button>
+          </div>
+          <div className="listing-detail__applied-message">
+            {appliedMessage ?? t('listing.detail.mobile.noSubmittedMessage')}
+          </div>
+        </div>
+      )}
+
+      <div
+        className="listing-detail__lifecycle-actions"
+        role="group"
+        aria-label={t('listing.detail.mobile.lifecycleActions')}
+      >
+        <Button disabled={listingApplied} onClick={handleManualApply}>
+          {t('listing.detail.mobile.appliedSelf')}
+        </Button>
+        <Button onClick={focusNotes}>{t('listing.detail.mobile.addNotes')}</Button>
+        <Button onClick={handleViewing}>{t('listing.detail.mobile.viewing')}</Button>
+        <Button onClick={handleArchive}>{t('listing.detail.mobile.archive')}</Button>
+      </div>
+
       <Card className="listing-detail__card">
         <div className="listing-detail__header">
           <Space align="center">
@@ -684,7 +856,16 @@ export default function ListingDetail() {
                   ? t('listing.detail.draftMessage.regenerate')
                   : t('listing.detail.draftMessage.button')}
             </Button>
-            <a href={listing.link} target="_blank" rel="noopener noreferrer" className="listing-detail__open-btn">
+            <a
+              href={providerListingUrl ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="listing-detail__open-btn"
+              aria-disabled={!providerListingUrl}
+              onClick={(event) => {
+                if (!providerListingUrl) event.preventDefault();
+              }}
+            >
               <IconLink style={{ marginRight: 6 }} />
               {t('listing.detail.openListing')}
             </a>
@@ -805,11 +986,12 @@ export default function ListingDetail() {
               />
             </div>
 
-            <div className="listing-detail__notes">
+            <div className="listing-detail__notes" ref={notesSectionRef}>
               <Title heading={4} className="listing-detail__notes-title">
                 {t('listing.detail.notesTitle')}
               </Title>
               <TextArea
+                ref={notesInputRef}
                 value={notesDraft}
                 onChange={(val) => setNotesDraft(val)}
                 placeholder={t('listing.detail.notesPlaceholder')}
