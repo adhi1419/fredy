@@ -14,6 +14,7 @@ import { createJobsDataState, createJobsEffects } from './jobsState.js';
 import { createListingsDataState, createListingsEffects } from './listingsState.js';
 import { createUserSettingsState, createUserSettingsEffects } from './userSettingsState.js';
 import { createFinanceState, createFinanceEffects } from './financeState.js';
+import { createNotificationEffects, createNotificationState } from './notificationState.js';
 
 /**
  * Optional state-change logging, off unless VITE_DEBUG_STORE is set.
@@ -66,6 +67,11 @@ export const useFredyState = create(
         { get: xhrGet, post: xhrPost },
         financeEffects.getProfileSummary,
       );
+      const notificationEffects = createNotificationEffects(set, {
+        get: xhrGet,
+        post: xhrPost,
+        delete: xhrDelete,
+      });
 
       // Async actions that directly set state (no separate reducer concept)
       const effects = {
@@ -80,60 +86,8 @@ export const useFredyState = create(
           },
         },
         finance: financeEffects,
-        notificationAdapter: {
-          async getAdapter() {
-            try {
-              const response = await xhrGet('/api/jobs/notificationAdapter');
-              set(() => ({ notificationAdapter: Object.freeze([...response.json]) }));
-            } catch (Exception) {
-              console.error(`Error while trying to get resource for api/jobs/notificationAdapter. Error:`, Exception);
-            }
-          },
-          /**
-           * Test-fire a draft that has not been saved yet.
-           *
-           * The saved-channel equivalent is `notificationChannels.tryChannel`, which fires with the
-           * values already in the database. A draft has no id, so its values have to travel with
-           * the request - which is also why this one cannot be used for an existing channel whose
-           * secrets the client never received.
-           */
-          async tryDraft(adapterId, fields) {
-            await xhrPost('/api/jobs/notificationAdapter/try', { id: adapterId, fields });
-          },
-        },
-        notificationChannels: {
-          async getChannels() {
-            try {
-              const response = await xhrGet('/api/notificationChannels');
-              set(() => ({ notificationChannels: { channels: [...response.json], loaded: true } }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/notificationChannels. Error:', Exception);
-            }
-          },
-          /**
-           * Load one channel including its field values.
-           *
-           * Deliberately not written into the slice: this is editor state, and a bag of credentials
-           * sitting in a global store is a leak waiting for the next `console.log(state)`. The
-           * server only reveals the secret values to someone who may edit the channel.
-           */
-          async loadChannel(channelId) {
-            const response = await xhrGet(`/api/notificationChannels/${channelId}`);
-            return response.json;
-          },
-          async saveChannel(payload) {
-            const response = await xhrPost('/api/notificationChannels', payload);
-            await effects.notificationChannels.getChannels();
-            return response.json;
-          },
-          async removeChannel(channelId) {
-            await xhrDelete(`/api/notificationChannels/${channelId}`);
-            await effects.notificationChannels.getChannels();
-          },
-          async tryChannel(channelId) {
-            await xhrPost(`/api/notificationChannels/${channelId}/try`, {});
-          },
-        },
+        notificationAdapter: { ...notificationEffects.notificationAdapter },
+        notificationChannels: { ...notificationEffects.notificationChannels },
         generalSettings: {
           async getGeneralSettings() {
             try {
@@ -201,8 +155,7 @@ export const useFredyState = create(
       const initial = {
         dashboard: { data: null },
         finance: createFinanceState(),
-        notificationAdapter: [],
-        notificationChannels: { channels: [], loaded: false },
+        ...createNotificationState(),
         listingsData: createListingsDataState(),
         generalSettings: { settings: {} },
         userSettings: createUserSettingsState(),
