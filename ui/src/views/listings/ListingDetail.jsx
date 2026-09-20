@@ -87,6 +87,7 @@ import {
 } from './listingActions.js';
 
 const { Title, Text } = Typography;
+const APPLIED_TRIGGER_ID = 'listing-mobile-applied-trigger';
 
 /**
  * Whether any address has a drawable route in this mode.
@@ -160,8 +161,27 @@ export default function ListingDetail() {
   const [draftCopied, setDraftCopied] = useState(false);
   const [inquirySending, setInquirySending] = useState(false);
   const [appliedPopoverOpen, setAppliedPopoverOpen] = useState(false);
+  const appliedCloseButtonRef = useRef(null);
   const notesSectionRef = useRef(null);
   const notesInputRef = useRef(null);
+
+  const closeAppliedPopover = () => {
+    setAppliedPopoverOpen(false);
+    requestAnimationFrame(() => document.getElementById(APPLIED_TRIGGER_ID)?.focus());
+  };
+
+  useEffect(() => {
+    if (!appliedPopoverOpen) return undefined;
+    appliedCloseButtonRef.current?.focus();
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeAppliedPopover();
+      }
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [appliedPopoverOpen]);
 
   useEffect(() => {
     setRouteTimes(listing?.travelTimes ?? []);
@@ -454,7 +474,8 @@ export default function ListingDetail() {
 
   const handleMobileApply = () => {
     if (isListingApplied(listing)) {
-      setAppliedPopoverOpen((open) => !open);
+      if (appliedPopoverOpen) closeAppliedPopover();
+      else setAppliedPopoverOpen(true);
       return;
     }
     if (!isInquiryProviderSupported(listing.provider, listing)) return;
@@ -708,6 +729,7 @@ export default function ListingDetail() {
                 type="primary"
                 theme="solid"
                 className="listing-detail__mobile-apply"
+                id={APPLIED_TRIGGER_ID}
                 loading={inquirySending || draftLoading}
                 disabled={!listingApplied && !inquirySupported}
                 aria-label={listingApplied ? t('listing.detail.mobile.applied') : t(MOBILE_LISTING_ACTION_LABELS.apply)}
@@ -789,9 +811,10 @@ export default function ListingDetail() {
           <div className="listing-detail__applied-popover-header">
             <strong>{t('listing.detail.mobile.appliedMessageTitle')}</strong>
             <button
+              ref={appliedCloseButtonRef}
               type="button"
               aria-label={t('listing.detail.mobile.closeAppliedMessage')}
-              onClick={() => setAppliedPopoverOpen(false)}
+              onClick={closeAppliedPopover}
             >
               ×
             </button>

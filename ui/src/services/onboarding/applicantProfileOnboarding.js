@@ -12,6 +12,22 @@ export const REQUIRED_COMMON_PROFILE_FIELDS = Object.freeze(['name', 'street', '
 const present = (value) => typeof value === 'string' && value.trim().length > 0;
 
 /**
+ * Return common applicant fields that are missing or invalid, in form order.
+ * Provider-specific income, employment and consent fields are intentionally excluded.
+ *
+ * @param {Object|null|undefined} profile
+ * @returns {string[]}
+ */
+export function getInvalidCommonApplicantProfileFields(profile) {
+  return REQUIRED_COMMON_PROFILE_FIELDS.filter((field) => {
+    if (field === 'name') {
+      return !present(profile?.name) || profile.name.trim().split(/\s+/).length < 2;
+    }
+    return !present(profile?.[field]);
+  });
+}
+
+/**
  * Whether a persisted inquiry profile contains the explicitly entered common applicant facts.
  * Provider-specific income, employment and consent fields are intentionally not part of this check.
  *
@@ -19,8 +35,7 @@ const present = (value) => typeof value === 'string' && value.trim().length > 0;
  * @returns {boolean}
  */
 export function isCommonApplicantProfileComplete(profile) {
-  const hasFullName = present(profile?.name) && profile.name.trim().split(/\s+/).length >= 2;
-  return hasFullName && REQUIRED_COMMON_PROFILE_FIELDS.slice(1).every((field) => present(profile?.[field]));
+  return getInvalidCommonApplicantProfileFields(profile).length === 0;
 }
 
 /**

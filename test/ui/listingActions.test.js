@@ -19,6 +19,9 @@ import {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const styles = fs.readFileSync(path.join(here, '../../ui/src/views/listings/ListingDetail.less'), 'utf8');
+const listingDetailSource = fs.readFileSync(path.join(here, '../../ui/src/views/listings/ListingDetail.jsx'), 'utf8');
+const segmentPartSource = fs.readFileSync(path.join(here, '../../ui/src/components/segment/SegmentPart.jsx'), 'utf8');
+const segmentPartStyles = fs.readFileSync(path.join(here, '../../ui/src/components/segment/SegmentParts.less'), 'utf8');
 
 describe('listing action contract', () => {
   it('keeps the approved mobile action order and accessible label keys', () => {
@@ -70,5 +73,31 @@ describe('listing action contract', () => {
     expect(getAppliedMessage({ inquiry_message: '  Hallo Vermieter  ' })).toBe('Hallo Vermieter');
     expect(getAppliedMessage({ inquiry_message: '' })).toBeNull();
     expect(getAppliedMessage({ inquiry_message: null })).toBeNull();
+  });
+});
+
+describe('accessibility action contracts', () => {
+  it('keeps the Applied disclosure submitted-message-only and nonmodal while managing focus', () => {
+    expect(listingDetailSource).toContain('id={APPLIED_TRIGGER_ID}');
+    expect(listingDetailSource).toContain('ref={appliedCloseButtonRef}');
+    expect(listingDetailSource).toContain('appliedCloseButtonRef.current?.focus()');
+    expect(listingDetailSource).toContain(
+      'requestAnimationFrame(() => document.getElementById(APPLIED_TRIGGER_ID)?.focus())',
+    );
+    expect(listingDetailSource).toContain("event.key === 'Escape'");
+    expect(listingDetailSource).toContain('closeAppliedPopover();');
+    expect(listingDetailSource).toContain('role="dialog"');
+    expect(listingDetailSource).toContain("aria-label={t('listing.detail.mobile.appliedMessageTitle')}");
+    expect(listingDetailSource).not.toContain('aria-modal');
+    expect(listingDetailSource).toContain('listingApplied && appliedPopoverOpen');
+  });
+
+  it('uses a semantic help button without changing the SegmentPart mark styling contract', () => {
+    expect(segmentPartSource).toContain('<button type="button" className="segmentParts__helpMark"');
+    expect(segmentPartSource).not.toContain('role="note"');
+    expect(segmentPartStyles).toContain('padding: 0;');
+    expect(segmentPartStyles).toContain('border: 0;');
+    expect(segmentPartStyles).toContain('background: transparent;');
+    expect(segmentPartStyles).toContain('cursor: help;');
   });
 });

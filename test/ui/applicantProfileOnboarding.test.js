@@ -8,6 +8,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   APPLICANT_PROFILE_ONBOARDING_PATH,
+  getInvalidCommonApplicantProfileFields,
   isCommonApplicantProfileComplete,
   resolveApplicantProfileOnboarding,
 } from '../../ui/src/services/onboarding/applicantProfileOnboarding.js';
@@ -21,6 +22,11 @@ const completeProfile = {
   employer: 'Example GmbH',
   deutscheWohnenPrivacyAccepted: true,
 };
+
+const onboardingSource = fs.readFileSync(
+  path.resolve('ui/src/views/onboarding/ApplicantProfileOnboardingPage.jsx'),
+  'utf8',
+);
 
 describe('applicant profile onboarding decision seam', () => {
   it('keeps the route in loading while settings are unresolved', () => {
@@ -96,5 +102,40 @@ describe('authenticated app route contract', () => {
     expect(appSource).toContain('onboardingDecision.requiresSetup');
     expect(appSource).toContain('state={{ from: location }}');
     expect(appSource).toContain('primaryVisible={!onboardingDecision.requiresSetup}');
+  });
+});
+
+describe('onboarding accessibility contracts', () => {
+  it('reports common invalid fields in visual form order and requires two name words', () => {
+    expect(getInvalidCommonApplicantProfileFields({})).toEqual(['name', 'street', 'houseNumber', 'postcode', 'city']);
+    expect(getInvalidCommonApplicantProfileFields({ name: 'Alice' })).toEqual([
+      'name',
+      'street',
+      'houseNumber',
+      'postcode',
+      'city',
+    ]);
+    expect(
+      getInvalidCommonApplicantProfileFields({
+        name: 'Alice Example',
+        street: 'Main Street',
+        houseNumber: '1',
+        postcode: '10115',
+        city: 'Berlin',
+        employer: '',
+        deutscheWohnenPrivacyAccepted: false,
+      }),
+    ).toEqual([]);
+  });
+
+  it('keeps field errors independently addressable and focuses the first model-invalid input', () => {
+    expect(onboardingSource).toContain('id="onboarding-validation-alert"');
+    expect(onboardingSource).toContain("'aria-invalid': invalidFields.includes(field) ? 'true' : undefined");
+    expect(onboardingSource).toContain(
+      "'aria-describedby': showValidation ? 'onboarding-validation-alert' : undefined",
+    );
+    expect(onboardingSource).toContain('setShowValidation((visible) => visible &&');
+    expect(onboardingSource).toContain('focusField(invalidDraftFields[0])');
+    expect(onboardingSource).not.toContain('role="alert"');
   });
 });
