@@ -25,8 +25,16 @@ describe('canAccessJob', () => {
     expect(canAccessJob(stranger, job({ shared_with_user: ['u2'] }))).toBe(true);
   });
 
-  it('lets an admin see anything', () => {
-    expect(canAccessJob(admin, job())).toBe(true);
+  it('does not let an admin bypass tenant ownership', () => {
+    expect(canAccessJob(admin, job())).toBe(false);
+  });
+
+  it('lets an admin see a job explicitly shared with them', () => {
+    expect(canAccessJob(admin, job({ shared_with_user: ['a1'] }))).toBe(true);
+  });
+
+  it('lets an admin see a job they own', () => {
+    expect(canAccessJob(admin, job({ userId: 'a1' }))).toBe(true);
   });
 
   it('says no for a missing user or job', () => {
@@ -36,9 +44,10 @@ describe('canAccessJob', () => {
 });
 
 describe('canModifyJob', () => {
-  it('is the owner and admins only - being shared a job does not make it yours', () => {
+  it('is the owner only - being shared or being an admin does not make it yours', () => {
     expect(canModifyJob(owner, job())).toBe(true);
-    expect(canModifyJob(admin, job())).toBe(true);
+    expect(canModifyJob(admin, job())).toBe(false);
+    expect(canModifyJob(admin, job({ userId: 'a1', shared_with_user: ['u2'] }))).toBe(true);
     expect(canModifyJob(stranger, job({ shared_with_user: ['u2'] }))).toBe(false);
   });
 });
@@ -68,9 +77,9 @@ describe('ownership comparison never matches on absent ids', () => {
     expect(canModifyJob(stranger, noOwner)).toBe(false);
   });
 
-  it('still lets an admin through either way - the guard must not narrow the admin case', () => {
-    expect(canAccessJob({ isAdmin: true }, noOwner)).toBe(true);
-    expect(canModifyJob({ isAdmin: true }, noOwner)).toBe(true);
+  it('does not let an admin through without ownership or explicit sharing', () => {
+    expect(canAccessJob({ isAdmin: true }, noOwner)).toBe(false);
+    expect(canModifyJob({ isAdmin: true }, noOwner)).toBe(false);
   });
 
   it('does not match a user without an id against a share list holding null', () => {

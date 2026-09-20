@@ -8,6 +8,7 @@ import Fastify from 'fastify';
 
 vi.mock('../../lib/services/storage/listingsStorage.js', () => ({
   userCanAccessListing: vi.fn(() => true),
+  userCanModifyListing: vi.fn(() => true),
   getListingById: vi.fn(() => ({ id: 'listing-1', job_id: 'job-1', address: 'old address' })),
   setListingAddress: vi.fn(() => 1),
   queryListings: vi.fn(),
@@ -58,6 +59,7 @@ const post = async (body) => {
 beforeEach(() => {
   vi.clearAllMocks();
   listingStorage.userCanAccessListing.mockReturnValue(true);
+  listingStorage.userCanModifyListing.mockReturnValue(true);
   listingStorage.getListingById.mockReturnValue({ id: 'listing-1', job_id: 'job-1', address: 'old address' });
   listingStorage.setListingAddress.mockReturnValue(1);
   getJob.mockReturnValue({ id: 'job-1', userId: 'owner-1' });
@@ -163,7 +165,7 @@ describe('POST /:listingId/address', () => {
 
   describe('access', () => {
     it('refuses a listing the user cannot see', async () => {
-      listingStorage.userCanAccessListing.mockReturnValue(false);
+      listingStorage.userCanModifyListing.mockReturnValue(false);
 
       const response = await post(VALID_BODY);
 

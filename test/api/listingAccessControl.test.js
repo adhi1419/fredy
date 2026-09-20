@@ -22,8 +22,9 @@ vi.mock('../../lib/services/storage/watchListStorage.js', () => ({
   ensureWatch: vi.fn(),
 }));
 vi.mock('../../lib/services/storage/jobStorage.js', () => ({ getJob: async () => null }));
-
 const { filterListingIdsForUser, userCanAccessListing } = await import('../../lib/services/storage/listingsStorage.js');
+
+import { toggleWatch } from '../../lib/services/storage/watchListStorage.js';
 
 const LISTINGS = {
   'mine-1': { owner: 'alice', sharedWith: [] },
@@ -45,6 +46,7 @@ const seedBase = () => {
 describe('listing access control', () => {
   beforeEach(() => {
     firestore.clear();
+    toggleWatch.mockClear();
   });
 
   describe('filterListingIdsForUser', () => {
@@ -76,8 +78,8 @@ describe('listing access control', () => {
       ]);
     });
 
-    it('lets an admin through without a query', async () => {
-      expect(await filterListingIdsForUser(['someone-elses'], 'carol', true)).toEqual(['someone-elses']);
+    it('does not let an admin through without an owner/share match', async () => {
+      expect(await filterListingIdsForUser(['someone-elses'], 'carol')).toEqual([]);
     });
 
     it('returns nothing without a user', async () => {
@@ -112,7 +114,7 @@ describe('listing access control', () => {
       ['mine-1', 'alice', false, true],
       ['shared-with-me', 'alice', false, true],
       ['someone-elses', 'alice', false, false],
-      ['someone-elses', 'alice', true, true],
+      ['someone-elses', 'alice', true, false],
     ])('listing %s for %s (admin=%s) -> %s', async (id, userId, isAdmin, expected) => {
       seedBase();
       expect(await userCanAccessListing(id, userId, isAdmin)).toBe(expected);
@@ -135,8 +137,8 @@ describe('listing access control', () => {
       },
     });
 
-    const requestFor = (userId, body = {}, params = {}) => ({
-      currentUser: { id: userId, isAdmin: false },
+    const requestFor = (userId, body = {}, params = {}, admin = false) => ({
+      currentUser: { id: userId, isAdmin: admin },
       body,
       params,
       query: {},
@@ -230,6 +232,45 @@ describe('listing access control', () => {
       const reply = makeReply();
       await routes['POST /restore'](requestFor('alice', { ids: ['someone-elses'] }), reply);
       expect(reply.statusCode).toBe(403);
+    });
+
+    it('lets an explicit partner use personal watch but rejects owner listing mutations', async () => {
+      const watchReply = makeReply();
+      await routes['POST /watch'](requestFor('alice', { listingId: 'shared-with-me' }), watchReply);
+      expect(watchReply.statusCode).toBeNull();
+      expect(toggleWatch).toHaveBeenCalledWith('shared-with-me', 'alice');
+
+      const notesReply = makeReply();
+      await routes['POST /:listingId/notes'](
+        requestFor('alice', { notes: 'partner note' }, { listingId: 'shared-with-me' }),
+        notesReply,
+      );
+      expect(notesReply.statusCode).toBe(403);
+
+      const statusReply = makeReply();
+      await routes['POST /:listingId/status'](
+        requestFor('alice', { action: 'viewed' }, { listingId: 'shared-with-me' }),
+        statusReply,
+      );
+      expect(statusReply.statusCode).toBe(403);
+    });
+
+    it('keeps an explicitly shared admin read-only and denies an unshared admin', async () => {
+      seedListing('admin-shared', { owner: 'bob', sharedWith: ['admin'] });
+
+      const sharedAdminReply = makeReply();
+      await routes['POST /:listingId/notes'](
+        requestFor('admin', { notes: 'admin note' }, { listingId: 'admin-shared' }, true),
+        sharedAdminReply,
+      );
+      expect(sharedAdminReply.statusCode).toBe(403);
+
+      const unsharedAdminReply = makeReply();
+      await routes['POST /:listingId/notes'](
+        requestFor('carol', { notes: 'admin note' }, { listingId: 'someone-elses' }, true),
+        unsharedAdminReply,
+      );
+      expect(unsharedAdminReply.statusCode).toBe(403);
     });
   });
 });

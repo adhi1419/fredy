@@ -111,7 +111,7 @@ describe('services/jobs/jobExecutionService', () => {
     };
   });
 
-  it('forwards SSE jobStatus to owner, shared users and admins', async () => {
+  it('forwards jobStatus only to the owner and explicitly shared users', async () => {
     state.jobsById['j1'] = { id: 'j1', userId: 'owner1', shared_with_user: ['u2'] };
     state.users = [
       { id: 'a1', isAdmin: true },
@@ -131,14 +131,15 @@ describe('services/jobs/jobExecutionService', () => {
     expect(event).toBe('jobStatus');
     expect(data).toEqual({ jobId: 'j1', running: true });
     const got = new Set(recipients);
-    const expected = new Set(['owner1', 'u2', 'a1']);
+    const expected = new Set(['owner1', 'u2']);
     expect(got).toEqual(expected);
   });
 
-  it('runs all jobs for admin; only own jobs for regular user', async () => {
+  it('runs only the caller-owned jobs for admins and regular users', async () => {
     state.jobsList = [
       { id: 'j1', enabled: true, userId: 'u1', provider: [] },
       { id: 'j2', enabled: true, userId: 'u2', provider: [] },
+      { id: 'j3', enabled: true, userId: 'admin', provider: [] },
     ];
     state.users = [
       { id: 'u1', isAdmin: false },
@@ -148,17 +149,16 @@ describe('services/jobs/jobExecutionService', () => {
 
     await initService();
 
-    // Non-admin: only own jobs
+    // Regular user: only own jobs.
     bus.emit('jobs:runAll', { userId: 'u1' });
-    // allow microtasks to flush
     await new Promise((r) => setTimeout(r, 0));
     expect(new Set(calls.markRunning)).toEqual(new Set(['j1']));
 
-    // Admin: all jobs
+    // Admin: only the admin-owned job, not every tenant's job.
     calls.markRunning = [];
     bus.emit('jobs:runAll', { userId: 'admin' });
     await new Promise((r) => setTimeout(r, 0));
-    expect(new Set(calls.markRunning)).toEqual(new Set(['j1', 'j2']));
+    expect(new Set(calls.markRunning)).toEqual(new Set(['j3']));
   });
 
   it('persists last_run_at when a job is executed', async () => {

@@ -459,7 +459,7 @@ describe('listingsStorage contract – getListingsForMap', () => {
     const marker = makeListing({ latitude: -1, longitude: -1 });
     await listingsStorage.storeListings(JOB.jobId, 'immoscout', [located, unlocated, marker]);
 
-    const { listings } = await listingsStorage.getListingsForMap({ isAdmin: true });
+    const { listings } = await listingsStorage.getListingsForMap({ userId: USER.userId });
     const ids = listings.map((l) => l.id);
     expect(ids).toContain(located.id);
     expect(ids).not.toContain(unlocated.id);
@@ -475,7 +475,7 @@ describe('listingsStorage contract – getListingsForMap', () => {
     await listingsStorage.deactivateListings([inactive.id]);
     await listingsStorage.deleteListingsById([deleted.id]);
 
-    const { listings } = await listingsStorage.getListingsForMap({ isAdmin: true });
+    const { listings } = await listingsStorage.getListingsForMap({ userId: USER.userId });
     const ids = listings.map((l) => l.id);
     expect(ids).toContain(active.id);
     expect(ids).not.toContain(inactive.id);
@@ -492,7 +492,7 @@ describe('listingsStorage contract – getListingsForMap', () => {
       1000,
     );
 
-    const { listings } = await listingsStorage.getListingsForMap({ isAdmin: true });
+    const { listings } = await listingsStorage.getListingsForMap({ userId: USER.userId });
     const row = listings.find((l) => l.id === listing.id);
     expect(row.travelTimes).toHaveLength(1);
     expect(row.travelTimes[0].label).toBe('Office');
@@ -738,6 +738,15 @@ describe('listingsStorage contract – getAvailableProviders', () => {
     expect(providers).not.toContain('onlythis');
   });
 
+  it('does not widen providers for an admin without an owner/share match', async () => {
+    await seedContext();
+    await userStorage.upsertUser({ userId: 'admin', username: 'admin', password: 'pw', isAdmin: true });
+    await jobStorage.upsertJob({ ...JOB, jobId: 'job-admin-private', userId: 'user-2', provider: 'private-provider' });
+    await listingsStorage.storeListings('job-admin-private', 'private-provider', [makeListing()]);
+
+    await expect(listingsStorage.getAvailableProviders({ userId: 'admin' })).resolves.toEqual([]);
+  });
+
   it('shows only soft-deleted providers with hiddenOnly', async () => {
     await seedContext();
     const kept = makeListing();
@@ -836,11 +845,11 @@ describe('listingsStorage contract – connectivity', () => {
     await listingsStorage.updateListingConnectivity(slow.id, {}, { maxDown: 50, fiber: 0, mobile: 0 }, 1);
 
     // Fiber filter.
-    let result = await listingsStorage.queryListings({ isAdmin: true, connectivityFiberOnly: true });
+    let result = await listingsStorage.queryListings({ userId: USER.userId, connectivityFiberOnly: true });
     expect(result.result.map((r) => r.id)).toEqual([fiber.id]);
 
     // Speed floor.
-    result = await listingsStorage.queryListings({ isAdmin: true, connectivityMinDown: 100 });
+    result = await listingsStorage.queryListings({ userId: USER.userId, connectivityMinDown: 100 });
     const ids = result.result.map((r) => r.id);
     expect(ids).toContain(fiber.id);
     expect(ids).toContain(cable.id);

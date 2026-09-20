@@ -6,9 +6,9 @@ The canonical tracker is current through PR #53 and records the reopened UI conv
 
 - [x] Audit every production route against the approved wireframes at rendered component level — Luna audit confirmed a real behavioral migration over materially reused legacy visible components; Saved Searches is the clearest mismatch.
 - [ ] Replace materially reused legacy Fredy components with the approved wireframe components in small, independently deployable PRs; preserve the two-destination information architecture and validated accessibility behavior.
-- [ ] Make Saved Search and associated listing visibility owner-or-explicit-share only for every role, including admins; retain read-only partner sharing — delegated on `fix/saved-search-user-isolation`.
-- [ ] Present Saved Search sharing as “Share with your partner” and allow any other account to be selected explicitly, independent of admin role.
-- [x] Restrict Quiet-feed provider controls to providers that have accessible listings for the current user, while preserving a selected provider long enough to clear it — PR #53.
+- [ ] Make Saved Search and associated listing visibility owner-or-explicit-share only for every role, including admins; retain read-only partner sharing — implemented and parent-validated on `fix/saved-search-user-isolation`; publication pending.
+- [ ] Present Saved Search sharing as “Share with your partner” and allow any other account to be selected explicitly, independent of admin role — implemented and parent-validated on `fix/saved-search-user-isolation`; publication pending.
+- [x] Restrict Quiet-feed provider controls to providers that have accessible listings for the current user, while preserving a selected provider long enough to clear it — PR #53 merged and deployed Pages-only in 48 seconds; live frontend and backend health returned HTTP 200.
 - [ ] Complete the TypeScript and Rust migration program defined below; narrow seams and dormant parity routes are milestones, not completion.
 
 ## Wireframe convergence sequence

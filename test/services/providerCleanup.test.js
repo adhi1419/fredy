@@ -16,7 +16,7 @@ const jobStorageMock = {
 };
 
 const listingsStorageMock = {
-  getAvailableProviders: vi.fn(async () => storedProviders),
+  getStoredProviderIdsForSystem: vi.fn(async () => storedProviders),
 };
 
 vi.mock('../../lib/services/storage/jobStorage.js', () => jobStorageMock);
@@ -101,7 +101,7 @@ describe('providerCleanup', () => {
 
     expect(providerConfigOf('job-1')).toEqual([{ id: 'immoscout', url: 'https://example.org' }]);
     expect(jobStorageMock.getJobs).not.toHaveBeenCalled();
-    expect(listingsStorageMock.getAvailableProviders).not.toHaveBeenCalled();
+    expect(listingsStorageMock.getStoredProviderIdsForSystem).not.toHaveBeenCalled();
     expect(result).toEqual({
       obsoleteProviderIds: [],
       jobsUpdated: 0,

@@ -96,7 +96,6 @@ describe('GET /table affordability filter', () => {
       jobId: 'job-1',
       jobName: 'Berlin search',
       userId: 'user-1',
-      isAdmin: false,
       hiddenOnly: true,
     });
   });
@@ -257,6 +256,6 @@ describe('GET /table affordability filter', () => {
     const app = await buildApp();
     await app.inject({ method: 'GET', url: '/table?affordabilityFilter=affordable' });
 
-    expect(queryListings.mock.calls.at(-1)[0]).toMatchObject({ userId: 'user-1', isAdmin: false });
+    expect(queryListings.mock.calls.at(-1)[0]).toMatchObject({ userId: 'user-1' });
   });
 });

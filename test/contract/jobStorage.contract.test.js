@@ -613,13 +613,18 @@ describe('jobStorage contract', () => {
         expect(result[0].name).toBe('Shared');
       });
 
-      it('admin sees all jobs regardless of ownership', async () => {
+      it('scopes admins to their own and explicitly shared jobs', async () => {
         await seedUser('u1', 'alice');
         await seedUser('u2', 'bob');
-        await jobStorage.upsertJob(makeJob({ jobId: 'j1', userId: 'u1' }));
-        await jobStorage.upsertJob(makeJob({ jobId: 'j2', userId: 'u2' }));
-        const { totalNumber } = await jobStorage.queryJobs({ isAdmin: true });
-        expect(totalNumber).toBe(2);
+        await seedUser('admin', 'admin', true);
+        await jobStorage.upsertJob(makeJob({ jobId: 'j-admin', userId: 'admin', name: 'Admin Job' }));
+        await jobStorage.upsertJob(makeJob({ jobId: 'j-private', userId: 'u1', name: 'Private Job' }));
+        await jobStorage.upsertJob(
+          makeJob({ jobId: 'j-shared-admin', userId: 'u2', name: 'Shared Admin Job', shareWithUsers: ['admin'] }),
+        );
+
+        const { result } = await jobStorage.queryJobs({ userId: 'admin', isAdmin: true });
+        expect(result.map((job) => job.name).sort()).toEqual(['Admin Job', 'Shared Admin Job']);
       });
     });
 
