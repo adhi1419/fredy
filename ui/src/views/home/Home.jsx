@@ -24,6 +24,7 @@ import {
   HOME_VIEWS,
   homeLifecycleState,
   homeMapListing,
+  homeProviderOptions,
   homeQueryFromState,
   homeSortOption,
   normalizeProviderIds,
@@ -177,13 +178,10 @@ export default function Home({ defaultView = 'feed' }) {
     }
   };
 
-  const providerOptions = useMemo(() => {
-    const configured = (Array.isArray(providers) ? providers : [])
-      .map((provider) => ({ id: provider.id ?? provider.name, name: provider.name ?? provider.id }))
-      .filter((provider) => provider.id != null);
-    if (configured.length > 0) return configured;
-    return [...new Set(listings.map((listing) => listing.provider).filter(Boolean))].map((id) => ({ id, name: id }));
-  }, [listings, providers]);
+  const providerOptions = useMemo(
+    () => homeProviderOptions(providers, listingsData?.availableProviders ?? [], values.providerIds),
+    [listingsData?.availableProviders, providers, values.providerIds],
+  );
 
   const selectedProviders = new Set(values.providerIds);
   const selectedSort = homeSortOption(values.sort);

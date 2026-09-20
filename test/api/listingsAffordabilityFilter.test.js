@@ -31,7 +31,8 @@ vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
 vi.mock('../../lib/services/logger.js', () => ({ default: { error: vi.fn(), info: vi.fn(), debug: vi.fn() } }));
 vi.mock('../../lib/api/security.js', () => ({ isAdmin: vi.fn(() => false) }));
 
-import { queryListings } from '../../lib/services/storage/listingsStorage.js';
+import { queryListings, getAvailableProviders } from '../../lib/services/storage/listingsStorage.js';
+import { getJob } from '../../lib/services/storage/jobStorage.js';
 import { getUserSettings } from '../../lib/services/storage/settingsStorage.js';
 import listingsPlugin from '../../lib/api/routes/listingsRouter.js';
 import { priceThresholds, rentThresholds } from '../../lib/services/finance/affordability.js';
@@ -68,10 +69,38 @@ const bandFromLastCall = () => queryListings.mock.calls.at(-1)[0].affordabilityB
 beforeEach(() => {
   vi.clearAllMocks();
   queryListings.mockReturnValue({ totalNumber: 0, page: 1, result: [] });
+  getAvailableProviders.mockReturnValue([]);
+  getJob.mockReturnValue(null);
   getUserSettings.mockReturnValue({ finance_profile: COMPLETE_PROFILE });
 });
 
 describe('GET /table affordability filter', () => {
+  it('returns availability across pages without applying the active provider filter', async () => {
+    getJob.mockReturnValue({ id: 'job-1', name: 'Berlin search' });
+    getAvailableProviders.mockReturnValue(['immoscout', 'immowelt']);
+    const app = await buildApp();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/table?page=3&pageSize=40&providerFilter=immoscout&jobNameFilter=search-token&hiddenOnly=true',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().availableProviders).toEqual(['immoscout', 'immowelt']);
+    expect(queryListings.mock.calls.at(-1)[0]).toMatchObject({
+      page: 3,
+      pageSize: 40,
+      providerFilter: 'immoscout',
+    });
+    expect(getAvailableProviders).toHaveBeenCalledWith({
+      jobId: 'job-1',
+      jobName: 'Berlin search',
+      userId: 'user-1',
+      isAdmin: false,
+      hiddenOnly: true,
+    });
+  });
+
   it('translates "affordable" into a buy price band capped at the 35 % ceiling', async () => {
     const app = await buildApp();
     const response = await app.inject({ method: 'GET', url: '/table?affordabilityFilter=affordable' });

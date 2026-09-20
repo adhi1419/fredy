@@ -1,6 +1,48 @@
 # Fredy modernization tasks
 
-The canonical tracker is current through PR #52.
+The repository tracker on `main` is current through PR #52. This canonical working copy records the customer-reported production UI convergence gap and the next isolated fixes.
+
+## Reopened after customer review
+
+- [x] Audit every production route against the approved wireframes at rendered component level — Luna audit confirmed a real behavioral migration over materially reused legacy visible components; Saved Searches is the clearest mismatch.
+- [ ] Replace materially reused legacy Fredy components with the approved wireframe components in small, independently deployable PRs; preserve the two-destination information architecture and validated accessibility behavior.
+- [ ] Make Saved Search and associated listing visibility owner-or-explicit-share only for every role, including admins; retain read-only partner sharing — delegated on `fix/saved-search-user-isolation`.
+- [ ] Present Saved Search sharing as “Share with your partner” and allow any other account to be selected explicitly, independent of admin role.
+- [ ] Restrict Quiet-feed provider controls to providers that have accessible listings for the current user, while preserving a selected provider long enough to clear it — implemented, rendered, and parent-reviewed on `fix/home-provider-availability`; publication pending.
+- [ ] Complete the TypeScript and Rust migration program defined below; narrow seams and dormant parity routes are milestones, not completion.
+
+## Wireframe convergence sequence
+
+Each visible replacement must preserve its existing deep behavior modules and accessibility contracts, delete the legacy presentation boundary it replaces, and migrate every touched production component/test to strict TypeScript/TSX.
+
+- [ ] Slice 1 — replace the legacy `JobGrid`/`JobsTable` Saved Searches index with the approved name/criteria/state/last-run/contextual-action rows; delete obsolete production imports and preserve SSE/run/pause/edit/clone/delete/shared-read-only behavior.
+- [ ] Slice 2 — replace Home's generic `Headline` and legacy Quiet rows with the approved local heading and photo-led card-light composition; migrate `Home.jsx` to TSX while preserving the single URL/query/listing state.
+- [ ] Slice 3 — converge Home List + map framing and decision rows without creating a second map or listing query; preserve marker keyboard access and all Home state across view switches.
+- [ ] Slice 4 — replace `ProviderTable` in guided Saved Search with provider-choice cards showing URL, capability, connection/profile readiness, and source-local application policy; keep the four-step controller and payload seam.
+- [ ] Slice 5 — replace the listing-detail outer Semi card/grid/header cluster with the approved Fit/evidence/activity/action-rail composition; preserve inquiry safety, lifecycle, map/transit, notes, and the validated mobile dock.
+- [ ] Slice 6 — replace the personal `SettingsShell` heading/tab/card grammar with the approved My account composition while preserving deep links and one account-menu destination.
+- [ ] Slice 7 — migrate personal settings pages and then optional Admin pages away from page-local `SegmentPart` presentation, one independently deployable page group at a time; preserve admin guards, backup/debug safety, and shared unsaved admin state.
+- [x] Keep applicant onboarding and the mobile bottom navigation/action dock stable unless later rendered evidence identifies a concrete mismatch; their defined contracts already match.
+
+## TypeScript and Rust migration completion target
+
+Current baseline after PR #52:
+
+- TypeScript: 9 `.ts`/`.tsx` files under `ui/src` (including `vite-env.d.ts`) versus 150 `.js`/`.jsx` files.
+- Rust: one dormant `rust/health-route` package implementing `/health` and `/api/auth/config`; 0% of production traffic.
+- Production authority: Node owns the Cloud Run process, API, Firebase authorization, Firestore access, scheduling, providers, notifications, and SSE.
+
+Completion means all of the following:
+
+- [ ] Migrate all frontend application source and frontend tests to strict TypeScript/TSX, leaving JavaScript only for explicitly audited build/tool configuration that cannot reasonably move.
+- [ ] Keep each TypeScript conversion behind a real domain/component boundary with executable behavior tests; do not create shallow pass-through seams or one mechanical mega-PR.
+- [ ] Tighten the frontend compiler/CI boundary as migration advances so converted code cannot silently fall back to `any` or unchecked JavaScript.
+- [ ] Implement Rust Firebase bearer verification, per-request Firestore allowlist enforcement, exact-origin CORS, authenticated SSE, and the frozen HTTP error contract.
+- [ ] Implement Rust Firestore persistence adapters behind the characterized job/listing/settings/channel/application contracts before cutting over dependent routes.
+- [ ] Strangle Node route groups incrementally into Rust with parity tests, explicit traffic ownership, observability, and per-route rollback.
+- [ ] Migrate scheduling, provider orchestration, notification delivery, and inquiry safety only after their executable contracts pass natively; move CloakBrowser/browser-heavy providers last.
+- [ ] Make the Rust binary the authoritative Cloud Run entrypoint and remove the Node production runtime only after full provider, notification, persistence, auth, SSE, and schedule parity is verified.
+- [ ] Keep the broad `FredyPipelineExecutioner` refactor out of scope unless a later independently approved design replaces it behind existing contracts.
 
 ## Completed architecture and delivery
 
@@ -82,7 +124,7 @@ The canonical tracker is current through PR #52.
 - [x] PR #40: implement Home Quiet feed with state-preserving List + map, exclusive activity, provider multi-select, and sorting — merged and deployed to Pages and Cloud Run successfully in 63 seconds.
 - [x] PR #37: implement one-handed mobile listing detail and unified lifecycle actions — merged and deployed to Pages successfully in 34 seconds.
 - [x] PR #43: implement the four-step guided Saved Search add/edit flow with per-source application policy controls — merged and deployed to Pages successfully in 51 seconds.
-- [x] PR #44: apply and visually validate the final Paper/forest styling through centralized theme tokens only — merged and deployed to Pages successfully in 38 seconds.
+- [x] PR #44: establish and visually validate the centralized Paper/forest token baseline — merged and deployed to Pages successfully in 38 seconds; component-level wireframe convergence remains open.
 - [x] Run accessibility, responsive, and new-user usability review with screenshots/recordings — rendered audit complete and verified fixes shipped in PRs #48–#49.
 - [x] PR #49: publish verified accessibility fixes — merged and deployed to Pages successfully in 43 seconds; live frontend returned HTTP 200.
 - [x] PR #48: publish verified responsive fixes — merged and deployed to Pages successfully in 40 seconds; live frontend returned HTTP 200.
@@ -90,6 +132,6 @@ The canonical tracker is current through PR #52.
 ## Last-mile product work
 
 - [x] PR #45: add mandatory applicant-profile setup after first registration while keeping My account edit-only afterward — merged via rebase and deployed to Pages and Cloud Run successfully in 65 seconds; all live probes returned HTTP 200.
-- [x] Rewrite the customer README for the finished product — PR #50.
-- [x] Capture final product screenshots only from the finished UI — PR #52.
+- [x] Rewrite the customer README for the current shipped product — PR #50; revise product-fidelity wording as convergence slices land.
+- [x] Capture current production-state screenshots — PR #52; these are baseline evidence of the remaining visual convergence gaps.
 - [x] Create and link a separate developer/operator guide — PR #51.

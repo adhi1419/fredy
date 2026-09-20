@@ -23,6 +23,7 @@ describe('listings state domain', () => {
       totalNumber: 0,
       page: 1,
       result: [],
+      availableProviders: [],
       mapListings: [],
       currentListing: null,
       maxPrice: 0,
@@ -31,7 +32,12 @@ describe('listings state domain', () => {
 
   it('loads paginated table data with the existing query contract', async () => {
     const { state, get, stringify, effects } = setup();
-    const response = { totalNumber: 1, page: 3, result: [{ id: 'listing-1' }] };
+    const response = {
+      totalNumber: 1,
+      page: 3,
+      result: [{ id: 'listing-1' }],
+      availableProviders: ['immoscout', 'immowelt', 42],
+    };
     get.mockResolvedValue({ status: 200, json: response });
 
     await effects.getListingsData({
@@ -56,7 +62,13 @@ describe('listings state domain', () => {
       { skipNull: true, skipEmptyString: true },
     );
     expect(get).toHaveBeenCalledWith('/api/listings/table?encoded-query');
-    expect(state.listingsData).toMatchObject(response);
+    expect(state.listingsData).toMatchObject({
+      totalNumber: 1,
+      page: 3,
+      result: [{ id: 'listing-1' }],
+      availableProviders: ['immoscout', 'immowelt'],
+    });
+    expect(state.listingsData.availableProviders).not.toBe(response.availableProviders);
   });
 
   it('maps map data and keeps the existing empty-value fallbacks', async () => {

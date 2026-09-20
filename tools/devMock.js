@@ -129,6 +129,16 @@ const listings = [
   },
 ];
 
+const providerMetadata = [
+  { id: 'immoscout', name: 'ImmobilienScout24', baseUrl: 'https://www.immobilienscout24.de' },
+  { id: 'immo', name: 'Immowelt', baseUrl: 'https://www.immowelt.de' },
+  { id: 'metadataOnly', name: 'Metadata-only provider', baseUrl: 'https://example.com/metadata-only' },
+];
+const providerIdsByName = new Map(providerMetadata.map(({ id, name }) => [name, id]));
+const availableProviders = [
+  ...new Set(listings.map((listing) => providerIdsByName.get(listing.provider)).filter(Boolean)),
+];
+
 const dashboard = {
   general: { interval: 30, lastRun: now - 1800000, nextRun: now + 1800000 },
   kpis: { totalJobs: 2, totalListings: 4, numberOfActiveListings: 3, medianPriceOfListings: 1225 },
@@ -140,10 +150,7 @@ const dashboard = {
 
 const routes = {
   'GET /api/auth/me': { userId: 1, username: 'admin@example.com', isAdmin: true },
-  'GET /api/jobs/provider': [
-    { id: 'immoscout', name: 'ImmobilienScout24', baseUrl: 'https://www.immobilienscout24.de' },
-    { id: 'immo', name: 'Immowelt', baseUrl: 'https://www.immowelt.de' },
-  ],
+  'GET /api/jobs/provider': providerMetadata,
   'GET /api/jobs': jobs,
   'GET /api/jobs/shareableUserList': [],
   'GET /api/jobs/notificationAdapter': [],
@@ -209,7 +216,14 @@ const server = http.createServer((req, res) => {
   }
   if (path.startsWith('/api/listings/table')) {
     res.writeHead(200);
-    res.end(JSON.stringify({ result: listings, totalNumber: listings.length, page: 1 }));
+    res.end(
+      JSON.stringify({
+        result: listings,
+        totalNumber: listings.length,
+        page: 1,
+        availableProviders,
+      }),
+    );
     return;
   }
   if (path.startsWith('/api/listings/map')) {
