@@ -91,6 +91,22 @@ export function createFirestoreMemory() {
     getConnection: () => connection,
     batch,
     recursiveDelete: async (ref) => ref.delete(),
+    // Minimal transaction shim: reads and writes run against the same in-memory maps the rest of
+    // the mock uses, so the ledger's reserve/finish transactions exercise their real read-modify-
+    // write logic. It is intentionally serial (single-threaded tests), which is enough to prove the
+    // state-machine guards; it does not simulate optimistic-concurrency retries.
+    runTransaction: async (updateFn) => {
+      const operationsQueue = [];
+      const transaction = {
+        get: async (ref) => ref.get(),
+        set: (ref, value) => operationsQueue.push(() => ref.set(value)),
+        update: (ref, value) => operationsQueue.push(() => ref.update(value)),
+        delete: (ref) => operationsQueue.push(() => ref.delete()),
+      };
+      const result = await updateFn(transaction);
+      for (const operation of operationsQueue) await operation();
+      return result;
+    },
   };
 
   return {

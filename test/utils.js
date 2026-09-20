@@ -6,7 +6,7 @@
 import { vi } from 'vitest';
 import { readFile } from 'fs/promises';
 import * as mockStore from './mocks/mockStore.js';
-import { send } from './mocks/mockNotification.js';
+import { send, sendOneToChannel } from './mocks/mockNotification.js';
 
 export const providerConfig = JSON.parse(
   await readFile(new URL('./provider/testProvider.json', import.meta.url), 'utf-8'),
@@ -30,7 +30,22 @@ vi.mock('../lib/services/sse/sse-broker.js', () => ({
     sseEvents.push({ userId, event, data });
   },
 }));
-vi.mock('../lib/notification/notify.js', () => ({ send }));
+vi.mock('../lib/notification/notify.js', () => ({ send, sendOneToChannel }));
+
+// The notification delivery ledger. In tests it never blocks: every reservation succeeds so the
+// pipeline attempts each configured channel exactly once, and finishing is a no-op. The per-channel
+// send itself is recorded through the notify mock above. Real reservation/duplicate-suppression is
+// proven by the dedicated ledger unit and contract suites, not here.
+vi.mock('../lib/services/storage/notificationLedgerStorage.js', () => ({
+  reserveDelivery: async ({ listingId, configuredAdapterId }) => ({
+    reserved: true,
+    state: 'sending',
+    deliveryId: `${listingId}:${configuredAdapterId}`,
+  }),
+  finishDelivery: async () => 1,
+  getDelivery: async () => null,
+  getDeliveryById: async () => null,
+}));
 
 export const inquiryDeliveries = [];
 let inquiryDeliveryError = null;
@@ -108,7 +123,15 @@ export const mockFredy = async () => {
   const FredyPipelineExecutioner = mod.default;
   return class TestPipeline extends FredyPipelineExecutioner {
     constructor(providerConfig, job, providerId, similarityCache, browser, options = {}) {
-      super(providerConfig, job, providerId, similarityCache, browser, { maxDetailFetches: 1, ...options });
+      const configured = Array.isArray(job?.notificationAdapter) ? job.notificationAdapter : [];
+      const notificationAdapter = (configured.length > 0 ? configured : [{ id: 'test' }]).map((entry, index) => ({
+        ...entry,
+        configuredAdapterId: entry.configuredAdapterId || `test-channel-${index}`,
+      }));
+      super(providerConfig, { ...job, notificationAdapter }, providerId, similarityCache, browser, {
+        maxDetailFetches: 1,
+        ...options,
+      });
     }
   };
 };
