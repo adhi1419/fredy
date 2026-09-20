@@ -32,7 +32,7 @@ import {
   IconClock,
   IconBriefcase,
   IconActivity,
-  IconLink,
+  IconExternalOpen,
   IconStar,
   IconStarStroked,
   IconDelete,
@@ -786,7 +786,7 @@ export default function ListingDetail() {
               rel="noopener noreferrer"
               aria-label={t(MOBILE_LISTING_ACTION_LABELS.provider)}
             >
-              <IconLink aria-hidden="true" />
+              <IconExternalOpen aria-hidden="true" />
             </a>
           ) : (
             <Button
@@ -796,7 +796,7 @@ export default function ListingDetail() {
               disabled
               aria-label={t(MOBILE_LISTING_ACTION_LABELS.provider)}
             >
-              <IconLink aria-hidden="true" />
+              <IconExternalOpen aria-hidden="true" />
             </Button>
           );
         })}
@@ -889,7 +889,7 @@ export default function ListingDetail() {
                 if (!providerListingUrl) event.preventDefault();
               }}
             >
-              <IconLink style={{ marginRight: 6 }} />
+              <IconExternalOpen style={{ marginRight: 6 }} />
               {t('listing.detail.openListing')}
             </a>
             {/* Sits next to "open listing" on purpose: the user clicks that first, sees the ad is
