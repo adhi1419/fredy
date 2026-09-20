@@ -77,6 +77,19 @@ describe('listing action contract', () => {
 });
 
 describe('accessibility action contracts', () => {
+  it('uses the approved outbound icon for every detail provider action', () => {
+    expect(listingDetailSource).toContain('IconExternalOpen');
+    expect(listingDetailSource).not.toContain('IconLink');
+    expect(listingDetailSource.match(/<IconExternalOpen/g)).toHaveLength(3);
+    expect(listingDetailSource).toContain('href={providerListingUrl}');
+    expect(listingDetailSource).toContain('href={providerListingUrl ?? undefined}');
+    expect(listingDetailSource).toContain('target="_blank"');
+    expect(listingDetailSource).toContain('rel="noopener noreferrer"');
+    expect(listingDetailSource).toContain('aria-label={t(MOBILE_LISTING_ACTION_LABELS.provider)}');
+    expect(listingDetailSource).toContain('aria-disabled={!providerListingUrl}');
+    expect(listingDetailSource).toContain('if (!providerListingUrl) event.preventDefault();');
+  });
+
   it('keeps the Applied disclosure submitted-message-only and nonmodal while managing focus', () => {
     expect(listingDetailSource).toContain('id={APPLIED_TRIGGER_ID}');
     expect(listingDetailSource).toContain('ref={appliedCloseButtonRef}');
