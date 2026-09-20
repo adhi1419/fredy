@@ -1,6 +1,6 @@
 # Fredy modernization tasks
 
-The canonical tracker is current through PR #57 and records the reopened UI convergence plus complete TypeScript/Rust migration goals.
+The canonical tracker is current through PR #58 and records the reopened UI convergence plus complete TypeScript/Rust migration goals.
 
 ## Reopened after customer review
 
@@ -16,7 +16,7 @@ The canonical tracker is current through PR #57 and records the reopened UI conv
 Each visible replacement must preserve its existing deep behavior modules and accessibility contracts, delete the legacy presentation boundary it replaces, and migrate every touched production component/test to strict TypeScript/TSX.
 
 - [x] Slice 1 — replaced the legacy `JobGrid`/`JobsTable` Saved Searches index with the approved name/criteria/state/last-run/contextual-action rows; deleted obsolete production imports while preserving SSE/run/pause/edit/clone/delete/shared-read-only behavior. PR #57 rebase-merged as `73c9a0c`; independent zero-context review passed the real-mock direct/overflow actions, disabled running/read-only states, status-only state, provider selection/save, desktop/mobile containment, and console cleanliness. Combined Pages + Cloud Run deployment run 35499492377 succeeded in 110 seconds; live Pages and API `/health` returned HTTP 200, and the served bundle contains the approved Slice 1 copy.
-- [ ] Slice 2 — replace Home's generic `Headline` and legacy Quiet rows with the approved local heading and photo-led card-light composition; migrate `Home.jsx` to TSX while preserving the single URL/query/listing state — Luna worker `f36c9e78` completed on `feat/home-quiet-tsx`; parent review found missing production compiler coverage for `Home.tsx` and the missing wireframe freshness context in the eyebrow. Focused correction is pending before independent usability review/publication.
+- [ ] Slice 2 — replace Home's generic `Headline` and legacy Quiet rows with the approved local heading and photo-led card-light composition; migrate `Home.jsx` to TSX while preserving the single URL/query/listing state — implementation worker `f36c9e78` and correction `cd85d60a` completed on `feat/home-quiet-tsx`. Production Home now strict-compiles, the approved localized freshness eyebrow uses existing dashboard state, and fresh desktop/mobile evidence is clean; independent zero-context reviewer `a17416b8` is active before publication.
 - [ ] Slice 3 — converge Home List + map framing and decision rows without creating a second map or listing query; preserve marker keyboard access and all Home state across view switches.
 - [ ] Slice 4 — replace `ProviderTable` in guided Saved Search with provider-choice cards showing URL, capability, connection/profile readiness, and source-local application policy; keep the four-step controller and payload seam.
 - [ ] Slice 5 — replace the listing-detail outer Semi card/grid/header cluster with the approved Fit/evidence/activity/action-rail composition; preserve inquiry safety, lifecycle, map/transit, notes, and the validated mobile dock.
@@ -26,18 +26,18 @@ Each visible replacement must preserve its existing deep behavior modules and ac
 
 ## TypeScript and Rust migration completion target
 
-Current baseline after PR #57:
+Current baseline after PR #58:
 
-- TypeScript: 15 `.ts`/`.tsx` files under `ui/src` (including declaration boundaries and `vite-env.d.ts`) versus 146 `.js`/`.jsx` files; separate strict browser-source and Node-aware frontend-test compiler configurations are active.
+- TypeScript: 18 `.ts`/`.tsx` files under `ui/src` (including declaration boundaries and `vite-env.d.ts`) versus 145 `.js`/`.jsx` files; separate strict browser-source and Node-aware frontend-test compiler configurations are active.
 - Rust: dormant `/health`, `/api/auth/config`, and real Firebase `/api/auth/me`; 0% of production traffic.
 - Production authority: Node owns the Cloud Run process, API, Firebase authorization, Firestore access, scheduling, providers, notifications, and SSE.
 
 Completion means all of the following:
 
 - [ ] Migrate all frontend application source and frontend tests to strict TypeScript/TSX, leaving JavaScript only for explicitly audited build/tool configuration that cannot reasonably move.
-- [x] Keep each TypeScript conversion behind a real domain/component boundary with executable behavior tests; do not create shallow pass-through seams or one mechanical mega-PR — strict compiler-covered `listingFilters.ts` and its direct TypeScript test shipped in PR #55, rebase-merged as `2288d06`; Pages-only deployment succeeded in 41 seconds and live frontend/API health returned HTTP 200. The complete `guidedSearchForm` domain/test migration passed parent review and publication validation, and is published as PR #58 at feature head `a7156a0` with rebase auto-merge enabled; required checks and deployment are pending.
+- [x] Keep each TypeScript conversion behind a real domain/component boundary with executable behavior tests; do not create shallow pass-through seams or one mechanical mega-PR — `listingFilters.ts` shipped in PR #55 and `guidedSearchForm.ts` shipped in PR #58 (`a993bdd`, Pages-only run 35500637948, 39 seconds), both with live Pages/API HTTP 200. The `providerUrl` source/test migration by `e32d4a1f` passed parent review and is pending publication; Luna worker `054dd900` is migrating the adjacent real `jobValidation` domain/test on `feat/job-validation-typescript` from PR #58 main.
 - [ ] Tighten the frontend compiler/CI boundary as migration advances so converted code cannot silently fall back to `any` or unchecked JavaScript.
-- [ ] Implement Rust Firebase bearer verification, per-request Firestore allowlist enforcement, exact-origin CORS, authenticated SSE, and the frozen HTTP error contract — dormant `/api/auth/me` with real RS256/X.509, bounded cert/OAuth/unknown-key caches, Firestore REST + emulator contracts, exact bearer/error/CORS parity, and a Rust-1.85-compatible lock graph shipped in PR #56, rebase-merged as `be1e069`; no deployment run was created because Rust remains excluded from production inputs, and live Pages/Node API health stayed HTTP 200. Luna worker `c3622f8e` died while an over-broad discovery command was being stopped and left `/home/adhitr/workspace/fredy-rust-authenticated-sse-luna` unchanged; a tightly scoped recovery implementation is pending. Rust still owns 0% production traffic.
+- [ ] Implement Rust Firebase bearer verification, per-request Firestore allowlist enforcement, exact-origin CORS, authenticated SSE, and the frozen HTTP error contract — dormant `/api/auth/me` with real RS256/X.509, bounded cert/OAuth/unknown-key caches, Firestore REST + emulator contracts, exact bearer/error/CORS parity, and a Rust-1.85-compatible lock graph shipped in PR #56, rebase-merged as `be1e069`; no deployment run was created because Rust remains excluded from production inputs, and live Pages/Node API health stayed HTTP 200. After two no-change worker failures, cwd-pinned Luna worker `941395e8` is actively implementing authenticated SSE in the real `/home/adhitr/workspace/fredy-rust-authenticated-sse-luna` worktree. Rust still owns 0% production traffic.
 - [ ] Implement Rust Firestore persistence adapters behind the characterized job/listing/settings/channel/application contracts before cutting over dependent routes.
 - [ ] Strangle Node route groups incrementally into Rust with parity tests, explicit traffic ownership, observability, and per-route rollback.
 - [ ] Migrate scheduling, provider orchestration, notification delivery, and inquiry safety only after their executable contracts pass natively; move CloakBrowser/browser-heavy providers last.
