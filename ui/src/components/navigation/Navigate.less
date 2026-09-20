@@ -1,232 +1,211 @@
 @import '../../tokens.less';
 
-.navigate {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
+.fredy-shell-nav {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto minmax(130px, 1fr);
+  align-items: center;
+  gap: @space-4;
+  min-height: 58px;
+  padding: 0 @space-6;
+  flex-shrink: 0;
   background: @color-surface;
-  border-right: 1px solid @color-border;
-  transition: @transition-sidebar;
-  overflow: hidden;
+  border-bottom: 1px solid @color-border;
+}
 
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px 16px 16px;
-    min-height: 64px;
-    flex-shrink: 0;
+.fredy-shell-nav__brand,
+.fredy-shell-nav__primary-link,
+.fredy-shell-nav__account-button,
+.fredy-shell-nav__account-menu button {
+  border: 0;
+  background: transparent;
+  color: @color-muted;
+  font-family: @font-ui;
+  cursor: pointer;
+}
 
-    img {
-      transition:
-        width @transition-fast,
-        opacity @transition-fast;
+.fredy-shell-nav__brand {
+  justify-self: start;
+  padding: @space-2 0;
+  color: @color-accent;
+  font-size: @text-lg;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.fredy-shell-nav__brand:focus-visible,
+.fredy-shell-nav__primary-link:focus-visible,
+.fredy-shell-nav__account-button:focus-visible,
+.fredy-shell-nav__account-menu button:focus-visible,
+.fredy-shell-nav__mobile-primary button:focus-visible {
+  outline: 2px solid @color-accent;
+  outline-offset: 2px;
+}
+
+.fredy-shell-nav__desktop-primary {
+  display: flex;
+  align-self: stretch;
+  gap: @space-1;
+}
+
+.fredy-shell-nav__primary-link {
+  position: relative;
+  display: inline-flex;
+  min-width: 128px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: @space-2;
+  padding: @space-2 @space-3;
+  font-size: @text-sm;
+  font-weight: 600;
+  transition:
+    color @transition-fast,
+    background @transition-fast;
+
+  &:hover {
+    color: @color-text;
+    background: @color-fill-subtle;
+  }
+
+  &.is-active {
+    color: @color-text;
+
+    &::after {
+      position: absolute;
+      right: @space-3;
+      bottom: -1px;
+      left: @space-3;
+      height: 3px;
+      border-radius: @radius-pill @radius-pill 0 0;
+      background: @color-accent;
+      content: '';
     }
   }
+}
 
-  &__footer {
-    display: flex;
-    flex-direction: column;
-    margin-top: auto;
-    flex-shrink: 0;
-    padding: 0 !important;
+.fredy-shell-nav__account-wrap {
+  position: relative;
+  justify-self: end;
+}
+
+.fredy-shell-nav__account-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: @space-2;
+  padding: @space-2 @space-3;
+  border: 1px solid transparent;
+  border-radius: @radius-btn;
+  font-size: @text-sm;
+  font-weight: 600;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    border-color: @color-border;
+    background: @color-fill-subtle;
+    color: @color-text;
   }
+}
 
-  &__footer-actions {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 1rem 8px 10px;
-    border-top: 1px solid @color-border;
+.fredy-shell-nav__account-menu {
+  position: absolute;
+  top: calc(100% + @space-2);
+  right: 0;
+  display: grid;
+  width: 190px;
+  padding: @space-1;
+  border: 1px solid @color-border-bright;
+  border-radius: @radius-card;
+  background: @color-elevated;
+  box-shadow: @shadow-md;
 
-    &--collapsed {
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-  }
-
-  &__logout-btn {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 32px;
-    padding: 0 10px;
-    border: 1px solid rgb(@color-error-rgb / 25%);
-    background: rgb(@color-error-rgb / 6%);
-    color: @color-error;
+  button {
+    min-height: 44px;
+    padding: @space-2 @space-3;
     border-radius: @radius-btn;
-    cursor: pointer;
+    text-align: left;
     font-size: @text-sm;
-    font-weight: 500;
-    font-family: @font-ui;
-    transition:
-      background @transition-fast,
-      border-color @transition-fast;
-    white-space: nowrap;
-    overflow: hidden;
-
-    &:hover {
-      background: rgb(@color-error-rgb / 12%);
-      border-color: rgb(@color-error-rgb / 40%);
-    }
-
-    &--icon-only {
-      flex: none;
-      width: 32px;
-      height: 32px;
-      justify-content: center;
-      padding: 0;
-      border: none;
-      background: transparent;
-      border-radius: @radius-btn;
-
-      &:hover {
-        background: rgb(@color-error-rgb / 8%);
-      }
-    }
-  }
-
-  &__toggle-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 32px;
-    width: 32px;
-    flex-shrink: 0;
-    border: none;
-    background: transparent;
-    color: @color-faint;
-    cursor: pointer;
-    border-radius: @radius-btn;
-    transition:
-      background @transition-fast,
-      color @transition-fast;
 
     &:hover {
       background: @color-fill-1;
-      color: @color-muted;
+      color: @color-text;
+    }
+
+    &:last-child {
+      margin-top: @space-1;
+      border-top: 1px solid @color-border;
+      border-radius: 0;
+      color: @color-error;
     }
   }
 }
 
-// Semi Nav overrides
-.semi-navigation {
-  background: @color-surface !important;
-  border-right: none !important;
+.fredy-shell-nav__mobile-primary {
+  display: none;
 }
 
-.semi-navigation-item {
-  border-radius: @radius-btn !important;
-  border: 1px solid transparent !important;
-  color: @color-muted !important;
-  transition:
-    background @transition-fast,
-    color @transition-fast,
-    border-color @transition-fast !important;
-
-  &:hover {
-    color: @color-text !important;
+@media (max-width: 768px) {
+  .fredy-shell-nav {
+    position: relative;
+    grid-template-columns: 1fr auto;
+    min-height: 54px;
+    padding: @space-2 @space-3;
+    border-bottom: 1px solid @color-border;
   }
 
-  &.semi-navigation-item-selected,
-  &[aria-selected='true'] {
-    background: rgb(@color-accent-rgb / 12%) !important;
-    border-color: rgb(@color-accent-rgb / 25%) !important;
-    color: @color-text !important;
-
-    .semi-navigation-item-icon {
-      color: @color-accent !important;
-    }
-  }
-}
-
-.semi-navigation-sub-title {
-  color: @color-muted !important;
-}
-
-// Collapsed state - icons perfectly centered
-.semi-navigation-collapsed {
-  // Text span is display:block and takes up flex space - must be removed so justify-content:center works
-  .semi-navigation-item-text {
-    display: none !important;
+  .fredy-shell-nav__desktop-primary {
+    display: none;
   }
 
-  .semi-navigation-item,
-  .semi-navigation-sub-title {
-    margin: 2px 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    height: 36px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+  .fredy-shell-nav__brand {
+    font-size: @text-md;
   }
 
-  .semi-navigation-item-inner,
-  .semi-navigation-sub-title-inner {
-    padding: 0 !important;
-    margin: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 100% !important;
-    min-width: 0 !important;
+  .fredy-shell-nav__account-button {
+    min-width: 44px;
   }
 
-  // Semi adds margin-right to icons for text spacing - remove it when collapsed
-  .semi-navigation-item-icon,
-  .semi-navigation-sub-title-icon {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin: 0 !important;
-    margin-right: 0 !important;
-    padding: 0 !important;
-    width: auto !important;
-    min-width: 0 !important;
+  .fredy-shell-nav__account-label {
+    display: none;
   }
-}
 
-// Semi Nav.Footer - full width, no extra padding (our BEM class controls it)
-.semi-navigation-footer {
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
+  .fredy-shell-nav__mobile-primary {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: calc(64px + env(safe-area-inset-bottom));
+    padding: @space-1 @space-2 env(safe-area-inset-bottom);
+    border-top: 1px solid @color-border;
+    background: @color-surface;
+    box-shadow: @shadow-md;
+  }
 
-// Collapsed submenu popup - actual class used by Semi UI is .semi-navigation-popover
-.semi-navigation-popover {
-  background: @color-elevated !important;
-  border: 1px solid @color-border !important;
-  border-radius: @radius-card !important;
-  box-shadow: @shadow-md !important;
-  overflow: hidden !important;
+  .fredy-shell-nav__mobile-primary .fredy-shell-nav__primary-link {
+    min-width: 0;
+    min-height: 44px;
+    align-self: center;
+    flex-direction: column;
+    gap: 2px;
+    padding: @space-1;
+    font-size: @text-xs;
+  }
 
-  .semi-navigation-item {
-    margin: 2px 6px !important;
-    color: @color-muted !important;
-    border: none !important;
-    border-radius: @radius-btn !important;
+  .fredy-shell-nav__mobile-primary .fredy-shell-nav__primary-link.is-active::after {
+    right: 20%;
+    bottom: 0;
+    left: 20%;
+    height: 2px;
+    border-radius: @radius-pill;
+  }
 
-    &:hover {
-      background: @color-fill-1 !important;
-      color: @color-text !important;
-    }
-
-    &.semi-navigation-item-selected,
-    &.semi-dropdown-item-active {
-      background: rgb(@color-accent-rgb / 10%) !important;
-      border: none !important;
-      color: @color-text !important;
-
-      .semi-navigation-item-icon {
-        color: @color-accent !important;
-      }
-    }
+  .fredy-shell-nav__account-menu {
+    top: calc(100% + @space-1);
+    right: @space-2;
   }
 }
