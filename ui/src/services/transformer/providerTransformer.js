@@ -3,11 +3,14 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-export function transform({ name, id, enabled, url }) {
+export function transform({ name, id, enabled, url, applicationPolicy }) {
   return {
     name,
     id,
     enabled,
     url,
+    ...(applicationPolicy?.automatic === 'enabled' || applicationPolicy?.automatic === 'disabled'
+      ? { applicationPolicy: { automatic: applicationPolicy.automatic } }
+      : {}),
   };
 }
