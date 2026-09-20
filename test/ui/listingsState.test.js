@@ -92,6 +92,9 @@ describe('listings state domain', () => {
     post.mockResolvedValue({ status: 200, json: {} });
 
     await effects.setListingStatus('listing-1', 'applied');
+    await effects.setListingLifecycleAction('listing-1', 'applied');
+    await effects.setListingLifecycleAction('listing-1', 'viewing');
+    await effects.setListingLifecycleAction('listing-1', 'archive');
     await effects.setListingNotes('listing-1', 'call after 6pm');
     await effects.setListingAddress('listing-1', {
       address: 'New Street 4',
@@ -104,6 +107,9 @@ describe('listings state domain', () => {
 
     expect(post.mock.calls).toEqual([
       ['/api/listings/listing-1/status', { status: 'applied' }],
+      ['/api/listings/listing-1/status', { action: 'applied' }],
+      ['/api/listings/listing-1/status', { action: 'viewing' }],
+      ['/api/listings/listing-1/status', { action: 'archive' }],
       ['/api/listings/listing-1/notes', { notes: 'call after 6pm' }],
       ['/api/listings/listing-1/address', { address: 'New Street 4', latitude: 52.5, longitude: 13.4 }],
       ['/api/listings/watch', { listingId: 'listing-1' }],

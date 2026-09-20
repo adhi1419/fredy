@@ -65,11 +65,14 @@ export interface ListingPosition {
   longitude: number;
 }
 
+export type ListingLifecycleAction = 'applied' | 'viewing' | 'archive';
+
 export interface ListingsEffects {
   getListingsData(params: ListingsDataQuery): Promise<void>;
   getListing(listingId: string): Promise<unknown>;
   getListingsForMap(params?: ListingsMapQuery): Promise<void>;
   setListingStatus(listingId: string, status: unknown): Promise<void>;
+  setListingLifecycleAction(listingId: string, action: ListingLifecycleAction): Promise<void>;
   setListingNotes(listingId: string, notes: unknown): Promise<void>;
   setListingAddress(listingId: string, position: ListingPosition): Promise<void>;
   toggleListingWatch(listingId: string): Promise<void>;
@@ -165,6 +168,15 @@ export function createListingsEffects(
         await transport.post(`/api/listings/${listingId}/status`, { status });
       } catch (exception) {
         console.error(`Error while trying to set status for listing ${listingId}. Error:`, exception);
+        throw exception;
+      }
+    },
+
+    async setListingLifecycleAction(listingId, action) {
+      try {
+        await transport.post(`/api/listings/${listingId}/status`, { action });
+      } catch (exception) {
+        console.error(`Error while trying to set lifecycle action for listing ${listingId}. Error:`, exception);
         throw exception;
       }
     },
