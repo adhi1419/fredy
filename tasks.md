@@ -1,6 +1,6 @@
 # Fredy modernization tasks
 
-The repository tracker on `main` is current through PR #52. This canonical working copy records the customer-reported production UI convergence gap and the next isolated fixes.
+The canonical tracker is current through PR #53 and records the reopened UI convergence plus complete TypeScript/Rust migration goals.
 
 ## Reopened after customer review
 
@@ -8,7 +8,7 @@ The repository tracker on `main` is current through PR #52. This canonical worki
 - [ ] Replace materially reused legacy Fredy components with the approved wireframe components in small, independently deployable PRs; preserve the two-destination information architecture and validated accessibility behavior.
 - [ ] Make Saved Search and associated listing visibility owner-or-explicit-share only for every role, including admins; retain read-only partner sharing — delegated on `fix/saved-search-user-isolation`.
 - [ ] Present Saved Search sharing as “Share with your partner” and allow any other account to be selected explicitly, independent of admin role.
-- [ ] Restrict Quiet-feed provider controls to providers that have accessible listings for the current user, while preserving a selected provider long enough to clear it — implemented, rendered, and parent-reviewed on `fix/home-provider-availability`; publication pending.
+- [x] Restrict Quiet-feed provider controls to providers that have accessible listings for the current user, while preserving a selected provider long enough to clear it — PR #53.
 - [ ] Complete the TypeScript and Rust migration program defined below; narrow seams and dormant parity routes are milestones, not completion.
 
 ## Wireframe convergence sequence
