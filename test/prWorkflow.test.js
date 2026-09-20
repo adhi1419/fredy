@@ -60,8 +60,22 @@ describe('combined pull request workflow', () => {
   it('retains conditional backend jobs plus the aggregate gate', () => {
     const gate = job('gate');
     expect(workflow).toContain("if: needs.changes.outputs.backend == 'true'");
-    expect(gate).toContain('needs: [changes, frontend, backend-tests, backend-image]');
+    expect(gate).toContain('needs: [changes, frontend, backend-tests, backend-image, rust-tests]');
     expect(gate).toContain('FRONTEND_RESULT');
     expect(gate).toContain('BACKEND_IMAGE_RESULT');
+    expect(gate).toContain('RUST_RESULT');
+  });
+
+  it('runs the pinned Rust route checks only for Rust paths', () => {
+    const rust = job('rust-tests', 'gate');
+
+    expect(workflow).toContain("            rust:\n              - 'rust/**'");
+    expect(workflow).toContain(
+      "rust: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.rust }}",
+    );
+    expect(rust).toContain("if: needs.changes.outputs.rust == 'true'");
+    expect(rust).toContain('actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683');
+    expect(rust).toContain('rustup toolchain install 1.85.1');
+    expect(rust).toContain('cargo test --locked');
   });
 });

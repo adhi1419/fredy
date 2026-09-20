@@ -106,6 +106,18 @@ describe('Cloud Run runtime contract', () => {
     expectAllIncluded(document, fixture.documentMarkers, 'cloud-run-runtime.md');
   });
 
+  it('recognizes the dormant Rust health executable without making it deployable', () => {
+    const rustSource = readContractFile('rustHealth');
+    const workflow = readContractFile('workflow');
+
+    expect(fixture.rustHealth.productionEnabled).toBe(false);
+    expect(fixture.rustHealth.nodeRemainsAuthoritative).toBe(true);
+    expect(rustSource).toContain('pub const BIND_ADDRESS: &str = "0.0.0.0";');
+    expect(rustSource).toContain('pub const DEFAULT_PORT: u16 = 9998;');
+    expect(workflow).not.toContain("- 'rust/**'");
+    expect(workflow).not.toContain('rust/health-route');
+  });
+
   it('only freezes source paths that the deployment workflow can actually observe', () => {
     const workflow = readContractFile('workflow');
 

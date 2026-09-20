@@ -18,6 +18,7 @@ jobs:
     outputs:
       frontend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.frontend }}
       backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
+      rust: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.rust }}
     steps:
       - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v3
@@ -52,6 +53,8 @@ jobs:
               - 'package.json'
               - 'yarn.lock'
               - '.github/workflows/pr.yml'
+            rust:
+              - 'rust/**'
 
   frontend:
     name: Check the source code
@@ -131,21 +134,40 @@ jobs:
           cache-from: type=registry,ref=${{ env.CACHE_REF }}
           cache-to: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && format('type=registry,ref={0},mode=min', env.CACHE_REF) || '' }}
 
+  rust-tests:
+    name: Rust health route
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.85.1 --profile minimal --component rustfmt --component clippy --no-self-update
+      - name: Validate Rust health route
+        working-directory: rust/health-route
+        run: |
+          cargo fmt --check
+          cargo check --locked
+          cargo test --locked
+          cargo clippy --locked --all-targets -- -D warnings
+
   gate:
     name: PR Gate
     if: always()
-    needs: [changes, frontend, backend-tests, backend-image]
+    needs: [changes, frontend, backend-tests, backend-image, rust-tests]
     runs-on: ubuntu-24.04
     env:
       CHANGES_RESULT: ${{ needs.changes.result }}
       FRONTEND_RESULT: ${{ needs.frontend.result }}
       BACKEND_TESTS_RESULT: ${{ needs.backend-tests.result }}
       BACKEND_IMAGE_RESULT: ${{ needs.backend-image.result }}
+      RUST_RESULT: ${{ needs.rust-tests.result }}
     steps:
       - name: Require applicable checks
         run: |
-          echo "changes=$CHANGES_RESULT frontend=$FRONTEND_RESULT backend_tests=$BACKEND_TESTS_RESULT backend_image=$BACKEND_IMAGE_RESULT"
+          echo "changes=$CHANGES_RESULT frontend=$FRONTEND_RESULT backend_tests=$BACKEND_TESTS_RESULT backend_image=$BACKEND_IMAGE_RESULT rust=$RUST_RESULT"
           test "$CHANGES_RESULT" = success
           case "$FRONTEND_RESULT" in success|skipped) ;; *) exit 1 ;; esac
           case "$BACKEND_TESTS_RESULT" in success|skipped) ;; *) exit 1 ;; esac
           case "$BACKEND_IMAGE_RESULT" in success|skipped) ;; *) exit 1 ;; esac
+          case "$RUST_RESULT" in success|skipped) ;; *) exit 1 ;; esac
