@@ -1,6 +1,6 @@
 # Fredy modernization tasks
 
-The repository copy on `main` is published through PR #46. This canonical working copy records final UX review through PR #49 and will be published with the next documentation PR.
+The canonical tracker is current through PR #50.
 
 ## Completed architecture and delivery
 
@@ -90,6 +90,6 @@ The repository copy on `main` is published through PR #46. This canonical workin
 ## Last-mile product work
 
 - [x] PR #45: add mandatory applicant-profile setup after first registration while keeping My account edit-only afterward — merged via rebase and deployed to Pages and Cloud Run successfully in 65 seconds; all live probes returned HTTP 200.
-- [ ] Rewrite the customer README for the finished product — implemented and parent-reviewed on `docs/final-customer-readme`; publication pending.
+- [x] Rewrite the customer README for the finished product — PR #50.
 - [ ] Capture final product screenshots only from the finished UI.
 - [ ] Create and link a separate developer/operator guide.
