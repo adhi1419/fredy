@@ -8,12 +8,84 @@
  * by the quiet feed, List + map, and the old /listings and /map entry points.
  */
 
+export type HomeView = 'feed' | 'map';
+export type HomeActivity = 'new' | 'applied' | 'viewed' | 'archived';
+export type KnownHomeSortKey = 'created_at' | 'travel_time' | 'distance' | 'price' | 'size';
+
+/** Known sort keys plus future server-supported keys that this client does not know yet. */
+export type HomeSortKey = KnownHomeSortKey | (string & {});
+export type HomeSortDirection = 'asc' | 'desc';
+
+export interface HomeSortOption {
+  readonly key: HomeSortKey;
+  readonly direction: HomeSortDirection;
+  readonly labelKey: string;
+}
+
+export interface HomeViewState {
+  view: HomeView;
+  q: string | null;
+  activity: HomeActivity;
+  providerIds: string[];
+  sort: HomeSortKey;
+  dir: string;
+  page: number;
+}
+
+export type HomeViewStatePatch = Partial<HomeViewState>;
+
+export interface HomeQueryState {
+  page?: number;
+  q?: string | null;
+  activity?: HomeActivity;
+  providerIds?: readonly string[];
+  sort?: HomeSortKey;
+  dir?: string;
+}
+
+export interface HomeQueryFilter {
+  statusFilter: HomeActivity;
+  providerFilter: string | null;
+}
+
+export interface HomeQueryPayload {
+  page: number;
+  pageSize: number;
+  freeTextFilter: string | null;
+  sortfield: HomeSortKey;
+  sortdir: string;
+  filter: HomeQueryFilter;
+}
+
+/** Known listing fields used by Home; unmodeled API fields remain available as unknown extensions. */
+export interface HomeListing {
+  id?: string;
+  title?: string | null;
+  address?: string | null;
+  provider?: string | null;
+  image_url?: string | null;
+  price?: number | string | null;
+  size?: number | string | null;
+  created_at?: string | number | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  lifecycle?: { state?: string | null } | null;
+  status?: { status?: string | null } | null;
+  inquiry_send_status?: string | null;
+  [key: string]: unknown;
+}
+
+export interface HomeMapListing extends HomeListing {
+  latitude: number;
+  longitude: number;
+}
+
 export const HOME_PAGE_SIZE = 40;
 
-export const HOME_VIEWS = Object.freeze(['feed', 'map']);
-export const HOME_ACTIVITIES = Object.freeze(['new', 'applied', 'viewed', 'archived']);
+export const HOME_VIEWS: readonly HomeView[] = Object.freeze(['feed', 'map']);
+export const HOME_ACTIVITIES: readonly HomeActivity[] = Object.freeze(['new', 'applied', 'viewed', 'archived']);
 
-export const HOME_SORT_OPTIONS = Object.freeze([
+export const HOME_SORT_OPTIONS: readonly HomeSortOption[] = Object.freeze([
   Object.freeze({ key: 'created_at', direction: 'desc', labelKey: 'home.sortNewest' }),
   Object.freeze({ key: 'travel_time', direction: 'asc', labelKey: 'home.sortTravelTime' }),
   Object.freeze({ key: 'distance', direction: 'asc', labelKey: 'home.sortDistance' }),
@@ -21,12 +93,12 @@ export const HOME_SORT_OPTIONS = Object.freeze([
   Object.freeze({ key: 'size', direction: 'desc', labelKey: 'home.sortSize' }),
 ]);
 
-const DEFAULT_HOME_VIEW = 'feed';
-const DEFAULT_ACTIVITY = 'new';
-const DEFAULT_SORT = 'created_at';
-const DEFAULT_DIRECTION = 'desc';
+const DEFAULT_HOME_VIEW: HomeView = 'feed';
+const DEFAULT_ACTIVITY: HomeActivity = 'new';
+const DEFAULT_SORT: KnownHomeSortKey = 'created_at';
+const DEFAULT_DIRECTION: HomeSortDirection = 'desc';
 
-const LEGACY_STATUS_TO_ACTIVITY = Object.freeze({
+const LEGACY_STATUS_TO_ACTIVITY: Readonly<Record<string, HomeActivity>> = Object.freeze({
   applied: 'applied',
   accepted: 'archived',
   rejected: 'archived',
@@ -41,12 +113,9 @@ const LEGACY_STATUS_TO_ACTIVITY = Object.freeze({
  * Normalize one or more provider query values into stable, unique provider IDs.
  * Repeated `provider` params and the comma-separated form are both accepted so old bookmarks and
  * the Home multi-select have one canonical representation.
- *
- * @param {unknown} value
- * @returns {string[]}
  */
-export function normalizeProviderIds(value) {
-  const values = Array.isArray(value) ? value : [value];
+export function normalizeProviderIds(value: unknown): string[] {
+  const values: unknown[] = Array.isArray(value) ? value : [value];
   return [
     ...new Set(
       values
@@ -57,22 +126,16 @@ export function normalizeProviderIds(value) {
   ];
 }
 
-/**
- * @param {string[]} providerIds
- * @returns {string|null}
- */
-export function providerParamFromIds(providerIds) {
+export function providerParamFromIds(providerIds: readonly string[]): string | null {
   const normalized = normalizeProviderIds(providerIds);
   return normalized.length > 0 ? normalized.join(',') : null;
 }
 
-/**
- * @param {URLSearchParams} searchParams
- * @param {'feed'|'map'} [defaultView]
- * @returns {{view: string, q: string|null, activity: string, providerIds: string[], sort: string, dir: string, page: number}}
- */
-export function readHomeViewState(searchParams, defaultView = DEFAULT_HOME_VIEW) {
-  const first = (...keys) => {
+export function readHomeViewState(
+  searchParams: URLSearchParams,
+  defaultView: HomeView = DEFAULT_HOME_VIEW,
+): HomeViewState {
+  const first = (...keys: string[]): string | null => {
     for (const key of keys) {
       const value = searchParams.get(key);
       if (value != null && value !== '') return value;
@@ -80,11 +143,12 @@ export function readHomeViewState(searchParams, defaultView = DEFAULT_HOME_VIEW)
     return null;
   };
 
-  const view = first('view') ?? defaultView;
+  const viewValue = first('view');
+  const view = isHomeView(viewValue) ? viewValue : defaultView;
   const activityValue = first('activity', 'status');
-  const activity = HOME_ACTIVITIES.includes(activityValue)
+  const activity = isHomeActivity(activityValue)
     ? activityValue
-    : (LEGACY_STATUS_TO_ACTIVITY[activityValue] ?? DEFAULT_ACTIVITY);
+    : (LEGACY_STATUS_TO_ACTIVITY[activityValue ?? ''] ?? DEFAULT_ACTIVITY);
   const sort = first('sort', 'sortfield') ?? DEFAULT_SORT;
   const sortOption = HOME_SORT_OPTIONS.find((option) => option.key === sort);
   const providerValues = searchParams.getAll('provider');
@@ -94,7 +158,7 @@ export function readHomeViewState(searchParams, defaultView = DEFAULT_HOME_VIEW)
 
   const parsedPage = Number(first('page'));
   return {
-    view: HOME_VIEWS.includes(view) ? view : defaultView,
+    view,
     q: first('q', 'freeTextFilter'),
     activity,
     providerIds: normalizeProviderIds(providerValues),
@@ -107,13 +171,12 @@ export function readHomeViewState(searchParams, defaultView = DEFAULT_HOME_VIEW)
 /**
  * Apply a partial Home state update in one URL navigation. Legacy aliases are removed only when
  * their canonical control changes, so unknown query values remain available to existing adapters.
- *
- * @param {URLSearchParams} searchParams
- * @param {Record<string, unknown>} patch
- * @param {'feed'|'map'} [defaultView]
- * @returns {URLSearchParams}
  */
-export function writeHomeViewState(searchParams, patch, defaultView = DEFAULT_HOME_VIEW) {
+export function writeHomeViewState(
+  searchParams: URLSearchParams,
+  patch: HomeViewStatePatch,
+  defaultView: HomeView = DEFAULT_HOME_VIEW,
+): URLSearchParams {
   const next = new URLSearchParams(searchParams);
   const current = readHomeViewState(searchParams, defaultView);
   const state = { ...current, ...patch };
@@ -158,13 +221,8 @@ export function writeHomeViewState(searchParams, patch, defaultView = DEFAULT_HO
   return next;
 }
 
-/**
- * Translate Home state into the existing listing table action contract.
- *
- * @param {{page?: number, q?: string|null, activity?: string, providerIds?: string[], sort?: string, dir?: string}} state
- * @returns {{page: number, pageSize: number, freeTextFilter: string|null, sortfield: string, sortdir: string, filter: {statusFilter: string, providerFilter: string|null}}}
- */
-export function homeQueryFromState(state) {
+/** Translate Home state into the existing listing table action contract. */
+export function homeQueryFromState(state: HomeQueryState): HomeQueryPayload {
   return {
     page: state.page ?? 1,
     pageSize: HOME_PAGE_SIZE,
@@ -180,11 +238,8 @@ export function homeQueryFromState(state) {
 
 /**
  * Return the canonical sort option, while retaining unknown future keys for the API contract.
- *
- * @param {string} sort
- * @returns {{key: string, direction: string, labelKey: string}}
  */
-export function homeSortOption(sort) {
+export function homeSortOption(sort: HomeSortKey): HomeSortOption {
   return (
     HOME_SORT_OPTIONS.find((option) => option.key === sort) ?? {
       key: sort || DEFAULT_SORT,
@@ -197,12 +252,8 @@ export function homeSortOption(sort) {
 /**
  * Preserve Home URL state only when navigating from a route that carries the same controls.
  * Saved Searches, account, admin, and finance query parameters must not leak into Home.
- *
- * @param {string} pathname
- * @param {string} search
- * @returns {string}
  */
-export function homeSearchForNavigation(pathname, search) {
+export function homeSearchForNavigation(pathname: string, search: string): string {
   const path = typeof pathname === 'string' ? pathname.split(/[?#]/, 1)[0] : '';
   const compatible = ['/dashboard', '/listings', '/map'].some(
     (prefix) => path === prefix || path.startsWith(`${prefix}/`),
@@ -218,11 +269,8 @@ export function homeSearchForNavigation(pathname, search) {
 /**
  * Normalize one listing for map rendering, rejecting absent, sentinel, non-numeric, and out-of-range
  * coordinates before they can affect marker grouping or map bounds.
- *
- * @param {object|null|undefined} listing
- * @returns {object|null}
  */
-export function homeMapListing(listing) {
+export function homeMapListing(listing: HomeListing | null | undefined): HomeMapListing | null {
   if (
     listing == null ||
     typeof listing !== 'object' ||
@@ -250,17 +298,21 @@ export function homeMapListing(listing) {
   return { ...listing, latitude, longitude };
 }
 
-/**
- * @param {object|null|undefined} listing
- * @returns {string}
- */
-export function homeLifecycleState(listing) {
+export function homeLifecycleState(listing: HomeListing | null | undefined): HomeActivity {
   const lifecycle = listing?.lifecycle?.state;
-  if (HOME_ACTIVITIES.includes(lifecycle)) return lifecycle;
+  if (isHomeActivity(lifecycle)) return lifecycle;
   const legacy = listing?.status?.status;
   if (typeof legacy === 'string' && LEGACY_STATUS_TO_ACTIVITY[legacy]) {
     return LEGACY_STATUS_TO_ACTIVITY[legacy];
   }
   if (listing?.inquiry_send_status === 'sent') return 'applied';
   return 'new';
+}
+
+function isHomeView(value: unknown): value is HomeView {
+  return typeof value === 'string' && (HOME_VIEWS as readonly string[]).includes(value);
+}
+
+function isHomeActivity(value: unknown): value is HomeActivity {
+  return typeof value === 'string' && (HOME_ACTIVITIES as readonly string[]).includes(value);
 }

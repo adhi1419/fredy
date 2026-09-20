@@ -35,6 +35,7 @@ describe('Bun and TypeScript foundation', () => {
     expect(config.include).toEqual([
       'ui/src/services/apiUrl.ts',
       'ui/src/services/authenticatedTransport.ts',
+      'ui/src/services/home/homeViewState.ts',
       'ui/src/services/state/financeState.ts',
       'ui/src/services/state/jobsState.ts',
       'ui/src/services/state/listingsState.ts',
@@ -44,6 +45,8 @@ describe('Bun and TypeScript foundation', () => {
     ]);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.js'))).toBe(false);
   });
 
   it('requires both lockfiles and the executable lock policy guard', () => {
