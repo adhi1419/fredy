@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Banner, Button, Input, Spin } from '@douyinfe/semi-ui-19';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -13,7 +13,7 @@ import { useActions, useIsLoading, useSelector } from '../../services/state/stor
 import {
   APPLICANT_PROFILE_ONBOARDING_PATH,
   REQUIRED_COMMON_PROFILE_FIELDS,
-  isCommonApplicantProfileComplete,
+  getInvalidCommonApplicantProfileFields,
   resolveApplicantProfileOnboarding,
 } from '../../services/onboarding/applicantProfileOnboarding.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
@@ -51,6 +51,7 @@ export default function ApplicantProfileOnboardingPage() {
   const [draft, setDraft] = useState(() => commonDraft(storedProfile));
   const [saveError, setSaveError] = useState(null);
   const [showValidation, setShowValidation] = useState(false);
+  const fieldRefs = useRef({});
 
   const decision = resolveApplicantProfileOnboarding({
     settingsLoaded: settingsState.loaded,
@@ -59,7 +60,10 @@ export default function ApplicantProfileOnboardingPage() {
     pathname: location.pathname,
     saveError,
   });
-  const draftComplete = useMemo(() => isCommonApplicantProfileComplete(draft), [draft]);
+  const invalidFields = useMemo(
+    () => (showValidation ? getInvalidCommonApplicantProfileFields(draft) : []),
+    [draft, showValidation],
+  );
 
   useEffect(() => {
     if (settingsState.loaded) setDraft(commonDraft(storedProfile));
@@ -72,15 +76,37 @@ export default function ApplicantProfileOnboardingPage() {
   }, [decision.status, location, navigate]);
 
   const setField = (field, value) => {
-    setDraft((current) => ({ ...current, [field]: value }));
+    const nextDraft = { ...draft, [field]: value };
+    setDraft(nextDraft);
     setSaveError(null);
-    setShowValidation(false);
+    setShowValidation((visible) => visible && getInvalidCommonApplicantProfileFields(nextDraft).length > 0);
+  };
+
+  const inputProps = (field) => ({
+    ref: (element) => {
+      fieldRefs.current[field] = element;
+    },
+    value: draft[field],
+    onChange: (value) => setField(field, value),
+    'aria-invalid': invalidFields.includes(field) ? 'true' : undefined,
+    'aria-describedby': showValidation ? 'onboarding-validation-alert' : undefined,
+  });
+
+  const focusField = (field) => {
+    const element = fieldRefs.current[field];
+    if (typeof element?.focus === 'function') {
+      element.focus();
+    } else {
+      element?.querySelector?.('input')?.focus();
+    }
   };
 
   const handleSave = async (event) => {
     event.preventDefault();
-    if (!draftComplete) {
+    const invalidDraftFields = getInvalidCommonApplicantProfileFields(draft);
+    if (invalidDraftFields.length > 0) {
       setShowValidation(true);
+      focusField(invalidDraftFields[0]);
       return;
     }
 
@@ -114,7 +140,13 @@ export default function ApplicantProfileOnboardingPage() {
       {saveError && (
         <Banner type="danger" description={errorMessage(saveError, t('onboarding.applicantProfile.saveError'))} />
       )}
-      {showValidation && <Banner type="warning" description={t('onboarding.applicantProfile.validation')} />}
+      {showValidation && (
+        <Banner
+          id="onboarding-validation-alert"
+          type="warning"
+          description={t('onboarding.applicantProfile.validation')}
+        />
+      )}
 
       <form onSubmit={handleSave} noValidate>
         <SegmentPart
@@ -125,8 +157,7 @@ export default function ApplicantProfileOnboardingPage() {
             <label className="applicant-profile-onboarding__field applicant-profile-onboarding__field--wide">
               <span>{t('settings.inquiryProfile.name')}</span>
               <Input
-                value={draft.name}
-                onChange={(value) => setField('name', value)}
+                {...inputProps('name')}
                 placeholder={t('settings.inquiryProfile.namePlaceholder')}
                 autoComplete="name"
               />
@@ -134,8 +165,7 @@ export default function ApplicantProfileOnboardingPage() {
             <label className="applicant-profile-onboarding__field applicant-profile-onboarding__field--wide">
               <span>{t('settings.inquiryProfile.street')}</span>
               <Input
-                value={draft.street}
-                onChange={(value) => setField('street', value)}
+                {...inputProps('street')}
                 placeholder={t('onboarding.applicantProfile.streetPlaceholder')}
                 autoComplete="street-address"
               />
@@ -143,8 +173,7 @@ export default function ApplicantProfileOnboardingPage() {
             <label className="applicant-profile-onboarding__field">
               <span>{t('settings.inquiryProfile.houseNumber')}</span>
               <Input
-                value={draft.houseNumber}
-                onChange={(value) => setField('houseNumber', value)}
+                {...inputProps('houseNumber')}
                 placeholder={t('onboarding.applicantProfile.houseNumberPlaceholder')}
                 autoComplete="address-line2"
               />
@@ -152,8 +181,7 @@ export default function ApplicantProfileOnboardingPage() {
             <label className="applicant-profile-onboarding__field">
               <span>{t('settings.inquiryProfile.postcode')}</span>
               <Input
-                value={draft.postcode}
-                onChange={(value) => setField('postcode', value)}
+                {...inputProps('postcode')}
                 placeholder={t('onboarding.applicantProfile.postcodePlaceholder')}
                 autoComplete="postal-code"
               />
@@ -161,8 +189,7 @@ export default function ApplicantProfileOnboardingPage() {
             <label className="applicant-profile-onboarding__field applicant-profile-onboarding__field--wide">
               <span>{t('settings.inquiryProfile.city')}</span>
               <Input
-                value={draft.city}
-                onChange={(value) => setField('city', value)}
+                {...inputProps('city')}
                 placeholder={t('onboarding.applicantProfile.cityPlaceholder')}
                 autoComplete="address-level2"
               />

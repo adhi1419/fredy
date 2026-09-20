@@ -36,9 +36,9 @@ export const SegmentPart = ({ name, Icon = null, children, helpText = null, help
     <span className="segmentParts__title">
       {name}
       <Popover content={<div className="segmentParts__help">{helpText}</div>} position="right" showArrow>
-        <span className="segmentParts__helpMark" tabIndex={0} role="note" aria-label={helpText}>
+        <button type="button" className="segmentParts__helpMark" aria-label={helpText}>
           <IconHelpCircle size="small" />
-        </span>
+        </button>
       </Popover>
     </span>
   ) : (

@@ -17,6 +17,27 @@ import './Navigate.less';
 const ICONS = { home: IconHome, 'saved-searches': IconSearch };
 
 /**
+ * Resolve the next menu item for the four navigation keys supported by a WAI-ARIA menu.
+ *
+ * @param {string} key
+ * @param {number} currentIndex
+ * @param {number} itemCount
+ * @returns {number}
+ */
+export function menuItemIndexForKey(key, currentIndex, itemCount) {
+  if (itemCount <= 0) return -1;
+  if (key === 'Home') return 0;
+  if (key === 'End') return itemCount - 1;
+  if (currentIndex < 0) {
+    if (key === 'ArrowDown') return 0;
+    if (key === 'ArrowUp') return itemCount - 1;
+  }
+  if (key === 'ArrowDown') return (currentIndex + 1) % itemCount;
+  if (key === 'ArrowUp') return (currentIndex - 1 + itemCount) % itemCount;
+  return currentIndex;
+}
+
+/**
  * The application shell. Page bodies remain owned by their existing routes; this component only
  * owns the two primary destinations and the account escape hatch for settings/admin.
  */
@@ -26,20 +47,31 @@ export default function Navigation({ isAdmin, primaryVisible = true }) {
   const location = useLocation();
   const actions = useActions();
   const accountRef = useRef(null);
+  const accountButtonRef = useRef(null);
+  const accountMenuRef = useRef(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const activeKey = primaryVisible ? resolvePrimaryKey(location.pathname) : null;
 
-  useEffect(() => {
+  const closeAccountMenu = (restoreFocus = false) => {
     setAccountOpen(false);
+    if (restoreFocus) accountButtonRef.current?.focus();
+  };
+
+  useEffect(() => {
+    closeAccountMenu();
   }, [location.pathname]);
 
   useEffect(() => {
     if (!accountOpen) return undefined;
+    accountMenuRef.current?.querySelector('[role="menuitem"]')?.focus();
     const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setAccountOpen(false);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeAccountMenu(true);
+      }
     };
     const closeOnOutsidePointer = (event) => {
-      if (!accountRef.current?.contains(event.target)) setAccountOpen(false);
+      if (!accountRef.current?.contains(event.target)) closeAccountMenu();
     };
     document.addEventListener('keydown', closeOnEscape);
     document.addEventListener('pointerdown', closeOnOutsidePointer);
@@ -49,20 +81,35 @@ export default function Navigation({ isAdmin, primaryVisible = true }) {
     };
   }, [accountOpen]);
 
+  const handleAccountMenuKeyDown = (event) => {
+    const supportedKeys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+    if (!supportedKeys.includes(event.key)) return;
+    event.preventDefault();
+    const menuItems = Array.from(accountMenuRef.current?.querySelectorAll('[role="menuitem"]') ?? []);
+    const currentIndex = menuItems.indexOf(document.activeElement);
+    const nextIndex = menuItemIndexForKey(event.key, currentIndex, menuItems.length);
+    menuItems[nextIndex]?.focus();
+  };
+
   const goTo = (path) => {
-    setAccountOpen(false);
+    closeAccountMenu();
     const preservedSearch = path === '/dashboard' ? homeSearchForNavigation(location.pathname, location.search) : '';
     navigate(`${path}${preservedSearch}`);
   };
 
   const handleSignOut = async () => {
-    setAccountOpen(false);
+    closeAccountMenu();
     try {
       await signOutFirebase();
     } finally {
       actions.user.resetCurrentUser();
       navigate('/login', { replace: true });
     }
+  };
+
+  const focusMainContent = (event) => {
+    event.preventDefault();
+    document.getElementById('fredy-main-content')?.focus();
   };
 
   const primaryLink = (item, mobile = false) => {
@@ -85,6 +132,9 @@ export default function Navigation({ isAdmin, primaryVisible = true }) {
 
   return (
     <>
+      <a className="fredy-shell-skip-link" href="#fredy-main-content" onClick={focusMainContent}>
+        {t('nav.skipToContent')}
+      </a>
       <header className="fredy-shell-nav" ref={accountRef}>
         <button
           type="button"
@@ -100,6 +150,7 @@ export default function Navigation({ isAdmin, primaryVisible = true }) {
         <div className="fredy-shell-nav__account-wrap">
           <button
             type="button"
+            ref={accountButtonRef}
             className="fredy-shell-nav__account-button"
             aria-label={t('nav.openAccountMenu')}
             aria-haspopup="menu"
@@ -110,7 +161,13 @@ export default function Navigation({ isAdmin, primaryVisible = true }) {
             <span className="fredy-shell-nav__account-label">{t('nav.account')}</span>
           </button>
           {accountOpen && (
-            <div className="fredy-shell-nav__account-menu" role="menu" aria-label={t('nav.accountMenu')}>
+            <div
+              ref={accountMenuRef}
+              className="fredy-shell-nav__account-menu"
+              role="menu"
+              aria-label={t('nav.accountMenu')}
+              onKeyDown={handleAccountMenuKeyDown}
+            >
               {accountItems.map((item) => (
                 <button key={item.key} type="button" role="menuitem" onClick={() => goTo(item.path)}>
                   {t(item.labelKey)}

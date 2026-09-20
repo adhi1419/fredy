@@ -202,7 +202,7 @@ export default function FredyApp() {
           <Layout className="app" key={theme}>
             <Navigation isAdmin={isAdmin()} primaryVisible={!onboardingDecision.requiresSetup} />
             <Layout className="app__main">
-              <Content className="app__content">
+              <Content className="app__content" id="fredy-main-content" tabIndex="-1">
                 <DebugLoggingBanner />
                 {settings.demoMode && <DemoBanner />}
                 <Routes>
