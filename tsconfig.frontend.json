@@ -14,11 +14,13 @@
     "ui/src/services/apiUrl.ts",
     "ui/src/services/authenticatedTransport.ts",
     "ui/src/services/home/homeViewState.ts",
+    "ui/src/services/listings/listingFilters.ts",
     "ui/src/services/state/financeState.ts",
     "ui/src/services/state/jobsState.ts",
     "ui/src/services/state/listingsState.ts",
     "ui/src/services/state/notificationState.ts",
     "ui/src/services/state/userSettingsState.ts",
-    "ui/src/vite-env.d.ts"
+    "ui/src/vite-env.d.ts",
+    "test/ui/listingFilters.test.ts"
   ]
 }

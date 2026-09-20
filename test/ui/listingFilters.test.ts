@@ -18,9 +18,14 @@ import {
   filterConfiguredProviders,
   MOBILE_OPERATOR_KEY,
 } from '../../ui/src/services/listings/listingFilters.js';
+import type {
+  ListingFilterTranslator,
+  ListingFilterValues,
+  ListingShowValue,
+} from '../../ui/src/services/listings/listingFilters.js';
 
-/** The URL state as the page opens it. @returns {Object} */
-const defaults = () => ({
+/** The URL state as the page opens it. */
+const defaults = (): ListingFilterValues => ({
   page: 1,
   sort: 'created_at',
   dir: 'desc',
@@ -31,7 +36,9 @@ const defaults = () => ({
 });
 
 /** A `t` that returns the key, so assertions read as the key rather than as English. */
-const t = (key, vars) => (vars == null ? key : `${key}:${JSON.stringify(vars)}`);
+const t: ListingFilterTranslator = (key, vars) => (vars == null ? key : `${key}:${JSON.stringify(vars)}`);
+
+const showValues: ListingShowValue[] = ['all', 'true', 'false', 'hidden'];
 
 describe('listingFilters', () => {
   describe('connectivity', () => {
@@ -126,14 +133,14 @@ describe('listingFilters', () => {
       ['true', { hidden: false, active: true }],
       ['false', { hidden: false, active: false }],
       ['hidden', { hidden: true, active: null }],
-    ])('round-trips %s', (value, expected) => {
+    ] as const)('round-trips %s', (value, expected) => {
       const patch = showPatch(value);
       expect(patch).toMatchObject(expected);
       expect(showValueOf({ ...defaults(), ...patch })).toBe(value);
     });
 
     it('always resets the page, so a filtered view cannot open on a page that no longer exists', () => {
-      for (const value of ['all', 'true', 'false', 'hidden']) {
+      for (const value of showValues) {
         expect(showPatch(value).page).toBe(1);
       }
     });
