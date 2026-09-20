@@ -124,7 +124,7 @@ interface ListingRecord {
   created_at?: number | string | null;
   build_year?: number | string | null;
   energy_class?: string | null;
-  affordabilityVerdict?: string | null;
+  affordabilityVerdict?: keyof typeof VERDICT_COLORS | null;
   dealType?: 'rent' | 'buy';
   status?: ListingStatus | null;
   lifecycle?: { state?: string } | null;
