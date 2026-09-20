@@ -20,9 +20,10 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const english = JSON.parse(fs.readFileSync(path.join(here, '../../ui/src/locales/en.json'), 'utf-8'));
 
 const LAST_RUN = { lastRun: 1_700_000_000_000 };
+type TestJob = Record<string, unknown>;
 
-/** A job that is working exactly as intended. @returns {Object} */
-const healthyJob = (overrides = {}) => ({
+/** A job that is working exactly as intended. */
+const healthyJob = (overrides: TestJob = {}): TestJob => ({
   id: 'job-1',
   name: 'Cologne 3-room',
   enabled: true,
@@ -54,7 +55,6 @@ describe('dashboard attention', () => {
   });
 
   it('does not complain that a job found nothing before anything has run', () => {
-    // A brand-new instance. Saying "found nothing yet" here is a complaint about the clock.
     const jobs = [healthyJob({ numberOfFoundListings: 0 })];
     expect(findJobsNeedingAttention(jobs, { lastRun: null })).toEqual([]);
     expect(findJobsNeedingAttention(jobs, { lastRun: 0 })).toEqual([]);
@@ -62,7 +62,6 @@ describe('dashboard attention', () => {
   });
 
   it('gives one reason per job, the most severe', () => {
-    // Paused *and* empty *and* channel-less. One line, not three.
     const jobs = [healthyJob({ enabled: false, numberOfFoundListings: 0, notificationAdapter: [] })];
     const found = findJobsNeedingAttention(jobs, LAST_RUN);
     expect(found).toHaveLength(1);
@@ -95,7 +94,13 @@ describe('dashboard attention', () => {
     expect(findJobsNeedingAttention([{ name: 'orphan', enabled: false }], LAST_RUN)).toEqual([]);
   });
 
-  it.each([[null], [undefined], ['nope'], [{}]])('survives being handed %s', (jobs) => {
+  it('normalizes a non-string name before Home renders the attention row', () => {
+    expect(findJobsNeedingAttention([healthyJob({ name: null, notificationAdapter: [] })], LAST_RUN)).toEqual([
+      { id: 'job-1', name: '', reason: ATTENTION_REASONS.NO_CHANNEL },
+    ]);
+  });
+
+  it.each([[null], [undefined], ['nope'], [{}]])('survives being handed %s', (jobs: unknown) => {
     expect(findJobsNeedingAttention(jobs, LAST_RUN)).toEqual([]);
     expect(countJobsNeedingAttention(jobs, LAST_RUN)).toBe(0);
   });

@@ -14,24 +14,22 @@ import {
   loadDraft,
   clearDraft,
   DRAFT_FIELDS,
+  type DraftStorage,
+  type JobDraft,
 } from '../../ui/src/services/jobs/jobDraft.js';
 
-/**
- * A stand-in for `sessionStorage`, which node does not have.
- * @returns {Storage & {map: Map<string, string>}}
- */
-function memoryStorage() {
-  const map = new Map();
+function memoryStorage(): DraftStorage & { map: Map<string, string> } {
+  const map = new Map<string, string>();
   return {
     map,
-    getItem: (key) => (map.has(key) ? map.get(key) : null),
-    setItem: (key, value) => map.set(key, String(value)),
-    removeItem: (key) => map.delete(key),
+    getItem: (key: string) => (map.has(key) ? map.get(key)! : null),
+    setItem: (key: string, value: string) => map.set(key, String(value)),
+    removeItem: (key: string) => map.delete(key),
   };
 }
 
 /** Storage that refuses to write, the way a full or disabled one does. */
-function hostileStorage() {
+function hostileStorage(): DraftStorage {
   return {
     getItem: () => {
       throw new Error('denied');
@@ -45,7 +43,7 @@ function hostileStorage() {
   };
 }
 
-const aDraft = () => ({
+const aDraft = (): JobDraft => ({
   name: 'Cologne 3-room',
   dealType: 'rent',
   providerData: [{ id: 'immoscout', url: 'https://www.immobilienscout24.de/Suche/de/koeln/wohnung-mieten' }],
@@ -59,7 +57,7 @@ const aDraft = () => ({
 });
 
 describe('jobDraft', () => {
-  let storage;
+  let storage: DraftStorage & { map: Map<string, string> };
   beforeEach(() => {
     storage = memoryStorage();
   });
@@ -86,12 +84,9 @@ describe('jobDraft', () => {
       ['a blacklist word', { blacklist: ['x'] }],
       ['a deal type', { dealType: 'buy' }],
       ['a drawn area', { spatialFilter: { type: 'Polygon' } }],
-      // Not reachable on its own from the form, which needs a name before it can be saved, but the
-      // rule is "anything the user set is worth keeping" and singling this one out as not counting
-      // is how the field stops being carried at all.
       ['a travel time limit', { commuteFilter: { action: 'notify', limits: { Work: 35 } } }],
       ['automatic inquiries', { autoSendInquiry: true }],
-    ])('counts %s', (_what, draft) => {
+    ])('counts %s', (_what: string, draft: Record<string, unknown>) => {
       expect(hasContent(draft)).toBe(true);
     });
 
@@ -99,10 +94,9 @@ describe('jobDraft', () => {
       ['nothing at all', {}],
       ['a blank name', { name: '   ' }],
       ['empty lists', { providerData: [], selectedChannelIds: [], blacklist: [] }],
-      // `enabled` defaults to true on a fresh form, so on its own it is not evidence of any editing.
       ['only the activation default', { enabled: true }],
       ['null', null],
-    ])('does not count %s', (_what, draft) => {
+    ])('does not count %s', (_what: string, draft: Record<string, unknown> | null) => {
       expect(hasContent(draft)).toBe(false);
     });
   });
@@ -115,7 +109,11 @@ describe('jobDraft', () => {
 
     it('stores only the fields a draft is allowed to carry', () => {
       saveDraft(null, { ...aDraft(), jobId: 'sneaky', csrf: 'token' }, storage);
-      expect(Object.keys(loadDraft(null, storage)).every((key) => DRAFT_FIELDS.includes(key))).toBe(true);
+      const loaded = loadDraft(null, storage);
+      expect(loaded).not.toBeNull();
+      expect(
+        Object.keys(loaded ?? {}).every((key) => DRAFT_FIELDS.includes(key as (typeof DRAFT_FIELDS)[number])),
+      ).toBe(true);
     });
 
     it('writes nothing for an untouched form', () => {
@@ -161,12 +159,6 @@ describe('jobDraft', () => {
     });
   });
 
-  /**
-   * The form hands `saveDraft` an object literal and `pick` keeps only what {@link DRAFT_FIELDS}
-   * lists, so a field added to the form and not to the list is dropped without a word: the draft
-   * saves, restores, and is quietly missing that one piece of state. That is what happened to the
-   * commute filter. Comparing the two lists costs a regex and closes the gap for the next field.
-   */
   describe('staying in step with the form', () => {
     const form = fs.readFileSync(
       path.join(import.meta.dirname, '../../ui/src/views/jobs/mutation/JobMutation.jsx'),
@@ -176,19 +168,14 @@ describe('jobDraft', () => {
     it('carries every piece of state the job form asks it to keep', () => {
       const [, literal] = form.match(/saveDraft\(draftId,\s*\{([^}]*)\}/) ?? [];
       expect(literal).toBeDefined();
-      const saved = literal
+      const saved = (literal ?? '')
         .split(',')
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0);
 
-      expect(saved.filter((field) => !DRAFT_FIELDS.includes(field))).toEqual([]);
+      expect(saved.filter((field) => !DRAFT_FIELDS.includes(field as (typeof DRAFT_FIELDS)[number]))).toEqual([]);
     });
 
-    /**
-     * Discarding a restored draft has to put every field back to what the job (or a blank form)
-     * started with. A field the reset forgets keeps the drafted value while the banner says it was
-     * thrown away, which is the one outcome worse than not offering the button.
-     */
     it('has a reset for every field it restores', () => {
       const restored = [...form.matchAll(/if \(draft\.(\w+) !== undefined\)/g)].map((match) => match[1]);
       expect(restored.length).toBeGreaterThan(0);
@@ -196,7 +183,7 @@ describe('jobDraft', () => {
       const [, discard] = form.match(/const discardDraft = \(\) => \{([\s\S]*?)\n {2}\};/) ?? [];
       expect(discard).toBeDefined();
       expect(
-        restored.filter((field) => !new RegExp(`set${field[0].toUpperCase()}${field.slice(1)}\\(`).test(discard)),
+        restored.filter((field) => !new RegExp(`set${field[0].toUpperCase()}${field.slice(1)}\\(`).test(discard ?? '')),
       ).toEqual([]);
     });
   });
