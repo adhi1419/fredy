@@ -105,7 +105,9 @@ mod tests {
 
     fn serialized(response: &HttpResponse) -> Vec<u8> {
         let mut bytes = Vec::new();
-        response.write_to(&mut bytes).expect("in-memory writes cannot fail");
+        response
+            .write_to(&mut bytes)
+            .expect("in-memory writes cannot fail");
         bytes
     }
 
@@ -124,8 +126,14 @@ mod tests {
 
     #[test]
     fn unrelated_paths_and_methods_return_api_only_not_found() {
-        assert_eq!(response_for("GET", "/not-a-route").status_line, "HTTP/1.1 404 Not Found");
-        assert_eq!(response_for("POST", "/health").status_line, "HTTP/1.1 404 Not Found");
+        assert_eq!(
+            response_for("GET", "/not-a-route").status_line,
+            "HTTP/1.1 404 Not Found"
+        );
+        assert_eq!(
+            response_for("POST", "/health").status_line,
+            "HTTP/1.1 404 Not Found"
+        );
         assert_eq!(response_for("GET", "/health?probe=1").body, NOT_FOUND_BODY);
     }
 
