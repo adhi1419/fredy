@@ -8,16 +8,22 @@ fn round_trip(request: &[u8]) -> Vec<u8> {
     let listener = TcpListener::bind(("127.0.0.1", 0)).expect("test listener binds");
     let address = listener.local_addr().expect("test listener has an address");
     let server = thread::spawn(move || {
-        let (stream, _) = listener.accept().expect("test listener accepts one request");
+        let (stream, _) = listener
+            .accept()
+            .expect("test listener accepts one request");
         serve_connection(stream).expect("test response writes");
     });
 
     let mut client = TcpStream::connect(address).expect("test client connects");
     client.write_all(request).expect("test request writes");
-    client.shutdown(Shutdown::Write).expect("test request closes");
+    client
+        .shutdown(Shutdown::Write)
+        .expect("test request closes");
 
     let mut response = Vec::new();
-    client.read_to_end(&mut response).expect("test response reads");
+    client
+        .read_to_end(&mut response)
+        .expect("test response reads");
     server.join().expect("test server completes");
     response
 }
@@ -36,7 +42,9 @@ fn tcp_get_health_matches_the_node_wire_contract() {
 
     assert!(response.starts_with(b"HTTP/1.1 200 OK\r\n"));
     let content_type = b"Content-Type: application/json; charset=utf-8\r\n";
-    assert!(response.windows(content_type.len()).any(|header| header == content_type));
+    assert!(response
+        .windows(content_type.len())
+        .any(|header| header == content_type));
     assert_eq!(response_body(&response), HEALTH_BODY);
 }
 
