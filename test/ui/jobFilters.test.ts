@@ -16,18 +16,17 @@ import {
   clearFilter,
   clearAllFilters,
   describeActiveFilters,
+  type JobFilterTranslator,
 } from '../../ui/src/services/jobs/jobFilters.js';
 import * as listingFilters from '../../ui/src/services/listings/listingFilters.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const english = JSON.parse(fs.readFileSync(path.join(here, '../../ui/src/locales/en.json'), 'utf-8'));
 
-const t = (key) => key;
+const t: JobFilterTranslator = (key) => key;
 
 describe('jobFilters', () => {
   it('counts an unfiltered jobs page as unfiltered', () => {
-    // Unlike listings, the jobs page opens showing everything - so a fresh page has no chips and
-    // an empty filter button.
     expect(countActiveFilters({ ...NEUTRAL })).toBe(0);
     expect(describeActiveFilters({ ...NEUTRAL }, { t })).toEqual([]);
   });
@@ -35,7 +34,7 @@ describe('jobFilters', () => {
   it.each([
     [true, 'jobs.filterActive'],
     [false, 'jobs.filterInactive'],
-  ])('names the %s filter', (active, expected) => {
+  ])('names the %s filter', (active: boolean, expected: string) => {
     const values = { active };
     expect(countActiveFilters(values)).toBe(1);
     expect(describeActiveFilters(values, { t })).toEqual([{ key: 'active', label: expected }]);
@@ -60,9 +59,7 @@ describe('jobFilters', () => {
   });
 
   it('exposes the same shape the listings filters do', () => {
-    // The two pages share the drawer, the chips and the button. They can only do that while both
-    // filter models answer the same questions in the same way.
-    for (const name of [
+    const sharedExports = [
       'NEUTRAL',
       'FILTER_KEYS',
       'isActiveFilter',
@@ -70,7 +67,8 @@ describe('jobFilters', () => {
       'clearFilter',
       'clearAllFilters',
       'describeActiveFilters',
-    ]) {
+    ] as const;
+    for (const name of sharedExports) {
       expect(listingFilters[name]).toBeDefined();
     }
     expect(FILTER_KEYS.every((key) => key in NEUTRAL)).toBe(true);

@@ -8,15 +8,20 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { describeJobRefinements, summariseJobRefinements } from '../../ui/src/services/jobs/jobSummary.js';
+import {
+  describeJobRefinements,
+  summariseJobRefinements,
+  type JobSummaryContext,
+  type JobSummaryTranslator,
+} from '../../ui/src/services/jobs/jobSummary.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const english = JSON.parse(fs.readFileSync(path.join(here, '../../ui/src/locales/en.json'), 'utf-8'));
 
 /** A `t` that returns the key, so an assertion names the key rather than the English. */
-const t = (key) => key;
-const formatPrice = (value) => `EUR${value}`;
-const context = { t, formatPrice };
+const t: JobSummaryTranslator = (key) => key;
+const formatPrice = (value: number) => `EUR${value}`;
+const context: JobSummaryContext = { t, formatPrice };
 
 describe('jobSummary', () => {
   it('says nothing about a job that has been refined in no way', () => {
@@ -29,7 +34,7 @@ describe('jobSummary', () => {
     expect(summariseJobRefinements({ enabled: true }, context)).toBe('jobs.mutation.refineEmpty');
   });
 
-  it.each([
+  const refinementCases: ReadonlyArray<readonly [string, Record<string, unknown>, string]> = [
     ['a price ceiling', { specFilter: { maxPrice: 1200 } }, 'jobs.mutation.summaryMaxPrice'],
     ['a size floor', { specFilter: { minSize: 60 } }, 'jobs.mutation.summaryMinSize'],
     ['a room count', { specFilter: { minRooms: 3 } }, 'jobs.mutation.summaryMinRooms'],
@@ -38,7 +43,9 @@ describe('jobSummary', () => {
     ['automatic inquiries', { autoSendInquiry: true }, 'jobs.mutation.summaryAutoSendInquiry'],
     ['sharing', { shareWithUsers: ['user-1'] }, 'jobs.mutation.summaryShared'],
     ['being switched off', { enabled: false }, 'jobs.mutation.summaryPaused'],
-  ])('mentions %s', (_what, job, expected) => {
+  ];
+
+  it.each(refinementCases)('mentions %s', (_what: string, job: Record<string, unknown>, expected: string) => {
     expect(describeJobRefinements(job, context)).toContain(expected);
   });
 
@@ -47,7 +54,6 @@ describe('jobSummary', () => {
   });
 
   it('ignores a spec filter whose values were cleared back to null', () => {
-    // The form writes null rather than deleting the key when a number input is emptied.
     expect(describeJobRefinements({ specFilter: { maxPrice: null, minSize: null, minRooms: null } }, context)).toEqual(
       [],
     );
@@ -84,10 +90,16 @@ describe('jobSummary', () => {
   });
 
   it('formats the price through the caller rather than printing a raw number', () => {
-    const seen = [];
+    const seen: number[] = [];
     describeJobRefinements(
       { specFilter: { maxPrice: 1200 } },
-      { t: (key, vars) => `${key}:${vars?.value}`, formatPrice: (value) => seen.push(value) && `EUR${value}` },
+      {
+        t: (key, vars) => `${key}:${vars?.value}`,
+        formatPrice: (value) => {
+          seen.push(value);
+          return `EUR${value}`;
+        },
+      },
     );
     expect(seen).toEqual([1200]);
   });

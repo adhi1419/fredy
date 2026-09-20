@@ -9,6 +9,11 @@
     "test/ui/listingFilters.test.ts",
     "test/ui/guidedSearchForm.test.ts",
     "test/ui/providerUrl.test.ts",
-    "test/ui/jobValidation.test.ts"
+    "test/ui/jobValidation.test.ts",
+    "test/ui/dashboardAttention.test.ts",
+    "test/ui/dealTypeCopyInSync.test.ts",
+    "test/ui/jobDraft.test.ts",
+    "test/ui/jobSummary.test.ts",
+    "test/ui/jobFilters.test.ts"
   ]
 }

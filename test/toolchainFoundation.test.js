@@ -38,6 +38,11 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/apiUrl.ts',
       'ui/src/services/jobs/guidedSearchForm.ts',
       'ui/src/services/jobs/jobValidation.ts',
+      'ui/src/services/dashboard/attention.ts',
+      'ui/src/services/jobs/dealType.ts',
+      'ui/src/services/jobs/jobDraft.ts',
+      'ui/src/services/jobs/jobSummary.ts',
+      'ui/src/services/jobs/jobFilters.ts',
       'ui/src/services/authenticatedTransport.ts',
       'ui/src/services/jobs/providerUrl.ts',
       'ui/src/services/home/homeViewState.ts',
@@ -64,6 +69,11 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/guidedSearchForm.test.ts',
       'test/ui/providerUrl.test.ts',
       'test/ui/jobValidation.test.ts',
+      'test/ui/dashboardAttention.test.ts',
+      'test/ui/dealTypeCopyInSync.test.ts',
+      'test/ui/jobDraft.test.ts',
+      'test/ui/jobSummary.test.ts',
+      'test/ui/jobFilters.test.ts',
     ]);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.js'))).toBe(false);
@@ -74,6 +84,11 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobValidation.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobValidation.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobValidation.d.ts'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/dashboard/attention.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/dealType.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobDraft.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobSummary.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobFilters.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/views/home/Home.tsx'))).toBe(true);
@@ -90,6 +105,11 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'test/ui/finalResponsiveSlice.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/providerUrl.test.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'test/ui/providerUrl.test.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/dashboardAttention.test.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/dealTypeCopyInSync.test.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/jobDraft.test.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/jobSummary.test.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/jobFilters.test.js'))).toBe(false);
   });
 
   it('requires both lockfiles and the executable lock policy guard', () => {
