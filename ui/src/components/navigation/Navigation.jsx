@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { IconHome, IconSearch, IconUser } from '@douyinfe/semi-icons';
+import { IconHome, IconSearch } from '@douyinfe/semi-icons';
 import { useLocation, useNavigate } from 'react-router';
 import { useActions } from '../../services/state/store';
 import { signOutFirebase } from '../../services/auth/firebaseAuth.js';
@@ -15,6 +15,23 @@ import { homeSearchForNavigation } from '../../services/home/homeViewState.js';
 import './Navigate.less';
 
 const ICONS = { home: IconHome, 'saved-searches': IconSearch };
+/**
+ * Derive the compact profile treatment from the identity already loaded by App.
+ *
+ * @param {unknown} username
+ * @returns {string}
+ */
+export function accountInitials(username) {
+  const identity = typeof username === 'string' ? username.trim() : '';
+  const localPart = identity
+    .split('@', 1)[0]
+    .replace(/[._-]+/g, ' ')
+    .trim();
+  const words = localPart.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words.at(-1)[0]}`.toUpperCase();
+}
 
 /**
  * Resolve the next menu item for the four navigation keys supported by a WAI-ARIA menu.
@@ -41,7 +58,7 @@ export function menuItemIndexForKey(key, currentIndex, itemCount) {
  * The application shell. Page bodies remain owned by their existing routes; this component only
  * owns the two primary destinations and the account escape hatch for settings/admin.
  */
-export default function Navigation({ isAdmin, primaryVisible = true }) {
+export default function Navigation({ currentUser, isAdmin, primaryVisible = true }) {
   const t = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -157,7 +174,9 @@ export default function Navigation({ isAdmin, primaryVisible = true }) {
             aria-expanded={accountOpen}
             onClick={() => setAccountOpen((open) => !open)}
           >
-            <IconUser size="small" aria-hidden="true" />
+            <span className="fredy-shell-nav__account-avatar" aria-hidden="true">
+              {accountInitials(currentUser?.username)}
+            </span>
             <span className="fredy-shell-nav__account-label">{t('nav.account')}</span>
           </button>
           {accountOpen && (

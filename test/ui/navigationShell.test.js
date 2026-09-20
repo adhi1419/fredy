@@ -45,7 +45,7 @@ vi.mock('../../ui/src/services/i18n/i18n.jsx', () => ({
     })[key] ?? key,
 }));
 
-import Navigation, { menuItemIndexForKey } from '../../ui/src/components/navigation/Navigation.jsx';
+import Navigation, { accountInitials, menuItemIndexForKey } from '../../ui/src/components/navigation/Navigation.jsx';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const styles = fs.readFileSync(path.join(here, '../../ui/src/components/navigation/Navigate.less'), 'utf8');
@@ -56,21 +56,29 @@ function renderNavigation(pathname, props = {}) {
     React.createElement(
       MemoryRouter,
       { initialEntries: [pathname] },
-      React.createElement(Navigation, { isAdmin: true, ...props }),
+      React.createElement(Navigation, {
+        isAdmin: true,
+        currentUser: { username: 'alex.rivera@example.com' },
+        ...props,
+      }),
     ),
   );
 }
 
 describe('two-tab shell component', () => {
-  it('keeps the mobile account icon separate from the label-only hiding hook', () => {
+  it('uses the existing account identity for a colored initials avatar on every viewport', () => {
     const html = renderNavigation('/jobs');
     const accountButton = html.match(/<button[^>]*class="fredy-shell-nav__account-button"[\s\S]*?<\/button>/)?.[0];
 
-    expect(accountButton).toContain('<svg');
-    expect(accountButton).toContain('fredy-shell-nav__account-label');
-    expect(accountButton).toContain('Account');
-    expect(styles).toContain('.fredy-shell-nav__account-label');
-    expect(styles).not.toMatch(/\.fredy-shell-nav__account-button\s+span/);
+    expect(accountInitials('alex.rivera@example.com')).toBe('AR');
+    expect(accountInitials('adhitr')).toBe('AD');
+    expect(accountButton).toContain('fredy-shell-nav__account-avatar');
+    expect(accountButton).toContain('>AR</span>');
+    expect(accountButton).not.toContain('data-icon="user"');
+    expect(styles).toContain('.fredy-shell-nav__account-avatar');
+    expect(styles).toContain('background: @color-accent-fill');
+    expect(styles).toContain('color: @color-surface');
+    expect(styles).toMatch(/\.fredy-shell-nav__account-button\s*{[^}]*min-height:\s*44px/s);
     expect(styles).toMatch(/\.fredy-shell-nav__account-button\s*{[^}]*min-width:\s*44px/s);
   });
 

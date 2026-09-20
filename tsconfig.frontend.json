@@ -18,6 +18,7 @@
     "ui/src/services/authenticatedTransport.ts",
     "ui/src/services/jobs/providerUrl.ts",
     "ui/src/services/home/homeViewState.ts",
+    "ui/src/views/home/Home.tsx",
     "ui/src/services/listings/listingFilters.ts",
     "ui/src/services/state/financeState.ts",
     "ui/src/services/state/jobsState.ts",

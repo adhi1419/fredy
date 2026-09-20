@@ -41,6 +41,7 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/authenticatedTransport.ts',
       'ui/src/services/jobs/providerUrl.ts',
       'ui/src/services/home/homeViewState.ts',
+      'ui/src/views/home/Home.tsx',
       'ui/src/services/listings/listingFilters.ts',
       'ui/src/services/state/financeState.ts',
       'ui/src/services/state/jobsState.ts',
@@ -58,6 +59,7 @@ describe('Bun and TypeScript foundation', () => {
     expect(testConfig.compilerOptions.types).toEqual(['node']);
     expect(testConfig.include).toEqual([
       'test/ui/finalResponsiveSlice.test.ts',
+      'test/ui/homeSurface.test.ts',
       'test/ui/listingFilters.test.ts',
       'test/ui/guidedSearchForm.test.ts',
       'test/ui/providerUrl.test.ts',
@@ -74,6 +76,8 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobValidation.d.ts'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/home/Home.tsx'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/home/Home.jsx'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/listings/listingFilters.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/listings/listingFilters.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/listingFilters.test.ts'))).toBe(true);
