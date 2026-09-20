@@ -9,7 +9,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['test/**/*.test.js', 'test/**/*.test.ts'],
+    include: ['test/**/*.test.{js,ts,tsx}'],
     // Contract tests have their own config (vitest.contract.config.js) with a
     // setup file that redirects the DB to a temp dir. Running them without that
     // setup would write into the repo's real db/ directory.

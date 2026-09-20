@@ -9,12 +9,12 @@
     "start:frontend": "vite -m production",
     "start:frontend:dev": "vite",
     "build:frontend": "vite build",
-    "typecheck:frontend": "tsc --noEmit --project tsconfig.frontend.json",
+    "typecheck:frontend": "tsc --noEmit --project tsconfig.frontend.json && tsc --noEmit --project tsconfig.frontend-tests.json",
     "test:frontend": "TEST_MODE=offline vitest run test/ui",
     "test:foundation": "vitest run test/toolchainFoundation.test.js test/prWorkflow.test.js test/deployWorkflow.test.js",
     "check:lockfiles": "node scripts/check-lockfiles.js",
-    "format": "prettier --write \"**/*.{js,ts}\"",
-    "format:check": "prettier --check \"**/*.{js,ts}\"",
+    "format": "prettier --write \"**/*.{js,ts,tsx}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,tsx}\"",
     "test": "x-var TEST_MODE=live vitest run",
     "test:offline": "x-var TEST_MODE=offline vitest run",
     "test:download-fixtures": "node tools/testFixtures/downloadFixtures.js",
@@ -27,7 +27,7 @@
   },
   "type": "module",
   "lint-staged": {
-    "*.{js,jsx}": [
+    "*.{js,jsx,ts,tsx}": [
       "yarn lint",
       "yarn format",
       "yarn copyright"
@@ -89,6 +89,9 @@
     "@douyinfe/semi-ui-19": "2.102.0",
     "@eslint/js": "10.0.1",
     "@mapbox/mapbox-gl-draw": "1.5.1",
+    "@types/node": "26.4.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.1",
     "chalk": "6.0.0",
     "chart.js": "4.5.1",
@@ -108,9 +111,9 @@
     "react-dom": "19.2.8",
     "react-range-slider-input": "3.3.5",
     "react-router": "8.3.1",
+    "typescript": "5.9.3",
     "vite": "8.2.2",
     "vitest": "4.1.11",
-    "zustand": "5.0.15",
-    "typescript": "5.9.3"
+    "zustand": "5.0.15"
   }
 }

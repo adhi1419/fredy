@@ -4,4 +4,55 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+
+  &__heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: @space-6;
+    margin-bottom: @space-8;
+  }
+
+  &__headingCopy {
+    min-width: 0;
+  }
+
+  &__eyebrow {
+    margin: 0 0 @space-2;
+    color: @color-accent;
+    font-size: @text-xs;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  &__heading h1 {
+    margin: 0;
+    color: @color-text;
+    font-size: clamp(30px, 4vw, 44px);
+    font-weight: 750;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+  }
+
+  &__description {
+    max-width: 620px;
+    margin: @space-2 0 0;
+    color: @color-muted;
+    font-size: @text-base;
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 640px) {
+  .jobs__heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: @space-4;
+    margin-bottom: @space-6;
+  }
+
+  .jobs__heading .semi-button {
+    align-self: flex-start;
+  }
 }
