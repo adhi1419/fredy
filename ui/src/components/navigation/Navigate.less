@@ -72,6 +72,26 @@
   gap: @space-1;
 }
 
+.fredy-shell-nav__account-avatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid @color-border;
+  border-radius: 50%;
+  background: @color-accent-fill;
+  color: @color-surface;
+  font-family: @font-ui;
+  font-size: @text-md;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
+  color: @color-text;
+}
+
 .fredy-shell-nav__primary-link {
   position: relative;
   display: inline-flex;

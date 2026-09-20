@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useSelector, useActions } from '../../services/state/store.js';
 import {
   Typography,
@@ -70,6 +70,7 @@ import AddressEditor from './components/AddressEditor.jsx';
 import './ListingDetail.less';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
 import { useFinanceProfile } from '../../hooks/useFinanceProfile.js';
+import { sanitizeReturnTo } from '../../services/routes/returnTo.js';
 import { VERDICT_COLORS, formatEuro, withAlpha } from '../../components/cards/chartTheme.js';
 import {
   inquiryProviderRequiresMessage,
@@ -109,6 +110,8 @@ export default function ListingDetail() {
   const t = useTranslation();
   const locale = useLocale();
   const { listingId } = useParams();
+  const [searchParams] = useSearchParams();
+  const returnTo = sanitizeReturnTo(searchParams.get('returnTo'));
   const navigate = useNavigate();
   const actions = useActions();
   const { isComplete: buyComplete, rentComplete, thresholds: financeThresholds } = useFinanceProfile();
@@ -199,7 +202,7 @@ export default function ListingDetail() {
       } catch (e) {
         console.error('Failed to load listing details:', e);
         Toast.error(t('listing.detail.toastLoadError'));
-        navigate('/listings');
+        navigate(returnTo ?? '/listings');
       } finally {
         setLoading(false);
       }
@@ -712,7 +715,7 @@ export default function ListingDetail() {
         actions={
           <Button
             icon={<IconArrowLeft />}
-            onClick={() => navigate(-1)}
+            onClick={() => (returnTo ? navigate(returnTo) : navigate(-1))}
             theme="borderless"
             style={{ color: 'var(--f-muted)' }}
           >

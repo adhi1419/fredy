@@ -84,8 +84,69 @@ declare module '*services/jobs/jobSummary.js' {
   ): string;
 }
 
+declare module '*components/map/maplibre.js' {
+  const maplibregl: typeof import('maplibre-gl');
+  export default maplibregl;
+}
+
+declare module '*components/map/Map.jsx' {
+  interface HomeMapProps {
+    countries?: readonly string[];
+    constrainToCountries?: boolean;
+    initialCenter?: [number, number];
+    initialZoom?: number;
+    controlsMode?: string;
+    onMapReady?: (map: import('maplibre-gl').Map) => void;
+  }
+
+  const MapCanvas: import('react').ComponentType<HomeMapProps>;
+  export default MapCanvas;
+}
+
+declare module '*mapUtils.js' {
+  interface MapListing {
+    id?: string;
+    title?: string | null;
+    latitude: number;
+    longitude: number;
+  }
+
+  export function groupListingsByPosition(
+    listings: readonly MapListing[],
+  ): Array<{ lat: number; lng: number; listings: MapListing[] }>;
+  export function getBoundsFromCoords(
+    coordinates: readonly (readonly [number, number])[],
+    padding?: number,
+  ): [[number, number], [number, number]] | null;
+}
+
+declare module '*hooks/useProviderCountries.js' {
+  export function useProviderCountries(): string[];
+}
+
+declare module '*services/dashboard/attention.js' {
+  interface AttentionJobInput {
+    id?: string;
+    name?: string | null;
+    notificationAdapter?: readonly unknown[];
+    enabled?: boolean;
+    numberOfFoundListings?: number;
+  }
+
+  interface AttentionJob {
+    id: string;
+    name: string;
+    reason: string;
+  }
+
+  export function findJobsNeedingAttention(
+    jobs: readonly AttentionJobInput[],
+    options?: { lastRun?: number | null },
+  ): AttentionJob[];
+}
+
 declare module '*services/price/priceService.js' {
-  export function formatEuroPrice(value: number, locale?: string): string;
+  export function formatEuroPrice(value: number | string, locale?: string): string;
 }
 
 declare module '*services/state/store.js' {
@@ -122,7 +183,7 @@ declare module '*services/xhr.js' {
 
   export function errorMessage(error: unknown, fallback: string): string;
   export function xhrDelete(path: string, payload: Record<string, unknown>): Promise<XhrResponse>;
-  export function xhrPost(path: string, payload: Record<string, unknown>): Promise<XhrResponse>;
+  export function xhrPost(path: string, payload: unknown): Promise<XhrResponse>;
   export function xhrPut(path: string, payload: Record<string, unknown>): Promise<XhrResponse>;
 }
 

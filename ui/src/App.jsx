@@ -33,7 +33,7 @@ import MapView from './views/listings/Map.jsx';
 import Navigation from './components/navigation/Navigation.jsx';
 import { Layout } from '@douyinfe/semi-ui-19';
 import FredyFooter from './components/footer/FredyFooter.jsx';
-import Home from './views/home/Home.jsx';
+import Home from './views/home/Home';
 import FinanceCalculator from './views/finance/FinanceCalculator.jsx';
 import ListingDetail from './views/listings/ListingDetail.jsx';
 import { I18nProvider, availableLanguages } from './services/i18n/i18n.jsx';
@@ -200,7 +200,11 @@ export default function FredyApp() {
           // body attribute on their own, but the charts paint onto a canvas from colours they read once
           // per render, and a canvas keeps whatever it was last painted with until something redraws it.
           <Layout className="app" key={theme}>
-            <Navigation isAdmin={isAdmin()} primaryVisible={!onboardingDecision.requiresSetup} />
+            <Navigation
+              currentUser={currentUser}
+              isAdmin={isAdmin()}
+              primaryVisible={!onboardingDecision.requiresSetup}
+            />
             <Layout className="app__main">
               <Content className="app__content" id="fredy-main-content" tabIndex="-1">
                 <DebugLoggingBanner />

@@ -15,6 +15,17 @@
  */
 
 /**
+ * @typedef {Object} AttentionJobInput
+ * @property {string} [id]
+ * @property {string|null} [name]
+ * @property {unknown[]} [notificationAdapter]
+ * @property {boolean} [enabled]
+ * @property {number} [numberOfFoundListings]
+ */
+
+/** @typedef {{id: string, name: string, reason: string}} AttentionJob */
+
+/**
  * Why a job was flagged.
  * @type {Readonly<{NO_CHANNEL: 'noChannel', PAUSED: 'paused', NOTHING_FOUND: 'nothingFound'}>}
  */
@@ -71,10 +82,10 @@ function reasonFor(job, hasRunOnce) {
  * the pause explains the emptiness, and saying both would double the length of the list without
  * adding anything to do.
  *
- * @param {Object[]} jobs
+ * @param {AttentionJobInput[]} jobs
  * @param {Object} [options]
  * @param {number|null} [options.lastRun] Epoch ms of the instance's last search.
- * @returns {{id: string, name: string, reason: string}[]} Most severe first, capped at
+ * @returns {AttentionJob[]} Most severe first, capped at
  *   {@link ATTENTION_LIMIT}; read `countJobsNeedingAttention` for the true total.
  */
 export function findJobsNeedingAttention(jobs, { lastRun = null } = {}) {
@@ -84,10 +95,10 @@ export function findJobsNeedingAttention(jobs, { lastRun = null } = {}) {
 /**
  * The same, uncapped.
  *
- * @param {Object[]} jobs
+ * @param {AttentionJobInput[]} jobs
  * @param {Object} [options]
  * @param {number|null} [options.lastRun]
- * @returns {{id: string, name: string, reason: string}[]}
+ * @returns {AttentionJob[]}
  */
 export function allJobsNeedingAttention(jobs, { lastRun = null } = {}) {
   if (!Array.isArray(jobs)) {
@@ -96,15 +107,20 @@ export function allJobsNeedingAttention(jobs, { lastRun = null } = {}) {
   const hasRunOnce = lastRun != null && lastRun !== 0;
 
   return jobs
-    .map((job) => ({ id: job?.id, name: job?.name, reason: reasonFor(job, hasRunOnce) }))
+    .map((job) => ({
+      id: typeof job?.id === 'string' ? job.id : null,
+      name: typeof job?.name === 'string' ? job.name : '',
+      reason: reasonFor(job, hasRunOnce),
+    }))
     .filter((entry) => entry.reason != null && entry.id != null)
+    .map((entry) => ({ id: entry.id, name: entry.name, reason: entry.reason }))
     .sort((a, b) => SEVERITY.indexOf(a.reason) - SEVERITY.indexOf(b.reason));
 }
 
 /**
  * How many jobs want looking at, including the ones the list does not name.
  *
- * @param {Object[]} jobs
+ * @param {AttentionJobInput[]} jobs
  * @param {Object} [options]
  * @param {number|null} [options.lastRun]
  * @returns {number}
