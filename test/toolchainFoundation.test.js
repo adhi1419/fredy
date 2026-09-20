@@ -38,6 +38,7 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/state/financeState.ts',
       'ui/src/services/state/jobsState.ts',
       'ui/src/services/state/listingsState.ts',
+      'ui/src/services/state/notificationState.ts',
       'ui/src/services/state/userSettingsState.ts',
       'ui/src/vite-env.d.ts',
     ]);
