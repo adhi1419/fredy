@@ -328,14 +328,18 @@ describe('listingsStorage contract', () => {
         expect(result.totalNumber).toBe(1);
       });
 
-      it('admin sees all listings regardless of ownership', async () => {
+      it('scopes admins to their own and explicitly shared listings', async () => {
         await seedUser('owner');
         await seedUser('admin', { isAdmin: true });
-        await seedJob('j-other', 'owner');
-        await listingsStorage.storeListings('j-other', 'immoscout', [makeListing('admin-visible')]);
+        await seedJob('j-private', 'owner');
+        await seedJob('j-admin', 'admin');
+        await seedJob('j-shared-admin', 'owner', { shareWithUsers: ['admin'] });
+        await listingsStorage.storeListings('j-private', 'immoscout', [makeListing('private')]);
+        await listingsStorage.storeListings('j-admin', 'immoscout', [makeListing('admin-owned')]);
+        await listingsStorage.storeListings('j-shared-admin', 'immoscout', [makeListing('admin-shared')]);
 
-        const result = await listingsStorage.queryListings({ isAdmin: true, userId: 'admin' });
-        expect(result.totalNumber).toBe(1);
+        const result = await listingsStorage.queryListings({ userId: 'admin' });
+        expect(result.result.map((listing) => listing.hash).sort()).toEqual(['admin-owned', 'admin-shared']);
       });
     });
 
@@ -551,7 +555,7 @@ describe('listingsStorage contract', () => {
 
       await listingsStorage.deleteListingsById(ids);
 
-      const hidden = await listingsStorage.queryListings({ hiddenOnly: true, userId: 'u1', isAdmin: true });
+      const hidden = await listingsStorage.queryListings({ hiddenOnly: true, userId: 'u1' });
       expect(hidden.totalNumber).toBe(BATCH);
     });
 
@@ -565,7 +569,7 @@ describe('listingsStorage contract', () => {
       await listingsStorage.deleteListingsById(ids);
       await listingsStorage.restoreListingsById(ids);
 
-      const result = await listingsStorage.queryListings({ userId: 'u1', isAdmin: true });
+      const result = await listingsStorage.queryListings({ userId: 'u1' });
       expect(result.totalNumber).toBe(BATCH);
     });
 
@@ -578,7 +582,7 @@ describe('listingsStorage contract', () => {
 
       await listingsStorage.deleteListingsById(ids, true);
 
-      const result = await listingsStorage.queryListings({ userId: 'u1', isAdmin: true });
+      const result = await listingsStorage.queryListings({ userId: 'u1' });
       expect(result.totalNumber).toBe(0);
     });
   });
@@ -612,15 +616,15 @@ describe('listingsStorage contract', () => {
       expect(allowed).toEqual([items[0].id]);
     });
 
-    it('admin sees everything', async () => {
+    it('keeps an explicitly shared listing readable but not mutable by an admin', async () => {
       await seedUser('owner');
       await seedUser('admin', { isAdmin: true });
-      await seedJob('j1', 'owner');
-      const items = [makeListing('admin-access')];
+      await seedJob('j1', 'owner', { shareWithUsers: ['admin'] });
+      const items = [makeListing('admin-shared')];
       await listingsStorage.storeListings('j1', 'immoscout', items);
 
-      const allowed = await listingsStorage.filterListingIdsForUser([items[0].id], 'admin', true);
-      expect(allowed).toEqual([items[0].id]);
+      expect(await listingsStorage.filterListingIdsForUser([items[0].id], 'admin')).toEqual([items[0].id]);
+      expect(await listingsStorage.filterListingIdsForOwner([items[0].id], 'admin')).toEqual([]);
     });
 
     it('returns empty array for null/empty userId (non-admin)', async () => {
@@ -644,6 +648,41 @@ describe('listingsStorage contract', () => {
     });
   });
 
+  describe('userCanModifyListing', () => {
+    it('allows the owner and rejects an explicit partner, admin, and stranger', async () => {
+      await seedUser('owner');
+      await seedUser('partner');
+      await seedUser('admin', { isAdmin: true });
+      await seedUser('stranger');
+      await seedJob('j-owner', 'owner', { shareWithUsers: ['partner', 'admin'] });
+      const items = [makeListing('mutation-access')];
+      await listingsStorage.storeListings('j-owner', 'immoscout', items);
+
+      expect(await listingsStorage.userCanModifyListing(items[0].id, 'owner')).toBe(true);
+      expect(await listingsStorage.userCanModifyListing(items[0].id, 'partner')).toBe(false);
+      expect(await listingsStorage.userCanModifyListing(items[0].id, 'admin')).toBe(false);
+      expect(await listingsStorage.userCanModifyListing(items[0].id, 'stranger')).toBe(false);
+    });
+  });
+
+  describe('filterListingIdsForOwner', () => {
+    it('returns only owner listings from a mixed batch', async () => {
+      await seedUser('owner');
+      await seedUser('partner');
+      await seedJob('j-owner', 'owner', { shareWithUsers: ['partner'] });
+      await seedJob('j-partner', 'partner');
+      const own = [makeListing('owner-mutation')];
+      const shared = [makeListing('shared-mutation')];
+      await listingsStorage.storeListings('j-owner', 'immoscout', own);
+      await listingsStorage.storeListings('j-partner', 'immoscout', shared);
+
+      expect(await listingsStorage.filterListingIdsForOwner([own[0].id, shared[0].id], 'partner')).toEqual([
+        shared[0].id,
+      ]);
+      expect(await listingsStorage.filterListingIdsForOwner([own[0].id, shared[0].id], 'owner')).toEqual([own[0].id]);
+    });
+  });
+
   describe('userCanAccessListing', () => {
     it('returns true for owner, false for stranger', async () => {
       await seedUser('owner');
@@ -656,14 +695,24 @@ describe('listingsStorage contract', () => {
       expect(await listingsStorage.userCanAccessListing(items[0].id, 'stranger')).toBe(false);
     });
 
-    it('returns true for admin regardless of ownership', async () => {
+    it('returns true for an admin when explicitly shared', async () => {
+      await seedUser('owner');
+      await seedUser('admin', { isAdmin: true });
+      await seedJob('j1', 'owner', { shareWithUsers: ['admin'] });
+      const items = [makeListing('admin-shared-read')];
+      await listingsStorage.storeListings('j1', 'immoscout', items);
+
+      expect(await listingsStorage.userCanAccessListing(items[0].id, 'admin')).toBe(true);
+    });
+
+    it('returns false for an unshared admin', async () => {
       await seedUser('owner');
       await seedUser('admin', { isAdmin: true });
       await seedJob('j1', 'owner');
-      const items = [makeListing('admin-ok')];
+      const items = [makeListing('admin-private-read')];
       await listingsStorage.storeListings('j1', 'immoscout', items);
 
-      expect(await listingsStorage.userCanAccessListing(items[0].id, 'admin', true)).toBe(true);
+      expect(await listingsStorage.userCanAccessListing(items[0].id, 'admin')).toBe(false);
     });
   });
 });

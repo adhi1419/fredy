@@ -40,6 +40,7 @@ async function buildServer({ demoMode = false, isAdmin = false } = {}) {
 
   vi.doMock(listingStoragePath, () => ({
     userCanAccessListing: () => true,
+    userCanModifyListing: () => true,
     getListingById: () => listing,
     updateListingGeocoordinates: (id, latitude, longitude) => stored.push({ id, latitude, longitude }),
   }));

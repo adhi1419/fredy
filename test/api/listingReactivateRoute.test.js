@@ -8,7 +8,8 @@ import Fastify from 'fastify';
 
 vi.mock('../../lib/services/storage/listingsStorage.js', () => ({
   userCanAccessListing: vi.fn(() => true),
-  filterListingIdsForUser: vi.fn((ids) => ids),
+  userCanModifyListing: vi.fn(() => true),
+  filterListingIdsForOwner: vi.fn((ids) => ids),
   reactivateListings: vi.fn(),
   restoreListingsById: vi.fn(),
   getListingById: vi.fn(),
@@ -56,7 +57,7 @@ const post = async (payload) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  listingStorage.filterListingIdsForUser.mockImplementation((ids) => ids);
+  listingStorage.filterListingIdsForOwner.mockImplementation((ids) => ids);
   getSettings.mockResolvedValue({ demoMode: false });
   isAdmin.mockReturnValue(false);
 });
@@ -75,7 +76,7 @@ describe('POST /api/listings/reactivate', () => {
   });
 
   it('rejects a batch containing a listing the user cannot access', async () => {
-    listingStorage.filterListingIdsForUser.mockReturnValue(['mine-1']);
+    listingStorage.filterListingIdsForOwner.mockReturnValue(['mine-1']);
 
     const response = await post({ ids: ['mine-1', 'someone-elses'] });
 

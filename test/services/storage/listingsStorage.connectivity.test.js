@@ -40,6 +40,7 @@ describe('listingsStorage connectivity', () => {
 
   beforeEach(async () => {
     firestore.clear();
+    firestore.seed('jobs', 'job-1', { userId: 'user-1', sharedWithUser: [] });
     storage = await import('../../../lib/services/storage/listingsStorage.js');
   });
 
@@ -129,7 +130,7 @@ describe('listingsStorage connectivity', () => {
 
   describe('filtering the overview', () => {
     const idsFor = async (filters) =>
-      (await storage.queryListings({ isAdmin: true, ...filters })).result.map((row) => row.id).sort();
+      (await storage.queryListings({ userId: 'user-1', ...filters })).result.map((row) => row.id).sort();
 
     beforeEach(() => {
       addListing('gigabit-fibre', {

@@ -218,7 +218,6 @@ describe('POST /affordability', () => {
 
     expect(queryListings.mock.calls.at(-1)[0]).toMatchObject({
       userId: 'user-1',
-      isAdmin: false,
       activityFilter: true,
     });
   });
@@ -390,7 +389,7 @@ describe('GET /listing/:listingId', () => {
     const response = await app.inject({ method: 'GET', url: '/listing/someone-elses' });
 
     expect(response.statusCode).toBe(404);
-    expect(getListingById).toHaveBeenCalledWith('someone-elses', 'user-1', false);
+    expect(getListingById).toHaveBeenCalledWith('someone-elses', 'user-1');
   });
 
   it('returns no figures for a listing without a price', async () => {

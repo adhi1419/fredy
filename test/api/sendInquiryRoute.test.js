@@ -20,6 +20,7 @@ vi.mock('../../lib/services/storage/listingsStorage.js', () => ({
   getListingsForMap: async () => [],
   getPriceHistory: async () => [],
   userCanAccessListing: async () => true,
+  userCanModifyListing: async () => true,
   setListingNotes: async () => 1,
   setListingAddress: async () => 1,
   updateListingGeocoordinates: async () => 1,

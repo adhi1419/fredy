@@ -87,11 +87,13 @@ describe('api/routes/dashboardRouter.js', () => {
     expect(res.json().general.lastRun).toBe(4000);
   });
 
-  it('admins see lastRun across all jobs', async () => {
+  it('admins see only their own and explicitly shared jobs', async () => {
     state.admin = true;
+    state.currentUser = 'admin';
     state.jobs = [
-      { id: 'a', userId: 'someone', shared_with_user: [], lastRunAt: 1000 },
-      { id: 'b', userId: 'another', shared_with_user: [], lastRunAt: 7000 },
+      { id: 'own', userId: 'admin', shared_with_user: [], lastRunAt: 3000 },
+      { id: 'shared', userId: 'someone', shared_with_user: ['admin'], lastRunAt: 7000 },
+      { id: 'unrelated', userId: 'another', shared_with_user: [], lastRunAt: 9999 },
     ];
     app = await buildApp();
 
