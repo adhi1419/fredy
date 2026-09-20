@@ -155,3 +155,5 @@ Any derivative work based on this software must include clear and visible attrib
 ## Support
 
 For bugs and feature requests, use the [Fredy fork issue tracker](https://github.com/adhi1419/fredy/issues). When reporting a problem, include the provider, saved-search context, and the steps that reproduce it. Do not include passwords, provider credentials, or other private information.
+
+Developers and operators can find setup, deployment, validation, recovery, and extension guidance in the [Developer and Operator Guide](docs/DEVELOPER_OPERATOR_GUIDE.md).
