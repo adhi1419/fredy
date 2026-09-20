@@ -170,8 +170,7 @@ export default function FredyApp() {
   };
 
   const isAdmin = () => currentUser != null && currentUser.isAdmin;
-  const { Sider, Content } = Layout;
-
+  const { Content } = Layout;
   return loading ? null : (
     <I18nProvider language={language ?? 'en'}>
       <LocaleProvider
@@ -189,9 +188,7 @@ export default function FredyApp() {
           // body attribute on their own, but the charts paint onto a canvas from colours they read once
           // per render, and a canvas keeps whatever it was last painted with until something redraws it.
           <Layout className="app" key={theme}>
-            <Sider>
-              <Navigation isAdmin={isAdmin()} />
-            </Sider>
+            <Navigation isAdmin={isAdmin()} />
             <Layout className="app__main">
               <Content className="app__content">
                 <DebugLoggingBanner />
@@ -208,7 +205,7 @@ export default function FredyApp() {
                   <Route path="/finance" element={<FinanceCalculator />} />
 
                   {/* Settings that belong to whoever is signed in. No guard: they are theirs.
-                      One entry in the sidebar, and the tabs below the heading are the only place
+                      One entry in the account menu, and the tabs below the heading are the only place
                       these five pages are named. */}
                   <Route path="/settings" element={<SettingsLayout />}>
                     <Route index element={<Navigate to="/settings/preferences" replace />} />

@@ -4,109 +4,85 @@
  */
 
 /**
- * The sidebar's structure, and the rule for deciding which entry the current URL belongs to.
+ * The product shell has exactly two primary destinations. Route families are kept here rather than
+ * in the component so deep links can highlight the right tab without changing or redirecting the
+ * existing page routes.
  *
- * Kept out of the component because both are decisions rather than markup: which pages exist, who
- * may see them, and which of them a nested route like `/listings/listing/42` counts as. Those are
- * worth asserting on, and a component that renders Semi's `<Nav>` is not.
- *
- * Labels are carried as translation keys, not as translated strings. Resolving them needs a `t`
- * from React context, so it happens in the component; keeping the tree free of it is what lets this
- * module be tested without one.
+ * @typedef {{ key: 'home'|'saved-searches', path: string, labelKey: string, routePrefixes: string[] }} PrimaryDestination
  */
 
-/**
- * One entry in the sidebar.
- *
- * A `key` beginning with `/` is a destination and navigates. Anything else is a group heading that
- * only opens its children - `parsePathName` and the click handler both rely on that distinction.
- *
- * @typedef {Object} NavNode
- * @property {string} key Route path, or a bare name for a group.
- * @property {string} labelKey Translation key for the visible label.
- * @property {NavNode[]} [children]
- * @property {boolean} [adminOnly] Hidden from users without the admin bit.
- */
-
-/**
- * The sidebar, in order.
- *
- * Settings and Administration are single destinations rather than groups: each is one page that
- * carries its own sections, so a submenu here would name the same places twice - once in the
- * sidebar and again inside the page.
- *
- * @type {NavNode[]}
- */
-export const NAV_TREE = [
-  { key: '/dashboard', labelKey: 'nav.dashboard' },
-  { key: '/jobs', labelKey: 'nav.jobs' },
+/** @type {PrimaryDestination[]} */
+export const PRIMARY_NAV = [
   {
-    key: 'listings',
-    labelKey: 'nav.listings',
-    children: [
-      { key: '/listings', labelKey: 'nav.listingsOverview' },
-      { key: '/map', labelKey: 'nav.mapView' },
-      // Financing sits here rather than at the top level: it is a way of judging listings, not a
-      // peer of the search itself.
-      { key: '/finance', labelKey: 'nav.finance' },
-    ],
+    key: 'home',
+    path: '/dashboard',
+    labelKey: 'nav.home',
+    routePrefixes: ['/dashboard', '/listings', '/map', '/finance'],
   },
-  { key: '/settings', labelKey: 'nav.settings' },
-  { key: '/admin', labelKey: 'nav.administration', adminOnly: true },
+  {
+    key: 'saved-searches',
+    path: '/jobs',
+    labelKey: 'nav.savedSearches',
+    routePrefixes: ['/jobs'],
+  },
+];
+
+/** @type {{ key: 'account'|'admin', path: string, labelKey: string, adminOnly?: boolean }[]} */
+export const ACCOUNT_NAV = [
+  { key: 'account', path: '/settings', labelKey: 'nav.myAccount' },
+  { key: 'admin', path: '/admin', labelKey: 'nav.adminPanel', adminOnly: true },
 ];
 
 /**
- * The tree as a given user sees it.
+ * Returns the primary destination that owns a pathname. Settings and admin deliberately return
+ * null: they are reachable from the account control but must not compete with the two tabs.
  *
- * @param {boolean} isAdmin
- * @returns {NavNode[]}
+ * @param {string} pathname
+ * @returns {'home'|'saved-searches'|null}
  */
+export function resolvePrimaryKey(pathname) {
+  const path = pathname.split(/[?#]/, 1)[0];
+  return (
+    PRIMARY_NAV.find(({ routePrefixes }) =>
+      routePrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`)),
+    )?.key ?? null
+  );
+}
+
+/**
+ * Compatibility model for code and tests that need to inspect all shell destinations.
+ *
+ * @typedef {Object} NavNode
+ * @property {string} key
+ * @property {string} labelKey
+ * @property {string} [path]
+ * @property {boolean} [adminOnly]
+ */
+export const NAV_TREE = [...PRIMARY_NAV.map(({ path, labelKey }) => ({ key: path, labelKey })), ...ACCOUNT_NAV];
+
+/** @param {boolean} isAdmin @returns {NavNode[]} */
 export function navTreeFor(isAdmin) {
   return NAV_TREE.filter((node) => !node.adminOnly || isAdmin);
 }
 
-/**
- * Every destination in a tree, groups excluded.
- *
- * @param {NavNode[]} tree
- * @returns {string[]}
- */
+/** @param {NavNode[]} tree @returns {string[]} */
 export function routeKeysOf(tree) {
-  const keys = [];
-  const walk = (nodes) => {
-    for (const node of nodes) {
-      if (typeof node.key === 'string' && node.key.startsWith('/')) {
-        keys.push(node.key);
-      }
-      if (Array.isArray(node.children)) {
-        walk(node.children);
-      }
-    }
-  };
-  walk(tree);
-  return keys;
+  return tree
+    .map((node) => (node.key.startsWith('/') ? node.key : node.path))
+    .filter((path) => typeof path === 'string' && path.startsWith('/'));
 }
 
 /**
- * Which sidebar entry a path counts as.
- *
- * Longest prefix wins, so `/listings/listing/42` marks Overview and an Administration child marks
- * Administration. A path under no entry at all - `/403`, say - falls back to its first segment,
- * which simply matches nothing and leaves the sidebar unselected rather than lighting up an
- * unrelated entry.
+ * Resolve the old route-key shape for callers that still need it. Primary deep links resolve to the
+ * root route for their family; settings/admin stay individually addressable.
  *
  * @param {NavNode[]} tree
  * @param {string} pathname
  * @returns {string}
  */
 export function resolveActiveKey(tree, pathname) {
-  const longest = routeKeysOf(tree)
-    .filter((key) => pathname === key || pathname.startsWith(key + '/'))
-    .sort((a, b) => b.length - a.length)[0];
-
-  if (longest != null) {
-    return longest;
-  }
-  const [first] = pathname.split('/').filter((segment) => segment.length !== 0);
-  return '/' + (first ?? '');
+  const primary = resolvePrimaryKey(pathname);
+  if (primary) return PRIMARY_NAV.find((item) => item.key === primary).path;
+  const route = routeKeysOf(tree).find((key) => pathname === key || pathname.startsWith(`${key}/`));
+  return route ?? `/${pathname.split('/').filter(Boolean)[0] ?? ''}`;
 }
