@@ -29,8 +29,6 @@ import Jobs from './views/jobs/Jobs';
 
 import './App.less';
 import { LocaleProvider } from '@douyinfe/semi-ui-19';
-import Listings from './views/listings/Listings.jsx';
-import MapView from './views/listings/Map.jsx';
 import Navigation from './components/navigation/Navigation.js';
 import { Layout } from '@douyinfe/semi-ui-19';
 import FredyFooter from './components/footer/FredyFooter.jsx';
@@ -40,7 +38,7 @@ import ListingDetail from './views/listings/ListingDetail.js';
 import { I18nProvider, availableLanguages } from './services/i18n/i18n.jsx';
 import DebugLoggingBanner from './components/debug/DebugLoggingBanner.jsx';
 import DemoBanner from './components/demo/DemoBanner.jsx';
-import { LEGACY_REDIRECTS } from './services/routes/legacyRedirects.js';
+import { LEGACY_REDIRECTS, legacyRedirectTarget } from './services/routes/legacyRedirects.js';
 import { applyTheme, normalizeTheme } from './services/theme/theme.js';
 import { signOutFirebase, subscribeToAuthState, safePhotoUrl } from './services/auth/firebaseAuth.js';
 import ApplicantProfileOnboardingPage from './views/onboarding/ApplicantProfileOnboardingPage.jsx';
@@ -87,6 +85,17 @@ for (const [path, moduleValue] of Object.entries(semiLocaleModules)) {
   const name = path.match(/\/source\/(\w+)\.js$/)?.[1];
   const loaded = moduleValue as { default?: SemiLocale };
   if (name) semiLocales[name] = loaded.default ?? (moduleValue as SemiLocale);
+}
+
+/**
+ * A legacy address that redirects into Home while carrying the safe subset of its query. Used for
+ * the retired listings overview, its map, and the watchlist, so a bookmark like
+ * `/listings?sort=price&dir=asc` keeps its intent and `/map` keeps its map view - without ever
+ * forwarding a removed concept (a `watch` flag, arbitrary tracking params) back into Home.
+ */
+function LegacyRedirect({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={legacyRedirectTarget(to, search)} replace />;
 }
 
 export default function FredyApp() {
@@ -264,9 +273,7 @@ export default function FredyApp() {
                       <Route path="/jobs/edit/:jobId" element={<JobMutation />} />
                       <Route path="/dashboard" element={<Home />} />
                       <Route path="/jobs" element={<Jobs />} />
-                      <Route path="/listings" element={<Listings />} />
                       <Route path="/listings/listing/:listingId" element={<ListingDetail />} />
-                      <Route path="/map" element={<MapView />} />
                       <Route path="/finance" element={<FinanceCalculator />} />
 
                       {/* Settings that belong to whoever is signed in. No guard: they are theirs.
@@ -300,10 +307,13 @@ export default function FredyApp() {
                       </Route>
 
                       {/* The addresses these things used to live at, kept so existing bookmarks and the
-                      links in older notification emails still land somewhere sensible. The table
-                      lives in legacyRedirects.js so a test can check every entry still resolves. */}
+                      links in older notification emails still land somewhere sensible. The listings
+                      overview, its map, and the watchlist are all Home now, so their entries carry the
+                      safe subset of their query into /dashboard rather than reviving a legacy list
+                      surface with Watch/Status/Delete. The table lives in legacyRedirects.ts so a test
+                      can check every entry still resolves. */}
                       {Object.entries(LEGACY_REDIRECTS).map(([from, to]) => (
-                        <Route key={from} path={from} element={<Navigate to={to} replace />} />
+                        <Route key={from} path={from} element={<LegacyRedirect to={to} />} />
                       ))}
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       {/* Catch-all: an authenticated user landing on an unknown path (e.g. still on

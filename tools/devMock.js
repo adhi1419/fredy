@@ -79,7 +79,7 @@ const listings = [
     provider: 'ImmobilienScout24',
     createdAt: now - 3600000,
     created_at: now - 3600000,
-    image_url: null,
+    image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=60',
     link: 'https://example.com/l1',
     is_active: true,
     isWatched: 0,
@@ -90,6 +90,15 @@ const listings = [
     description: 'Schöne 3-Zimmer-Wohnung in bester Lage in Schwabing. Balkon, Parkett, moderne Küche.',
     latitude: 48.1598,
     longitude: 11.5876,
+    lifecycle: { state: 'applied' },
+    travelTimes: [
+      {
+        label: 'Work',
+        mode: 'transit',
+        transit: { minutes: 18, transfers: 1 },
+        car: { minutes: 12, distanceMeters: 3800 },
+      },
+    ],
   },
   {
     id: 'l2',
@@ -99,7 +108,7 @@ const listings = [
     provider: 'ImmobilienScout24',
     createdAt: now - 7200000,
     created_at: now - 7200000,
-    image_url: null,
+    image_url: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=60',
     link: 'https://example.com/l2',
     is_active: true,
     isWatched: 1,
@@ -110,6 +119,15 @@ const listings = [
     description: 'Helle 2-Zimmer-Wohnung nahe Ostbahnhof. Ruhige Lage, gute Anbindung.',
     latitude: 48.1285,
     longitude: 11.6005,
+    lifecycle: { state: 'viewed' },
+    travelTimes: [
+      {
+        label: 'Work',
+        mode: 'transit',
+        transit: { minutes: 19, transfers: 0 },
+        car: { minutes: 15, distanceMeters: 5100 },
+      },
+    ],
   },
   {
     id: 'l3',
@@ -119,7 +137,7 @@ const listings = [
     provider: 'Immowelt',
     createdAt: now - 86400000,
     created_at: now - 86400000,
-    image_url: null,
+    image_url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=60',
     link: 'https://example.com/l3',
     is_active: false,
     isWatched: 0,
@@ -130,6 +148,15 @@ const listings = [
     description: 'Charmante Altbauwohnung in Prenzlauer Berg. Hohe Decken, Stuck, Holzdielen.',
     latitude: 52.5397,
     longitude: 13.4098,
+    lifecycle: { state: 'new' },
+    travelTimes: [
+      {
+        label: 'Work',
+        mode: 'transit',
+        transit: { minutes: 24, transfers: 1 },
+        car: { minutes: 21, distanceMeters: 6400 },
+      },
+    ],
   },
   {
     id: 'l4',
@@ -139,7 +166,7 @@ const listings = [
     provider: 'Immowelt',
     createdAt: now - 172800000,
     created_at: now - 172800000,
-    image_url: null,
+    image_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=60',
     link: 'https://example.com/l4',
     is_active: true,
     isWatched: 1,
@@ -150,6 +177,15 @@ const listings = [
     description: 'Moderner Neubau im Herzen von Berlin Mitte. Fußbodenheizung, Aufzug, Tiefgarage.',
     latitude: 52.5219,
     longitude: 13.4132,
+    lifecycle: { state: 'new' },
+    travelTimes: [
+      {
+        label: 'Work',
+        mode: 'transit',
+        transit: { minutes: 9, transfers: 0 },
+        car: { minutes: 7, distanceMeters: 1900 },
+      },
+    ],
   },
 ];
 

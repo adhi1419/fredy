@@ -22,7 +22,6 @@
   }
 }
 
-
 .fredy-shell-nav {
   position: relative;
   z-index: 20;
@@ -144,6 +143,51 @@ body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
 .fredy-shell-nav__account-wrap {
   position: relative;
   justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: @space-3;
+}
+
+// The compact search-health signal that replaced the giant Home attention banner. Healthy reads as
+// a quiet success line; needs-attention becomes a warning pill that links to Saved Searches. Both
+// pair an icon with text, so the state is never carried by colour alone.
+.fredy-shell-nav__health {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  min-height: 32px;
+  padding: @space-1 @space-2;
+  border: 1px solid transparent;
+  border-radius: @radius-pill;
+  background: transparent;
+  font-family: @font-ui;
+  font-size: @text-sm;
+  font-weight: 700;
+
+  svg {
+    font-size: @text-base;
+  }
+
+  &--healthy {
+    color: @color-success;
+  }
+
+  &--attention {
+    border-color: @color-warning;
+    color: @color-warning;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: @color-fill-subtle;
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid @color-accent;
+      outline-offset: 2px;
+    }
+  }
 }
 
 .fredy-shell-nav__account-button {
@@ -221,6 +265,21 @@ body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
 
   .fredy-shell-nav__account-button {
     min-width: 44px;
+  }
+
+  // Keep the header compact on mobile: the health state stays as its icon (still colour + shape),
+  // and the label text collapses so brand, health, and account trigger fit one row.
+  .fredy-shell-nav__health-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .fredy-shell-nav__health {
+    padding: @space-1;
   }
 
   .fredy-shell-nav__mobile-primary {
