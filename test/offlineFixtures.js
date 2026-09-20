@@ -170,7 +170,24 @@ export function buildFetchMock() {
       }
 
       const requestedType = new URL(urlStr).searchParams.get('realestatetype');
-      const responseData = withRealEstateType(listData, requestedType);
+      const typed = withRealEstateType(listData, requestedType);
+
+      // The endpoint paginates with a 1-based `pagenumber` and the provider now walks every page,
+      // so serving the whole fixture to every request would hand the same listings back on each
+      // page and spin the walk to its cap. Slicing by page - and reporting a `numberOfPages` that
+      // matches - is what makes the fixture behave like the real API and lets the walk terminate.
+      const params = new URL(urlStr).searchParams;
+      const page = Number.parseInt(params.get('pagenumber') ?? '1', 10) || 1;
+      const items = Array.isArray(typed.resultListItems) ? typed.resultListItems : [];
+      const perPage = Number(typed.pageSize) > 0 ? Number(typed.pageSize) : items.length || 1;
+      const numberOfPages = Math.max(1, Math.ceil(items.length / perPage));
+      const start = (page - 1) * perPage;
+      const responseData = {
+        ...typed,
+        pageNumber: page,
+        numberOfPages,
+        resultListItems: items.slice(start, start + perPage),
+      };
       return { ok: true, status: 200, json: () => Promise.resolve(responseData) };
     }
 

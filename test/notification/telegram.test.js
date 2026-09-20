@@ -501,3 +501,56 @@ describe('telegram send() - inquiry draft second message', () => {
     expect(mockNodeFetch.mock.calls[0][0]).toBe('https://api.telegram.org/botTKN/sendPhoto');
   });
 });
+
+describe('telegram send() - 429 retry_after handling', () => {
+  // The caller retries with backoff; delays are driven by fake timers. Draining in a loop lets a
+  // settled promise resolve regardless of how many jittered waits it scheduled.
+  const DRAIN_STEP_MS = 31_000; // > the caller's max retry wait, so each drain clears one scheduled wait.
+  async function settle(promise, steps = 10) {
+    for (let i = 0; i < steps; i++) {
+      await vi.advanceTimersByTimeAsync(DRAIN_STEP_MS);
+    }
+    return promise;
+  }
+
+  it('waits out retry_after and retries a rate-limited sendMessage until it succeeds', async () => {
+    vi.useFakeTimers();
+    // First attempt is rate limited, second succeeds.
+    mockNodeFetch
+      .mockResolvedValueOnce(jsonErr(429, { ok: false, error_code: 429, parameters: { retry_after: 2 } }))
+      .mockResolvedValueOnce(jsonOk());
+
+    const done = send({
+      serviceName: 'immoscout',
+      // No image → straight to sendMessage (the retriable JSON path).
+      newListings: [{ id: 'a', title: 'Listing', link: 'https://example.com/a', address: 'Addr' }],
+      notificationConfig: [baseConfig],
+      jobKey: 'Berlin',
+    });
+
+    await settle(done);
+
+    const sendMessageCalls = mockNodeFetch.mock.calls.filter((c) => c[0].endsWith('/sendMessage'));
+    expect(sendMessageCalls).toHaveLength(2); // original + one retry, then success
+  });
+
+  it('gives up after exhausting retries rather than retrying forever, without throwing', async () => {
+    vi.useFakeTimers();
+    // Every attempt is rate limited. The caller retries a bounded number of times (1 + 4), then the
+    // failure is swallowed by sendListingToChat so send() still resolves.
+    mockNodeFetch.mockResolvedValue(jsonErr(429, { ok: false, error_code: 429, parameters: { retry_after: 1 } }));
+
+    const done = send({
+      serviceName: 'immoscout',
+      newListings: [{ id: 'a', title: 'Listing', link: 'https://example.com/a', address: 'Addr' }],
+      notificationConfig: [baseConfig],
+      jobKey: 'Berlin',
+    });
+
+    await expect(settle(done)).resolves.toBeDefined();
+
+    const sendMessageCalls = mockNodeFetch.mock.calls.filter((c) => c[0].endsWith('/sendMessage'));
+    // 1 initial attempt + 4 retries = 5, then it stops.
+    expect(sendMessageCalls).toHaveLength(5);
+  });
+});
