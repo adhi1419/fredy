@@ -1,13 +1,13 @@
 # Fredy modernization tasks
 
-The canonical tracker is current through PR #53 and records the reopened UI convergence plus complete TypeScript/Rust migration goals.
+The canonical tracker is current through PR #54 and records the reopened UI convergence plus complete TypeScript/Rust migration goals.
 
 ## Reopened after customer review
 
 - [x] Audit every production route against the approved wireframes at rendered component level — Luna audit confirmed a real behavioral migration over materially reused legacy visible components; Saved Searches is the clearest mismatch.
 - [ ] Replace materially reused legacy Fredy components with the approved wireframe components in small, independently deployable PRs; preserve the two-destination information architecture and validated accessibility behavior.
-- [x] Make Saved Search and associated listing visibility owner-or-explicit-share only for every role, including admins; retain read-only partner sharing — implemented, parent-validated, and published by PR #54 (`4f6192a`); rebase auto-merge enabled.
-- [x] Present Saved Search sharing as “Share with your partner” and allow any other account to be selected explicitly, independent of admin role — implemented, parent-validated, and published by PR #54 (`4f6192a`); rebase auto-merge enabled.
+- [x] Make Saved Search and associated listing visibility owner-or-explicit-share only for every role, including admins; retain read-only partner sharing — PR #54 rebase-merged as `b30e4d9`; combined Pages + Cloud Run deployment succeeded in 60 seconds and live frontend/API health returned HTTP 200.
+- [x] Present Saved Search sharing as “Share with your partner” and allow any other account to be selected explicitly, independent of admin role — implemented and parent-validated in PR #54, rebase-merged as `b30e4d9`.
 - [x] Restrict Quiet-feed provider controls to providers that have accessible listings for the current user, while preserving a selected provider long enough to clear it — PR #53 merged and deployed Pages-only in 48 seconds; live frontend and backend health returned HTTP 200.
 - [ ] Complete the TypeScript and Rust migration program defined below; narrow seams and dormant parity routes are milestones, not completion.
 
@@ -15,7 +15,7 @@ The canonical tracker is current through PR #53 and records the reopened UI conv
 
 Each visible replacement must preserve its existing deep behavior modules and accessibility contracts, delete the legacy presentation boundary it replaces, and migrate every touched production component/test to strict TypeScript/TSX.
 
-- [ ] Slice 1 — replace the legacy `JobGrid`/`JobsTable` Saved Searches index with the approved name/criteria/state/last-run/contextual-action rows; delete obsolete production imports and preserve SSE/run/pause/edit/clone/delete/shared-read-only behavior.
+- [ ] Slice 1 — replace the legacy `JobGrid`/`JobsTable` Saved Searches index with the approved name/criteria/state/last-run/contextual-action rows; delete obsolete production imports and preserve SSE/run/pause/edit/clone/delete/shared-read-only behavior — delegated to Luna worker `c50c48a3` on `feat/saved-searches-index-tsx`.
 - [ ] Slice 2 — replace Home's generic `Headline` and legacy Quiet rows with the approved local heading and photo-led card-light composition; migrate `Home.jsx` to TSX while preserving the single URL/query/listing state.
 - [ ] Slice 3 — converge Home List + map framing and decision rows without creating a second map or listing query; preserve marker keyboard access and all Home state across view switches.
 - [ ] Slice 4 — replace `ProviderTable` in guided Saved Search with provider-choice cards showing URL, capability, connection/profile readiness, and source-local application policy; keep the four-step controller and payload seam.
@@ -35,9 +35,9 @@ Current baseline after PR #52:
 Completion means all of the following:
 
 - [ ] Migrate all frontend application source and frontend tests to strict TypeScript/TSX, leaving JavaScript only for explicitly audited build/tool configuration that cannot reasonably move.
-- [ ] Keep each TypeScript conversion behind a real domain/component boundary with executable behavior tests; do not create shallow pass-through seams or one mechanical mega-PR.
+- [ ] Keep each TypeScript conversion behind a real domain/component boundary with executable behavior tests; do not create shallow pass-through seams or one mechanical mega-PR — `listingFilters.js` and its direct test are replaced by strict compiler-covered TypeScript, implemented and parent-reviewed on `refactor/listing-filters-typescript`; publication pending.
 - [ ] Tighten the frontend compiler/CI boundary as migration advances so converted code cannot silently fall back to `any` or unchecked JavaScript.
-- [ ] Implement Rust Firebase bearer verification, per-request Firestore allowlist enforcement, exact-origin CORS, authenticated SSE, and the frozen HTTP error contract.
+- [ ] Implement Rust Firebase bearer verification, per-request Firestore allowlist enforcement, exact-origin CORS, authenticated SSE, and the frozen HTTP error contract — real dormant `/api/auth/me` auth/allowlist parity is delegated to Luna worker `7f4f5765` on `feat/rust-firebase-auth-me`.
 - [ ] Implement Rust Firestore persistence adapters behind the characterized job/listing/settings/channel/application contracts before cutting over dependent routes.
 - [ ] Strangle Node route groups incrementally into Rust with parity tests, explicit traffic ownership, observability, and per-route rollback.
 - [ ] Migrate scheduling, provider orchestration, notification delivery, and inquiry safety only after their executable contracts pass natively; move CloakBrowser/browser-heavy providers last.
