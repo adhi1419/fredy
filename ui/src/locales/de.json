@@ -93,6 +93,8 @@
   "home.activityApplied": "Beworben",
   "home.activityViewed": "Angesehen",
   "home.activityArchived": "Archiviert",
+  "home.travelTo": "Fahrzeit zu deiner Referenzadresse",
+  "home.travelToLabel": "Fahrzeit zu {label}",
   "home.sortLabel": "Sortieren",
   "home.sortNewest": "Neueste",
   "home.sortTravelTime": "Fahrzeit",

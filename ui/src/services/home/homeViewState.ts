@@ -8,6 +8,13 @@
  * by the quiet feed, List + map, and the old /listings and /map entry points.
  */
 
+import {
+  formatMinutes,
+  formatRoadDistance,
+  hasAnyTime,
+  primaryMode,
+} from '../../components/transit/travelTimeFormat.js';
+
 export type HomeView = 'feed' | 'map';
 export type HomeActivity = 'new' | 'applied' | 'viewed' | 'archived';
 export type KnownHomeSortKey = 'created_at' | 'travel_time' | 'distance' | 'price' | 'size';
@@ -67,6 +74,12 @@ export interface HomeQueryPayload {
   filter: HomeQueryFilter;
 }
 
+/** One stored travel-time entry as it rides along on a listing row (shape owned by travelTimeFormat). */
+export interface HomeTravelTimeEntry {
+  label?: string | null;
+  [mode: string]: unknown;
+}
+
 /** Known listing fields used by Home; unmodeled API fields remain available as unknown extensions. */
 export interface HomeListing {
   id?: string;
@@ -82,7 +95,40 @@ export interface HomeListing {
   lifecycle?: { state?: string | null } | null;
   status?: { status?: string | null } | null;
   inquiry_send_status?: string | null;
+  travelTimes?: readonly HomeTravelTimeEntry[] | null;
   [key: string]: unknown;
+}
+
+/**
+ * The one travel fact a Home card leads with, in place of the affordability verdict the card used
+ * to carry. It reuses the exact data the listing row already ships (`travelTimes`) and the exact
+ * formatters the detail page and commute badge use, so the number on a card never disagrees with the
+ * one behind it and no second data source is introduced.
+ *
+ * A card is scanned, not read, so it shows a single reference address: the primary one, chosen by the
+ * same {@link primaryMode} rule as everywhere else (the mode the address is measured in, not the
+ * fastest). Returns `null` for every listing until the sweep has routed it, which is what leaves the
+ * card showing nothing rather than a plausible-looking zero.
+ */
+export interface HomeCardTravel {
+  label: string;
+  duration: string;
+  /** Road distance for the reference address when the routed entry carries one, else null. */
+  distance: string | null;
+}
+
+export function homeCardTravel(listing: HomeListing | null | undefined): HomeCardTravel | null {
+  const entries = Array.isArray(listing?.travelTimes) ? listing.travelTimes : [];
+  for (const entry of entries) {
+    if (!hasAnyTime(entry)) continue;
+    const mode = primaryMode(entry);
+    if (mode == null) continue;
+    const label = typeof entry?.label === 'string' ? entry.label : '';
+    const carEntry = (entry as { car?: { distanceMeters?: unknown } })?.car;
+    const distance = formatRoadDistance(Number(carEntry?.distanceMeters));
+    return { label, duration: formatMinutes(mode.minutes), distance };
+  }
+  return null;
 }
 
 export interface HomeMapListing extends HomeListing {

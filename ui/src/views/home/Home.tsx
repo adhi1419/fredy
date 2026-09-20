@@ -13,6 +13,9 @@ import {
   IconRefresh,
   IconRoute,
   IconSearch,
+  IconTickCircle,
+  IconEyeOpened,
+  IconClock,
 } from '@douyinfe/semi-icons';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import type { Map as MapLibreMap, Marker as MapMarker } from 'maplibre-gl';
@@ -30,6 +33,7 @@ import {
   HOME_ACTIVITIES,
   HOME_SORT_OPTIONS,
   HOME_VIEWS,
+  homeCardTravel,
   homeLifecycleState,
   homeListingNavigationId,
   homeMapListing,
@@ -63,6 +67,20 @@ const ACTIVITY_LABEL_KEYS = Object.freeze({
 } as const);
 
 type Activity = keyof typeof ACTIVITY_LABEL_KEYS;
+
+/**
+ * The canonical lifecycle glyphs a Home card leads with. Keyed on the exact same activity vocabulary
+ * as the Home activity filters ({@link HOME_ACTIVITIES}) so a card's symbol and the filter that
+ * surfaces it can never drift. Semi icons only, never emoji.
+ *
+ * Only the two states a user reaches by acting carry a symbol: Applied (the application lifecycle is confirmed) and
+ * Viewed (a viewing happened). New carries no symbol - it is the absence of any action, and a badge
+ * on every fresh card would be noise. Archived is history, shown as a muted label with no glyph.
+ */
+const LIFECYCLE_SYMBOLS: Readonly<Partial<Record<Activity, typeof IconTickCircle>>> = Object.freeze({
+  applied: IconTickCircle,
+  viewed: IconEyeOpened,
+});
 
 interface HomeJob {
   id: string;
@@ -146,11 +164,17 @@ function HomeListingRow({ listing, index, variant, onNavigate }: HomeListingRowP
   const t = useTranslation();
   const locale = useLocale();
   const lifecycle = homeLifecycleState(listing);
+  const LifecycleSymbol = LIFECYCLE_SYMBOLS[lifecycle];
+  const lifecycleLabel = t(ACTIVITY_LABEL_KEYS[lifecycle]);
   const listingId = homeListingNavigationId(listing);
   const title = listing.title || t('listing.detail.defaultTitle');
   const facts = [listing.address, listing.provider, listing.size ? `${listing.size} m²` : null]
     .filter(Boolean)
     .join(' · ');
+  // Direction A leads the meta with how long it takes to get there, not whether it is affordable:
+  // the primary listing presentation carries travel duration and distance to the reference address,
+  // reusing the times the row already ships. Affordability is never shown here.
+  const travel = homeCardTravel(listing);
   const rowClassName = `${variant === 'feed' ? 'home__card' : 'home__split-row'}${listing.image_url ? '' : ' home__card--no-image'}`;
 
   return (
@@ -173,13 +197,27 @@ function HomeListingRow({ listing, index, variant, onNavigate }: HomeListingRowP
         )}
       </div>
       <div className="home__card-copy">
-        <span className={`home__lifecycle home__lifecycle--${lifecycle}`}>{t(ACTIVITY_LABEL_KEYS[lifecycle])}</span>
+        <span className={`home__lifecycle home__lifecycle--${lifecycle}`}>
+          {LifecycleSymbol && <LifecycleSymbol aria-hidden="true" className="home__lifecycle-symbol" />}
+          {lifecycleLabel}
+        </span>
         <h2>{title}</h2>
         <p>{facts || t('listing.detail.noAddress')}</p>
       </div>
       <div className="home__card-meta">
         <strong>{listing.price ? formatEuroPrice(listing.price, locale) : t('common.na')}</strong>
-        <span>{formatTime(listing.created_at, false, locale)}</span>
+        {travel ? (
+          <span
+            className="home__card-travel"
+            title={travel.label ? t('home.travelToLabel', { label: travel.label }) : t('home.travelTo')}
+          >
+            <IconClock aria-hidden="true" />
+            <span className="home__card-travel-duration">{travel.duration}</span>
+            {travel.distance && <span className="home__card-travel-distance">{travel.distance}</span>}
+          </span>
+        ) : (
+          <span>{formatTime(listing.created_at, false, locale)}</span>
+        )}
         <IconMapPin aria-hidden="true" />
       </div>
       <span className="home__sr-only">{index + 1}</span>
