@@ -7,9 +7,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-
 pub mod auth;
-
+pub mod persistence;
 pub mod sse;
 
 use auth::{parse_bearer, AuthBackend, AuthFailure, FirebaseAuthenticator};
