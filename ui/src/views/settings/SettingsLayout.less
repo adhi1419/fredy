@@ -1,0 +1,121 @@
+@import '../../tokens.less';
+
+.settingsLayout {
+  display: grid;
+  gap: @space-5;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: @space-6;
+
+  &__heading {
+    display: grid;
+    gap: @space-1;
+
+    > span {
+      color: @color-accent;
+      font-family: @font-ui;
+      font-size: @text-xs;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      color: @color-text;
+      font-family: @font-display;
+      font-size: clamp(@text-xl, 4vw, 30px);
+      line-height: 1.15;
+    }
+
+    p {
+      max-width: 680px;
+      color: @color-muted;
+      font-family: @font-ui;
+      font-size: @text-sm;
+      line-height: 1.5;
+    }
+  }
+
+  &__body {
+    display: grid;
+    grid-template-columns: minmax(190px, 230px) minmax(0, 1fr);
+    align-items: start;
+    gap: @space-6;
+  }
+
+  &__nav {
+    display: grid;
+    gap: @space-1;
+  }
+
+  &__navItem {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    gap: @space-2;
+    padding: @space-2 @space-3;
+    border-left: 3px solid transparent;
+    border-radius: 0 @radius-btn @radius-btn 0;
+    color: @color-muted;
+    font-family: @font-ui;
+    font-size: @text-sm;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+      background: @color-fill-subtle;
+      color: @color-text;
+    }
+
+    &:focus-visible {
+      outline: 2px solid @color-accent;
+      outline-offset: 2px;
+    }
+
+    &.is-active {
+      border-left-color: @color-accent;
+      background: @color-accent-dim;
+      color: @color-text;
+    }
+  }
+
+  &__content {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .settingsLayout {
+    gap: @space-4;
+    padding: @space-4 @space-3 calc(80px + env(safe-area-inset-bottom));
+
+    &__body {
+      grid-template-columns: minmax(0, 1fr);
+      gap: @space-4;
+    }
+
+    &__nav {
+      grid-auto-columns: minmax(148px, 1fr);
+      grid-auto-flow: column;
+      overflow-x: auto;
+      padding-bottom: @space-1;
+      scrollbar-width: thin;
+    }
+
+    &__navItem {
+      border-bottom: 3px solid transparent;
+      border-left: 0;
+      border-radius: @radius-btn @radius-btn 0 0;
+
+      &.is-active {
+        border-bottom-color: @color-accent;
+      }
+    }
+  }
+}

@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
+import type { ComponentProps, ComponentType, PropsWithChildren } from 'react';
 
 import InsufficientPermission from './components/permission/InsufficientPermission';
 import PermissionAwareRoute from './components/permission/PermissionAwareRoute';
@@ -20,7 +21,7 @@ import ConnectivityPage from './views/admin/pages/ConnectivityPage';
 import BackupPage from './views/admin/pages/BackupPage';
 import DebugPage from './views/admin/pages/DebugPage';
 import JobMutation from './views/jobs/mutation/JobMutation';
-import { useActions, useSelector } from './services/state/store';
+import { useActions, useSelector } from './services/state/store.js';
 import { useBrowserNotifications } from './hooks/useBrowserNotifications';
 import { Routes, Route, Navigate, useLocation } from 'react-router';
 import Login from './views/login/Login';
@@ -30,12 +31,12 @@ import './App.less';
 import { LocaleProvider } from '@douyinfe/semi-ui-19';
 import Listings from './views/listings/Listings.jsx';
 import MapView from './views/listings/Map.jsx';
-import Navigation from './components/navigation/Navigation.jsx';
+import Navigation from './components/navigation/Navigation.js';
 import { Layout } from '@douyinfe/semi-ui-19';
 import FredyFooter from './components/footer/FredyFooter.jsx';
 import Home from './views/home/Home';
 import FinanceCalculator from './views/finance/FinanceCalculator.jsx';
-import ListingDetail from './views/listings/ListingDetail.tsx';
+import ListingDetail from './views/listings/ListingDetail.js';
 import { I18nProvider, availableLanguages } from './services/i18n/i18n.jsx';
 import DebugLoggingBanner from './components/debug/DebugLoggingBanner.jsx';
 import DemoBanner from './components/demo/DemoBanner.jsx';
@@ -48,22 +49,52 @@ import {
   resolveApplicantProfileOnboarding,
 } from './services/onboarding/applicantProfileOnboarding.js';
 
-const semiLocaleModules = import.meta.glob('/node_modules/@douyinfe/semi-ui-19/lib/es/locale/source/*.js', {
+interface FredyUser {
+  userId?: string;
+  username?: string;
+  isAdmin?: boolean;
+}
+
+interface FredyState {
+  user: { currentUser: FredyUser | null };
+  generalSettings: { settings: { demoMode?: boolean } };
+  userSettings: {
+    loaded: boolean;
+    loadFailed: boolean;
+    settings: { language?: string; theme?: unknown; inquiry_profile?: unknown };
+  };
+}
+
+interface FredyActions {
+  user: { getCurrentUser(): Promise<FredyUser | null>; resetCurrentUser(): void };
+  provider: { getProvider(): Promise<unknown> };
+  jobsData: { getJobs(): Promise<unknown>; getSharableUserList(): Promise<unknown> };
+  notificationAdapter: { getAdapter(): Promise<unknown> };
+  generalSettings: { getGeneralSettings(): Promise<unknown> };
+  userSettings: { getUserSettings(): Promise<unknown> };
+  finance: { getProfileSummary(): Promise<unknown> };
+}
+
+type SemiLocale = NonNullable<ComponentProps<typeof LocaleProvider>['locale']>;
+type ContentProps = PropsWithChildren<{ className?: string; id?: string; tabIndex?: number }>;
+
+const semiLocaleModules = import.meta.glob<unknown>('/node_modules/@douyinfe/semi-ui-19/lib/es/locale/source/*.js', {
   eager: true,
 });
 
-const semiLocales = {};
-for (const [path, mod] of Object.entries(semiLocaleModules)) {
+const semiLocales: Record<string, SemiLocale> = {};
+for (const [path, moduleValue] of Object.entries(semiLocaleModules)) {
   const name = path.match(/\/source\/(\w+)\.js$/)?.[1];
-  if (name) semiLocales[name] = mod.default ?? mod;
+  const loaded = moduleValue as { default?: SemiLocale };
+  if (name) semiLocales[name] = loaded.default ?? (moduleValue as SemiLocale);
 }
 
 export default function FredyApp() {
   const location = useLocation();
-  const actions = useActions();
+  const actions = useActions<FredyActions>();
   const [loading, setLoading] = React.useState(true);
   /** userId the stores were actually filled for. Only set once the requests have landed. */
-  const initializedFor = React.useRef(null);
+  const initializedFor = React.useRef<string | null>(null);
   /**
    * Whether a fill is in flight.
    *
@@ -74,16 +105,18 @@ export default function FredyApp() {
    * the empty values it saw and never recovered.
    */
   const initInFlight = React.useRef(false);
-  const currentUser = useSelector((state) => state.user.currentUser);
-  const settings = useSelector((state) => state.generalSettings.settings);
-  const userSettings = useSelector((state) => state.userSettings);
-  const language = useSelector((state) => state.userSettings.settings.language);
+  const currentUser = useSelector<FredyState, FredyUser | null>((state) => state.user.currentUser);
+  const settings = useSelector<FredyState, FredyState['generalSettings']['settings']>(
+    (state) => state.generalSettings.settings,
+  );
+  const userSettings = useSelector<FredyState, FredyState['userSettings']>((state) => state.userSettings);
+  const language = useSelector<FredyState, string | undefined>((state) => state.userSettings.settings.language);
   /*
    * Straight off the user's stored settings, with nothing cached in front of it. Until those have
    * arrived - on the login screen, and for the moment a cold load spends fetching them - this is
    * the default, which is also what index.html ships on the body, so nothing repaints.
    */
-  const theme = normalizeTheme(useSelector((state) => state.userSettings.settings.theme));
+  const theme = normalizeTheme(useSelector<FredyState, unknown>((state) => state.userSettings.settings.theme));
 
   useBrowserNotifications();
 
@@ -174,22 +207,19 @@ export default function FredyApp() {
   const needsLogin = () => {
     return currentUser == null || Object.keys(currentUser).length === 0;
   };
+  const semiLocaleKey = availableLanguages.find((option) => option.code === (language ?? 'en'))?.semiLocale ?? 'en_US';
 
-  const isAdmin = () => currentUser != null && currentUser.isAdmin;
+  const isAdmin = () => currentUser?.isAdmin === true;
   const onboardingDecision = resolveApplicantProfileOnboarding({
     settingsLoaded: userSettings.loaded,
     settingsLoadFailed: userSettings.loadFailed,
     profile: userSettings.settings?.inquiry_profile,
     pathname: location.pathname,
   });
-  const { Content } = Layout;
+  const Content = Layout.Content as ComponentType<ContentProps>;
   return loading ? null : (
     <I18nProvider language={language ?? 'en'}>
-      <LocaleProvider
-        locale={
-          semiLocales[availableLanguages.find((l) => l.code === (language ?? 'en'))?.semiLocale] ?? semiLocales['en_US']
-        }
-      >
+      <LocaleProvider locale={semiLocales[semiLocaleKey] ?? semiLocales.en_US}>
         {needsLogin() ? (
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -206,7 +236,7 @@ export default function FredyApp() {
               primaryVisible={!onboardingDecision.requiresSetup}
             />
             <Layout className="app__main">
-              <Content className="app__content" id="fredy-main-content" tabIndex="-1">
+              <Content className="app__content" id="fredy-main-content" tabIndex={-1}>
                 <DebugLoggingBanner />
                 {settings.demoMode && <DemoBanner />}
                 <Routes>
@@ -232,8 +262,8 @@ export default function FredyApp() {
                       <Route path="/finance" element={<FinanceCalculator />} />
 
                       {/* Settings that belong to whoever is signed in. No guard: they are theirs.
-                      One entry in the account menu, and the tabs below the heading are the only place
-                      these five pages are named. */}
+                      One entry in the account menu, and the section rail below the compact heading is
+                      the only place these five pages are named. */}
                       <Route path="/settings" element={<SettingsLayout />}>
                         <Route index element={<Navigate to="/settings/preferences" replace />} />
                         <Route path="preferences" element={<PreferencesPage />} />

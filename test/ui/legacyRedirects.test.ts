@@ -11,23 +11,23 @@ import { fileURLToPath } from 'url';
 import { LEGACY_REDIRECTS, resolveLegacyPath, targetPathname } from '../../ui/src/services/routes/legacyRedirects.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const appSource = fs.readFileSync(path.join(here, '../../ui/src/App.jsx'), 'utf-8');
+const appSource = fs.readFileSync(path.join(here, '../../ui/src/App.tsx'), 'utf8');
 
 /**
- * Every path `App.jsx` declares a route for, children resolved against their parent.
+ * Every path `App.tsx` declares a route for, children resolved against their parent.
  *
  * Read out of the source rather than listed here, because a list would be the thing that goes
- * stale: renaming a route in App.jsx has to break this test, not quietly agree with it.
+ * stale: renaming a route in App.tsx has to break this test, not quietly agree with it.
  *
  * There are exactly two nested parents, `/settings` and `/admin`, and they are declared in that
  * order, so a relative path belongs to whichever of the two most recently opened above it.
  *
  * @returns {Set<string>}
  */
-function declaredRoutes() {
+function declaredRoutes(): Set<string> {
   const settingsAt = appSource.indexOf('path="/settings"');
   const adminAt = appSource.indexOf('path="/admin"');
-  const routes = new Set();
+  const routes = new Set<string>();
 
   for (const match of appSource.matchAll(/path="([^"]+)"/g)) {
     const value = match[1];
@@ -42,7 +42,7 @@ function declaredRoutes() {
   // Guards the ordering assumption above: a relative path declared before either parent opens
   // would otherwise be filed under '/settings' without anyone noticing.
   if (settingsAt < 0 || adminAt < 0 || settingsAt > adminAt) {
-    throw new Error('App.jsx no longer declares /settings before /admin; fix declaredRoutes()');
+    throw new Error('App.tsx no longer declares /settings before /admin; fix declaredRoutes()');
   }
   return routes;
 }
@@ -50,7 +50,7 @@ function declaredRoutes() {
 describe('legacyRedirects', () => {
   const routes = declaredRoutes();
 
-  it('reads the routes out of App.jsx rather than trusting a copy', () => {
+  it('reads the routes out of App.tsx rather than trusting a copy', () => {
     expect(routes.has('/admin')).toBe(true);
     expect(routes.has('/dashboard')).toBe(true);
     expect(routes.size).toBeGreaterThan(10);

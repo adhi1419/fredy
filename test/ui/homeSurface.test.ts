@@ -13,8 +13,8 @@ const root = path.join(here, '../../');
 const homeSource = fs.readFileSync(path.join(root, 'ui/src/views/home/Home.tsx'), 'utf8');
 const homeStyles = fs.readFileSync(path.join(root, 'ui/src/views/home/Home.less'), 'utf8');
 const navigationStyles = fs.readFileSync(path.join(root, 'ui/src/components/navigation/Navigate.less'), 'utf8');
-const appSource = fs.readFileSync(path.join(root, 'ui/src/App.jsx'), 'utf8');
-const navigationSource = fs.readFileSync(path.join(root, 'ui/src/components/navigation/Navigation.jsx'), 'utf8');
+const appSource = fs.readFileSync(path.join(root, 'ui/src/App.tsx'), 'utf8');
+const navigationSource = fs.readFileSync(path.join(root, 'ui/src/components/navigation/Navigation.tsx'), 'utf8');
 
 describe('Home production surface contract', () => {
   it('mounts Home at dashboard without changing account, admin, or detail route ownership', () => {

@@ -6,6 +6,10 @@
   "include": [
     "test/ui/finalResponsiveSlice.test.ts",
     "test/ui/homeSurface.test.ts",
+    "test/ui/applicantProfileOnboarding.test.ts",
+    "test/ui/legacyRedirects.test.ts",
+    "test/ui/navigationShell.test.tsx",
+    "test/ui/noDonationSurface.test.ts",
     "test/ui/homeConvergence.test.ts",
     "test/ui/mapGrouping.test.ts",
     "test/ui/listingDetailSlice.test.ts",
