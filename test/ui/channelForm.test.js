@@ -4,6 +4,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   emptyChannel,
   toCloneDraft,
@@ -12,6 +15,12 @@ import {
 } from '../../ui/src/services/notificationChannels/channelForm.js';
 
 const t = (key) => key;
+
+const testDir = path.dirname(fileURLToPath(import.meta.url));
+const tableSource = fs.readFileSync(
+  path.join(testDir, '../../ui/src/components/table/NotificationChannelTable.jsx'),
+  'utf8',
+);
 
 const telegram = {
   id: 'telegram',
@@ -160,5 +169,20 @@ describe('toPayload', () => {
     const payload = toPayload(draft);
     payload.fields.a = 'mutated';
     expect(draft.fields.a).toBe('1');
+  });
+});
+
+describe('notification channel authority affordances', () => {
+  it('requires owner edit authority for edit, delete, and visibility controls', () => {
+    expect(tableSource).toContain("actions.includes('edit') && record.canEdit");
+    expect(tableSource).toContain("actions.includes('delete') && record.canEdit");
+    expect(tableSource).toContain('canManageVisibility && record.canEdit');
+  });
+
+  it('keeps test and clone available for explicitly visible shared channels', () => {
+    expect(tableSource).toMatch(/actions\.includes\('test'\) && \(/);
+    expect(tableSource).toMatch(/actions\.includes\('clone'\) && \(/);
+    expect(tableSource).not.toMatch(/actions\.includes\('test'\) && record\.canEdit/);
+    expect(tableSource).not.toMatch(/actions\.includes\('clone'\) && record\.canEdit/);
   });
 });

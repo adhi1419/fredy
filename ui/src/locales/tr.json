@@ -723,7 +723,7 @@
   "notification.validationNumberField": "Bir sayı alanı başka bir şey içeremez ve 0'dan büyük olmalıdır.",
   "settings.tabNotifications": "Bildirim kanalları",
   "notification.channels.title": "Bildirim kanalları",
-  "notification.channels.scopeBanner": "Bu sunucudaki tüm kanalları görüyorsunuz.",
+  "notification.channels.scopeBanner": "Sahibi olduğunuz kanalları herkesle veya yöneticilerle paylaşabilirsiniz. Başkalarının özel kanalları sizden gizli kalır.",
   "notification.channels.new": "Yeni bildirim kanalı",
   "notification.channels.columnName": "Kanal",
   "notification.channels.columnType": "Tür",
