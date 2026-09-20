@@ -182,21 +182,24 @@ setting has one home, and a second copy is a second answer waiting to disagree w
 
 - *Canvas.* Charts are painted onto a canvas and keep whatever they were last painted with, so
   `chartTheme.js` reads its colours from the custom properties through getters, and `<Layout>` in
-  `App.jsx` is keyed on the theme so everything below it remounts on a switch. Never reintroduce a
-  hardcoded hex there - the file used to carry a hand-maintained copy of the palette and it is gone.
+  `App.jsx` is keyed on the theme so everything below it remounts on a switch. Browser rendering
+  reads custom properties only. Its non-DOM fallbacks exist for unit tests and server-side rendering;
+  they MUST mirror the dark token values and must never become an independently designed palette.
 - *Assets.* The wordmark has a light and a dark cut, and no custom property can swap a PNG. Those
   call sites read `currentTheme()` directly. Everything expressible as a colour should use the
   tokens and let CSS do the work.
 
 **Colours that are legitimately literal**: scrims and hairlines drawn over listing photography,
-which stays photography in both themes; `#000` used as a mask stencil; white on the accent, which
-is dark red either way. The map basemap is the light OpenFreeMap style in both themes, so map
+which stays photography in both themes; `#000` used as a mask stencil; white on the dedicated
+forest control fill, which is dark enough for AA in both themes. The map basemap is the light OpenFreeMap style in both themes, so map
 overlays follow the page rather than inverting.
 
 
-Contrast is not a matter of taste here: the light accent is two steps darker than the dark one
-(`#b04a3f` against `#c0564a`) because the dark red that carries white text at 4.5:1 on near-black
-falls below AA against paper, and every primary button in the app depends on it.
+Contrast is not a matter of taste here: accent text and solid-control fill are separate semantic
+roles. Dark mode uses readable sage text (`--f-accent`) but a deeper forest fill
+(`--f-accent-fill`) because Semi UI supplies white primary-button text; light mode uses the same
+restrained forest value for both. `test/ui/theme.test.js` enforces the required foreground/background
+ratios and token symmetry.
 
 ## Key Conventions
 

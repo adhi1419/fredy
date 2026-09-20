@@ -2,184 +2,163 @@
  * The two palettes, and the only file in the app that is allowed to contain a colour.
  *
  * Everything else refers to a colour through the semantic names in tokens.less, which are thin
- * aliases onto the custom properties defined here. That indirection is what makes a theme
- * switchable at all: Less variables are resolved at build time, so a stylesheet that compiled a
- * hex into a rule can never show a different one at runtime.
+ * aliases onto the custom properties defined here. That indirection keeps the theme switchable at
+ * runtime: Less must not compile a palette into any component rule.
  *
- * The two blocks below are deliberately complete rather than one block plus a handful of
- * overrides. A partial light theme silently inherits whichever value the author of a dark rule
- * happened to pick, and the first token that gets added to one block and forgotten in the other
- * is invisible until someone switches themes. Every name that exists in one exists in the other.
- *
- * Included once, from Index.less. tokens.less is imported by roughly forty stylesheets and must
- * therefore stay free of rules, or these blocks ship forty times over.
+ * The two blocks are deliberately complete rather than one block plus overrides. Every name that
+ * exists in one exists in the other, so switching the body attribute never inherits a stale value.
+ * This file is included once from Index.less; tokens.less stays rule-free because many stylesheets
+ * import it.
  *
  * The selector is Semi UI's own theme attribute (`body[theme-mode]`), so one attribute drives both
  * Semi's component styles and ours. Semi only recognises `dark`; `light` reads as its default.
  */
 
 :root {
-  // Backgrounds. Elevation runs lighter as it comes forward.
-  --f-base: #0d0d0d;
-  --f-surface: #161616;
-  --f-surface-rgb: 22 22 22;
-  --f-elevated: #1e1e1e;
-  // Hover on a row or a list entry, and the flat fill behind chips and code.
-  --f-hover: #1e1e1e;
-  --f-solid: #252525;
-  --f-border: #2a2a2a;
-  --f-border-bright: #383838;
+  // Deep forest/charcoal surfaces.
+  --f-base: #090b09;
+  --f-surface: #111411;
+  --f-surface-rgb: 17 20 17;
+  --f-elevated: #171b17;
+  --f-hover: #1b211c;
+  --f-solid: #243126;
+  --f-border: #2b322c;
+  --f-border-bright: #465047;
 
-  // Accent
-  // A brick red rather than the vermillion this used to be (#e04a38, hsl 6/73/55). Same hue, so the
-  // product still reads as Fredy, but roughly twenty points less saturation - the old one drew the
-  // eye harder than any single control on a page deserves, and put every primary button in the same
-  // register as a delete confirmation.
-  --f-accent: #c0564a;
-  --f-accent-rgb: 192 86 74;
-  --f-accent-dim: #a1443a;
-  --f-accent-glow: rgb(192 86 74 / 10%);
+  // Sage accent text plus a darker fill for Semi's fixed white button foreground.
+  --f-accent: #93c4a5;
+  --f-accent-rgb: 147 196 165;
+  --f-accent-fill: #2f7d5d;
+  --f-accent-dim: #1b3023;
+  --f-accent-glow: rgb(147 196 165 / 10%);
 
   // Text
-  --f-text: #efefef;
-  --f-muted: #909090;
-  --f-faint: #505050;
+  --f-text: #eee8da;
+  --f-muted: #a5aaa1;
+  --f-faint: #70776f;
 
-  // Semantic
-  // Toned down alongside the accent. These sat at full tailwind-400 saturation, which on a near-black
-  // surface glows rather than informs.
-  --f-success: #4bab86;
-  --f-success-rgb: 75 171 134;
-  --f-success-dim: #08533e;
-  --f-success-active: #3f8f68;
-  --f-error: #d4707c;
-  --f-error-rgb: 212 112 124;
-  --f-error-dim: #7a1730;
-  --f-warning: #d8a34a;
-  --f-info: #6b93c4;
-  --f-info-rgb: 107 147 196;
+  // Semantic states retain distinct error, warning, info, and success hues.
+  --f-success: #9bcfae;
+  --f-success-rgb: 155 207 174;
+  --f-success-dim: #1b3023;
+  --f-success-active: #84bd98;
+  --f-error: #e3a098;
+  --f-error-rgb: 227 160 152;
+  --f-error-dim: #35201e;
+  --f-warning: #dfb96f;
+  --f-info: #9cc7df;
+  --f-info-rgb: 156 199 223;
 
-  // Fill overlays. Light on dark, dark on light - the one pair that has to invert rather than
-  // shift, because a white wash over a white card is nothing at all.
+  // Fill overlays.
   --f-fill-subtle: rgb(255 255 255 / 4%);
   --f-fill-1: rgb(255 255 255 / 6%);
   --f-fill-2: rgb(255 255 255 / 8%);
   --f-fill-strong: rgb(255 255 255 / 12%);
 
-  // Text inputs. Their own pair because the two themes want opposite constructions: a wash of
-  // light lifts a field off a dark page, while on paper the field is the lighter thing and needs a
-  // drawn edge instead.
+  // Text inputs.
   --f-input-bg: rgb(255 255 255 / 6%);
   --f-input-border: rgb(255 255 255 / 10%);
 
-  // Scrims and shadows. A shadow on a near-black page can be near-black itself; on paper it has to
-  // be much lighter or every card looks like it is hovering an inch off the screen.
+  // Scrims and shadows preserve photography while separating UI surfaces.
   --f-scrim: rgb(0 0 0 / 70%);
   --f-shadow-sm: 0 2px 8px rgb(0 0 0 / 45%);
   --f-shadow-md: 0 6px 20px -6px rgb(0 0 0 / 55%);
   --f-shadow-lg: 0 18px 44px -12px rgb(0 0 0 / 70%);
 
-  // KPI card accents
-  // Muted by roughly a third, and their borders taken well down. At full strength four saturated
-  // blocks side by side competed with each other and with the accent, so a card carrying a routine
-  // count read as urgent. The hues still separate the categories, which is all they are for.
-  --f-blue-text: #7ba7d4;
-  --f-blue-border: #33526f;
-  --f-blue-bg: rgb(123 167 212 / 7%);
-  --f-orange-text: #d69460;
-  --f-orange-text-rgb: 214 148 96;
-  --f-orange-border: #7d5333;
-  --f-orange-bg: rgb(214 148 96 / 7%);
-  --f-green-text: #6cb597;
-  --f-green-border: #2f6350;
-  --f-green-bg: rgb(108 181 151 / 7%);
-  --f-purple-text: #9d8fc9;
-  --f-purple-text-rgb: 157 143 201;
-  --f-purple-border: #4f4374;
-  --f-purple-bg: rgb(157 143 201 / 7%);
-  --f-gray-text: #94a3b8;
-  --f-gray-border: #323a47;
-  --f-gray-bg: rgb(148 163 184 / 7%);
+  // KPI card accents.
+  --f-blue-text: #9cc7df;
+  --f-blue-border: #3c6272;
+  --f-blue-bg: rgb(156 199 223 / 8%);
+  --f-orange-text: #e2aa70;
+  --f-orange-text-rgb: 226 170 112;
+  --f-orange-border: #765535;
+  --f-orange-bg: rgb(226 170 112 / 8%);
+  --f-green-text: #9bcfae;
+  --f-green-border: #43755a;
+  --f-green-bg: rgb(155 207 174 / 8%);
+  --f-purple-text: #b8a9d7;
+  --f-purple-text-rgb: 184 169 215;
+  --f-purple-border: #625579;
+  --f-purple-bg: rgb(184 169 215 / 8%);
+  --f-gray-text: #b0b8b0;
+  --f-gray-border: #465047;
+  --f-gray-bg: rgb(176 184 176 / 8%);
 
-  // The panels that float over the map. Their own set because they sit on satellite imagery rather
-  // than on a page, and need to stay legible over both.
-  --f-map-panel: rgb(22 25 38 / 95%);
-  --f-map-panel-border: #262a3a;
-  --f-map-panel-text: #8892a4;
-  --f-map-panel-strong: #ffffff;
+  // Map panels sit over imagery and keep their own opaque contrast pair.
+  --f-map-panel: rgb(17 20 17 / 95%);
+  --f-map-panel-border: #465047;
+  --f-map-panel-text: #a5aaa1;
+  --f-map-panel-strong: #eee8da;
 }
 
 body[theme-mode='light'] {
-  // Paper rather than white. A pure #fff page under a warm red accent reads as unfinished, and
-  // leaves nothing to raise a card above.
-  --f-base: #f1f0ee;
-  --f-surface: #fbfbfa;
-  --f-surface-rgb: 251 251 250;
-  --f-elevated: #ffffff;
-  // Inverted from dark on purpose: on paper a surface comes forward by getting darker, not lighter.
-  --f-hover: #ebe9e6;
-  --f-solid: #e6e4e0;
-  --f-border: #e2e0dc;
-  --f-border-bright: #c8c5c0;
+  // Warm paper and restrained forest green.
+  --f-base: #f3eee3;
+  --f-surface: #fffaf0;
+  --f-surface-rgb: 255 250 240;
+  --f-elevated: #f7f1e6;
+  --f-hover: #ebe4d8;
+  --f-solid: #e4dacb;
+  --f-border: #d7d0c2;
+  --f-border-bright: #afa696;
 
-  // Two steps darker than the dark-theme accent. The same red that carries white text at 4.5:1 on
-  // near-black falls to 4.4:1 against paper, which is the wrong side of AA for every primary button
-  // in the app. Same hue, same family, one notch of lightness.
-  --f-accent: #b04a3f;
-  --f-accent-rgb: 176 74 63;
-  --f-accent-dim: #963d34;
-  --f-accent-glow: rgb(176 74 63 / 8%);
+  --f-accent: #1f624c;
+  --f-accent-rgb: 31 98 76;
+  --f-accent-fill: #1f624c;
+  --f-accent-dim: #dce9df;
+  --f-accent-glow: rgb(31 98 76 / 8%);
 
-  --f-text: #1c1b1a;
-  --f-muted: #63605d;
-  --f-faint: #93908c;
+  // Text
+  --f-text: #1e2922;
+  --f-muted: #5f665e;
+  --f-faint: #858b83;
 
-  // Darkened for contrast on paper. `-dim` is a fill rather than a foreground in both themes, so it
-  // inverts from a deep shade to a light tint instead of following its own hue down.
-  --f-success: #2f7d5d;
-  --f-success-rgb: 47 125 93;
-  --f-success-dim: #dcece4;
+  // Semantic states retain distinct error, warning, info, and success hues.
+  --f-success: #2b7457;
+  --f-success-rgb: 43 116 87;
+  --f-success-dim: #dce9df;
   --f-success-active: #276b4f;
-  --f-error: #b03a4a;
-  --f-error-rgb: 176 58 74;
-  --f-error-dim: #f5dde1;
-  --f-warning: #9a6b12;
-  --f-info: #3a6ea5;
-  --f-info-rgb: 58 110 165;
+  --f-error: #9e4841;
+  --f-error-rgb: 158 72 65;
+  --f-error-dim: #f4dfdb;
+  --f-warning: #8b601e;
+  --f-info: #356b8a;
+  --f-info-rgb: 53 107 138;
 
   --f-fill-subtle: rgb(0 0 0 / 3%);
   --f-fill-1: rgb(0 0 0 / 5%);
   --f-fill-2: rgb(0 0 0 / 7%);
   --f-fill-strong: rgb(0 0 0 / 11%);
 
-  --f-input-bg: #ffffff;
-  --f-input-border: #d8d5d1;
+  --f-input-bg: #fffaf0;
+  --f-input-border: #d7d0c2;
 
-  --f-scrim: rgb(28 27 26 / 45%);
-  --f-shadow-sm: 0 2px 8px rgb(28 27 26 / 10%);
-  --f-shadow-md: 0 6px 20px -6px rgb(28 27 26 / 16%);
-  --f-shadow-lg: 0 18px 44px -12px rgb(28 27 26 / 22%);
+  --f-scrim: rgb(30 41 34 / 45%);
+  --f-shadow-sm: 0 2px 8px rgb(30 41 34 / 10%);
+  --f-shadow-md: 0 6px 20px -6px rgb(30 41 34 / 16%);
+  --f-shadow-lg: 0 18px 44px -12px rgb(30 41 34 / 22%);
 
-  --f-blue-text: #3c6c9c;
-  --f-blue-border: #c2d4e6;
-  --f-blue-bg: rgb(60 108 156 / 7%);
-  --f-orange-text: #9c5f28;
-  --f-orange-text-rgb: 156 95 40;
-  --f-orange-border: #e6d2b8;
-  --f-orange-bg: rgb(156 95 40 / 7%);
-  --f-green-text: #2f7d5d;
-  --f-green-border: #c3ddd0;
-  --f-green-bg: rgb(47 125 93 / 7%);
-  --f-purple-text: #665aa0;
-  --f-purple-text-rgb: 102 90 160;
-  --f-purple-border: #d0cbe4;
-  --f-purple-bg: rgb(102 90 160 / 7%);
-  --f-gray-text: #5c6774;
-  --f-gray-border: #d4d8de;
-  --f-gray-bg: rgb(92 103 116 / 7%);
+  // KPI card accents.
+  --f-blue-text: #356b8a;
+  --f-blue-border: #b9d1dc;
+  --f-blue-bg: rgb(53 107 138 / 8%);
+  --f-orange-text: #8b5b22;
+  --f-orange-text-rgb: 139 91 34;
+  --f-orange-border: #dec7a8;
+  --f-orange-bg: rgb(139 91 34 / 8%);
+  --f-green-text: #2b7457;
+  --f-green-border: #b8d4c2;
+  --f-green-bg: rgb(43 116 87 / 8%);
+  --f-purple-text: #66558c;
+  --f-purple-text-rgb: 102 85 140;
+  --f-purple-border: #c9c1dc;
+  --f-purple-bg: rgb(102 85 140 / 8%);
+  --f-gray-text: #5f685f;
+  --f-gray-border: #c8cec5;
+  --f-gray-bg: rgb(95 104 95 / 8%);
 
-  --f-map-panel: rgb(255 255 255 / 95%);
-  --f-map-panel-border: #dcdad6;
-  --f-map-panel-text: #5c6774;
-  --f-map-panel-strong: #1c1b1a;
+  --f-map-panel: rgb(255 250 240 / 95%);
+  --f-map-panel-border: #afa696;
+  --f-map-panel-text: #5f665e;
+  --f-map-panel-strong: #1e2922;
 }
