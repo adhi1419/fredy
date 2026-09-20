@@ -77,4 +77,21 @@ describe('Bun and TypeScript foundation', () => {
     expect(pages).toContain('bun install --frozen-lockfile --ignore-scripts');
     expect(pages).toContain('bun run build:frontend');
   });
+
+  it('pins the dormant Rust executable and validates it only in conditional PR CI', () => {
+    const manifest = read('rust/health-route/Cargo.toml');
+    const toolchain = read('rust/health-route/rust-toolchain.toml');
+    const rustWorkflow = workflowJob(read('.github/workflows/pr.yml'), 'rust-tests', 'gate');
+    const deploy = read('.github/workflows/deploy.yml');
+
+    expect(manifest).toContain('name = "fredy-health-route"');
+    expect(manifest).not.toContain('[dependencies]');
+    expect(toolchain).toContain('channel = "1.85.1"');
+    expect(toolchain).toContain('components = ["rustfmt", "clippy"]');
+    expect(rustWorkflow).toContain("if: needs.changes.outputs.rust == 'true'");
+    expect(rustWorkflow).toContain('cargo test --locked');
+    expect(rustWorkflow).toContain('cargo fmt --check');
+    expect(rustWorkflow).toContain('cargo check --locked');
+    expect(deploy).not.toContain("- 'rust/**'");
+  });
 });

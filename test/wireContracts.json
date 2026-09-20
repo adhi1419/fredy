@@ -5,12 +5,21 @@
     "credentials": "omit",
     "deployment": "Cloud Run API-only; GitHub Pages serves the SPA"
   },
+  "rustHealth": {
+    "package": "rust/health-route",
+    "executable": "fredy-health-route",
+    "productionEnabled": false,
+    "nodeRemainsAuthoritative": true,
+    "bindAddress": "0.0.0.0",
+    "portFallback": 9998
+  },
   "http": {
     "health": {
       "method": "GET",
       "path": "/health",
       "status": 200,
       "contentType": "application/json; charset=utf-8",
+      "bodyBytes": "{\"status\":\"ok\"}",
       "body": { "status": "ok" }
     },
     "apiOnlyFallback": {
@@ -18,6 +27,7 @@
       "path": "/not-a-route",
       "status": 404,
       "contentType": "application/json; charset=utf-8",
+      "bodyBytes": "{\"error\":\"Not found\"}",
       "body": { "error": "Not found" }
     },
     "authConfig": {

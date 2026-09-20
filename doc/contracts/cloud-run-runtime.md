@@ -4,6 +4,13 @@ This document freezes the deployment and runtime boundary that a future Rust rou
 
 ## Current invariants
 
+### First dormant Rust executable (no production cutover)
+
+- `rust/health-route` is a separately executable, dependency-free Rust implementation of only `GET /health` and the API-only `404` fallback.
+- It binds `0.0.0.0`, uses `PORT` when it is a valid non-zero port, and falls back to `9998`.
+- Its `GET /health` response is `200`, `application/json; charset=utf-8`, and the exact bytes `{"status":"ok"}`. Unrelated paths and non-GET methods return `404` with `{"error":"Not found"}`.
+- The executable is compiled and parity-tested in conditional pull-request validation only. Node remains authoritative: the Rust binary is not copied into the production image, is not started by `index.js`, and is not included in production Cloud Run workflow inputs or traffic.
+
 ### Container and process boundary
 
 - The backend image starts from `node:22-trixie-slim`, installs the CloakBrowser system/runtime dependencies and `tini`, and runs `node index.js` through `tini` as the init process.

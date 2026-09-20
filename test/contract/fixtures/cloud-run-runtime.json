@@ -14,7 +14,12 @@
     "imageKey": "scripts/backend-image-key.sh",
     "bootstrap": "scripts/deploy-cloud-run.sh",
     "wire": "test/wireContracts.json",
-    "document": "doc/contracts/cloud-run-runtime.md"
+    "document": "doc/contracts/cloud-run-runtime.md",
+    "rustHealth": "rust/health-route/src/lib.rs"
+  },
+  "rustHealth": {
+    "productionEnabled": false,
+    "nodeRemainsAuthoritative": true
   },
   "container": {
     "required": [
@@ -66,7 +71,7 @@
       "\"$SERVICE_URL/health\""
     ],
     "productionInputs": ["'lib/**'", "'index.js'", "'Dockerfile'", "'scripts/backend-image-key.sh'", "'package.json'", "'yarn.lock'"],
-    "workflowMustNotContain": ["- 'test/**'", "- 'doc/**'"],
+    "workflowMustNotContain": ["- 'test/**'", "- 'doc/**'", "- 'rust/**'"],
     "workflowMustNotReplace": ["env_vars:", "env_vars_file:", "update_env_vars:", "remove_env_vars:"]
   },
   "bootstrap": {
@@ -103,6 +108,8 @@
     "## Future route-cutover procedure (not current behavior)",
     "## Deliberate gaps",
     "The steady-state Cloud Run deployment does not mount persistent storage there",
-    "There is no separate readiness endpoint, startup probe, or application-level `SIGTERM`/`SIGINT` drain handler"
+    "There is no separate readiness endpoint, startup probe, or application-level `SIGTERM`/`SIGINT` drain handler",
+    "### First dormant Rust executable (no production cutover)",
+    "Node remains authoritative: the Rust binary is not copied into the production image"
   ]
 }

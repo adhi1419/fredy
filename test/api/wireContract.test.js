@@ -71,11 +71,13 @@ describe('shared HTTP wire contract', () => {
   it('keeps health and API-only fallback externally observable cases stable', async () => {
     const health = await injectCase(wireContract.http.health);
     expectJson(health, wireContract.http.health);
+    expect(Buffer.from(health.body)).toEqual(Buffer.from(wireContract.http.health.bodyBytes));
     expect(health.headers.vary).toBe(wireContract.cors.vary);
     expect(health.headers['access-control-allow-origin']).toBeUndefined();
 
     const fallback = await injectCase(wireContract.http.apiOnlyFallback);
     expectJson(fallback, wireContract.http.apiOnlyFallback);
+    expect(Buffer.from(fallback.body)).toEqual(Buffer.from(wireContract.http.apiOnlyFallback.bodyBytes));
   });
 
   it('keeps public Firebase bootstrap separate from authorization', async () => {
