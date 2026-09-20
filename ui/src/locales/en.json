@@ -738,7 +738,7 @@
   "notification.validationNumberField": "A number field cannot contain anything else and must be > 0.",
   "settings.tabNotifications": "Notification channels",
   "notification.channels.title": "Notification channels",
-  "notification.channels.scopeBanner": "You are seeing every channel on this instance.",
+  "notification.channels.scopeBanner": "You can share channels you own with everyone or with administrators. Other people's private channels stay hidden from you.",
   "notification.channels.new": "New notification channel",
   "notification.channels.columnName": "Channel",
   "notification.channels.columnType": "Type",

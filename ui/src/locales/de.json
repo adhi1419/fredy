@@ -738,7 +738,7 @@
   "notification.validationNumberField": "Ein Zahlenfeld darf nur Zahlen enthalten und muss größer 0 sein.",
   "settings.tabNotifications": "Benachrichtigungskanäle",
   "notification.channels.title": "Benachrichtigungskanäle",
-  "notification.channels.scopeBanner": "Du siehst alle Kanäle dieser Instanz.",
+  "notification.channels.scopeBanner": "Du kannst Kanäle, die dir gehören, mit allen oder mit Administratoren teilen. Private Kanäle anderer bleiben für dich verborgen.",
   "notification.channels.new": "Neuer Benachrichtigungskanal",
   "notification.channels.columnName": "Kanal",
   "notification.channels.columnType": "Typ",

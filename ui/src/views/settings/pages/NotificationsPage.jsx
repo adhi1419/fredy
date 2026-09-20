@@ -22,7 +22,8 @@ import './NotificationsPage.less';
  *
  * Deliberately not admin-only. A normal user has to be able to set up their own Telegram, which
  * used to happen inside the job form; making this admin-only would take that away. Admins
- * additionally see every channel on the instance and the control that decides who may use one.
+ * additionally get the visibility control that shares a channel they own with everyone or with
+ * administrators; other people's private channels stay hidden from them like anyone else.
  *
  * @returns {React.ReactElement}
  */

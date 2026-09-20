@@ -62,7 +62,7 @@ const UNTRANSLATED_BACKLOG = {
 };
 
 /**
- * Every `.js`/`.jsx` file under `ui/src`, so a translation call can be found wherever it lives.
+ * Every JavaScript or TypeScript source file under `ui/src`, so a translation call can be found wherever it lives.
  *
  * @param {string} dir
  * @returns {string[]}
@@ -73,7 +73,7 @@ function sourceFiles(dir) {
     if (entry.isDirectory()) {
       return entry.name === 'locales' ? [] : sourceFiles(full);
     }
-    return /\.jsx?$/.test(entry.name) ? [full] : [];
+    return /\.[jt]sx?$/.test(entry.name) ? [full] : [];
   });
 }
 
@@ -117,6 +117,18 @@ const TRANSLATION_CALL = /(?<![\w.$])t\('([^']+)'\)/g;
 describe('locales', () => {
   it('ships english as the fallback language', () => {
     expect(localeFiles).toContain('en.json');
+  });
+
+  it('describes administrator channel scope without claiming private tenant visibility', () => {
+    expect(readLocale('en.json')['notification.channels.scopeBanner']).toBe(
+      "You can share channels you own with everyone or with administrators. Other people's private channels stay hidden from you.",
+    );
+    expect(readLocale('de.json')['notification.channels.scopeBanner']).toBe(
+      'Du kannst Kanäle, die dir gehören, mit allen oder mit Administratoren teilen. Private Kanäle anderer bleiben für dich verborgen.',
+    );
+    expect(readLocale('tr.json')['notification.channels.scopeBanner']).toBe(
+      'Sahibi olduğunuz kanalları herkesle veya yöneticilerle paylaşabilirsiniz. Başkalarının özel kanalları sizden gizli kalır.',
+    );
   });
 
   it.each(localeFiles)('%s has no empty translations', (file) => {
