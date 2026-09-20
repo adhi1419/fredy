@@ -5,11 +5,11 @@
 
 import { useState, useEffect } from 'react';
 
-export function useScreenWidth() {
+export function useScreenWidth(): number {
   const [width, setWidth] = useState(window.innerWidth);
 
   useEffect(() => {
-    let timeoutId;
+    let timeoutId: ReturnType<typeof setTimeout>;
 
     const handleResize = () => {
       clearTimeout(timeoutId);

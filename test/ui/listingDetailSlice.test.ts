@@ -23,7 +23,7 @@ import { getInquirySendEligibility } from '../../ui/src/services/inquiries/profi
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
 const source = fs.readFileSync(path.join(root, 'ui/src/views/listings/ListingDetail.tsx'), 'utf8');
-const profileSource = fs.readFileSync(path.join(root, 'ui/src/services/inquiries/profile.js'), 'utf8');
+const profileSource = fs.readFileSync(path.join(root, 'ui/src/services/inquiries/profile.ts'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'ui/src/views/listings/ListingDetail.less'), 'utf8');
 
 const listing = {

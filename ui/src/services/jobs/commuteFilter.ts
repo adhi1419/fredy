@@ -11,13 +11,23 @@
  * normalises again on the way in, so this is what the user sees rather than what is enforced.
  */
 
+/** A saved home address, as stored in user settings. */
+export interface SavedAddress {
+  label?: unknown;
+  [key: string]: unknown;
+}
+
+/** A commute filter as the form reads it. */
+export interface CommuteFilterValue {
+  limits?: Record<string, number> | null;
+}
+
 /**
  * What a job does with a listing that is further away than it asked for, in the order offered.
  *
  * Least destructive first, because that is the order somebody reads a list of consequences in.
- * @type {string[]}
  */
-export const COMMUTE_ACTIONS = ['mark', 'notify', 'exclude'];
+export const COMMUTE_ACTIONS: string[] = ['mark', 'notify', 'exclude'];
 
 /**
  * The action a filter gets when it names none.
@@ -25,7 +35,6 @@ export const COMMUTE_ACTIONS = ['mark', 'notify', 'exclude'];
  * `notify` rather than `mark`: a limit is typed by somebody who does not want to hear about flats
  * past it, so defaulting to the option that changes nothing would make the field a no-op until a
  * second one is found and set.
- * @type {string}
  */
 export const DEFAULT_COMMUTE_ACTION = 'notify';
 
@@ -35,22 +44,16 @@ export const DEFAULT_COMMUTE_ACTION = 'notify';
  * Semi hands back an empty string when the box is cleared and a partially typed value while it is
  * being typed. Both read as "no limit on this address" rather than as a zero, so clearing a box
  * really does remove that address from the filter instead of demanding the impossible of it.
- *
- * @param {unknown} value
- * @returns {number|null}
  */
-export function toCommuteLimit(value) {
+export function toCommuteLimit(value: unknown): number | null {
   const minutes = Math.floor(Number(value));
   return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
 }
 
 /**
  * How many addresses a filter puts a limit on.
- *
- * @param {{limits?: Record<string, number>}|null|undefined} commuteFilter
- * @returns {number}
  */
-export function countCommuteLimits(commuteFilter) {
+export function countCommuteLimits(commuteFilter: CommuteFilterValue | null | undefined): number {
   const limits = commuteFilter?.limits;
   return limits == null || typeof limits !== 'object' ? 0 : Object.keys(limits).length;
 }
@@ -65,12 +68,11 @@ export function countCommuteLimits(commuteFilter) {
  * missing and then clear the limit they had set on it. An address that never resolved simply never
  * gets a travel time, and a limit with no travel time holds nothing back.
  *
- * @param {Object|null|undefined} settings - The user settings blob.
- * @returns {Array<Object>}
+ * @param settings - The user settings blob.
  */
-export function savedAddresses(settings) {
-  const raw = Array.isArray(settings?.home_addresses) ? settings.home_addresses : [];
-  return raw.filter((address) => typeof address?.label === 'string' && address.label.trim().length > 0);
+export function savedAddresses(settings: { home_addresses?: unknown } | null | undefined): SavedAddress[] {
+  const raw = Array.isArray(settings?.home_addresses) ? (settings.home_addresses as SavedAddress[]) : [];
+  return raw.filter((address) => typeof address?.label === 'string' && (address.label as string).trim().length > 0);
 }
 
 /**
@@ -81,11 +83,13 @@ export function savedAddresses(settings) {
  * is a limit the user set and watched disappear, so the comparison is against the addresses as
  * stored rather than against whatever subset a screen happens to render.
  *
- * @param {Record<string, number>|null|undefined} limits - Keyed by address label.
- * @param {Array<Object>|null|undefined} addresses - From {@link savedAddresses}.
- * @returns {string[]}
+ * @param limits - Keyed by address label.
+ * @param addresses - From {@link savedAddresses}.
  */
-export function orphanedCommuteLabels(limits, addresses) {
+export function orphanedCommuteLabels(
+  limits: Record<string, number> | null | undefined,
+  addresses: SavedAddress[] | null | undefined,
+): string[] {
   const saved = new Set((Array.isArray(addresses) ? addresses : []).map((address) => address?.label));
   return Object.keys(limits ?? {}).filter((label) => !saved.has(label));
 }

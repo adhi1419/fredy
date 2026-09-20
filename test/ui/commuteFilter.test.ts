@@ -108,7 +108,10 @@ describe('commuteFilter', () => {
 });
 
 describe('the collapsed job section', () => {
-  const context = { t: (key, vars) => `${key}:${vars?.count ?? ''}`, formatPrice: (value) => String(value) };
+  const context = {
+    t: (key: string, vars?: Record<string, string | number>) => `${key}:${vars?.count ?? ''}`,
+    formatPrice: (value: number) => String(value),
+  };
 
   it('says a commute limit is set, so the section does not have to be opened to find out', () => {
     const parts = describeJobRefinements({ commuteFilter: { action: 'notify', limits: { Work: 35 } } }, context);

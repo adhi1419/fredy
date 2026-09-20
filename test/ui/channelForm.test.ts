@@ -14,7 +14,7 @@ import {
   toPayload,
 } from '../../ui/src/services/notificationChannels/channelForm.js';
 
-const t = (key) => key;
+const t = (key: string) => key;
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const tableSource = fs.readFileSync(

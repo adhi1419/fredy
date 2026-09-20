@@ -20,7 +20,6 @@
 /**
  * Long enough for any route in the app plus its query, short enough that a hostile link cannot use
  * it to stuff the URL.
- * @type {number}
  */
 const MAX_LENGTH = 512;
 
@@ -30,7 +29,6 @@ const MAX_LENGTH = 512;
  * They are also how a scheme gets smuggled past a naive prefix check: browsers strip tabs and
  * newlines before parsing a URL, so a value that reads as a path here can parse as `javascript:`
  * there.
- * @type {RegExp}
  */
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
@@ -38,10 +36,10 @@ const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 /**
  * Reduce a caller-supplied return path to one that is safe to navigate to.
  *
- * @param {*} value The raw `returnTo` value, typically straight out of the query string.
- * @returns {string|null} A path beginning with a single `/`, or null when it cannot be trusted.
+ * @param value The raw `returnTo` value, typically straight out of the query string.
+ * @returns A path beginning with a single `/`, or null when it cannot be trusted.
  */
-export function sanitizeReturnTo(value) {
+export function sanitizeReturnTo(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null;
   }
@@ -64,11 +62,11 @@ export function sanitizeReturnTo(value) {
 /**
  * The destination with a return path attached, ready to navigate to.
  *
- * @param {string} to The path being navigated to.
- * @param {string} from The path to come back to.
- * @returns {string} `to` unchanged when `from` cannot be trusted.
+ * @param to The path being navigated to.
+ * @param from The path to come back to.
+ * @returns `to` unchanged when `from` cannot be trusted.
  */
-export function withReturnTo(to, from) {
+export function withReturnTo(to: string, from: string): string {
   const safe = sanitizeReturnTo(from);
   if (safe == null) {
     return to;

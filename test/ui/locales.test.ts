@@ -23,7 +23,7 @@ const localeDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..
  * @param {string} file - file name inside ui/src/locales
  * @returns {Record<string, string>}
  */
-function readLocale(file) {
+function readLocale(file: string): Record<string, string> {
   const translations = JSON.parse(fs.readFileSync(path.join(localeDir, file), 'utf-8'));
   delete translations._meta;
   return translations;
@@ -41,7 +41,7 @@ const uiSourceDir = path.join(localeDir, '..');
  * languages. Shrinking this list is the only edit it should ever get.
  * @type {Record<string, string[]>}
  */
-const UNTRANSLATED_BACKLOG = {
+const UNTRANSLATED_BACKLOG: Record<string, string[]> = {
   'tr.json': [
     'listing.detail.editAddress',
     'listing.detail.editAddressHint',
@@ -67,7 +67,7 @@ const UNTRANSLATED_BACKLOG = {
  * @param {string} dir
  * @returns {string[]}
  */
-function sourceFiles(dir) {
+function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {

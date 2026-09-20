@@ -21,10 +21,10 @@ const REGIONAL_INDICATOR_A = 0x1f1e6;
 const LETTER_A = 'A'.charCodeAt(0);
 
 /**
- * @param {string} code - ISO 3166-1 alpha-2, either case.
- * @returns {string} The flag, or an empty string when the code is not two letters.
+ * @param code - ISO 3166-1 alpha-2, either case.
+ * @returns The flag, or an empty string when the code is not two letters.
  */
-export function flagFor(code) {
+export function flagFor(code: string | null | undefined): string {
   const letters = String(code ?? '')
     .trim()
     .toUpperCase();
@@ -42,10 +42,10 @@ export function flagFor(code) {
  * Nearly every provider names one country and gets one flag. The few that span several get all of
  * them, which is the honest answer: a portal covering Germany and Austria is not a German portal.
  *
- * @param {string[]} [countries] - Alpha-2 codes.
- * @returns {string} The flags, unseparated, or an empty string when there are none to show.
+ * @param countries - Alpha-2 codes.
+ * @returns The flags, unseparated, or an empty string when there are none to show.
  */
-export function flagsFor(countries) {
+export function flagsFor(countries: readonly string[] | null | undefined): string {
   if (!Array.isArray(countries)) {
     return '';
   }
@@ -54,11 +54,8 @@ export function flagsFor(countries) {
 
 /**
  * A provider's name with its flags in front, for a picker where several countries are on offer.
- *
- * @param {{name: string, countries?: string[]}} provider
- * @returns {string}
  */
-export function labelWithFlags(provider) {
+export function labelWithFlags(provider: { name?: string; countries?: readonly string[] } | null | undefined): string {
   const flags = flagsFor(provider?.countries);
   const name = provider?.name ?? '';
   return flags ? `${flags} ${name}` : name;

@@ -3,10 +3,6 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-/*
- * Copyright (c) 2026 by Christian Kellner.
- * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
- */
 import { authenticatedFetch } from './authenticatedFetch.js';
 
 /**
@@ -17,7 +13,20 @@ import { authenticatedFetch } from './authenticatedFetch.js';
  * directly.
  */
 
-function extractFileNameFromDisposition(disposition) {
+export interface DebugStatus {
+  enabled: boolean;
+  size: number;
+  max: number;
+  hasLogs: boolean;
+  everEnabled: boolean;
+}
+
+/** An error raised when the debug bundle download has nothing to export. */
+export class NoDebugLogsError extends Error {
+  readonly code = 'NO_LOGS';
+}
+
+function extractFileNameFromDisposition(disposition: string | null): string {
   const dispo = disposition || '';
   // RFC 6266 says the UTF-8 encoded `filename*=` form takes precedence over the
   // legacy `filename=` form when both are present. Match each form independently
@@ -37,34 +46,31 @@ function extractFileNameFromDisposition(disposition) {
 
 /**
  * Fetch the current feature status. Requires admin auth.
- * @returns {Promise<{enabled:boolean, size:number, max:number, hasLogs:boolean, everEnabled:boolean}>}
  */
-export async function fetchDebugStatus() {
+export async function fetchDebugStatus(): Promise<DebugStatus> {
   const resp = await authenticatedFetch('/api/admin/debug/status', {});
   if (!resp.ok) throw new Error('Failed to load debug logging status');
-  return resp.json();
+  return resp.json() as Promise<DebugStatus>;
 }
 
 /**
  * Lightweight "is debug logging active right now?" probe usable by any authenticated
  * user. Used by the app-wide red banner so non-admin users also see the warning. The
  * payload is intentionally a single boolean, no other settings are exposed.
- *
- * @returns {Promise<{enabled:boolean}>}
  */
-export async function fetchDebugActive() {
+export async function fetchDebugActive(): Promise<{ enabled: boolean }> {
   const resp = await authenticatedFetch('/api/debug/active', {});
   if (!resp.ok) throw new Error('Failed to load debug active flag');
-  return resp.json();
+  return resp.json() as Promise<{ enabled: boolean }>;
 }
 
 /**
  * Enable the feature. When clearPrevious is true, existing log rows are dropped
  * before the new collection starts.
- * @param {{clearPrevious?:boolean}} [options]
- * @returns {Promise<object>}
  */
-export async function enableDebugLogging({ clearPrevious = false } = {}) {
+export async function enableDebugLogging({
+  clearPrevious = false,
+}: { clearPrevious?: boolean } = {}): Promise<unknown> {
   const resp = await authenticatedFetch('/api/admin/debug/enable', {
     method: 'POST',
 
@@ -77,9 +83,8 @@ export async function enableDebugLogging({ clearPrevious = false } = {}) {
 
 /**
  * Disable the feature. Existing logs remain on disk so they can still be downloaded.
- * @returns {Promise<object>}
  */
-export async function disableDebugLogging() {
+export async function disableDebugLogging(): Promise<unknown> {
   const resp = await authenticatedFetch('/api/admin/debug/disable', {
     method: 'POST',
   });
@@ -91,9 +96,8 @@ export async function disableDebugLogging() {
  * Drop every stored debug log row. Does NOT change the enabled flag: if recording
  * was on, it stays on and the table simply starts filling again. Returns the new
  * status payload.
- * @returns {Promise<object>}
  */
-export async function clearDebugLogs() {
+export async function clearDebugLogs(): Promise<unknown> {
   const resp = await authenticatedFetch('/api/admin/debug/logs', {
     method: 'DELETE',
   });
@@ -104,15 +108,12 @@ export async function clearDebugLogs() {
 /**
  * Trigger the debug bundle download. Throws when there is nothing to export (server
  * returns 409 in that case) or any other non-2xx response.
- * @returns {Promise<void>}
  */
-export async function downloadDebugBundle() {
+export async function downloadDebugBundle(): Promise<void> {
   const resp = await authenticatedFetch('/api/admin/debug/download', {});
   if (resp.status === 409) {
-    const data = await resp.json().catch(() => ({}));
-    const err = new Error(data?.error || 'No debug logs available yet');
-    err.code = 'NO_LOGS';
-    throw err;
+    const data = (await resp.json().catch(() => ({}))) as { error?: string };
+    throw new NoDebugLogsError(data?.error || 'No debug logs available yet');
   }
   if (!resp.ok) throw new Error('Failed to download debug bundle');
   const blob = await resp.blob();

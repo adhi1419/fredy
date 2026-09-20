@@ -102,6 +102,22 @@
     "ui/src/views/listings/detailMapLayers.ts",
     "ui/src/views/listings/listingActions.ts",
     "ui/src/views/listings/listingPopupContent.tsx",
-    "ui/src/views/listings/polyline.ts"
+    "ui/src/views/listings/polyline.ts",
+    "ui/src/services/routes/returnTo.ts",
+    "ui/src/services/time/timeService.ts",
+    "ui/src/services/notificationChannels/channelForm.ts",
+    "ui/src/services/jobs/commuteFilter.ts",
+    "ui/src/services/inquiries/profile.ts",
+    "ui/src/hooks/useSearchParamState.ts",
+    "ui/src/hooks/useScrollRestoration.ts",
+    "ui/src/hooks/screenWidth.ts",
+    "ui/src/services/countryFlags.ts",
+    "ui/src/services/developmentMode.ts",
+    "ui/src/services/authenticatedFetch.ts",
+    "ui/src/services/notification/browserNotification.ts",
+    "ui/src/components/connectivity/connectivityFormat.ts",
+    "ui/src/services/transformer/providerTransformer.ts",
+    "ui/src/services/debugLoggingClient.ts",
+    "ui/src/services/backupRestoreClient.ts"
   ]
 }

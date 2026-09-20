@@ -5,14 +5,18 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createNotificationEffects, createNotificationState } from '../../ui/src/services/state/notificationState.js';
+import {
+  createNotificationEffects,
+  createNotificationState,
+  type NotificationStateSetter,
+} from '../../ui/src/services/state/notificationState.js';
 
 function setup() {
   const state = createNotificationState();
   const get = vi.fn();
   const post = vi.fn();
   const remove = vi.fn();
-  const set = (updater) => Object.assign(state, updater(state));
+  const set: NotificationStateSetter = (updater) => Object.assign(state, updater(state));
   const effects = createNotificationEffects(set, { get, post, delete: remove });
   return { state, get, post, remove, effects };
 }

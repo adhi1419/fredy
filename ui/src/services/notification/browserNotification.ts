@@ -5,14 +5,20 @@
 
 import heart from '../../assets/heart.png';
 
+type Translate = (key: string, variables?: Record<string, string | number>) => string;
+
 /**
  * Triggers a test browser notification, requesting permission if needed.
  *
- * @param {function} t - The translation function
- * @param {function} onSuccess - Callback when notification succeeds
- * @param {function} onError - Callback when there is a validation or permission error
+ * @param t - The translation function
+ * @param onSuccess - Callback when notification succeeds
+ * @param onError - Callback when there is a validation or permission error
  */
-export function triggerTestNotification(t, onSuccess, onError) {
+export function triggerTestNotification(
+  t: Translate,
+  onSuccess: (message: string) => void,
+  onError: (message: string) => void,
+): void {
   if (typeof window !== 'undefined' && 'Notification' in window) {
     if (Notification.permission === 'granted') {
       const notification = new Notification('Test Call from Fredy', {
@@ -26,7 +32,7 @@ export function triggerTestNotification(t, onSuccess, onError) {
     } else if (Notification.permission === 'denied') {
       onError(t('notification.browserPermissionDenied'));
     } else {
-      const handlePermissionResult = (permission) => {
+      const handlePermissionResult = (permission: NotificationPermission) => {
         if (permission === 'granted') {
           const notification = new Notification('Test Call from Fredy', {
             body: 'Everything works perfectly! Real-time listings will appear here.',
@@ -44,7 +50,7 @@ export function triggerTestNotification(t, onSuccess, onError) {
       try {
         const promise = Notification.requestPermission(handlePermissionResult);
         if (promise && typeof promise.then === 'function') {
-          promise.then(handlePermissionResult).catch((err) => {
+          promise.then(handlePermissionResult).catch((err: unknown) => {
             onError(t('notification.tryError', { error: String(err) }));
           });
         }

@@ -171,10 +171,6 @@ declare module '*services/sse/authenticatedEventStream.js' {
   ): AuthenticatedEventStream;
 }
 
-declare module '*services/time/timeService.js' {
-  export function format(value: unknown, relative: boolean, locale: string): string;
-}
-
 declare module '*services/xhr.js' {
   interface XhrResponse {
     status: number;
@@ -246,24 +242,4 @@ declare module '*AddressEditor.jsx' {
     onPickOnMap: (address: string) => void;
   }>;
   export default AddressEditor;
-}
-
-declare module '*services/inquiries/profile.js' {
-  export function inquiryProviderRequiresMessage(providerId: string | undefined, listing: unknown): boolean;
-  export function isInquiryContactProfileReady(profile: unknown, providerId?: string): boolean;
-  export function isInquiryProviderSupported(providerId: string | undefined, listing: unknown): boolean;
-  export function getInquirySendEligibility(input: {
-    providerId?: string;
-    listing?: unknown;
-    profile?: unknown;
-    message?: unknown;
-    status?: unknown;
-  }): {
-    providerSupported: boolean;
-    profileReady: boolean;
-    messageReady: boolean;
-    statusAllowsSend: boolean;
-    canRetry: boolean;
-    canSend: boolean;
-  };
 }

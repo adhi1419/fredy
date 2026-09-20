@@ -4,7 +4,12 @@
  */
 
 import { getIdToken } from './auth/firebaseAuth.js';
-import { createAuthenticatedRequestPolicy, headersWithBearer } from './authenticatedTransport.js';
+import {
+  createAuthenticatedRequestPolicy,
+  headersWithBearer,
+  type AuthenticatedRequestPolicyDependencies,
+  type TransportInput,
+} from './authenticatedTransport.js';
 
 /**
  * Fetch an API resource with a Firebase bearer token when a user is available. Cookies are always
@@ -13,7 +18,11 @@ import { createAuthenticatedRequestPolicy, headersWithBearer } from './authentic
  * The optional dependencies are a test seam and also keep this utility usable by small clients
  * that need to provide a fetch implementation explicitly.
  */
-export function authenticatedFetch(input, options = {}, dependencies = {}) {
+export function authenticatedFetch(
+  input: TransportInput,
+  options: RequestInit = {},
+  dependencies: AuthenticatedRequestPolicyDependencies = {},
+): Promise<Response> {
   return createAuthenticatedRequestPolicy({
     ...dependencies,
     tokenGetter: dependencies.tokenGetter ?? getIdToken,
@@ -21,7 +30,11 @@ export function authenticatedFetch(input, options = {}, dependencies = {}) {
 }
 
 /** Fetch a public bootstrap resource without cookies or authorization headers. */
-export function publicFetch(input, options = {}, fetchImpl = globalThis.fetch) {
+export function publicFetch(
+  input: TransportInput,
+  options: RequestInit = {},
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<Response> {
   return createAuthenticatedRequestPolicy({ fetchImpl }).publicRequest(input, options);
 }
 

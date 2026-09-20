@@ -11,8 +11,8 @@ import { describe, it, expect, vi } from 'vitest';
  * renderer. That keeps the suite free of a DOM dependency it otherwise does not need.
  */
 vi.mock('react', () => ({
-  useMemo: (factory) => factory(),
-  useCallback: (fn) => fn,
+  useMemo: (factory: () => unknown) => factory(),
+  useCallback: (fn: unknown) => fn,
 }));
 
 const { useUrlState, parseNumber, parseString, parseNullableBoolean, parseBoolean } =
@@ -33,13 +33,23 @@ const SCHEMA = {
  * @param {string} [initial]
  */
 function makeSearchParams(initial = '') {
-  const state = { params: new URLSearchParams(initial), calls: 0, options: [] };
-  const setSearchParams = vi.fn((updater, options) => {
-    state.calls += 1;
-    state.options.push(options);
-    state.params = typeof updater === 'function' ? updater(state.params) : updater;
-  });
-  return { state, pair: () => [state.params, setSearchParams], setSearchParams };
+  const state: {
+    params: URLSearchParams;
+    calls: number;
+    options: Array<{ replace?: boolean } | undefined>;
+  } = { params: new URLSearchParams(initial), calls: 0, options: [] };
+  const setSearchParams = vi.fn(
+    (updater: URLSearchParams | ((previous: URLSearchParams) => URLSearchParams), options?: { replace?: boolean }) => {
+      state.calls += 1;
+      state.options.push(options);
+      state.params = typeof updater === 'function' ? updater(state.params) : updater;
+    },
+  );
+  return {
+    state,
+    pair: (): [URLSearchParams, typeof setSearchParams] => [state.params, setSearchParams],
+    setSearchParams,
+  };
 }
 
 describe('useUrlState', () => {
@@ -149,8 +159,8 @@ describe('useUrlState', () => {
       // now completely unremarkable.
       const { state } = makeSearchParams();
       for (const value of ['a', 'b', 'c']) {
-        const freshSetter = vi.fn((updater) => {
-          state.params = updater(state.params);
+        const freshSetter = vi.fn((updater: URLSearchParams | ((previous: URLSearchParams) => URLSearchParams)) => {
+          state.params = typeof updater === 'function' ? updater(state.params) : updater;
         });
         useUrlState([state.params, freshSetter], SCHEMA).setValue('q', value);
       }
