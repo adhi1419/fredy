@@ -37,6 +37,7 @@ describe('Bun and TypeScript foundation', () => {
     expect(config.include).toEqual([
       'ui/src/services/apiUrl.ts',
       'ui/src/services/jobs/guidedSearchForm.ts',
+      'ui/src/services/jobs/jobValidation.ts',
       'ui/src/services/authenticatedTransport.ts',
       'ui/src/services/jobs/providerUrl.ts',
       'ui/src/services/home/homeViewState.ts',
@@ -60,6 +61,7 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/listingFilters.test.ts',
       'test/ui/guidedSearchForm.test.ts',
       'test/ui/providerUrl.test.ts',
+      'test/ui/jobValidation.test.ts',
     ]);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.js'))).toBe(false);
@@ -67,6 +69,9 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/guidedSearchForm.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/providerUrl.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/providerUrl.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobValidation.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobValidation.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobValidation.d.ts'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/listings/listingFilters.ts'))).toBe(true);
@@ -75,6 +80,8 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'test/ui/listingFilters.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/guidedSearchForm.test.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'test/ui/guidedSearchForm.test.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/jobValidation.test.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'test/ui/jobValidation.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/finalResponsiveSlice.test.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'test/ui/finalResponsiveSlice.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/providerUrl.test.ts'))).toBe(true);

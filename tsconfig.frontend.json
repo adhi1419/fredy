@@ -14,6 +14,7 @@
   "include": [
     "ui/src/services/apiUrl.ts",
     "ui/src/services/jobs/guidedSearchForm.ts",
+    "ui/src/services/jobs/jobValidation.ts",
     "ui/src/services/authenticatedTransport.ts",
     "ui/src/services/jobs/providerUrl.ts",
     "ui/src/services/home/homeViewState.ts",

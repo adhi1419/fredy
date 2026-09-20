@@ -7,6 +7,7 @@
     "test/ui/finalResponsiveSlice.test.ts",
     "test/ui/listingFilters.test.ts",
     "test/ui/guidedSearchForm.test.ts",
-    "test/ui/providerUrl.test.ts"
+    "test/ui/providerUrl.test.ts",
+    "test/ui/jobValidation.test.ts"
   ]
 }

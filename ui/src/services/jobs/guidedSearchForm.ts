@@ -4,6 +4,7 @@
  */
 
 import { missingRequirements } from './jobValidation.js';
+import type { JobRequirement, JobValidationInput } from './jobValidation.js';
 
 export type PolicyState = 'enabled' | 'disabled';
 
@@ -40,19 +41,6 @@ export interface ProviderMetadata {
     [key: string]: unknown;
   };
   [key: string]: unknown;
-}
-
-export interface GuidedValidationJob {
-  name?: unknown;
-  dealType?: unknown;
-  providerData?: readonly unknown[];
-  selectedChannels?: readonly unknown[];
-  [key: string]: unknown;
-}
-
-export interface GuidedRequirement {
-  key: string;
-  isMet: (job: GuidedValidationJob) => boolean;
 }
 
 export interface SourcePolicyControlOptions {
@@ -153,15 +141,15 @@ export function requirementKeysForStep(stepIndex: number): string[] {
 /** Validate one step without knowing anything about React or navigation. */
 export function missingGuidedRequirements(
   stepIndex: number,
-  job: GuidedValidationJob | null | undefined,
-): GuidedRequirement[] {
+  job: JobValidationInput | null | undefined,
+): JobRequirement[] {
   const owned = new Set(requirementKeysForStep(stepIndex));
-  return missingRequirements(job).filter((requirement: GuidedRequirement) => owned.has(requirement.key));
+  return missingRequirements(job).filter((requirement: JobRequirement) => owned.has(requirement.key));
 }
 
 /** Find the first incomplete step up to a requested destination. */
 export function firstBlockedGuidedStep(
-  job: GuidedValidationJob | null | undefined,
+  job: JobValidationInput | null | undefined,
   targetStep: number = GUIDED_STEPS.length - 1,
 ): number | null {
   const destination = normalizeStepIndex(targetStep);
@@ -175,7 +163,7 @@ export function firstBlockedGuidedStep(
 export function canMoveToGuidedStep(
   currentStep: number,
   targetStep: number,
-  job: GuidedValidationJob | null | undefined,
+  job: JobValidationInput | null | undefined,
 ): boolean {
   const current = normalizeStepIndex(currentStep);
   const target = normalizeStepIndex(targetStep);
