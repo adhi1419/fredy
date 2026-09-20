@@ -9,16 +9,25 @@ import { fileURLToPath } from 'node:url';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 interface MockState {
   generalSettings: { settings: { debugLoggingEnabled: boolean } };
+  jobsData: { jobs: readonly unknown[] };
+  dashboard: { data: { general?: { lastRun?: number | null } | null } | null };
 }
+
+let mockJobs: readonly unknown[] = [];
+let mockLastRun: number | null = Date.now();
 
 vi.mock('../../ui/src/services/state/store.js', () => ({
   useActions: () => ({ user: { resetCurrentUser: vi.fn() } }),
   useSelector: (selector: (state: MockState) => unknown) =>
-    selector({ generalSettings: { settings: { debugLoggingEnabled: false } } }),
+    selector({
+      generalSettings: { settings: { debugLoggingEnabled: false } },
+      jobsData: { jobs: mockJobs },
+      dashboard: { data: { general: { lastRun: mockLastRun } } },
+    }),
 }));
 
 vi.mock('@douyinfe/semi-icons', async () => {
@@ -32,6 +41,8 @@ vi.mock('@douyinfe/semi-icons', async () => {
     IconListView: icon('list'),
     IconMapPin: icon('map-pin'),
     IconSearch: icon('search'),
+    IconAlertCircle: icon('alert-circle'),
+    IconTickCircle: icon('tick-circle'),
   };
 });
 
@@ -151,6 +162,46 @@ describe('two-destination product shell', () => {
 
   it.each(['/settings/preferences', '/admin/system'])('leaves product tabs unselected on %s', (pathname) => {
     expect(renderNavigation(pathname)).not.toContain('is-active');
+  });
+});
+
+describe('compact shell search-health signal', () => {
+  afterEach(() => {
+    mockJobs = [];
+    mockLastRun = Date.now();
+  });
+
+  it('reads healthy when no saved search needs attention', () => {
+    mockJobs = [
+      { id: 'j1', name: 'Berlin', enabled: true, notificationAdapter: [{ id: 'a' }], numberOfFoundListings: 3 },
+    ];
+    const html = renderNavigation('/dashboard');
+    expect(html).toContain('fredy-shell-nav__health--healthy');
+    expect(html).toContain('nav.searchesHealthy');
+    // Healthy is a quiet status line, not an actionable button.
+    expect(html).not.toContain('fredy-shell-nav__health--attention');
+    expect(html).toContain('data-icon="tick-circle"');
+  });
+
+  it('reads needs-attention with a count and links out when a search is unhealthy', () => {
+    mockJobs = [
+      { id: 'j1', name: 'No channel', enabled: true, notificationAdapter: [] },
+      { id: 'j2', name: 'Paused', enabled: false, notificationAdapter: [{ id: 'a' }] },
+    ];
+    const html = renderNavigation('/dashboard');
+    expect(html).toContain('fredy-shell-nav__health--attention');
+    // The needs-attention label is used (interpolation is stubbed to the raw key in this shell test).
+    expect(html).toContain('nav.searchesNeedAttention');
+    expect(html).not.toContain('fredy-shell-nav__health--healthy');
+    expect(html).toContain('data-icon="alert-circle"');
+    // The attention signal is a button (actionable), unlike the healthy status span.
+    expect(html).toMatch(/<button[^>]*fredy-shell-nav__health--attention/);
+  });
+
+  it('hides the health signal entirely during mandatory onboarding', () => {
+    mockJobs = [{ id: 'j1', name: 'No channel', enabled: true, notificationAdapter: [] }];
+    const html = renderNavigation('/onboarding/applicant-profile', false);
+    expect(html).not.toContain('fredy-shell-nav__health');
   });
 });
 

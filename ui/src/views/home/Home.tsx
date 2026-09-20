@@ -4,18 +4,15 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Button, Toast } from '@douyinfe/semi-ui-19';
 import {
-  IconArrowRight,
   IconChevronDown,
   IconListView,
   IconMapPin,
-  IconRefresh,
+  IconMore,
   IconRoute,
   IconSearch,
   IconTickCircle,
   IconEyeOpened,
-  IconClock,
 } from '@douyinfe/semi-icons';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import type { Map as MapLibreMap, Marker as MapMarker } from 'maplibre-gl';
@@ -24,8 +21,6 @@ import MapCanvas from '../../components/map/Map.jsx';
 import { groupListingsByPosition, getBoundsFromCoords } from '../listings/mapUtils.js';
 import { useProviderCountries } from '../../hooks/useProviderCountries.js';
 import { useActions, useSelector } from '../../services/state/store.js';
-import { findJobsNeedingAttention } from '../../services/dashboard/attention.js';
-import { xhrPost } from '../../services/xhr.js';
 import { formatEuroPrice } from '../../services/price/priceService.js';
 import { format as formatTime } from '../../services/time/timeService.js';
 import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
@@ -69,46 +64,26 @@ const ACTIVITY_LABEL_KEYS = Object.freeze({
 type Activity = keyof typeof ACTIVITY_LABEL_KEYS;
 
 /**
- * The canonical lifecycle glyphs a Home card leads with. Keyed on the exact same activity vocabulary
- * as the Home activity filters ({@link HOME_ACTIVITIES}) so a card's symbol and the filter that
- * surfaces it can never drift. Semi icons only, never emoji.
+ * The canonical lifecycle glyphs a Direction A stay card floats over its photo. Keyed on the exact
+ * same activity vocabulary as the Home activity filters ({@link HOME_ACTIVITIES}) so a card's badge
+ * and the filter that surfaces it can never drift. Semi icons only, never emoji.
  *
- * Only the two states a user reaches by acting carry a symbol: Applied (the application lifecycle is confirmed) and
- * Viewed (a viewing happened). New carries no symbol - it is the absence of any action, and a badge
- * on every fresh card would be noise. Archived is history, shown as a muted label with no glyph.
+ * Only the two states a user reaches by acting carry a symbol: Applied (the application lifecycle is
+ * confirmed) and Viewed (a viewing happened). New carries no badge - a badge on every fresh card
+ * would be noise. Archived is history, shown as a muted label with no glyph.
  */
 const LIFECYCLE_SYMBOLS: Readonly<Partial<Record<Activity, typeof IconTickCircle>>> = Object.freeze({
   applied: IconTickCircle,
   viewed: IconEyeOpened,
 });
 
-interface HomeJob {
-  id: string;
-  name?: string | null;
-  enabled?: boolean;
-  notificationAdapter?: readonly unknown[];
-  numberOfFoundListings?: number;
-}
-
-interface HomeDashboard {
-  general?: { lastRun?: number | null } | null;
-}
-
 interface HomeStoreState {
   listingsData: ListingsDataState;
   provider: readonly HomeProviderMetadata[];
-  jobsData: { jobs: readonly HomeJob[] };
-  dashboard: { data: HomeDashboard | null };
 }
 
 interface HomeActions {
   listingsData: { getListingsData: (query: HomeQueryPayload) => Promise<void> };
-  dashboard: { getDashboard: () => Promise<void> };
-}
-
-interface AttentionJob {
-  id: string;
-  name: string;
 }
 
 interface HomeMapProps {
@@ -128,100 +103,101 @@ function asHomeListings(value: unknown): HomeListing[] {
     : [];
 }
 
-type HomeTranslation = (key: string, values?: Record<string, string>) => string;
-
-function formatHomeContext(lastRun: number | null | undefined, t: HomeTranslation, now = Date.now()): string {
-  if (lastRun == null || lastRun === 0) return t('home.updatedNever');
-
-  const deltaMinutes = Math.round((lastRun - now) / 60000);
-  const magnitude = Math.abs(deltaMinutes);
-  if (magnitude < 1) return t('home.updated', { time: t('dashboard.timeNow') });
-
-  const unit =
-    magnitude < 60
-      ? { key: 'Minutes', value: magnitude }
-      : magnitude < 60 * 24
-        ? { key: 'Hours', value: Math.round(magnitude / 60) }
-        : { key: 'Days', value: Math.round(magnitude / (60 * 24)) };
-  const direction = deltaMinutes > 0 ? 'In' : 'Ago';
-  const time = t(`dashboard.time${direction}${unit.key}`, { count: String(unit.value) });
-  return t('home.updated', { time });
-}
-
-interface HomeListingRowProps {
+interface HomeStayCardProps {
   listing: HomeListing;
-  index: number;
-  variant: 'feed' | 'map';
+  variant: 'grid' | 'split';
   onNavigate: (id: string) => void;
 }
 
 /**
- * One decision row for both Home representations. The list and map views deliberately render the
- * same listing facts, lifecycle, image fallback, and navigation target so switching representation
- * never changes what decision the row offers.
+ * One Direction A stay card, used by both Home representations. The photo-led grid and the map's
+ * companion list render the same photo, lifecycle badge, facts, travel line, and navigation target,
+ * so switching representation never changes the decision a card offers.
+ *
+ * The whole card is the navigation target (image + title open Listing Detail). No Watch, Status, or
+ * Delete affordance is shown; lifecycle mutations live on Listing Detail. The overflow dots are a
+ * non-interactive marker in this scan surface (kept out of the tab order) so the card stays a single
+ * clean click target without nesting a second control inside the button.
  */
-function HomeListingRow({ listing, index, variant, onNavigate }: HomeListingRowProps) {
+function HomeStayCard({ listing, variant, onNavigate }: HomeStayCardProps) {
   const t = useTranslation();
   const locale = useLocale();
   const lifecycle = homeLifecycleState(listing);
   const LifecycleSymbol = LIFECYCLE_SYMBOLS[lifecycle];
   const lifecycleLabel = t(ACTIVITY_LABEL_KEYS[lifecycle]);
+  const showBadge = lifecycle === 'applied' || lifecycle === 'viewed';
   const listingId = homeListingNavigationId(listing);
   const title = listing.title || t('listing.detail.defaultTitle');
-  const facts = [listing.address, listing.provider, listing.size ? `${listing.size} m²` : null]
+  const location = [listing.address, listing.provider].filter(Boolean).join(' · ');
+  const rooms = [
+    listing.rooms != null ? t('home.cardRooms', { count: String(listing.rooms) }) : null,
+    listing.size ? `${listing.size} m²` : null,
+  ]
     .filter(Boolean)
     .join(' · ');
   // Direction A leads the meta with how long it takes to get there, not whether it is affordable:
   // the primary listing presentation carries travel duration and distance to the reference address,
   // reusing the times the row already ships. Affordability is never shown here.
   const travel = homeCardTravel(listing);
-  const rowClassName = `${variant === 'feed' ? 'home__card' : 'home__split-row'}${listing.image_url ? '' : ' home__card--no-image'}`;
 
   return (
-    <button
-      type="button"
-      className={rowClassName}
-      disabled={listingId == null}
-      aria-label={title}
-      onClick={() => {
-        if (listingId != null) onNavigate(listingId);
-      }}
-    >
-      <div className="home__card-media">
-        {listing.image_url ? (
-          <img src={listing.image_url} alt={title} />
-        ) : (
-          <div className="home__card-placeholder" aria-hidden="true">
-            <IconMapPin />
-          </div>
-        )}
-      </div>
-      <div className="home__card-copy">
-        <span className={`home__lifecycle home__lifecycle--${lifecycle}`}>
-          {LifecycleSymbol && <LifecycleSymbol aria-hidden="true" className="home__lifecycle-symbol" />}
-          {lifecycleLabel}
-        </span>
-        <h2>{title}</h2>
-        <p>{facts || t('listing.detail.noAddress')}</p>
-      </div>
-      <div className="home__card-meta">
-        <strong>{listing.price ? formatEuroPrice(listing.price, locale) : t('common.na')}</strong>
-        {travel ? (
-          <span
-            className="home__card-travel"
-            title={travel.label ? t('home.travelToLabel', { label: travel.label }) : t('home.travelTo')}
-          >
-            <IconClock aria-hidden="true" />
-            <span className="home__card-travel-duration">{travel.duration}</span>
-            {travel.distance && <span className="home__card-travel-distance">{travel.distance}</span>}
+    <article className={`home__card home__card--${variant}`}>
+      <button
+        type="button"
+        className="home__card-open"
+        disabled={listingId == null}
+        aria-label={title}
+        onClick={() => {
+          if (listingId != null) onNavigate(listingId);
+        }}
+      >
+        <span className="home__card-media">
+          {listing.image_url ? (
+            <img src={listing.image_url} alt="" referrerPolicy="no-referrer" loading="lazy" />
+          ) : (
+            <span className="home__card-placeholder" aria-hidden="true">
+              <IconMapPin />
+            </span>
+          )}
+          {showBadge && (
+            <span className={`home__card-badge home__card-badge--${lifecycle}`}>
+              {LifecycleSymbol && <LifecycleSymbol aria-hidden="true" className="home__card-badge-symbol" />}
+              {lifecycleLabel}
+            </span>
+          )}
+          <span className="home__card-dots" aria-hidden="true">
+            <IconMore />
           </span>
-        ) : (
-          <span>{formatTime(listing.created_at, false, locale)}</span>
-        )}
-        <IconMapPin aria-hidden="true" />
-      </div>
-      <span className="home__sr-only">{index + 1}</span>
-    </button>
+        </span>
+        <span className="home__card-copy">
+          <span className="home__card-title-row">
+            <span className="home__card-title">{title}</span>
+            <strong className="home__card-price">
+              {listing.price ? formatEuroPrice(listing.price, locale) : t('common.na')}
+            </strong>
+          </span>
+          <span className="home__card-location">{location || t('listing.detail.noAddress')}</span>
+          {rooms && <span className="home__card-rooms">{rooms}</span>}
+          {travel ? (
+            <span
+              className="home__card-travel"
+              title={travel.label ? t('home.travelToLabel', { label: travel.label }) : t('home.travelTo')}
+            >
+              <IconRoute aria-hidden="true" />
+              <span className="home__card-travel-duration">{travel.duration}</span>
+              {travel.distance && <span className="home__card-travel-distance">{travel.distance}</span>}
+              {travel.label && (
+                <span className="home__card-travel-label">{t('home.cardTo', { label: travel.label })}</span>
+              )}
+            </span>
+          ) : (
+            <span className="home__card-travel home__card-travel--time">
+              {formatTime(listing.created_at, false, locale)}
+            </span>
+          )}
+        </span>
+      </button>
+    </article>
   );
 }
 
@@ -411,33 +387,25 @@ function HomeMap({ listings, onNavigate }: HomeMapProps) {
 }
 
 /**
- * A quiet, card-light Home surface. Query state and listing lifecycle remain in the URL and the
- * existing listings Zustand slice; this view owns neither a second cache nor a second lifecycle.
+ * The Direction A "Stay cards" Home surface: an airy, photo-led marketplace grid with a rounded
+ * search field, icon view controls, true pill activity filters, and compact provider/sort pills.
+ * Query state and listing lifecycle remain in the URL and the existing listings Zustand slice; this
+ * view owns neither a second cache nor a second lifecycle. Search health lives in the shared shell
+ * header, not in a giant Home banner.
  */
 export default function Home({ defaultView = 'feed' }: HomeProps) {
   const t = useTranslation();
-  const locale = useLocale();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const actions = useActions<HomeActions>();
   const listingsData = useSelector((state: HomeStoreState) => state.listingsData);
   const providers = useSelector((state: HomeStoreState) => state.provider);
-  const jobs = useSelector((state: HomeStoreState) => state.jobsData.jobs);
-  const dashboard = useSelector((state: HomeStoreState) => state.dashboard.data);
   const [loading, setLoading] = useState(false);
   const [searchDraft, setSearchDraft] = useState('');
   const values = useMemo(() => readHomeViewState(searchParams, defaultView), [defaultView, searchParams.toString()]);
   const query = useMemo(() => homeQueryFromState(values), [values]);
   const listings = useMemo(() => asHomeListings(listingsData.result), [listingsData.result]);
-  const attention = useMemo(
-    () => findJobsNeedingAttention([...jobs], { lastRun: dashboard?.general?.lastRun }),
-    [dashboard?.general?.lastRun, jobs],
-  );
-  const homeContext = useMemo(
-    () => formatHomeContext(dashboard?.general?.lastRun, t),
-    [dashboard?.general?.lastRun, t],
-  );
 
   const updateState = useCallback(
     (patch: HomeViewStatePatch) => {
@@ -462,19 +430,6 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   useEffect(() => {
     void loadData();
   }, [loadData]);
-
-  useEffect(() => {
-    void actions.dashboard.getDashboard();
-  }, [actions.dashboard]);
-
-  const runSearches = async () => {
-    try {
-      await xhrPost('/api/jobs/startAll', null);
-      Toast.success(t('home.searchStarted'));
-    } catch {
-      Toast.error(t('home.searchFailed'));
-    }
-  };
 
   const providerOptions = useMemo(
     () => homeProviderOptions(providers, listingsData.availableProviders, values.providerIds),
@@ -503,38 +458,9 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   return (
     <div className="home">
       <header className="home__heading">
-        <div className="home__heading-copy">
-          <p className="home__eyebrow">{homeContext}</p>
-          <h1>{t('home.heading')}</h1>
-          <p className="home__description">{t('home.description')}</p>
-        </div>
-        <div className="home__heading-actions">
-          <Button onClick={() => void runSearches()}>{t('home.runSearches')}</Button>
-          <Button
-            icon={<IconRefresh />}
-            loading={loading}
-            onClick={() => void loadData()}
-            aria-label={t('home.refresh')}
-          >
-            {t('home.refresh')}
-          </Button>
-        </div>
+        <h1>{t('home.heading')}</h1>
+        <p className="home__description">{t('home.description')}</p>
       </header>
-
-      {attention.length > 0 && (
-        <div className="home__attention" role="status">
-          <span>
-            <strong>{t('home.attentionTitle')}</strong> {t('home.attentionBody', { name: attention[0].name })}
-          </span>
-          <Button
-            theme="borderless"
-            icon={<IconArrowRight />}
-            onClick={() => navigate(`/jobs/edit/${attention[0].id}`)}
-          >
-            {t('home.attentionAction')}
-          </Button>
-        </div>
-      )}
 
       <div className="home__query-row">
         <form className="home__search" role="search" onSubmit={submitSearch}>
@@ -569,29 +495,23 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
 
       <div className="home__controls">
         <div className="home__activities" role="group" aria-label={t('home.activityLabel')}>
-          {HOME_ACTIVITIES.map((activity) => (
-            <button
-              key={activity}
-              type="button"
-              className={values.activity === activity ? 'is-selected' : ''}
-              aria-pressed={values.activity === activity}
-              onClick={() => updateState({ activity, page: 1 })}
-            >
-              {t(ACTIVITY_LABEL_KEYS[activity as Activity])}
-            </button>
-          ))}
+          {HOME_ACTIVITIES.map((activity) => {
+            const ActivitySymbol = LIFECYCLE_SYMBOLS[activity as Activity];
+            return (
+              <button
+                key={activity}
+                type="button"
+                className={values.activity === activity ? 'is-selected' : ''}
+                aria-pressed={values.activity === activity}
+                onClick={() => updateState({ activity, page: 1 })}
+              >
+                {ActivitySymbol && <ActivitySymbol aria-hidden="true" className="home__activity-symbol" />}
+                {t(ACTIVITY_LABEL_KEYS[activity as Activity])}
+              </button>
+            );
+          })}
         </div>
-        <div className="home__sort-provider">
-          <label>
-            <span>{t('home.sortLabel')}</span>
-            <select value={selectedSort.key} onChange={(event) => setSort(event.target.value)}>
-              {sortOptions.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {t(option.labelKey)}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="home__tools">
           <div className="home__providers" role="group" aria-label={t('home.providerLabel')}>
             <details className="home__provider-picker">
               <summary>
@@ -628,6 +548,16 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
               </div>
             </details>
           </div>
+          <label className="home__sort">
+            <span className="home__sr-only">{t('home.sortLabel')}</span>
+            <select value={selectedSort.key} onChange={(event) => setSort(event.target.value)}>
+              {sortOptions.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {t('home.sortPrefix', { label: t(option.labelKey) })}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
 
@@ -636,19 +566,15 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
         <section className="home__empty">
           <h2>{t('home.emptyTitle')}</h2>
           <p>{t('home.emptyDescription')}</p>
-          <Button theme="solid" onClick={() => navigate('/jobs/new')}>
-            {t('home.createSearch')}
-          </Button>
         </section>
       )}
       {!loading && listings.length > 0 && values.view === 'feed' && (
-        <section className="home__feed" aria-label={t('home.feedAria')}>
+        <section className="home__grid" aria-label={t('home.feedAria')}>
           {listings.map((listing, index) => (
-            <HomeListingRow
+            <HomeStayCard
               key={homeListingNavigationId(listing) ?? `listing-${index}`}
               listing={listing}
-              index={index}
-              variant="feed"
+              variant="grid"
               onNavigate={navigateToListing}
             />
           ))}
@@ -658,11 +584,10 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
         <div className="home__split">
           <section className="home__split-list" aria-label={t('home.feedAria')}>
             {listings.map((listing, index) => (
-              <HomeListingRow
+              <HomeStayCard
                 key={homeListingNavigationId(listing) ?? `listing-${index}`}
                 listing={listing}
-                index={index}
-                variant="map"
+                variant="split"
                 onNavigate={navigateToListing}
               />
             ))}

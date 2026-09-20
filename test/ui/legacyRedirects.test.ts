@@ -8,7 +8,12 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { LEGACY_REDIRECTS, resolveLegacyPath, targetPathname } from '../../ui/src/services/routes/legacyRedirects.js';
+import {
+  LEGACY_REDIRECTS,
+  legacyRedirectTarget,
+  resolveLegacyPath,
+  targetPathname,
+} from '../../ui/src/services/routes/legacyRedirects.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const appSource = fs.readFileSync(path.join(here, '../../ui/src/App.tsx'), 'utf8');
@@ -57,7 +62,6 @@ describe('legacyRedirects', () => {
   });
 
   it('resolves each nested child against the right parent', () => {
-    // The two tab strips. Every tab is its own route, which is what makes it linkable.
     for (const tab of ['preferences', 'travel-time', 'listings', 'notifications']) {
       expect(routes.has(`/settings/${tab}`)).toBe(true);
     }
@@ -84,19 +88,54 @@ describe('legacyRedirects', () => {
   });
 
   it('does not shadow a route that still exists', () => {
-    // A redirect declared for a live path would win over the page itself and make it unreachable.
     for (const from of Object.keys(LEGACY_REDIRECTS)) {
       expect(routes.has(from)).toBe(false);
     }
   });
 
-  it('turns the watchlist page into the filter that replaced it', () => {
-    expect(resolveLegacyPath('/listings/watchlist')).toBe('/listings?watch=true');
-    expect(resolveLegacyPath('/watchlistManagement')).toBe('/listings?watch=true');
+  it('folds the retired listings overview, its map, and the watchlist into canonical Home', () => {
+    // The standalone list and map are Home now, not their own pages.
+    expect(resolveLegacyPath('/listings')).toBe('/dashboard');
+    expect(resolveLegacyPath('/map')).toBe('/dashboard?view=map');
+    // The watchlist is gone entirely - it must NOT revive a Watch state.
+    expect(resolveLegacyPath('/listings/watchlist')).toBe('/dashboard');
+    expect(resolveLegacyPath('/watchlistManagement')).toBe('/dashboard');
+    for (const to of Object.values(LEGACY_REDIRECTS)) {
+      expect(to).not.toContain('watch=true');
+    }
   });
 
   it('answers null for a path that was never moved', () => {
     expect(resolveLegacyPath('/dashboard')).toBeNull();
     expect(resolveLegacyPath('/nonsense')).toBeNull();
+  });
+});
+
+describe('legacyRedirectTarget query preservation', () => {
+  it('carries the safe subset of an incoming query into Home', () => {
+    // A bookmarked /listings?sort=price&dir=asc keeps its sort intent on the way to Home. Params are
+    // re-serialized in a canonical (allow-list) order, so the exact string is deterministic.
+    expect(legacyRedirectTarget('/dashboard', '?sort=price&dir=asc&provider=immoscout%2Cimmowelt')).toBe(
+      '/dashboard?provider=immoscout%2Cimmowelt&sort=price&dir=asc',
+    );
+  });
+
+  it('applies the target intent over the incoming query for the map entry', () => {
+    // /map forces the map view even if the incoming URL asked for a different view.
+    expect(legacyRedirectTarget('/dashboard?view=map', '?view=feed&q=Kreuzberg')).toBe(
+      '/dashboard?q=Kreuzberg&view=map',
+    );
+  });
+
+  it('drops a revived Watch flag and any unknown params rather than forwarding them', () => {
+    const result = legacyRedirectTarget('/dashboard', '?watch=true&activity=applied&utm_source=email');
+    expect(result).toContain('activity=applied');
+    expect(result).not.toContain('watch');
+    expect(result).not.toContain('utm_source');
+  });
+
+  it('produces a bare path when nothing safe survives', () => {
+    expect(legacyRedirectTarget('/dashboard', '?watch=true')).toBe('/dashboard');
+    expect(legacyRedirectTarget('/dashboard', '')).toBe('/dashboard');
   });
 });
