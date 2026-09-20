@@ -75,10 +75,6 @@ declare module '*components/footer/FredyFooter.jsx' {
   const component: import('react').ComponentType<Record<string, never>>;
   export default component;
 }
-declare module '*views/finance/FinanceCalculator.jsx' {
-  const component: import('react').ComponentType<Record<string, never>>;
-  export default component;
-}
 declare module '*components/debug/DebugLoggingBanner.jsx' {
   const component: import('react').ComponentType<Record<string, never>>;
   export default component;

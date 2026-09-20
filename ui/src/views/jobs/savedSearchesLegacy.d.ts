@@ -111,10 +111,6 @@ declare module '*components/map/Map.jsx' {
   export default MapCanvas;
 }
 
-declare module '*hooks/useProviderCountries.js' {
-  export function useProviderCountries(): string[];
-}
-
 declare module '*services/dashboard/attention.js' {
   interface AttentionJobInput {
     id?: string;
@@ -134,10 +130,6 @@ declare module '*services/dashboard/attention.js' {
     jobs: readonly AttentionJobInput[],
     options?: { lastRun?: number | null },
   ): AttentionJob[];
-}
-
-declare module '*services/price/priceService.js' {
-  export function formatEuroPrice(value: number | string, locale?: string): string;
 }
 
 declare module '*services/state/store.js' {
@@ -279,23 +271,6 @@ declare module '*AddressEditor.jsx' {
     onPickOnMap: (address: string) => void;
   }>;
   export default AddressEditor;
-}
-
-declare module '*hooks/useFinanceProfile.js' {
-  export function useFinanceProfile(): {
-    isComplete: boolean;
-    rentComplete: boolean;
-    thresholds: {
-      buy: { affordableMaxPrice: number; stretchMaxPrice: number; purchasePriceThreshold: number } | null;
-      rent: { affordableMaxRent: number } | null;
-    };
-  };
-}
-
-declare module '*components/cards/chartTheme.js' {
-  export const VERDICT_COLORS: Record<string, string>;
-  export function formatEuro(value: number, locale?: string): string;
-  export function withAlpha(color: string, alpha: number): string;
 }
 
 declare module '*services/inquiries/profile.js' {

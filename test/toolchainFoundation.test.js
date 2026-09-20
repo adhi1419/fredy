@@ -76,6 +76,32 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/theme/theme.ts',
       'ui/src/services/notifications/browserAdapter.d.ts',
       'ui/src/hooks/useBrowserNotifications.ts',
+      'ui/src/services/finance/constants.ts',
+      'ui/src/services/price/priceService.ts',
+      'ui/src/types/finance.ts',
+      'ui/src/services/providerOrder.ts',
+      'ui/src/hooks/useControllableState.ts',
+      'ui/src/hooks/useProviderCountries.ts',
+      'ui/src/hooks/useFinanceProfile.ts',
+      'ui/src/components/cards/chartTheme.ts',
+      'ui/src/components/cards/KpiCard.tsx',
+      'ui/src/components/cards/ProviderShareChart.tsx',
+      'ui/src/components/cards/TrendSparkline.tsx',
+      'ui/src/views/finance/FinanceCalculator.tsx',
+      'ui/src/views/finance/charts/AffordabilityScatter.tsx',
+      'ui/src/views/finance/charts/BudgetChart.tsx',
+      'ui/src/views/finance/charts/CostBreakdownChart.tsx',
+      'ui/src/views/finance/charts/DebtTrajectoryChart.tsx',
+      'ui/src/views/finance/charts/InterestPrincipalChart.tsx',
+      'ui/src/views/finance/charts/ListingPayoffChart.tsx',
+      'ui/src/views/finance/components/AffordabilityPanel.tsx',
+      'ui/src/views/finance/components/MilestoneTimeline.tsx',
+      'ui/src/views/finance/components/ProfileForm.tsx',
+      'ui/src/views/finance/components/PropertyForm.tsx',
+      'ui/src/views/finance/components/RentPanel.tsx',
+      'ui/src/views/finance/components/ResultSummary.tsx',
+      'ui/src/views/finance/components/ScenarioForm.tsx',
+      'ui/src/views/finance/components/VerdictBanner.tsx',
     ]);
     const testConfig = JSON.parse(read('tsconfig.frontend-tests.json'));
     expect(testConfig.extends).toBe('./tsconfig.frontend.json');
@@ -107,7 +133,60 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/firebaseAuth.test.ts',
       'test/ui/browserNotificationGate.d.ts',
       'test/ui/browserNotificationGate.test.ts',
+      'test/ui/financeMathSingleHome.test.ts',
+      'test/ui/financeState.test.ts',
+      'test/ui/priceFormat.test.ts',
+      'test/ui/useControllableState.test.ts',
+      'test/ui/providerOrder.test.ts',
+      'test/ui/providerCountries.test.ts',
     ]);
+    const waveOneMigrations = [
+      ['ui/src/components/cards/KpiCard.tsx', 'ui/src/components/cards/KpiCard.jsx'],
+      ['ui/src/components/cards/ProviderShareChart.tsx', 'ui/src/components/cards/ProviderShareChart.jsx'],
+      ['ui/src/components/cards/TrendSparkline.tsx', 'ui/src/components/cards/TrendSparkline.jsx'],
+      ['ui/src/components/cards/chartTheme.ts', 'ui/src/components/cards/chartTheme.js'],
+      ['ui/src/hooks/useFinanceProfile.ts', 'ui/src/hooks/useFinanceProfile.js'],
+      ['ui/src/services/finance/constants.ts', 'ui/src/services/finance/constants.js'],
+      ['ui/src/services/price/priceService.ts', 'ui/src/services/price/priceService.js'],
+      ['ui/src/types/finance.ts', 'ui/src/types/finance.js'],
+      ['ui/src/views/finance/FinanceCalculator.tsx', 'ui/src/views/finance/FinanceCalculator.jsx'],
+      ['ui/src/views/finance/charts/AffordabilityScatter.tsx', 'ui/src/views/finance/charts/AffordabilityScatter.jsx'],
+      ['ui/src/views/finance/charts/BudgetChart.tsx', 'ui/src/views/finance/charts/BudgetChart.jsx'],
+      ['ui/src/views/finance/charts/CostBreakdownChart.tsx', 'ui/src/views/finance/charts/CostBreakdownChart.jsx'],
+      ['ui/src/views/finance/charts/DebtTrajectoryChart.tsx', 'ui/src/views/finance/charts/DebtTrajectoryChart.jsx'],
+      [
+        'ui/src/views/finance/charts/InterestPrincipalChart.tsx',
+        'ui/src/views/finance/charts/InterestPrincipalChart.jsx',
+      ],
+      ['ui/src/views/finance/charts/ListingPayoffChart.tsx', 'ui/src/views/finance/charts/ListingPayoffChart.jsx'],
+      [
+        'ui/src/views/finance/components/AffordabilityPanel.tsx',
+        'ui/src/views/finance/components/AffordabilityPanel.jsx',
+      ],
+      [
+        'ui/src/views/finance/components/MilestoneTimeline.tsx',
+        'ui/src/views/finance/components/MilestoneTimeline.jsx',
+      ],
+      ['ui/src/views/finance/components/ProfileForm.tsx', 'ui/src/views/finance/components/ProfileForm.jsx'],
+      ['ui/src/views/finance/components/PropertyForm.tsx', 'ui/src/views/finance/components/PropertyForm.jsx'],
+      ['ui/src/views/finance/components/RentPanel.tsx', 'ui/src/views/finance/components/RentPanel.jsx'],
+      ['ui/src/views/finance/components/ResultSummary.tsx', 'ui/src/views/finance/components/ResultSummary.jsx'],
+      ['ui/src/views/finance/components/ScenarioForm.tsx', 'ui/src/views/finance/components/ScenarioForm.jsx'],
+      ['ui/src/views/finance/components/VerdictBanner.tsx', 'ui/src/views/finance/components/VerdictBanner.jsx'],
+      ['ui/src/hooks/useControllableState.ts', 'ui/src/hooks/useControllableState.js'],
+      ['ui/src/services/providerOrder.ts', 'ui/src/services/providerOrder.js'],
+      ['ui/src/hooks/useProviderCountries.ts', 'ui/src/hooks/useProviderCountries.js'],
+      ['test/ui/financeMathSingleHome.test.ts', 'test/ui/financeMathSingleHome.test.js'],
+      ['test/ui/financeState.test.ts', 'test/ui/financeState.test.js'],
+      ['test/ui/priceFormat.test.ts', 'test/ui/priceFormat.test.js'],
+      ['test/ui/useControllableState.test.ts', 'test/ui/useControllableState.test.js'],
+      ['test/ui/providerOrder.test.ts', 'test/ui/providerOrder.test.js'],
+      ['test/ui/providerCountries.test.ts', 'test/ui/providerCountries.test.js'],
+    ];
+    for (const [typedPath, legacyPath] of waveOneMigrations) {
+      expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
+      expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
+    }
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/guidedSearchForm.ts'))).toBe(true);

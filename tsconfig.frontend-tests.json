@@ -29,6 +29,12 @@
     "test/ui/theme.test.ts",
     "test/ui/firebaseAuth.test.ts",
     "test/ui/browserNotificationGate.d.ts",
-    "test/ui/browserNotificationGate.test.ts"
+    "test/ui/browserNotificationGate.test.ts",
+    "test/ui/financeMathSingleHome.test.ts",
+    "test/ui/financeState.test.ts",
+    "test/ui/priceFormat.test.ts",
+    "test/ui/useControllableState.test.ts",
+    "test/ui/providerOrder.test.ts",
+    "test/ui/providerCountries.test.ts"
   ]
 }
