@@ -13,6 +13,7 @@
   },
   "include": [
     "ui/src/services/apiUrl.ts",
+    "ui/src/services/jobs/guidedSearchForm.ts",
     "ui/src/services/authenticatedTransport.ts",
     "ui/src/services/home/homeViewState.ts",
     "ui/src/services/listings/listingFilters.ts",

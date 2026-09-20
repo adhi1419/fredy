@@ -5,73 +5,165 @@
 
 import { missingRequirements } from './jobValidation.js';
 
+export type PolicyState = 'enabled' | 'disabled';
+
+export interface ApplicationPolicy {
+  automatic: PolicyState;
+  [key: string]: unknown;
+}
+
+export interface GuidedProviderSource {
+  id?: string;
+  name?: string;
+  url?: string;
+  enabled?: boolean;
+  applicationPolicy?: ApplicationPolicy;
+  [key: string]: unknown;
+}
+
+export interface ProviderApplicationCapabilities {
+  manual?: boolean;
+  automatic?: boolean;
+  eligibility?: 'provider' | 'listing' | 'none';
+  validation?: 'provider' | 'local' | 'none';
+  profileRequirements?: string[];
+  consentRequirements?: string[];
+  connectionRequired?: boolean;
+  [key: string]: unknown;
+}
+
+export interface ProviderMetadata {
+  id?: string;
+  name?: string;
+  capabilities?: {
+    application?: ProviderApplicationCapabilities;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface GuidedValidationJob {
+  name?: unknown;
+  dealType?: unknown;
+  providerData?: readonly unknown[];
+  selectedChannels?: readonly unknown[];
+  [key: string]: unknown;
+}
+
+export interface GuidedRequirement {
+  key: string;
+  isMet: (job: GuidedValidationJob) => boolean;
+}
+
+export interface SourcePolicyControlOptions {
+  profileReady?: boolean;
+}
+
+export interface SourcePolicyControl {
+  enabled: boolean;
+  canEnable: boolean;
+  disabled: boolean;
+  reason: 'unsupported' | 'connection' | 'profile' | 'listing' | null;
+  provider: ProviderMetadata | null;
+  capability: ProviderApplicationCapabilities;
+}
+
+export interface GuidedChannel {
+  id: string;
+  [key: string]: unknown;
+}
+
+export interface GuidedJobPayloadInput {
+  providerData?: readonly GuidedProviderSource[];
+  selectedChannels?: readonly GuidedChannel[];
+  shareWithUsers?: string[];
+  name?: string | null;
+  blacklist?: unknown[];
+  spatialFilter?: unknown | null;
+  specFilter?: unknown | null;
+  commuteFilter?: unknown | null;
+  dealType?: 'rent' | 'buy' | null;
+  enabled?: boolean;
+  jobId?: string | null;
+  /** Legacy draft compatibility; deliberately omitted from the payload. */
+  autoSendInquiry?: boolean;
+}
+
+export interface GuidedJobPayload {
+  provider: GuidedProviderSource[];
+  notificationAdapter: Array<{ configuredAdapterId: string }>;
+  shareWithUsers: string[];
+  name?: string | null;
+  blacklist: unknown[];
+  spatialFilter: unknown | null;
+  specFilter: unknown | null;
+  commuteFilter: unknown | null;
+  dealType: 'rent' | 'buy' | null;
+  enabled: boolean;
+  jobId: string | null;
+}
+
 const POLICY_STATES = Object.freeze({
   ENABLED: 'enabled',
   DISABLED: 'disabled',
-});
+} as const);
 
 const REQUIREMENT_STEP = Object.freeze({
   name: 0,
   provider: 0,
   dealType: 1,
   channel: 3,
-});
+} as const);
+
+const DEFAULT_CAPABILITY: ProviderApplicationCapabilities = {
+  manual: false,
+  automatic: false,
+  eligibility: 'none',
+  validation: 'none',
+  profileRequirements: [],
+  consentRequirements: [],
+  connectionRequired: false,
+};
 
 /**
  * The one guided form has four decision groups. The desktop tablist renders all four; the mobile
  * layout collapses it to the current step ribbon without changing the state machine.
- *
- * @type {ReadonlyArray<{id: string, label: string}>}
  */
-export const GUIDED_STEPS = Object.freeze([
+export const GUIDED_STEPS: ReadonlyArray<{ id: string; label: string }> = Object.freeze([
   Object.freeze({ id: 'providers', label: 'Providers' }),
   Object.freeze({ id: 'home-criteria', label: 'Home criteria' }),
   Object.freeze({ id: 'real-world-fit', label: 'Real-world fit' }),
   Object.freeze({ id: 'delivery-review', label: 'Delivery/review' }),
 ]);
 
-/**
- * @param {number} stepIndex
- * @returns {number}
- */
-export function normalizeStepIndex(stepIndex) {
+/** @returns the nearest valid guided step index. */
+export function normalizeStepIndex(stepIndex: number): number {
   const numeric = Number.isInteger(stepIndex) ? stepIndex : 0;
   return Math.min(Math.max(numeric, 0), GUIDED_STEPS.length - 1);
 }
 
-/**
- * Return the requirements owned by a guided step.
- *
- * @param {number} stepIndex
- * @returns {string[]}
- */
-export function requirementKeysForStep(stepIndex) {
+/** Return the requirements owned by a guided step. */
+export function requirementKeysForStep(stepIndex: number): string[] {
   const normalized = normalizeStepIndex(stepIndex);
   return Object.entries(REQUIREMENT_STEP)
     .filter(([, ownerStep]) => ownerStep === normalized)
     .map(([key]) => key);
 }
 
-/**
- * Validate one step without knowing anything about React or navigation.
- *
- * @param {number} stepIndex
- * @param {Object|null|undefined} job
- * @returns {Array<{key: string, isMet: Function}>}
- */
-export function missingGuidedRequirements(stepIndex, job) {
+/** Validate one step without knowing anything about React or navigation. */
+export function missingGuidedRequirements(
+  stepIndex: number,
+  job: GuidedValidationJob | null | undefined,
+): GuidedRequirement[] {
   const owned = new Set(requirementKeysForStep(stepIndex));
-  return missingRequirements(job).filter((requirement) => owned.has(requirement.key));
+  return missingRequirements(job).filter((requirement: GuidedRequirement) => owned.has(requirement.key));
 }
 
-/**
- * Find the first incomplete step up to a requested destination.
- *
- * @param {Object|null|undefined} job
- * @param {number} [targetStep]
- * @returns {number|null}
- */
-export function firstBlockedGuidedStep(job, targetStep = GUIDED_STEPS.length - 1) {
+/** Find the first incomplete step up to a requested destination. */
+export function firstBlockedGuidedStep(
+  job: GuidedValidationJob | null | undefined,
+  targetStep: number = GUIDED_STEPS.length - 1,
+): number | null {
   const destination = normalizeStepIndex(targetStep);
   for (let step = 0; step <= destination; step += 1) {
     if (missingGuidedRequirements(step, job).length > 0) return step;
@@ -79,15 +171,12 @@ export function firstBlockedGuidedStep(job, targetStep = GUIDED_STEPS.length - 1
   return null;
 }
 
-/**
- * Whether a tab or Continue action may move from one step to another.
- *
- * @param {number} currentStep
- * @param {number} targetStep
- * @param {Object|null|undefined} job
- * @returns {boolean}
- */
-export function canMoveToGuidedStep(currentStep, targetStep, job) {
+/** Whether a tab or Continue action may move from one step to another. */
+export function canMoveToGuidedStep(
+  currentStep: number,
+  targetStep: number,
+  job: GuidedValidationJob | null | undefined,
+): boolean {
   const current = normalizeStepIndex(currentStep);
   const target = normalizeStepIndex(targetStep);
   return target <= current || firstBlockedGuidedStep(job, target) == null;
@@ -96,40 +185,28 @@ export function canMoveToGuidedStep(currentStep, targetStep, job) {
 /**
  * Merge server capability metadata with one job source for display. The returned object is a view
  * model only; capability data is never sent back as job source state.
- *
- * @param {Object} source
- * @param {Array<Object>} [providerMetadata]
- * @returns {{source: Object, provider: Object|null, capability: Object}}
  */
-export function mergeProviderCapability(source, providerMetadata = []) {
+export function mergeProviderCapability(
+  source: GuidedProviderSource,
+  providerMetadata: readonly ProviderMetadata[] = [],
+): { source: GuidedProviderSource; provider: ProviderMetadata | null; capability: ProviderApplicationCapabilities } {
   const provider = providerMetadata.find((candidate) => candidate?.id === source?.id) ?? null;
-  const capability = provider?.capabilities?.application ?? {
-    manual: false,
-    automatic: false,
-    eligibility: 'none',
-    validation: 'none',
-    profileRequirements: [],
-    consentRequirements: [],
-    connectionRequired: false,
-  };
+  const capability = provider?.capabilities?.application ?? DEFAULT_CAPABILITY;
   return { source, provider, capability };
 }
 
-/**
- * Describe the visible automatic-inquiry control for one source.
- *
- * @param {Object} source
- * @param {Array<Object>} [providerMetadata]
- * @param {{profileReady?: boolean}} [options]
- * @returns {{enabled: boolean, canEnable: boolean, disabled: boolean, reason: string|null, provider: Object|null, capability: Object}}
- */
-export function sourcePolicyControl(source, providerMetadata = [], { profileReady = true } = {}) {
+/** Describe the visible automatic-inquiry control for one source. */
+export function sourcePolicyControl(
+  source: GuidedProviderSource,
+  providerMetadata: readonly ProviderMetadata[] = [],
+  { profileReady = true }: SourcePolicyControlOptions = {},
+): SourcePolicyControl {
   const merged = mergeProviderCapability(source, providerMetadata);
   const enabled = source?.applicationPolicy?.automatic === POLICY_STATES.ENABLED;
   const supportsAutomatic = merged.capability.automatic === true;
   const connectionRequired = merged.capability.connectionRequired === true;
   const canEnable = supportsAutomatic && !connectionRequired && profileReady;
-  let reason = null;
+  let reason: SourcePolicyControl['reason'] = null;
 
   if (!supportsAutomatic) reason = 'unsupported';
   else if (connectionRequired) reason = 'connection';
@@ -149,14 +226,13 @@ export function sourcePolicyControl(source, providerMetadata = [], { profileRead
 /**
  * Apply a source-local automatic policy without introducing capability metadata or credentials into
  * the job source. Unsupported and connection-required sources fail closed and remain unchanged.
- *
- * @param {Object} source
- * @param {Array<Object>} providerMetadata
- * @param {boolean} enabled
- * @param {{profileReady?: boolean}} [options]
- * @returns {Object}
  */
-export function setSourceAutomaticPolicy(source, providerMetadata, enabled, options = {}) {
+export function setSourceAutomaticPolicy(
+  source: GuidedProviderSource,
+  providerMetadata: readonly ProviderMetadata[],
+  enabled: boolean,
+  options: SourcePolicyControlOptions = {},
+): GuidedProviderSource {
   const control = sourcePolicyControl(source, providerMetadata, options);
   if (enabled && !control.canEnable) return source;
   return {
@@ -168,13 +244,12 @@ export function setSourceAutomaticPolicy(source, providerMetadata, enabled, opti
 /**
  * Migrate a pre-policy local draft without allowing its job-wide flag to override sources that
  * already carry an explicit choice. Unsupported and connection-required sources remain disabled.
- *
- * @param {Array<Object>} sources
- * @param {boolean} legacyAutoSendInquiry
- * @param {Array<Object>} providerMetadata
- * @returns {Array<Object>}
  */
-export function migrateLegacyDraftProviderPolicies(sources, legacyAutoSendInquiry, providerMetadata = []) {
+export function migrateLegacyDraftProviderPolicies(
+  sources: readonly GuidedProviderSource[] | null | undefined,
+  legacyAutoSendInquiry: boolean,
+  providerMetadata: readonly ProviderMetadata[] = [],
+): GuidedProviderSource[] {
   return (Array.isArray(sources) ? sources : []).map((source) => {
     const automatic = source?.applicationPolicy?.automatic;
     if (automatic === POLICY_STATES.ENABLED || automatic === POLICY_STATES.DISABLED) return source;
@@ -191,11 +266,8 @@ export function migrateLegacyDraftProviderPolicies(sources, legacyAutoSendInquir
 /**
  * Keep only the source fields accepted by the backend and make the guided policy explicit. This
  * migrates a legacy source to disabled unless its source policy already says enabled.
- *
- * @param {Object} source
- * @returns {Object}
  */
-export function canonicalGuidedProviderSource(source) {
+export function canonicalGuidedProviderSource(source: GuidedProviderSource): GuidedProviderSource {
   const automatic = source?.applicationPolicy?.automatic === POLICY_STATES.ENABLED;
   return {
     ...(source?.id !== undefined ? { id: source.id } : {}),
@@ -210,9 +282,6 @@ export function canonicalGuidedProviderSource(source) {
  * Build the guided save payload. `autoSendInquiry` is intentionally absent: independent source
  * policies must not be overridden by a legacy job-wide value. The server still accepts and reads
  * that field for old clients and persisted jobs.
- *
- * @param {Object} values
- * @returns {Object}
  */
 export function buildGuidedJobPayload({
   providerData = [],
@@ -226,7 +295,7 @@ export function buildGuidedJobPayload({
   dealType = null,
   enabled = true,
   jobId = null,
-} = {}) {
+}: GuidedJobPayloadInput = {}): GuidedJobPayload {
   return {
     provider: providerData.map(canonicalGuidedProviderSource),
     notificationAdapter: selectedChannels.map((channel) => ({ configuredAdapterId: channel.id })),

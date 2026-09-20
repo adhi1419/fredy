@@ -19,12 +19,16 @@ import {
   missingGuidedRequirements,
   setSourceAutomaticPolicy,
   sourcePolicyControl,
+  type ApplicationPolicy,
+  type GuidedJobPayloadInput,
+  type GuidedProviderSource,
+  type ProviderMetadata,
 } from '../../ui/src/services/jobs/guidedSearchForm.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const guidedStyles = fs.readFileSync(path.join(here, '../../ui/src/views/jobs/mutation/GuidedJobForm.less'), 'utf8');
 
-const metadata = [
+const metadata: ProviderMetadata[] = [
   {
     id: 'supported',
     name: 'Supported',
@@ -47,14 +51,14 @@ const metadata = [
   },
 ];
 
-const complete = {
+const complete: GuidedJobPayloadInput = {
   name: 'Berlin homes',
   dealType: 'rent',
   providerData: [{ id: 'supported', url: 'https://supported.example/search' }],
   selectedChannels: [{ id: 'channel-1' }],
 };
 
-const source = (id, applicationPolicy) => ({
+const source = (id: string, applicationPolicy?: ApplicationPolicy): GuidedProviderSource => ({
   id,
   name: id,
   url: `https://${id}.example/search`,
