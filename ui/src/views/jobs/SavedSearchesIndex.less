@@ -57,6 +57,15 @@
     }
   }
 
+  &__row--editable {
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid @color-accent;
+      outline-offset: -2px;
+    }
+  }
+
   &__identity {
     display: flex;
     align-items: flex-start;

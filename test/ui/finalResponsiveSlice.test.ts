@@ -94,6 +94,20 @@ describe('final responsive slice', () => {
     expect(savedSearchesSource).not.toMatch(/\bas any\b/);
     expect(jobsSource).not.toMatch(/\bas any\b/);
   });
+  it('opens editable Saved Search rows directly and keeps one Create action', () => {
+    expect(savedSearchesSource).toContain("role: 'button' as const");
+    expect(savedSearchesSource).toContain('tabIndex: 0');
+    expect(savedSearchesSource).toContain("event.key === 'Enter' || event.key === ' '");
+    expect(savedSearchesSource).toContain("event.target.closest('.savedSearches__rowActions')");
+    expect(savedSearchesSource).toContain("t('jobs.index.runAndRepair')");
+    expect(savedSearchesSource).toContain('onRepair={onJobRun}');
+    expect(savedSearchesSource).not.toContain("action(t('jobs.index.edit')");
+    expect(savedSearchesSource).not.toContain('/repair`');
+    expect(savedSearchesSource).not.toContain('eslint-disable');
+    expect(jobsSource).not.toContain("navigate('/jobs/new')");
+    expect(savedSearchesSource.match(/navigate\('\/jobs\/new'\)/g)).toHaveLength(1);
+  });
+
   it('uses direct state actions and a separate overflow trigger', () => {
     expect(savedSearchesSource).toContain('className="savedSearches__directAction"');
     expect(savedSearchesSource).toContain('className="savedSearches__overflowButton"');

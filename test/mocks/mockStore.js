@@ -81,4 +81,20 @@ export const deleteListingsById = (ids) => {
 export const deleteListingsByHash = (hashes) => {
   deletedIds.push(...hashes);
 };
+
+/** Records the eager-generated inquiry draft. The pipeline only stores it; tests read db back. */
+export const setInquiryMessage = async (id, message) => 1;
+
+/** Known rows exposed to the reconcile pass by focused pipeline tests. */
+let knownListingsForRepair = [];
+export function setKnownListingsForRepair(rows) {
+  knownListingsForRepair = Array.isArray(rows) ? rows : [];
+}
+export const getKnownListingsForRepair = async (jobId, providerId) => knownListingsForRepair;
+
+/** Notification-complete write-once flag. The pipeline swallows the result; a number is enough. */
+export const markNotificationComplete = async (id, notifiedAt) => 1;
+
+/** Coordinate repair. No stored rows in the mock, so this is a no-op that reports "nothing done". */
+export const repairListingCoordinates = async (id, coords) => 0;
 /* eslint-enable no-unused-vars */

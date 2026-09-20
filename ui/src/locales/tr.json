@@ -193,6 +193,8 @@
   "jobs.index.channelCount": "{{count}} kanal",
   "jobs.index.listingsFound": "{{count}} ilan bulundu",
   "jobs.index.edit": "Aramayı düzenle",
+  "jobs.index.runAndRepair": "Çalıştır & onar",
+  "jobs.index.editHint": "Düzenlemek için aç",
   "jobs.index.clone": "Aramayı kopyala",
   "jobs.index.deleteListings": "İlanları temizle",
   "jobs.index.delete": "Aramayı sil",
