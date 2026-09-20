@@ -3,11 +3,12 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Popover, Spin, Typography } from '@douyinfe/semi-ui-19';
 import { getTravelTimes } from '../../services/transitClient.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import { availableModes, formatMinutes, formatRoadDistance, hasAnyTime } from './travelTimeFormat.js';
+import type { TravelTimeEntry } from './travelTimeFormat.js';
 import TransitDetails from './TransitDetails.jsx';
 import './transit.less';
 
@@ -34,9 +35,34 @@ const { Text } = Typography;
  * detail map uses it to draw the real driving route, which arrives in the same answer.
  * @returns {React.ReactNode}
  */
-export default function TravelTimes({ listingId, travelTimes, compact = false, refine = false, onLoaded }) {
+export interface TravelTimesProps {
+  listingId: string;
+  /** Already loaded entries; skips the request entirely. */
+  travelTimes?: readonly TravelTimeEntry[];
+  /** One line per address, for a map popup. */
+  compact?: boolean;
+  /**
+   * Ask the backend for the exact journey even when estimates are already in hand. Only the detail
+   * page does this: it is one person looking at one listing, and it is what turns an estimate into
+   * a real route the map can draw.
+   */
+  refine?: boolean;
+  /**
+   * Called with whatever was loaded. The detail map uses it to draw the real driving route, which
+   * arrives in the same answer.
+   */
+  onLoaded?: (entries: readonly TravelTimeEntry[]) => void;
+}
+
+export default function TravelTimes({
+  listingId,
+  travelTimes,
+  compact = false,
+  refine = false,
+  onLoaded,
+}: TravelTimesProps): ReactNode {
   const t = useTranslation();
-  const [entries, setEntries] = useState(travelTimes ?? null);
+  const [entries, setEntries] = useState<readonly TravelTimeEntry[] | null>(travelTimes ?? null);
   const [failed, setFailed] = useState(false);
   const requestRef = useRef(0);
   // Held in a ref so a caller passing an inline arrow does not re-trigger the request on every
@@ -126,7 +152,7 @@ export default function TravelTimes({ listingId, travelTimes, compact = false, r
             )}
             <span className="travel-times__modes">
               {availableModes(entry).map((mode) => {
-                const distance = mode.key === 'car' ? formatRoadDistance(entry.car.distanceMeters) : null;
+                const distance = mode.key === 'car' ? formatRoadDistance(entry.car?.distanceMeters) : null;
                 const body = (
                   <span
                     key={mode.key}
@@ -135,7 +161,7 @@ export default function TravelTimes({ listingId, travelTimes, compact = false, r
                   >
                     <span aria-hidden="true">{mode.icon}</span>
                     <span className="travel-times__minutes">{formatMinutes(mode.minutes)}</span>
-                    {mode.transfers > 0 && (
+                    {mode.transfers != null && mode.transfers > 0 && (
                       <span className="travel-times__transfers">
                         {t(mode.transfers === 1 ? 'travelTime.transfer' : 'travelTime.transfers', {
                           count: mode.transfers,

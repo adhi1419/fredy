@@ -3,6 +3,74 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+/** A public-transport leg of an exact journey. */
+export interface TransitLeg {
+  mode?: string;
+  line?: string;
+  color?: string | null;
+  to?: string;
+  minutes?: number;
+  geometry?: string;
+}
+
+/** A stop an estimate was measured from. */
+export interface ViaStop {
+  name?: string;
+  lat?: number;
+  lng?: number;
+  minutes: number;
+  walkMeters?: number | null;
+}
+
+/** The per-mode result carried by a travel-time entry. Only the fields the UI reads are modelled. */
+export interface ModeResult {
+  minutes?: number;
+  transfers?: number;
+  distanceMeters?: number | null;
+  legs?: readonly TransitLeg[];
+  geometry?: string;
+}
+
+/** The modes a travel-time entry can carry an answer for. */
+export type ModeKey = 'transit' | 'car' | 'bike' | 'walk';
+
+/** A stored travel-time entry, as the API returns it. Only the fields the UI reads are modelled. */
+export interface TravelTimeEntry {
+  label?: string;
+  mode?: string | null;
+  estimate?: boolean;
+  transit?: ModeResult;
+  car?: ModeResult;
+  bike?: ModeResult;
+  walk?: ModeResult;
+  via?: readonly ViaStop[];
+}
+
+/** A saved address carrying this search's commute limit. */
+export interface CommuteAddress {
+  label?: string;
+  mode?: string | null;
+  maxMinutes?: number | string | null;
+}
+
+/** The commute filter as stored on a job. */
+export interface CommuteFilterLike {
+  limits?: Record<string, number>;
+}
+
+/** One selectable travel mode, in the order it is shown. */
+export interface TravelMode {
+  key: string;
+  icon: string;
+  labelKey: string;
+}
+
+/** A travel mode an entry actually has an answer for. */
+export interface AvailableMode extends TravelMode {
+  minutes: number;
+  transfers?: number;
+}
+
 /**
  * The modes a travel time can hold, in the order they are shown.
  *
@@ -10,7 +78,7 @@
  * is the reason this feature exists. Cycling last because it is the one people ask for least.
  * @type {Array<{key: string, icon: string, labelKey: string}>}
  */
-export const TRAVEL_MODES = [
+export const TRAVEL_MODES: readonly TravelMode[] = [
   { key: 'transit', icon: '🚆', labelKey: 'travelTime.mode.transit' },
   { key: 'car', icon: '🚗', labelKey: 'travelTime.mode.car' },
   { key: 'bike', icon: '🚲', labelKey: 'travelTime.mode.bike' },
@@ -24,7 +92,7 @@ export const TRAVEL_MODES = [
  * not a commute at all.
  * @type {Array<{mode: string, minutes: number[]}>}
  */
-export const COMMUTE_OPTIONS = [
+export const COMMUTE_OPTIONS: readonly { mode: string; minutes: readonly number[] }[] = [
   { mode: 'transit', minutes: [15, 30, 45, 60] },
   { mode: 'car', minutes: [15, 30, 45] },
   { mode: 'bike', minutes: [15, 30] },
@@ -40,7 +108,7 @@ export const COMMUTE_OPTIONS = [
  * worth a second look and no more than that.
  * @type {number}
  */
-export const ACCEPTABLE_FACTOR = 1.25;
+export const ACCEPTABLE_FACTOR: number = 1.25;
 
 /**
  * The limit on one address's commute, if the search has one.
@@ -52,7 +120,7 @@ export const ACCEPTABLE_FACTOR = 1.25;
  * @param {Object} address - Carrying a `maxMinutes`, as {@link addressesWithBudget} produces.
  * @returns {number|null}
  */
-export function commuteBudgetOf(address) {
+export function commuteBudgetOf(address: CommuteAddress | null | undefined): number | null {
   const minutes = Math.floor(Number(address?.maxMinutes));
   return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
 }
@@ -70,13 +138,16 @@ export function commuteBudgetOf(address) {
  * @returns {Array<Object>} Addresses with a `maxMinutes`. Empty for a job without a filter, which is
  *   what leaves every pin and every badge in the plain, uncoloured state.
  */
-export function addressesWithBudget(addresses, commuteFilter) {
+export function addressesWithBudget(
+  addresses: readonly CommuteAddress[] | null | undefined,
+  commuteFilter: CommuteFilterLike | null | undefined,
+): CommuteAddress[] {
   const limits = commuteFilter?.limits;
   if (limits == null || typeof limits !== 'object') {
     return [];
   }
   return (Array.isArray(addresses) ? addresses : [])
-    .map((address) => ({ ...address, maxMinutes: limits[address?.label] }))
+    .map((address) => ({ ...address, maxMinutes: limits[address?.label ?? ''] }))
     .filter((address) => commuteBudgetOf(address) != null);
 }
 
@@ -93,9 +164,12 @@ export function addressesWithBudget(addresses, commuteFilter) {
  * @param {Object} address - The address it was measured from.
  * @returns {string}
  */
-export function commuteBandMode(entry, address) {
+export function commuteBandMode(
+  entry: TravelTimeEntry | null | undefined,
+  address: CommuteAddress | null | undefined,
+): string {
   for (const candidate of [address?.mode, entry?.mode]) {
-    if (TRAVEL_MODES.some((mode) => mode.key === candidate)) {
+    if (candidate != null && TRAVEL_MODES.some((mode) => mode.key === candidate)) {
       return candidate;
     }
   }
@@ -113,13 +187,16 @@ export function commuteBandMode(entry, address) {
  * @param {Object} address - The address it was measured from, carrying this search's `maxMinutes`.
  * @returns {'good'|'acceptable'|'poor'|null}
  */
-export function commuteBand(entry, address) {
+export function commuteBand(
+  entry: TravelTimeEntry | null | undefined,
+  address: CommuteAddress | null | undefined,
+): 'good' | 'acceptable' | 'poor' | null {
   const budget = commuteBudgetOf(address);
   if (budget == null) {
     return null;
   }
-  const minutes = entry?.[commuteBandMode(entry, address)]?.minutes;
-  if (!Number.isFinite(minutes)) {
+  const minutes = entry?.[commuteBandMode(entry, address) as ModeKey]?.minutes;
+  if (typeof minutes !== 'number' || !Number.isFinite(minutes)) {
     return null;
   }
   if (minutes <= budget) {
@@ -137,7 +214,7 @@ export function commuteBand(entry, address) {
  * @param {string|null|undefined} value
  * @returns {{mode: string, maxMinutes: number}|null} `null` for anything unusable.
  */
-export function parseCommuteFilter(value) {
+export function parseCommuteFilter(value: string | null | undefined): { mode: string; maxMinutes: number } | null {
   const [mode, minutes] = String(value ?? '').split(':');
   const parsed = Number.parseInt(minutes, 10);
   if (!TRAVEL_MODES.some((entry) => entry.key === mode) || !Number.isFinite(parsed) || parsed <= 0) {
@@ -152,8 +229,8 @@ export function parseCommuteFilter(value) {
  * @param {number} minutes
  * @returns {string}
  */
-export function formatMinutes(minutes) {
-  if (!Number.isFinite(minutes)) {
+export function formatMinutes(minutes?: number | null): string {
+  if (typeof minutes !== 'number' || !Number.isFinite(minutes)) {
     return '';
   }
   const rounded = Math.max(0, Math.round(minutes));
@@ -171,8 +248,8 @@ export function formatMinutes(minutes) {
  * @param {number|null|undefined} meters
  * @returns {string|null}
  */
-export function formatRoadDistance(meters) {
-  if (!Number.isFinite(meters)) {
+export function formatRoadDistance(meters: number | null | undefined): string | null {
+  if (typeof meters !== 'number' || !Number.isFinite(meters)) {
     return null;
   }
   return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
@@ -187,12 +264,15 @@ export function formatRoadDistance(meters) {
  * @param {Object} entry
  * @returns {Array<{key: string, icon: string, labelKey: string, minutes: number, transfers?: number}>}
  */
-export function availableModes(entry) {
-  return TRAVEL_MODES.filter((mode) => entry?.[mode.key]?.minutes != null).map((mode) => ({
-    ...mode,
-    minutes: entry[mode.key].minutes,
-    transfers: mode.key === 'transit' ? (entry.transit.transfers ?? 0) : undefined,
-  }));
+export function availableModes(entry: TravelTimeEntry | null | undefined): AvailableMode[] {
+  return TRAVEL_MODES.filter((mode) => entry?.[mode.key as ModeKey]?.minutes != null).map((mode) => {
+    const key = mode.key as ModeKey;
+    return {
+      ...mode,
+      minutes: entry?.[key]?.minutes ?? 0,
+      transfers: key === 'transit' ? (entry?.transit?.transfers ?? 0) : undefined,
+    };
+  });
 }
 
 /**
@@ -209,7 +289,7 @@ export function availableModes(entry) {
  * @returns {{key: string, icon: string, labelKey: string, minutes: number, transfers?: number}|null}
  * `null` when the entry has no answer at all.
  */
-export function primaryMode(entry) {
+export function primaryMode(entry: TravelTimeEntry | null | undefined): AvailableMode | null {
   const modes = availableModes(entry);
   if (modes.length === 0) {
     return null;
@@ -223,6 +303,6 @@ export function primaryMode(entry) {
  * @param {Object} entry
  * @returns {boolean}
  */
-export function hasAnyTime(entry) {
+export function hasAnyTime(entry: TravelTimeEntry | null | undefined): boolean {
   return availableModes(entry).length > 0;
 }

@@ -32,7 +32,7 @@ const BUS_COLOR = '#059669';
  * @param {string} glyph - SVG markup of the white pictogram, drawn on the 44x44 canvas.
  * @returns {string}
  */
-function badge(color, glyph) {
+function badge(color: string, glyph: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${ICON_SIZE}" height="${ICON_SIZE}" viewBox="0 0 44 44">
     <circle cx="22" cy="22" r="19" fill="${color}" stroke="#ffffff" stroke-width="3"/>
     ${glyph}
@@ -65,7 +65,7 @@ const BUS_SVG = badge(
  * @param {string} svg
  * @returns {Promise<ImageData>}
  */
-async function rasterize(svg) {
+async function rasterize(svg: string): Promise<ImageData> {
   const image = new Image();
   image.decoding = 'async';
   image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -75,6 +75,9 @@ async function rasterize(svg) {
   canvas.width = ICON_SIZE;
   canvas.height = ICON_SIZE;
   const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Could not obtain a 2D canvas context to rasterise the transit icon.');
+  }
   context.drawImage(image, 0, 0, ICON_SIZE, ICON_SIZE);
 
   return context.getImageData(0, 0, ICON_SIZE, ICON_SIZE);
@@ -85,7 +88,7 @@ async function rasterize(svg) {
  * drops the images along with everything else.
  * @type {Promise<Record<string, ImageData>>|null}
  */
-let iconsPromise = null;
+let iconsPromise: Promise<Record<string, ImageData>> | null = null;
 
 /**
  * Registers the stop pictograms with the map, unless they are already there.
@@ -93,7 +96,7 @@ let iconsPromise = null;
  * @param {import('maplibre-gl').Map} map
  * @returns {Promise<void>} Resolves once the icons can be referenced by a layer.
  */
-export async function ensureTransitIcons(map) {
+export async function ensureTransitIcons(map: import('maplibre-gl').Map): Promise<void> {
   if (map.hasImage(TRANSIT_RAIL_ICON) && map.hasImage(TRANSIT_BUS_ICON)) {
     return;
   }

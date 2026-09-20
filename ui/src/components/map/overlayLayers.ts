@@ -16,6 +16,25 @@
  */
 
 import { TRANSIT_BUS_ICON, TRANSIT_RAIL_ICON } from './transitIcons.js';
+import type { FilterSpecification, LayerSpecification, SourceSpecification } from 'maplibre-gl';
+
+export interface OverlayLayerView {
+  id: string;
+  type?: string;
+  layout?: unknown;
+}
+
+export interface OverlayMap {
+  getSource(id: string): unknown;
+  addSource(id: string, source: SourceSpecification): unknown;
+  getStyle(): { layers?: readonly OverlayLayerView[] } | undefined;
+  getLayer(id: string): OverlayLayerView | undefined;
+  getFilter(id: string): FilterSpecification | void;
+  setFilter(id: string, filter: FilterSpecification | null | undefined): unknown;
+  addLayer(layer: LayerSpecification, beforeId?: string): unknown;
+  removeLayer(id: string): unknown;
+  setLayoutProperty(id: string, property: string, value: unknown): unknown;
+}
 
 /** Id of the shared OpenMapTiles vector source both overlays read from. */
 export const OPENFREEMAP_SOURCE_ID = 'openfreemap';
@@ -43,7 +62,7 @@ export const TRANSIT_STOPS_LAYER_ID = 'transit-stops';
  * Rail (heavy rail) and transit (tram, subway, light rail) lines, minus yards and sidings which
  * carry a `service` tag and are noise at this scale.
  */
-const TRANSIT_LINE_FILTER = [
+const TRANSIT_LINE_FILTER: FilterSpecification = [
   'all',
   ['match', ['get', 'class'], ['rail', 'transit'], true, false],
   ['!', ['has', 'service']],
@@ -57,7 +76,7 @@ const TRANSIT_LINE_FILTER = [
 const TRANSIT_STOP_CLASSES = ['railway', 'rail', 'bus'];
 
 /** Stations and stops, minus subway entrances - those are staircases, not places to catch a train. */
-const TRANSIT_STOP_FILTER = [
+const TRANSIT_STOP_FILTER: FilterSpecification = [
   'all',
   ['match', ['get', 'class'], TRANSIT_STOP_CLASSES, true, false],
   ['!=', ['get', 'subclass'], 'subway_entrance'],
@@ -80,7 +99,7 @@ const STOP_LABEL_PADDING = 10;
  *
  * @param {import('maplibre-gl').Map} map
  */
-export function ensureOpenFreeMapSource(map) {
+export function ensureOpenFreeMapSource(map: OverlayMap): void {
   if (!map.getSource(OPENFREEMAP_SOURCE_ID)) {
     map.addSource(OPENFREEMAP_SOURCE_ID, {
       type: 'vector',
@@ -97,11 +116,16 @@ export function ensureOpenFreeMapSource(map) {
  * @returns {string|undefined} the layer id, or `undefined` for styles without text labels (the
  * satellite style is raster only, in which case overlays are appended on top).
  */
-export function findFirstSymbolLayerId(map) {
+export function findFirstSymbolLayerId(map: OverlayMap): string | undefined {
   const layers = map.getStyle()?.layers ?? [];
-  for (let i = 0; i < layers.length; i++) {
-    if (layers[i].type === 'symbol' && layers[i].layout?.['text-field']) {
-      return layers[i].id;
+  for (const layer of layers) {
+    if (
+      layer.type === 'symbol' &&
+      layer.layout != null &&
+      typeof layer.layout === 'object' &&
+      'text-field' in layer.layout
+    ) {
+      return layer.id;
     }
   }
   return undefined;
@@ -112,7 +136,7 @@ export function findFirstSymbolLayerId(map) {
  *
  * @returns {import('maplibre-gl').LayerSpecification}
  */
-function buildingsLayer() {
+function buildingsLayer(): LayerSpecification {
   return {
     id: BUILDINGS_LAYER_ID,
     source: OPENFREEMAP_SOURCE_ID,
@@ -152,7 +176,7 @@ function buildingsLayer() {
  *
  * @returns {import('maplibre-gl').LayerSpecification[]}
  */
-function transitLayers() {
+function transitLayers(): LayerSpecification[] {
   return [
     {
       id: 'transit-line-casing',
@@ -243,7 +267,7 @@ function transitLayers() {
  * @param {import('maplibre-gl').Map} map
  * @param {string[]} layerIds
  */
-function removeLayers(map, layerIds) {
+function removeLayers(map: OverlayMap, layerIds: readonly string[]): void {
   for (const id of layerIds) {
     if (map.getLayer(id)) {
       map.removeLayer(id);
@@ -258,7 +282,7 @@ function removeLayers(map, layerIds) {
  * @param {import('maplibre-gl').LayerSpecification[]} layers
  * @param {string|undefined} beforeId
  */
-function addLayers(map, layers, beforeId) {
+function addLayers(map: OverlayMap, layers: readonly LayerSpecification[], beforeId: string | undefined): void {
   for (const layer of layers) {
     if (!map.getLayer(layer.id)) {
       map.addLayer(layer, beforeId);
@@ -279,13 +303,13 @@ const BASEMAP_TRANSIT_POI_LAYER = 'poi_transit';
 const BASEMAP_POI_LAYERS = ['poi_r1', 'poi_r7', 'poi_r20'];
 
 /** Matches everything except the stops the overlay draws itself. */
-const NOT_A_TRANSIT_STOP = ['!', ['match', ['get', 'class'], TRANSIT_STOP_CLASSES, true, false]];
+const NOT_A_TRANSIT_STOP: FilterSpecification = ['!', ['match', ['get', 'class'], TRANSIT_STOP_CLASSES, true, false]];
 
 /**
  * The untouched filters of {@link BASEMAP_POI_LAYERS}, per map, so they can be put back.
  * @type {WeakMap<object, Map<string, unknown>>}
  */
-const originalPoiFilters = new WeakMap();
+const originalPoiFilters = new WeakMap<OverlayMap, Map<string, FilterSpecification | null>>();
 
 /**
  * Hides or restores the stops the basemap draws on its own.
@@ -296,7 +320,7 @@ const originalPoiFilters = new WeakMap();
  * @param {import('maplibre-gl').Map} map
  * @param {boolean} visible
  */
-function setBasemapTransitPoisVisible(map, visible) {
+function setBasemapTransitPoisVisible(map: OverlayMap, visible: boolean): void {
   if (map.getLayer(BASEMAP_TRANSIT_POI_LAYER)) {
     map.setLayoutProperty(BASEMAP_TRANSIT_POI_LAYER, 'visibility', visible ? 'visible' : 'none');
   }
@@ -320,7 +344,12 @@ function setBasemapTransitPoisVisible(map, visible) {
     if (visible) {
       map.setFilter(id, original);
     } else {
-      map.setFilter(id, original ? ['all', original, NOT_A_TRANSIT_STOP] : NOT_A_TRANSIT_STOP);
+      // `['all', original, NOT_A_TRANSIT_STOP]` narrows the layer to everything that is not a stop
+      // the overlay draws itself. Both operands are valid filters and MapLibre evaluates the
+      // combination directly; the assertion only bridges the union of legacy vs expression filter
+      // shapes, which the `all` combinator's element types cannot express jointly.
+      const narrowed = (original ? ['all', original, NOT_A_TRANSIT_STOP] : NOT_A_TRANSIT_STOP) as FilterSpecification;
+      map.setFilter(id, narrowed);
     }
   }
 }
@@ -331,7 +360,7 @@ function setBasemapTransitPoisVisible(map, visible) {
  * @param {import('maplibre-gl').Map} map
  * @param {boolean} enabled
  */
-export function applyBuildingsLayer(map, enabled) {
+export function applyBuildingsLayer(map: OverlayMap, enabled: boolean): void {
   if (!enabled) {
     removeLayers(map, [BUILDINGS_LAYER_ID]);
     return;
@@ -346,7 +375,7 @@ export function applyBuildingsLayer(map, enabled) {
  * @param {import('maplibre-gl').Map} map
  * @param {boolean} enabled
  */
-export function applyTransitLayers(map, enabled) {
+export function applyTransitLayers(map: OverlayMap, enabled: boolean): void {
   setBasemapTransitPoisVisible(map, !enabled);
 
   if (!enabled) {

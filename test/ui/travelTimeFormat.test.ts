@@ -47,24 +47,24 @@ describe('travelTimeFormat', () => {
     };
 
     it('leads with the mode the address is measured in, not the fastest one', () => {
-      expect(primaryMode(refined).key).toBe('transit');
-      expect(primaryMode(refined).minutes).toBe(34);
+      expect(primaryMode(refined)?.key).toBe('transit');
+      expect(primaryMode(refined)?.minutes).toBe(34);
     });
 
     it('does not change when the exact times arrive', () => {
-      expect(primaryMode(estimated).key).toBe(primaryMode(refined).key);
+      expect(primaryMode(estimated)?.key).toBe(primaryMode(refined)?.key);
     });
 
     it('follows an address that is measured by car', () => {
-      expect(primaryMode({ ...refined, mode: 'car' }).key).toBe('car');
+      expect(primaryMode({ ...refined, mode: 'car' })?.key).toBe('car');
     });
 
     it('falls back to public transport for a row written before the mode was recorded', () => {
-      expect(primaryMode({ ...refined, mode: null }).key).toBe('transit');
+      expect(primaryMode({ ...refined, mode: null })?.key).toBe('transit');
     });
 
     it('falls back to what there is when the wanted mode has no answer', () => {
-      expect(primaryMode({ mode: 'transit', car: { minutes: 12 } }).key).toBe('car');
+      expect(primaryMode({ mode: 'transit', car: { minutes: 12 } })?.key).toBe('car');
     });
 
     it('has nothing to say about an entry with no times', () => {
@@ -117,7 +117,7 @@ describe('travelTimeFormat', () => {
      * @param {string} [label]
      * @returns {Object}
      */
-    const entry = (minutes, label = 'Work') => ({ label, mode: 'transit', transit: { minutes, transfers: 1 } });
+    const entry = (minutes: number, label = 'Work') => ({ label, mode: 'transit', transit: { minutes, transfers: 1 } });
 
     it('grades a commute against the ceiling on its address', () => {
       expect(commuteBand(entry(30), work)).toBe('good');

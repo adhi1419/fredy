@@ -20,7 +20,10 @@
  *
  * @type {Object.<string, [[number, number], [number, number]]>}
  */
-export const COUNTRY_BOUNDS = {
+/** A MapLibre `maxBounds` box: `[[west, south], [east, north]]`. */
+export type CountryBounds = [[number, number], [number, number]];
+
+export const COUNTRY_BOUNDS: Record<string, CountryBounds> = {
   at: [
     [9.53, 46.37],
     [17.16, 49.02],
@@ -97,7 +100,7 @@ export const GERMANY_BOUNDS = COUNTRY_BOUNDS.de;
  * @param {string[]} [countries] - ISO 3166-1 alpha-2 codes.
  * @returns {[[number, number], [number, number]]} `[[west, south], [east, north]]`.
  */
-export function boundsForCountries(countries) {
+export function boundsForCountries(countries?: readonly string[] | null): CountryBounds {
   const boxes = (Array.isArray(countries) ? countries : [])
     .map((code) => COUNTRY_BOUNDS[String(code).toLowerCase()])
     .filter((box) => box != null);

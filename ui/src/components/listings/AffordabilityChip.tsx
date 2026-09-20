@@ -3,11 +3,13 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import type { ReactElement } from 'react';
 import { Tooltip } from '@douyinfe/semi-ui-19';
 
 import { VERDICT_COLORS, formatEuro, withAlpha } from '../cards/chartTheme.js';
 import { useFinanceProfile } from '../../hooks/useFinanceProfile.js';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
+import type { Verdict } from '../../types/finance.js';
 
 import './AffordabilityChip.less';
 
@@ -24,7 +26,14 @@ import './AffordabilityChip.less';
  * @param {'affordable'|'stretch'|'unaffordable'|null} [props.verdict] From the listings query.
  * @param {'rent'|'buy'|null} [props.dealType] Deal type of the job, from the listings query.
  */
-export default function AffordabilityChip({ verdict, dealType }) {
+export interface AffordabilityChipProps {
+  /** The listing's affordability verdict, decided server-side. */
+  verdict?: Verdict | null;
+  /** Deal type of the job the listing belongs to. */
+  dealType?: 'rent' | 'buy' | null;
+}
+
+export default function AffordabilityChip({ verdict, dealType }: AffordabilityChipProps): ReactElement | null {
   const t = useTranslation();
   const locale = useLocale();
   const { thresholds } = useFinanceProfile();
@@ -41,7 +50,7 @@ export default function AffordabilityChip({ verdict, dealType }) {
   return (
     <Tooltip
       content={t(`listings.${isRental ? 'rentAffordabilityTooltip' : 'affordabilityTooltip'}.${verdict}`, {
-        price: formatEuro(isRental ? thresholds.rent.affordableMaxRent : thresholds.buy.affordableMaxPrice, locale),
+        price: formatEuro(isRental ? thresholds.rent?.affordableMaxRent : thresholds.buy?.affordableMaxPrice, locale),
       })}
       position="top"
     >

@@ -4,6 +4,17 @@
  */
 
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import type { Map as MapLibreMap } from 'maplibre-gl';
+import type { FeatureCollection, Geometry } from 'geojson';
+
+/** The custom events mapbox-gl-draw dispatches through the map, absent from MapLibre's typed map. */
+type DrawEventName = 'draw.create' | 'draw.update' | 'draw.delete';
+
+/** The narrow slice of the map's evented API used to (un)subscribe from `draw.*` events. */
+interface DrawEventTarget {
+  on(type: DrawEventName, listener: () => void): unknown;
+  off(type: DrawEventName, listener: () => void): unknown;
+}
 
 const drawStyles = [
   {
@@ -136,7 +147,7 @@ export function fixMapboxDrawCompatibility() {
   MapboxDraw.constants.classes.ATTRIBUTION = 'maplibregl-ctrl-attrib';
 }
 
-export function addDrawingControl(map) {
+export function addDrawingControl(map: MapLibreMap): MapboxDraw {
   const draw = new MapboxDraw({
     displayControlsDefault: false,
     controls: {
@@ -150,7 +161,11 @@ export function addDrawingControl(map) {
   return draw;
 }
 
-export function setupAreaFilterEventListeners(map, draw, onDrawingChange) {
+export function setupAreaFilterEventListeners(
+  map: MapLibreMap,
+  draw: MapboxDraw,
+  onDrawingChange?: ((data: FeatureCollection<Geometry>) => void) | null,
+): () => void {
   if (!map || !draw) return () => {};
 
   const handleDrawChange = () => {
@@ -162,16 +177,21 @@ export function setupAreaFilterEventListeners(map, draw, onDrawingChange) {
     }
   };
 
-  map.on('draw.create', handleDrawChange);
-  map.on('draw.update', handleDrawChange);
-  map.on('draw.delete', handleDrawChange);
+  // mapbox-gl-draw dispatches `draw.*` events through the map's evented system, but they are not
+  // part of MapLibre's typed `MapEventType`. Bind them through a narrow view of the two evented
+  // methods that accepts the custom event names, rather than widening the whole map to `any`.
+  const drawEvents = map as unknown as DrawEventTarget;
+
+  drawEvents.on('draw.create', handleDrawChange);
+  drawEvents.on('draw.update', handleDrawChange);
+  drawEvents.on('draw.delete', handleDrawChange);
 
   // Return cleanup function
   return () => {
     if (map) {
-      map.off('draw.create', handleDrawChange);
-      map.off('draw.update', handleDrawChange);
-      map.off('draw.delete', handleDrawChange);
+      drawEvents.off('draw.create', handleDrawChange);
+      drawEvents.off('draw.update', handleDrawChange);
+      drawEvents.off('draw.delete', handleDrawChange);
     }
   };
 }

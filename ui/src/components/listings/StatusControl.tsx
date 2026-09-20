@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import type { MouseEvent, ReactElement } from 'react';
 import { Dropdown, Button, Tooltip } from '@douyinfe/semi-ui-19';
 import { IconChevronDown } from '@douyinfe/semi-icons';
 
@@ -28,12 +29,28 @@ import { useTranslation } from '../../services/i18n/i18n.jsx';
  * @param {boolean} [props.compact=false] - When true, renders smaller for table/grid rows; full size otherwise.
  * @param {(e: React.MouseEvent) => void} [props.onTriggerClick] - Optional click handler to stop propagation on the trigger.
  */
-export default function StatusControl({ status = null, onChange, compact = false, onTriggerClick }) {
+export interface StatusControlProps {
+  /** The current status value. */
+  status?: string | null;
+  /** Called with the new status when the user picks one. */
+  onChange: (value: string | null) => void;
+  /** When true, renders smaller for table/grid rows; full size otherwise. */
+  compact?: boolean;
+  /** Optional click handler to stop propagation on the trigger. */
+  onTriggerClick?: (e: MouseEvent) => void;
+}
+
+export default function StatusControl({
+  status = null,
+  onChange,
+  compact = false,
+  onTriggerClick,
+}: StatusControlProps): ReactElement {
   const t = useTranslation();
   const [open, setOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState(false);
 
-  const STATUS_OPTIONS = [
+  const STATUS_OPTIONS: { value: string | null; label: string }[] = [
     { value: null, label: t('listings.status.none') },
     { value: 'applied', label: t('listings.status.applied') },
     { value: 'rejected', label: t('listings.status.rejected') },
@@ -42,11 +59,11 @@ export default function StatusControl({ status = null, onChange, compact = false
 
   const STATUS_TOOLTIP = t('listings.status.tooltip');
 
-  const optionFor = (status) => STATUS_OPTIONS.find((o) => o.value === status) ?? STATUS_OPTIONS[0];
+  const optionFor = (value: string | null) => STATUS_OPTIONS.find((o) => o.value === value) ?? STATUS_OPTIONS[0];
 
   const current = optionFor(status);
 
-  const handlePick = (next) => {
+  const handlePick = (next: string | null) => {
     setOpen(false);
     if (next === status) return;
     onChange?.(next);

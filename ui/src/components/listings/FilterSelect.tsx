@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import type { ComponentProps, ReactElement, ReactNode } from 'react';
 import { Select, Tooltip } from '@douyinfe/semi-ui-19';
 
 /**
@@ -24,8 +25,22 @@ import { Select, Tooltip } from '@douyinfe/semi-ui-19';
  * @param {string} [props.className] Added to the wrapper element.
  * @param {React.ReactNode} props.children `Select.Option`s.
  */
-export default function FilterSelect({ help, className = '', children, ...selectProps }) {
-  const wrapper = useRef(null);
+export interface FilterSelectProps extends Omit<ComponentProps<typeof Select>, 'children'> {
+  /** Explanation of what this filter does. */
+  help: string;
+  /** Added to the wrapper element. */
+  className?: string;
+  /** `Select.Option`s. */
+  children?: ReactNode;
+}
+
+export default function FilterSelect({
+  help,
+  className = '',
+  children,
+  ...selectProps
+}: FilterSelectProps): ReactElement {
+  const wrapper = useRef<HTMLSpanElement>(null);
   const [hovered, setHovered] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 

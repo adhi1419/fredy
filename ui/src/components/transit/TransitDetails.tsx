@@ -4,8 +4,10 @@
  */
 
 import { Typography } from '@douyinfe/semi-ui-19';
+import type { ReactNode } from 'react';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import { formatMinutes, formatRoadDistance } from './travelTimeFormat.js';
+import type { TransitLeg, TravelTimeEntry, ViaStop } from './travelTimeFormat.js';
 import './transit.less';
 
 const { Text } = Typography;
@@ -20,7 +22,7 @@ const { Text } = Typography;
  * @param {string|null} color - `#rrggbb`.
  * @returns {string|undefined} A colour, or undefined to leave the default in place.
  */
-function textOn(color) {
+function textOn(color: string | null | undefined): string | undefined {
   if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)) {
     return undefined;
   }
@@ -35,7 +37,11 @@ function textOn(color) {
  * @param {Object} props.leg
  * @returns {React.ReactNode}
  */
-function Leg({ leg }) {
+interface LegProps {
+  leg: TransitLeg;
+}
+
+function Leg({ leg }: LegProps): ReactNode {
   const t = useTranslation();
   const walking = leg.mode === 'WALK';
   const badge = leg.line || t(`travelTime.mode.${walking ? 'walk' : 'transit'}`);
@@ -66,10 +72,17 @@ function Leg({ leg }) {
  * @param {Object} props.entry - A travel-time entry, as the API returns it.
  * @returns {React.ReactNode}
  */
-export default function TransitDetails({ entry }) {
+export interface TransitDetailsProps {
+  /** A travel-time entry, as the API returns it. */
+  entry: TravelTimeEntry;
+}
+
+export default function TransitDetails({ entry }: TransitDetailsProps): ReactNode {
   const t = useTranslation();
-  const legs = Array.isArray(entry?.transit?.legs) ? entry.transit.legs : [];
-  const via = Array.isArray(entry?.via) ? entry.via : [];
+  const legList = entry?.transit?.legs;
+  const legs: readonly TransitLeg[] = Array.isArray(legList) ? legList : [];
+  const viaList = entry?.via;
+  const via: readonly ViaStop[] = Array.isArray(viaList) ? viaList : [];
 
   if (legs.length > 0) {
     return (

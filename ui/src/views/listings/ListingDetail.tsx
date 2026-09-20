@@ -47,7 +47,7 @@ import * as timeService from '../../services/time/timeService.js';
 import { formatEuroPrice } from '../../services/price/priceService.js';
 import { getBoundsFromCoords } from './mapUtils.js';
 import { applyRouteLayers, buildRouteData } from './detailMapLayers.js';
-import { TRAVEL_MODES } from '../../components/transit/travelTimeFormat.js';
+import { TRAVEL_MODES, type TravelTimeEntry } from '../../components/transit/travelTimeFormat.js';
 import { getAddresses } from '../../utils.js';
 import { xhrPost, xhrGet, errorMessage } from '../../services/xhr.js';
 
@@ -94,12 +94,6 @@ type InquiryStatus = 'sending' | 'sent' | 'failed' | 'unknown' | string;
 interface ListingDistance {
   label: string;
   meters: number;
-}
-
-interface TravelTimeEntry {
-  label?: string;
-  transit?: { legs?: readonly unknown[] };
-  [mode: string]: unknown;
 }
 
 interface UserSettings {
@@ -1196,7 +1190,7 @@ export default function ListingDetail(): ReactNode {
                         listingId={listing.id}
                         travelTimes={listing.travelTimes}
                         refine
-                        onLoaded={(entries) => setRouteTimes(entries as readonly TravelTimeEntry[])}
+                        onLoaded={(entries) => setRouteTimes(entries)}
                       />
 
                       {/* Sits under the times rather than on the map: it is the same question the

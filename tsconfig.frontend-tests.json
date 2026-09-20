@@ -35,6 +35,12 @@
     "test/ui/priceFormat.test.ts",
     "test/ui/useControllableState.test.ts",
     "test/ui/providerOrder.test.ts",
-    "test/ui/providerCountries.test.ts"
+    "test/ui/providerCountries.test.ts",
+    "test/ui/countryBounds.test.ts",
+    "test/ui/mapOverlayLayers.test.ts",
+    "test/ui/transitFormat.test.ts",
+    "test/ui/travelTimeFormat.test.ts",
+    "test/ui/detailMapLayers.test.ts",
+    "test/ui/polyline.test.ts"
   ]
 }

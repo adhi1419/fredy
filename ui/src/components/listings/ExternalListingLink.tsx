@@ -3,6 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import type { ReactElement } from 'react';
 import { Tooltip } from '@douyinfe/semi-ui-19';
 import { IconLink } from '@douyinfe/semi-icons';
 
@@ -25,7 +26,16 @@ import './ExternalListingLink.less';
  * @param {string} [props.className] Additional class name for the anchor.
  * @returns {import('react').ReactElement|null} The link, or `null` when no `href` is known.
  */
-const ExternalListingLink = ({ href, label, className }) => {
+export interface ExternalListingLinkProps {
+  /** URL of the listing on the original portal. */
+  href?: string;
+  /** Accessible name, also shown as tooltip. */
+  label: string;
+  /** Additional class name for the anchor. */
+  className?: string;
+}
+
+const ExternalListingLink = ({ href, label, className }: ExternalListingLinkProps): ReactElement | null => {
   if (!href) {
     return null;
   }

@@ -12,7 +12,23 @@
  * They mirror the German convention: green S-Bahn, blue U-Bahn, red tram, purple regional rail.
  * @type {Record<string, string>}
  */
-const MODE_COLORS = {
+/** The translate function returned by `useTranslation`. */
+export type TranslateFn = (key: string, variables?: Record<string, string | number>) => string;
+
+/** The colour-bearing fields of a departure or a line, all a badge needs to paint itself. */
+interface ColorableDeparture {
+  mode?: string;
+  color?: string | null;
+}
+
+/** A distinct line calling at a stop. */
+export interface LineInfo {
+  line: string;
+  mode: string;
+  color: string | null;
+}
+
+const MODE_COLORS: Record<string, string> = {
   SUBWAY: '#2563eb',
   METRO: '#2563eb',
   TRAM: '#ef4444',
@@ -35,11 +51,12 @@ const DEFAULT_MODE_COLOR = '#64748b';
  * @param {{mode?: string, color?: string|null}} departure
  * @returns {string} A CSS colour.
  */
-export function departureColor(departure) {
+export function departureColor(departure: ColorableDeparture | null | undefined): string {
   if (departure?.color) {
     return departure.color;
   }
-  return MODE_COLORS[departure?.mode] ?? DEFAULT_MODE_COLOR;
+  const mode = departure?.mode;
+  return (mode ? MODE_COLORS[mode] : undefined) ?? DEFAULT_MODE_COLOR;
 }
 
 /**
@@ -48,7 +65,7 @@ export function departureColor(departure) {
  * @param {string} background - `#rgb` or `#rrggbb`.
  * @returns {string}
  */
-export function contrastingTextColor(background) {
+export function contrastingTextColor(background?: string | null): string {
   const hex = String(background || '').replace('#', '');
   const full = hex.length === 3 ? [...hex].map((char) => char + char).join('') : hex;
 
@@ -71,7 +88,7 @@ export function contrastingTextColor(background) {
  * @param {string} mode
  * @returns {string}
  */
-export function modeLabelKey(mode) {
+export function modeLabelKey(mode?: string | null): string {
   return `transit.mode.${(mode || 'UNKNOWN').toLowerCase()}`;
 }
 
@@ -82,7 +99,7 @@ export function modeLabelKey(mode) {
  * @param {number} [now=Date.now()]
  * @returns {number}
  */
-export function minutesUntil(isoTime, now = Date.now()) {
+export function minutesUntil(isoTime: string, now: number = Date.now()): number {
   return Math.floor((new Date(isoTime).getTime() - now) / 60000);
 }
 
@@ -93,7 +110,7 @@ export function minutesUntil(isoTime, now = Date.now()) {
  * @param {string} [locale='de-DE']
  * @returns {string}
  */
-export function formatClockTime(isoTime, locale = 'de-DE') {
+export function formatClockTime(isoTime: string, locale: string = 'de-DE'): string {
   return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(isoTime));
 }
 
@@ -106,7 +123,7 @@ export function formatClockTime(isoTime, locale = 'de-DE') {
  * @param {number} [now=Date.now()]
  * @returns {string|null}
  */
-export function formatCountdown(isoTime, t, now = Date.now()) {
+export function formatCountdown(isoTime: string, t: TranslateFn, now: number = Date.now()): string | null {
   const minutes = minutesUntil(isoTime, now);
 
   if (minutes < 0) {
@@ -130,8 +147,8 @@ export function formatCountdown(isoTime, t, now = Date.now()) {
  * @param {Array<{line: string, mode: string, color: string|null}>} departures
  * @returns {Array<{line: string, mode: string, color: string|null}>}
  */
-export function distinctLines(departures) {
-  const seen = new Map();
+export function distinctLines(departures: readonly LineInfo[] | null | undefined): LineInfo[] {
+  const seen = new Map<string, LineInfo>();
 
   for (const departure of departures || []) {
     const key = `${departure.mode}:${departure.line}`;
@@ -149,8 +166,8 @@ export function distinctLines(departures) {
  * @param {number} meters
  * @returns {string}
  */
-export function formatDistance(meters) {
-  if (!Number.isFinite(meters)) {
+export function formatDistance(meters?: number | null): string {
+  if (typeof meters !== 'number' || !Number.isFinite(meters)) {
     return '';
   }
   if (meters < 1000) {

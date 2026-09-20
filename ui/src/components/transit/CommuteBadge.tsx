@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
 import {
   addressesWithBudget,
@@ -13,6 +13,7 @@ import {
   hasAnyTime,
   primaryMode,
 } from './travelTimeFormat.js';
+import type { CommuteFilterLike, TravelTimeEntry } from './travelTimeFormat.js';
 import { getAddresses } from '../../utils.js';
 import { useSelector } from '../../services/state/store';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
@@ -40,10 +41,30 @@ import './transit.less';
  *   existed.
  * @returns {React.ReactNode}
  */
-export default function CommuteBadge({ travelTimes, jobId }) {
+export interface CommuteBadgeProps {
+  travelTimes?: readonly TravelTimeEntry[];
+  /**
+   * The job this listing was found by, whose limits it is judged against. Without one the badge
+   * simply shows the times, which is what it did before limits existed.
+   */
+  jobId?: string;
+}
+
+/** A job as read from the store: only the fields this badge needs to colour against a limit. */
+interface CommuteJob {
+  id?: string;
+  commuteFilter?: CommuteFilterLike | null;
+}
+
+interface CommuteBadgeState {
+  userSettings: { settings?: unknown };
+  jobsData: { jobs?: readonly CommuteJob[] };
+}
+
+export default function CommuteBadge({ travelTimes, jobId }: CommuteBadgeProps): ReactNode {
   const t = useTranslation();
-  const userSettings = useSelector((state) => state.userSettings.settings);
-  const jobs = useSelector((state) => state.jobsData.jobs);
+  const userSettings = useSelector<CommuteBadgeState, unknown>((state) => state.userSettings.settings);
+  const jobs = useSelector<CommuteBadgeState, readonly CommuteJob[] | undefined>((state) => state.jobsData.jobs);
 
   const budgeted = useMemo(() => {
     const job = (jobs ?? []).find((candidate) => candidate?.id === jobId);
@@ -59,6 +80,9 @@ export default function CommuteBadge({ travelTimes, jobId }) {
     <div className="commute-badge">
       {usable.map((entry) => {
         const mode = primaryMode(entry);
+        if (mode == null) {
+          return null;
+        }
         const address = budgeted.find((candidate) => candidate?.label === entry.label);
         // Only when the number on the card is the number the limit was measured against. The two
         // can come apart on a row written before the mode was recorded - the card then leads with

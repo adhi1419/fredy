@@ -3,6 +3,9 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
+import type { LayerSpecification } from 'maplibre-gl';
+import type { TravelTimeEntry } from '../../components/transit/travelTimeFormat.js';
 import { distanceMeters } from './mapUtils.js';
 import { decodePolyline, MOTIS_POLYLINE_PRECISION } from './polyline.js';
 
@@ -14,13 +17,54 @@ export const ROUTE_LABEL_LAYER_ID = 'route-distance';
 /** Same blue as the listing marker, so the line reads as belonging to it. */
 const ROUTE_COLOR = '#3FB1CE';
 
+type Coordinate = [number, number];
+export type RouteMode = 'straight' | 'car' | 'bike' | 'walk' | 'transit';
+
+interface RouteListing {
+  latitude: number;
+  longitude: number;
+}
+
+interface RouteHome {
+  label?: string;
+  coords: { lat: number; lng: number };
+}
+
+interface RouteLine {
+  coordinates: Coordinate[];
+  color: string | null;
+  walking?: boolean;
+}
+
+interface RouteResult {
+  lines: RouteLine[];
+  label: string;
+}
+
+export interface RouteMap {
+  getSource(id: string): unknown;
+  addSource(id: string, source: { type: 'geojson'; data: RouteData }): unknown;
+  removeSource(id: string): unknown;
+  getLayer(id: string): unknown;
+  addLayer(layer: LayerSpecification): unknown;
+  removeLayer(id: string): unknown;
+}
+
+interface RouteProperties {
+  color?: string;
+  walking?: boolean;
+  distance?: string;
+}
+
+export type RouteData = FeatureCollection<LineString | Point, RouteProperties>;
+
 /**
  * A distance in the units people use.
  *
  * @param {number} meters
  * @returns {string}
  */
-function formatDistance(meters) {
+function formatDistance(meters: number): string {
   return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
 }
 
@@ -34,12 +78,12 @@ function formatDistance(meters) {
  * @param {Array<[number, number]>} coordinates
  * @returns {[number, number]}
  */
-function midpointOf(coordinates) {
+function midpointOf(coordinates: readonly Coordinate[]): Coordinate {
   if (coordinates.length < 2) {
-    return coordinates[0];
+    return coordinates[0] ?? [0, 0];
   }
 
-  const lengths = [];
+  const lengths: number[] = [];
   let total = 0;
   for (let i = 1; i < coordinates.length; i++) {
     const dx = coordinates[i][0] - coordinates[i - 1][0];
@@ -60,7 +104,7 @@ function midpointOf(coordinates) {
     travelled += lengths[i];
   }
 
-  return coordinates[coordinates.length - 1];
+  return coordinates[coordinates.length - 1] ?? [0, 0];
 }
 
 /**
@@ -76,8 +120,13 @@ function midpointOf(coordinates) {
  * @param {'straight'|'car'|'bike'|'walk'|'transit'} routeMode
  * @returns {{lines: Array<{coordinates: Array<[number, number]>, color: string|null}>, label: string}}
  */
-function routeFor(listing, home, travelTime, routeMode) {
-  const straight = () => {
+function routeFor(
+  listing: RouteListing,
+  home: RouteHome,
+  travelTime: TravelTimeEntry | undefined,
+  routeMode: RouteMode,
+): RouteResult {
+  const straight = (): RouteResult => {
     const meters = distanceMeters(listing.latitude, listing.longitude, home.coords.lat, home.coords.lng);
     return {
       lines: [
@@ -99,7 +148,8 @@ function routeFor(listing, home, travelTime, routeMode) {
   }
 
   if (routeMode === 'transit') {
-    const legs = Array.isArray(travelTime.transit?.legs) ? travelTime.transit.legs : [];
+    const transit = travelTime.transit;
+    const legs = Array.isArray(transit?.legs) ? transit.legs : [];
     const lines = legs
       .map((leg) => ({
         coordinates: decodePolyline(leg.geometry, MOTIS_POLYLINE_PRECISION),
@@ -115,11 +165,14 @@ function routeFor(listing, home, travelTime, routeMode) {
     }
     // Drawn from the origin outwards here, unlike the straight line, because that is the direction
     // the journey is described in and reversing several legs would only scramble their order.
-    return { lines, label: `${travelTime.transit.minutes} min` };
+    return { lines, label: `${transit?.minutes} min` };
   }
 
   const mode = travelTime[routeMode];
-  const coordinates = mode?.geometry ? decodePolyline(mode.geometry, MOTIS_POLYLINE_PRECISION) : [];
+  if (mode == null) {
+    return straight();
+  }
+  const coordinates = mode.geometry ? decodePolyline(mode.geometry, MOTIS_POLYLINE_PRECISION) : [];
   if (coordinates.length < 2) {
     return straight();
   }
@@ -147,31 +200,35 @@ function routeFor(listing, home, travelTime, routeMode) {
  * @param {Array<Object>} [travelTimes] - Stored travel times of this listing, keyed by address label.
  * @returns {{type: 'FeatureCollection', features: Array<Object>}}
  */
-export function buildRouteData(listing, homeAddresses, travelTimes = [], routeMode = 'straight') {
+export function buildRouteData(
+  listing: RouteListing,
+  homeAddresses: readonly RouteHome[] | null | undefined,
+  travelTimes: readonly TravelTimeEntry[] = [],
+  routeMode: RouteMode = 'straight',
+): RouteData {
   const homes = Array.isArray(homeAddresses) ? homeAddresses : [];
   const byLabel = new Map((Array.isArray(travelTimes) ? travelTimes : []).map((entry) => [entry.label, entry]));
 
   return {
     type: 'FeatureCollection',
     features: homes.flatMap((home) => {
-      const { lines, label } = routeFor(listing, home, byLabel.get(home.label), routeMode);
+      const { lines, label } = routeFor(listing, home, byLabel.get(home.label ?? ''), routeMode);
       const labelPrefix = home.label ? `${home.label}: ` : '';
       // Halfway along the whole journey rather than halfway along one leg, so the label lands on
       // the middle of what is drawn even when it is drawn in five pieces.
       const midpoint = midpointOf(lines.flatMap((line) => line.coordinates));
 
-      return [
-        ...lines.map((line) => ({
-          type: 'Feature',
-          geometry: { type: 'LineString', coordinates: line.coordinates },
-          properties: { ...(line.color ? { color: line.color } : {}), walking: line.walking === true },
-        })),
-        {
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: midpoint },
-          properties: { distance: `${labelPrefix}${label}` },
-        },
-      ];
+      const lineFeatures: Array<Feature<LineString, RouteProperties>> = lines.map((line) => ({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: line.coordinates },
+        properties: { ...(line.color ? { color: line.color } : {}), walking: line.walking === true },
+      }));
+      const labelFeature: Feature<Point, RouteProperties> = {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: midpoint },
+        properties: { distance: `${labelPrefix}${label}` },
+      };
+      return [...lineFeatures, labelFeature];
     }),
   };
 }
@@ -186,7 +243,7 @@ export function buildRouteData(listing, homeAddresses, travelTimes = [], routeMo
  * @param {{type: string, features: Array<Object>}} data - From `buildRouteData`.
  * @returns {void}
  */
-export function applyRouteLayers(map, data) {
+export function applyRouteLayers(map: RouteMap | null | undefined, data: RouteData | null | undefined): void {
   if (map == null) return;
 
   if (data == null || data.features.length === 0) {
@@ -195,7 +252,12 @@ export function applyRouteLayers(map, data) {
   }
 
   const existing = map.getSource(ROUTE_SOURCE_ID);
-  if (existing != null) {
+  if (
+    existing != null &&
+    typeof existing === 'object' &&
+    'setData' in existing &&
+    typeof existing.setData === 'function'
+  ) {
     existing.setData(data);
   } else {
     map.addSource(ROUTE_SOURCE_ID, { type: 'geojson', data });
@@ -255,7 +317,7 @@ export function applyRouteLayers(map, data) {
  * @param {Object} map - A MapLibre map.
  * @returns {void}
  */
-export function removeRouteLayers(map) {
+export function removeRouteLayers(map: RouteMap | null | undefined): void {
   if (map == null) return;
 
   for (const layerId of [ROUTE_LABEL_LAYER_ID, ROUTE_LINE_LAYER_ID, ROUTE_CASING_LAYER_ID]) {

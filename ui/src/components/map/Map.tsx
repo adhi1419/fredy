@@ -3,13 +3,24 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { Button } from '@douyinfe/semi-ui-19';
 import { IconFullScreenStroked, IconShrinkScreenStroked } from '@douyinfe/semi-icons';
+import type {
+  Map as MapLibreMap,
+  Marker,
+  Popup,
+  MapMouseEvent,
+  MapLayerMouseEvent,
+  MapGeoJSONFeature,
+  StyleSpecification,
+} from 'maplibre-gl';
+import type { FeatureCollection, Geometry } from 'geojson';
 import maplibregl from './maplibre.js';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { fixMapboxDrawCompatibility, addDrawingControl, setupAreaFilterEventListeners } from './MapDrawingExtension.js';
+import type MapboxDraw from '@mapbox/mapbox-gl-draw';
 import { getBoundsFromCoords } from '../../views/listings/mapUtils.js';
 import {
   applyBuildingsLayer,
@@ -24,7 +35,8 @@ import DeparturesBoard from '../transit/DeparturesBoard.jsx';
 import { useControllableState } from '../../hooks/useControllableState.js';
 import { useSelector } from '../../services/state/store.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
-import MapControls from './MapControls.jsx';
+import MapControls, { type MapControlsPatch, type MapStyleName } from './MapControls.jsx';
+import type { UserSettingsRootState } from '../../services/state/userSettingsState.js';
 import './Map.less';
 
 /**
@@ -46,7 +58,7 @@ const PICK_MARKER_COLOR = '#f5a623';
  */
 export const HOME_MARKER_COLOR = 'red';
 
-export const STYLES = {
+export const STYLES: Record<MapStyleName, string | StyleSpecification> = {
   STANDARD: 'https://tiles.openfreemap.org/styles/bright',
   SATELLITE: {
     version: 8,
@@ -90,7 +102,7 @@ export const STYLES = {
 };
 
 /** Center of Germany, the fallback view when a consumer has nothing better to show. */
-const GERMANY_CENTER = [10.4515, 51.1657];
+const GERMANY_CENTER: [number, number] = [10.4515, 51.1657];
 
 /**
  * The one map in the app.
@@ -140,6 +152,49 @@ const GERMANY_CENTER = [10.4515, 51.1657];
  * @param {import('react').ReactNode} [props.children] - Freely positioned overlay UI, rendered
  *   inside the shell so it travels into the fullscreen overlay without a portal.
  */
+export interface MapProps {
+  /** Constructor only; later changes are ignored. */
+  initialCenter?: [number, number];
+  /** Constructor only. */
+  initialZoom?: number;
+  /** ISO 3166-1 alpha-2 codes the map should cover. Defaults to Germany. */
+  countries?: readonly string[];
+  /** Set false for an embedded comparison map that must fit listings across a wider viewport. */
+  constrainToCountries?: boolean;
+  /** Controlled basemap. */
+  style?: MapStyleName;
+  /** Controlled 3D buildings overlay. */
+  show3dBuildings?: boolean;
+  /** Controlled public transport overlay. */
+  showTransit?: boolean;
+  defaultStyle?: MapStyleName;
+  defaultShow3dBuildings?: boolean;
+  defaultShowTransit?: boolean;
+  onControlsChange?: ((patch: MapControlsPatch) => void) | null;
+  /** When to show the controls panel. */
+  controlsMode?: 'expanded' | 'always' | 'never';
+  /** Extra row under the transit switch. */
+  transitExtra?: ReactNode;
+  /** Controlled expansion. */
+  expanded?: boolean;
+  defaultExpanded?: boolean;
+  onExpandedChange?: ((expanded: boolean) => void) | null;
+  showExpandButton?: boolean;
+  /** Require ctrl/two fingers while embedded. Lifted automatically while expanded. */
+  cooperativeGestures?: boolean;
+  /** Let the user drop a single draggable pin. Not combinable with `enableDrawing`. */
+  pickMode?: boolean;
+  onPick?: ((coords: { lat: number; lng: number }) => void) | null;
+  onMapReady?: ((map: MapLibreMap) => void) | null;
+  enableDrawing?: boolean;
+  initialSpatialFilter?: FeatureCollection<Geometry> | null;
+  onDrawingChange?: ((data: FeatureCollection<Geometry>) => void) | null;
+  /** Extra boxes for the top right column, below the map's own controls. */
+  panels?: ReactNode;
+  /** Freely positioned overlay UI, rendered inside the shell. */
+  children?: ReactNode;
+}
+
 export default function Map({
   initialCenter = GERMANY_CENTER,
   initialZoom = 4,
@@ -167,20 +222,20 @@ export default function Map({
   onDrawingChange = null,
   panels = null,
   children = null,
-}) {
+}: MapProps) {
   const t = useTranslation();
   // Read here rather than passed in: departure boards are part of what the transit overlay *is*,
   // so every map that shows stops shows them, and the hover preference follows the user around.
-  const userSettings = useSelector((state) => state.userSettings.settings);
+  const userSettings = useSelector((state: UserSettingsRootState) => state.userSettings.settings);
   const language = userSettings?.language ?? 'en';
   const transitHoverPopups = userSettings?.transit_hover_popups === true;
-  const shellRef = useRef(null);
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const drawRef = useRef(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const drawRef = useRef<MapboxDraw | null>(null);
   const hasFittedToInitialAreaRef = useRef(false);
   const isInitialStyleRef = useRef(true);
-  const focusBeforeExpandRef = useRef(null);
+  const focusBeforeExpandRef = useRef<Element | null>(null);
 
   const [styleValue, setStyleValue] = useControllableState(style, defaultStyle);
   const [buildingsValue, setBuildingsValue] = useControllableState(show3dBuildings, defaultShow3dBuildings);
@@ -190,18 +245,18 @@ export default function Map({
   /**
    * The single entry point for control changes, so a controlled parent is told once per action.
    */
-  const applyControls = (patch) => {
+  const applyControls = (patch: MapControlsPatch) => {
     // Satellite is raster imagery with no building footprints to extrude, so the two cannot both
     // be on. Coupling them here keeps every consumer from having to know that.
-    const next = patch.style === 'SATELLITE' ? { ...patch, show3dBuildings: false } : patch;
-    if ('style' in next) setStyleValue(next.style);
-    if ('show3dBuildings' in next) setBuildingsValue(next.show3dBuildings);
-    if ('showTransit' in next) setTransitValue(next.showTransit);
+    const next: MapControlsPatch = patch.style === 'SATELLITE' ? { ...patch, show3dBuildings: false } : patch;
+    if ('style' in next && next.style !== undefined) setStyleValue(next.style);
+    if ('show3dBuildings' in next && next.show3dBuildings !== undefined) setBuildingsValue(next.show3dBuildings);
+    if ('showTransit' in next && next.showTransit !== undefined) setTransitValue(next.showTransit);
     onControlsChange?.(next);
   };
 
   const setExpanded = useCallback(
-    (next) => {
+    (next: boolean) => {
       setIsExpanded(next);
       onExpandedChange?.(next);
     },
@@ -211,14 +266,15 @@ export default function Map({
   // Initialize map - ONLY when container changes, never reinitialize
   useEffect(() => {
     if (mapRef.current) return; // Map already exists, don't reinitialize
+    const container = mapContainerRef.current;
+    if (!container) return;
 
     mapRef.current = new maplibregl.Map({
-      container: mapContainerRef.current,
+      container,
       style: STYLES[styleValue],
       center: initialCenter,
       zoom: initialZoom,
       maxBounds: constrainToCountries ? boundsForCountries(countries) : undefined,
-      antialias: true,
       cooperativeGestures,
     });
 
@@ -284,8 +340,10 @@ export default function Map({
       }
 
       if (!hasFittedToInitialAreaRef.current) {
-        const coords = initialSpatialFilter.features.flatMap((feature) =>
-          feature.geometry?.type === 'Polygon' ? feature.geometry.coordinates.flat() : [],
+        const coords = initialSpatialFilter.features.flatMap((feature): Array<[number, number]> =>
+          feature.geometry?.type === 'Polygon'
+            ? feature.geometry.coordinates.flat().map(([lng, lat]) => [lng, lat] as [number, number])
+            : [],
         );
         const bounds = getBoundsFromCoords(coords);
         if (bounds) {
@@ -391,14 +449,13 @@ export default function Map({
     if (!mapRef.current || !transitValue || pickMode) return undefined;
 
     const mapInstance = mapRef.current;
-    /** @type {{popup: import('maplibre-gl').Popup, key: string}|null} */
-    let open = null;
-    let closeTimer = null;
+    let open: { popup: Popup; key: string } | null = null;
+    let closeTimer: ReturnType<typeof setTimeout> | null = null;
     /** Set while a click is opening a board, so the same click cannot also close it. */
     let justOpened = false;
 
     const cancelClose = () => {
-      clearTimeout(closeTimer);
+      if (closeTimer != null) clearTimeout(closeTimer);
       closeTimer = null;
     };
 
@@ -414,12 +471,12 @@ export default function Map({
       closeTimer = setTimeout(closeNow, 250);
     };
 
-    const openDepartures = (event) => {
-      const feature = event.features?.[0];
-      if (!feature) return;
+    const openDepartures = (event: MapLayerMouseEvent) => {
+      const feature: MapGeoJSONFeature | undefined = event.features?.[0];
+      if (!feature || feature.geometry.type !== 'Point') return;
 
       const [lng, lat] = feature.geometry.coordinates;
-      const name = feature.properties?.name;
+      const name = typeof feature.properties?.name === 'string' ? feature.properties.name : undefined;
       const key = `${lng},${lat},${name ?? ''}`;
 
       cancelClose();
@@ -487,7 +544,7 @@ export default function Map({
     // Two guards rather than one, because getting this wrong makes the feature worse than it was:
     // the flag is set by the opener itself and cannot disagree with it, and the feature query
     // covers clicking straight from one stop to another.
-    const closeOnMapClick = (event) => {
+    const closeOnMapClick = (event: MapMouseEvent) => {
       if (justOpened) {
         justOpened = false;
         return;
@@ -502,16 +559,17 @@ export default function Map({
     // Anywhere outside the map: the filter panel, the sidebar, the page around it. Canvas clicks
     // never reach this usefully - the target is always the canvas - which is what `closeOnMapClick`
     // is for.
-    const closeOnOutsideClick = (event) => {
+    const closeOnOutsideClick = (event: MouseEvent) => {
       if (open == null) return;
-      const insidePopup = open.popup.getElement()?.contains(event.target);
-      const insideMap = mapInstance.getContainer().contains(event.target);
+      const target = event.target instanceof Node ? event.target : null;
+      const insidePopup = target != null && open.popup.getElement()?.contains(target);
+      const insideMap = target != null && mapInstance.getContainer().contains(target);
       if (!insidePopup && !insideMap) {
         closeNow();
       }
     };
 
-    const closeOnEscape = (event) => {
+    const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && open != null) {
         closeNow();
       }
@@ -555,7 +613,7 @@ export default function Map({
   useEffect(() => {
     if (!mapRef.current) return undefined;
 
-    let inner = null;
+    let inner: number | null = null;
     const outer = requestAnimationFrame(() => {
       inner = requestAnimationFrame(() => mapRef.current?.resize());
     });
@@ -587,7 +645,7 @@ export default function Map({
   useEffect(() => {
     if (!isExpanded || pickMode) return undefined;
 
-    const onKeyDown = (event) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       // An open popup owns the first Escape. Its own handler is registered by a child effect and
       // therefore runs before this one, but it cannot stop this listener from also firing, so the
@@ -607,7 +665,7 @@ export default function Map({
       focusBeforeExpandRef.current = document.activeElement;
       // Queried rather than held in a ref: Semi's Button does not promise to forward one to the
       // underlying element, and all this needs is something focusable inside the overlay.
-      shellRef.current?.querySelector('.map-shell__expand')?.focus();
+      shellRef.current?.querySelector<HTMLElement>('.map-shell__expand')?.focus();
       return;
     }
     if (focusBeforeExpandRef.current instanceof HTMLElement) {
@@ -621,15 +679,15 @@ export default function Map({
     if (!mapRef.current || !pickMode) return undefined;
 
     const mapInstance = mapRef.current;
-    let marker = null;
+    let marker: Marker | null = null;
 
-    const place = ({ lng, lat }) => {
+    const place = ({ lng, lat }: { lng: number; lat: number }) => {
       if (marker == null) {
         marker = new maplibregl.Marker({ color: PICK_MARKER_COLOR, draggable: true })
           .setLngLat([lng, lat])
           .addTo(mapInstance);
         marker.on('dragend', () => {
-          const position = marker.getLngLat();
+          const position = marker!.getLngLat();
           onPick?.({ lat: position.lat, lng: position.lng });
         });
       } else {
@@ -638,7 +696,7 @@ export default function Map({
       onPick?.({ lat, lng });
     };
 
-    const onClick = (event) => place(event.lngLat);
+    const onClick = (event: MapMouseEvent) => place(event.lngLat);
 
     mapInstance.on('click', onClick);
 
