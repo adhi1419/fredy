@@ -194,7 +194,7 @@ describe('themes.less', () => {
   });
 
   it('keeps non-DOM chart fallbacks synchronized with the dark theme tokens', () => {
-    const chartSource = fs.readFileSync(path.join(uiSrc, 'components/cards/chartTheme.js'), 'utf8');
+    const chartSource = fs.readFileSync(path.join(uiSrc, 'components/cards/chartTheme.ts'), 'utf8');
     const dark = valuesIn(':root');
     for (const token of [
       '--f-accent',
