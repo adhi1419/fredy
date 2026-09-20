@@ -67,10 +67,29 @@ describe('final responsive slice', () => {
     expect(savedSearchesSource).toContain('role="menuitem"');
     expect(savedSearchesSource).toContain("aria-label={t('jobs.index.overflowFor'");
     expect(savedSearchesSource).toContain("aria-label={t('jobs.index.directActionFor'");
-    expect(savedSearchesSource).toContain('<Tag color={job.enabled');
+    // Direction A: a self-describing state chip (icon + text, never colour-only) replaces the
+    // generic Semi Tag so Ready/Paused/Running/Shared each read without relying on hue alone.
+    expect(savedSearchesSource).toContain('savedSearches__stateChip savedSearches__stateChip--');
+    expect(savedSearchesSource).not.toContain('<Tag');
     expect(savedSearchesSource).not.toContain('<Switch');
     expect(savedSearchesSource).toContain('disabled={readOnly}');
     expect(savedSearchesSource).toContain('disabled={directAction.disabled}');
+  });
+
+  it('renders the Direction A marketplace card evidence: run health, repair promise, and edit cue', () => {
+    expect(savedSearchesSource).toContain("t('jobs.index.runHealthReady')");
+    expect(savedSearchesSource).toContain("t('jobs.index.repairPromise')");
+    expect(savedSearchesSource).toContain('className="savedSearches__editCue"');
+    expect(savedSearchesSource).toContain('className="savedSearches__repairNote"');
+    // The whole card stays the direct edit target; the cue is a hint, not a second control.
+    expect(savedSearchesSource).toContain("{t('jobs.index.editHint')} →");
+    // The stack is spaced cards, not a bordered dense list.
+    expect(savedSearchesStyles).toMatch(/&__list\s*{[\s\S]*?gap:\s*@space-4;/);
+    expect(savedSearchesStyles).toMatch(/&__row\s*{[\s\S]*?border-radius:\s*@radius-card;/);
+    expect(savedSearchesStyles).toMatch(/&__stateChip\s*{/);
+    expect(savedSearchesStyles).toContain('grid-template-columns: minmax(0, 1fr) 44px auto;');
+    expect(savedSearchesStyles).toMatch(/\.savedSearches__search\s*{[\s\S]*?grid-column:\s*1 \/ -1;/);
+    expect(savedSearchesStyles).toMatch(/\.savedSearches__sortDirection\s*{[\s\S]*?width:\s*44px;/);
   });
 
   it('preserves SSE, run, pause, delete, filters, and pagination behavior in the deep feature module', () => {

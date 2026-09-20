@@ -178,6 +178,8 @@
   "jobs.index.state": "State",
   "jobs.index.lastRun": "Last run",
   "jobs.index.neverRun": "Never run",
+  "jobs.index.runHealthReady": "Ready",
+  "jobs.index.repairPromise": "Every run reconciles incomplete work",
   "jobs.index.running": "Running",
   "jobs.index.active": "Active",
   "jobs.index.paused": "Paused",

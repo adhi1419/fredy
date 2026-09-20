@@ -178,6 +178,8 @@
   "jobs.index.state": "Durum",
   "jobs.index.lastRun": "Son çalıştırma",
   "jobs.index.neverRun": "Henüz çalışmadı",
+  "jobs.index.runHealthReady": "Hazır",
+  "jobs.index.repairPromise": "Her çalıştırma eksik işi uzlaştırır",
   "jobs.index.running": "Çalışıyor",
   "jobs.index.active": "Aktif",
   "jobs.index.paused": "Duraklatıldı",

@@ -738,7 +738,9 @@ export default function ListingDetail(): ReactNode {
         <div className="listing-detail__heading-copy">
           <span className="listing-detail__eyebrow">{t('listing.detail.eyebrow')}</span>
           <Title heading={1}>{listing?.title || t('listing.detail.defaultTitle')}</Title>
-          <Text type="tertiary">{t('listing.detail.headingDescription')}</Text>
+          <Text className="listing-detail__heading-description" type="tertiary">
+            {t('listing.detail.headingDescription')}
+          </Text>
         </div>
         <div className="listing-detail__heading-actions">
           <span
@@ -884,8 +886,10 @@ export default function ListingDetail(): ReactNode {
                     {listing?.title || t('listing.detail.defaultTitle')}
                   </Title>
                 </div>
-                <span className="listing-detail__fit-status">
-                  {listingApplied ? t('home.activityApplied') : t('home.activityNew')}
+                <span
+                  className={`listing-detail__fit-status${lifecycle !== 'new' ? ' listing-detail__fit-status--selected' : ''}`}
+                >
+                  {lifecycleLabel}
                 </span>
               </div>
               <div className="listing-detail__fit-address">
@@ -926,7 +930,7 @@ export default function ListingDetail(): ReactNode {
                     {listing.rooms ? t('listing.detail.fieldRoomsValue', { count: listing.rooms }) : t('common.na')}
                   </strong>
                 </div>
-                <div className="listing-detail__fit-metric">
+                <div className="listing-detail__fit-metric listing-detail__fit-metric--travel">
                   <span>{t('listing.detail.distanceToHome')}</span>
                   <strong className="listing-detail__fit-metric-value--accent">
                     {primaryTravel
