@@ -22,6 +22,16 @@ export interface HomeSortOption {
   readonly labelKey: string;
 }
 
+export interface HomeProviderMetadata {
+  readonly id?: string | null;
+  readonly name?: string | null;
+}
+
+export interface HomeProviderOption {
+  readonly id: string;
+  readonly name: string;
+}
+
 export interface HomeViewState {
   view: HomeView;
   q: string | null;
@@ -124,6 +134,34 @@ export function normalizeProviderIds(value: unknown): string[] {
         .filter(Boolean),
     ),
   ];
+}
+
+/**
+ * Derive provider controls from providers that are present in the accessible listing set. Selected
+ * IDs are retained after the available set so a stale URL selection remains clearable.
+ */
+export function homeProviderOptions(
+  providerMetadata: readonly HomeProviderMetadata[] | null | undefined,
+  availableProviders: readonly string[] | null | undefined,
+  selectedProviderIds: readonly string[] = [],
+): HomeProviderOption[] {
+  const namesById = new Map<string, string>();
+  for (const provider of providerMetadata ?? []) {
+    const id = nonEmptyProviderValue(provider.id) ?? nonEmptyProviderValue(provider.name);
+    if (id == null) continue;
+    namesById.set(id, nonEmptyProviderValue(provider.name) ?? id);
+  }
+
+  const ids = [
+    ...new Set([...normalizeProviderIds(availableProviders ?? []), ...normalizeProviderIds(selectedProviderIds)]),
+  ];
+  return ids.map((id) => ({ id, name: namesById.get(id) ?? id }));
+}
+
+function nonEmptyProviderValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 export function providerParamFromIds(providerIds: readonly string[]): string | null {

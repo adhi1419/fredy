@@ -9,6 +9,7 @@ import {
   HOME_SORT_OPTIONS,
   homeLifecycleState,
   homeMapListing,
+  homeProviderOptions,
   homeQueryFromState,
   homeSearchForNavigation,
   homeSortOption,
@@ -37,6 +38,58 @@ describe('homeViewState', () => {
 
     const values = readHomeViewState(new URLSearchParams('provider=immoscout&provider=immowelt'));
     expect(values.providerIds).toEqual(['immoscout', 'immowelt']);
+  });
+
+  it('derives provider controls from the accessible listing providers', () => {
+    expect(
+      homeProviderOptions(
+        [
+          { id: 'immoscout', name: 'ImmoScout24' },
+          { id: 'immowelt', name: 'Immowelt' },
+          { id: 'configured-only', name: 'Configured Only' },
+        ],
+        ['immowelt', 'immoscout'],
+      ),
+    ).toEqual([
+      { id: 'immowelt', name: 'Immowelt' },
+      { id: 'immoscout', name: 'ImmoScout24' },
+    ]);
+  });
+
+  it('renders no unselected providers when availability is explicitly empty', () => {
+    expect(
+      homeProviderOptions(
+        [
+          { id: 'immoscout', name: 'ImmoScout24' },
+          { id: 'immowelt', name: 'Immowelt' },
+        ],
+        [],
+      ),
+    ).toEqual([]);
+  });
+
+  it('uses the provider ID when availability has no matching metadata', () => {
+    expect(homeProviderOptions([{ id: 'immoscout', name: 'ImmoScout24' }], ['new-provider'])).toEqual([
+      { id: 'new-provider', name: 'new-provider' },
+    ]);
+  });
+
+  it('retains a stale selected provider so it can be cleared', () => {
+    expect(homeProviderOptions([{ id: 'immoscout', name: 'ImmoScout24' }], [], ['retired-provider'])).toEqual([
+      { id: 'retired-provider', name: 'retired-provider' },
+    ]);
+  });
+
+  it('does not mutate provider metadata, availability, or selection inputs', () => {
+    const metadata = [{ id: 'immoscout', name: 'ImmoScout24' }];
+    const availableProviders = ['immoscout'];
+    const selectedProviderIds = ['stale-provider'];
+
+    homeProviderOptions(metadata, availableProviders, selectedProviderIds);
+
+    expect(metadata).toEqual([{ id: 'immoscout', name: 'ImmoScout24' }]);
+    expect(availableProviders).toEqual(['immoscout']);
+    expect(selectedProviderIds).toEqual(['stale-provider']);
   });
 
   it('maps legacy listings status and sort aliases without losing the view state', () => {

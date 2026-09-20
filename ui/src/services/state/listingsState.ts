@@ -15,6 +15,7 @@ export interface ListingsDataState {
   totalNumber: number;
   page: number;
   result: unknown[];
+  availableProviders: string[];
   mapListings: unknown[];
   currentListing: unknown | null;
   maxPrice: number;
@@ -85,6 +86,7 @@ export function createListingsDataState(): ListingsDataState {
     totalNumber: 0,
     page: 1,
     result: [],
+    availableProviders: [],
     mapListings: [],
     currentListing: null,
     maxPrice: 0,
@@ -118,8 +120,13 @@ export function createListingsEffects(
           { skipNull: true, skipEmptyString: true },
         );
         const response = await transport.get(`/api/listings/table?${query}`);
+        const payload = asRecord(response.json);
         set((state) => ({
-          listingsData: { ...state.listingsData, ...asRecord(response.json) },
+          listingsData: {
+            ...state.listingsData,
+            ...payload,
+            availableProviders: stringArray(payload.availableProviders),
+          },
         }));
       } catch (exception) {
         console.error('Error while trying to get resource for api/listings. Error:', exception);
@@ -234,4 +241,8 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function numberOrZero(value: unknown): number {
   return typeof value === 'number' ? value : 0;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
 }
