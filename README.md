@@ -1,742 +1,157 @@
-<p align="center">
-
-<a href="https://fredy.orange-coding.net/">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/orangecoding/fredy/blob/master/doc/logo_white.png" width="400">
-  <source media="(prefers-color-scheme: light)" srcset="https://github.com/orangecoding/fredy/blob/master/doc/logo.png" width="400">
-  <img alt="Jetbrains Open Source" src="https://github.com/orangecoding/fredy/blob/master/doc/logo.png">
-</picture>
-</a>
-</p>
-
-<p align="center">
-  <a href="https://fredy.orange-coding.net/" target="_blank">Website</a>&nbsp;&nbsp;|&nbsp;&nbsp;
-  <a href="https://fredy-demo.orange-coding.net/" target="_blank">Demo</a>
-</p>
+# Fredy
 
-<p align="center">
-  <img src="https://github.com/orangecoding/fredy/actions/workflows/test.yml/badge.svg" alt="Tests" />
-  <img src="https://github.com/orangecoding/fredy/actions/workflows/docker.yml/badge.svg" alt="Docker" />
-  <img src="https://github.com/orangecoding/fredy/actions/workflows/check_source.yml/badge.svg" alt="Source" />
-  <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2Forangecoding%2Ffredy%2Ffredy&query=%24.downloadCount&label=Docker%20Pulls" alt="Docker Pulls" />
-</p>
-
-
-# Fredy 🏡 - Your Self-Hosted Real Estate Finder for Europe
-
-**Fredy** scrapes **European real estate portals** (ImmoScout24, Immowelt, Kleinanzeigen,
-WG-Gesucht, Immobilien.de, McMakler and more, see [Provider](#provider-)), drops duplicates
-across platforms, and notifies you via **Slack, Telegram, Email, ntfy, Discord and more** as
-soon as a new listing appears. Searches are managed from a Web UI, and you never see the same
-listing twice.
-
-On top of the listing itself, Fredy answers two questions:
-
-- **What would this cost me?** Enter your income, living costs and savings once, and every
-  listing is measured against them: comfortably affordable, a stretch, or out of reach, for
-  renting and for buying. See [Financing Calculator](#-financing-calculator).
-- **How long would I actually travel?** Not straight-line distance, but the real journey from
-  your own address by public transport, car, bike or on foot. The map draws the transport
-  network, marks every stop and shows the next departures. See [Travel Time](#travel-time) and
-  [Public Transport](#public-transport).
-
-------------------------------------------------------------------------
-
-## 📖 Contents
-
-[Key Features](#-key-features) · [Sponsorship](#-sponsorship) · [Demo](#-demo) ·
-[Quick Start](#-quick-start) ·
-[Core Concepts](#-core-concepts) · [Financing Calculator](#-financing-calculator) ·
-[Travel Time](#travel-time) · [Public Transport](#public-transport) ·
-[Immoscout](#immoscout) · [Bot Detection & Proxies](#-bot-detection--proxies) ·
-[[Debug Information](#-debug-information) ·
-[Development](#-development) · [Architecture](#-architecture) ·
-[Contributing](#-contributing) · [Credits & Data](#-credits--data) ·
-[License](#-license) · [Support](#-support)
-
-------------------------------------------------------------------------
-
-## ✨ Key Features
-
--   🏠 Scrapes **19 portals** across 🇩🇪 🇦🇹 🇨🇭: ImmoScout24, Immowelt, Kleinanzeigen, WG-Gesucht,
-    willhaben, Flatfox and [13 more](#provider-)
--   ⚡ Instant notifications: Slack, Telegram, Email (SMTP, SendGrid, Mailjet, Resend), ntfy,
-    Discord, Mattermost, Pushover, Apprise and more
--   🔎 Uses the **ImmoScout Mobile API** (reverse engineered)
--   🖥️ **Web UI** to create and manage searches
--   🔄 **Deduplication across platforms**: the same flat advertised on ImmoScout, Immowelt and
-    Kleinanzeigen reaches you once, matched on living space, rooms and location rather than on
-    the headline - no two portals write that the same way
--   ⏱️ Configurable search intervals and working hours
--   💶 **Financing calculator**: which listings you can afford, for renting and for buying
--   ✉️ **Guarded rental inquiries**: review and send a generated draft through ImmoScout or
-    Deutsche Wohnen, or opt a job into automatic sending with duplicate and unknown-outcome protection
--   🚆 **Real travel times** from your addresses by public transport, car, bike or on foot,
-    plus a filter to match
--   🗺️ **Public transport on the map**: the network, every stop, and live departures
--   🌍 Runs anywhere: Docker, Node.js, self-hosted
-
-------------------------------------------------------------------------
-
-## 🤝 Sponsorship
-
-I build and maintain Fredy in my free time. If it saves you some, consider chipping in ❤️
-
-<a href="https://ko-fi.com/orangecoding"><img alt="Support me on Ko-fi" src="https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white"></a> <a href="https://github.com/sponsors/orangecoding"><img alt="Sponsor on GitHub" src="https://img.shields.io/badge/GitHub-Sponsor-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white"></a>
-
-**Backed by**
-
-<a href="https://www.jetbrains.com/community/opensource/">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://www.jetbrains.com/company/brand/img/logo_jb_dos_3.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg">
-  <img alt="JetBrains Open Source Support Program" src="https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg" width="200">
-</picture>
-</a>
-
-Fredy is supported by the **JetBrains Open Source Support Program**.
-
-------------------------------------------------------------------------
+## Find a home that fits your life
 
-## 👨‍🏫 Demo
-You can try out Fredy here: [Fredy Demo](https://fredy-demo.orange-coding.net/)
+[Fredy](https://adhi1419.github.io/fredy/) brings real-estate listings from multiple providers into one focused workspace. Create saved searches, receive new matches through the channels you already use, compare homes by price and size, and check whether a listing fits your commute and daily life.
 
-------------------------------------------------------------------------
+**[Open Fredy](https://adhi1419.github.io/fredy/)**
 
-## 🚀 Quick Start
+Fredy was created by **Christian Kellner**. This fork keeps the original Fredy attribution and source-available license conditions. Read the [license](LICENSE) before redistributing or building a commercial service around Fredy.
 
-### Local Docker (recommended)
+## What Fredy does
 
-The zero-configuration local path starts Fredy and a Firestore emulator together:
+- Searches 19 real-estate providers across Germany, Austria, and Switzerland.
+- Removes duplicate listings found on multiple providers.
+- Filters listings by home criteria, location, price, size, rooms, and real-world fit.
+- Shows travel time, distance, and map context for each home when the required data is available.
+- Delivers new listings through configurable notification channels.
+- Tracks what you have done with a listing, including applications, viewings, notes, and archiving.
+- Supports light and dark themes with responsive, accessibility-reviewed interfaces.
 
-``` bash
-docker compose up -d
-```
+## Start with the live app
 
-Check the API with `curl http://localhost:9998/health`. To use the browser UI locally, run
-`yarn start:frontend:dev` and open the Vite URL it prints; Vite proxies `/api` to this container.
-Compose runs with a disposable Firestore emulator and does not provide a Google sign-in
-configuration. Browser authentication therefore requires a Firebase project and web config; use
-`./docker-test.sh` for the local health/storage smoke test. Emulator data is **disposable and is
-removed when the emulator container is deleted**. Production data belongs in a real Firestore
-project, not this local emulator.
+Fredy is available at [adhi1419.github.io/fredy](https://adhi1419.github.io/fredy/). Its backend is API-only and runs at [fredy-vh63vbsl2q-ew.a.run.app](https://fredy-vh63vbsl2q-ew.a.run.app). The app uses Firestore as its only persistence layer.
 
-### Production Docker
+Access is operator-allowlisted. Sign-in uses Google through direct Firebase bearer authentication. An account must be approved for this Fredy instance before it can use the app.
 
-Firestore is the only persistence layer. A standalone production container needs Google
-Application Default Credentials with access to the selected Firestore project:
+On your first registration, Fredy asks you to enter these common profile facts explicitly:
 
-``` bash
-gcloud auth application-default login
-export GOOGLE_CLOUD_PROJECT=your-project-id
-export FIREBASE_WEB_CONFIG="$(cat firebase-web-config.json)"
-export FRONTEND_ORIGIN=https://adhi1419.github.io
-export FRONTEND_URL=https://adhi1419.github.io/fredy/
+- Full name
+- Street
+- House number
+- Postcode
+- City
 
-docker run -d --name fredy \
-  -e GOOGLE_CLOUD_PROJECT \
-  -e FIREBASE_WEB_CONFIG \
-  -e FRONTEND_ORIGIN \
-  -e FRONTEND_URL \
-  -e GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-adc.json \
-  -v "$HOME/.config/gcloud/application_default_credentials.json:/run/secrets/gcp-adc.json:ro" \
-  -v fredy_conf:/conf \
-  -p 9998:9998 \
-  ghcr.io/orangecoding/fredy:master
-```
+Fredy does not infer your employment, income, household details, address, provider credentials, or consent. Provider-specific information is entered separately and only when you choose to use a feature that needs it.
 
-### Manual (Node.js)
+## Two places to work
 
-Use Node.js 22.22.0 or newer. Authenticate ADC and select the Firestore project before startup:
+Fredy has exactly two primary destinations:
 
-``` bash
-gcloud auth application-default login
-export GOOGLE_CLOUD_PROJECT=your-project-id
-export FIREBASE_WEB_CONFIG="$(cat firebase-web-config.json)"
-export FRONTEND_ORIGIN=https://adhi1419.github.io
-export FRONTEND_URL=https://adhi1419.github.io/fredy/
-yarn install --frozen-lockfile
-yarn start:backend
-```
+- **Home** is your listing feed. It is designed for quick, quiet review.
+- **Saved Searches** is where you create and manage the searches that supply Home.
 
-Check the API at <http://localhost:9998/health>. Build and run the frontend separately with
-`yarn build:frontend` or `yarn start:frontend:dev`.
+### Home
 
-### Split deployment: GitHub Pages frontend + Cloud Run API
+Home opens to **Quiet feed**, which keeps the listing stream easy to scan. Switch to **List + map** when location matters. Your selected view and feed state are preserved while you move between them.
 
-The hosted frontend is deployed to [https://adhi1419.github.io/fredy/](https://adhi1419.github.io/fredy/).
-Cloud Run is API-only: it serves `/api` and `/health`, retains the CloakBrowser runtime for
-provider scraping, and does not copy or build `ui/`.
+Home separates listing activity into exclusive states:
 
-The Pages workflow performs the one frontend build. Set the GitHub Actions variable
-`CLOUD_RUN_API_ORIGIN` to the deployed Cloud Run service origin (for example,
-`https://fredy-xxxxx-ew.a.run.app`) before deploying Pages. The workflow builds `ui/public` once,
-uploads it as the Pages artifact, and deploys that artifact.
+- **New**
+- **Applied**
+- **Viewed**
+- **Archived**
 
-The Cloud Run deploy script performs the one Cloud Build backend image build and sets the exact
-`FRONTEND_ORIGIN=https://adhi1419.github.io` environment variable for CORS. Add
-`adhi1419.github.io` to Firebase Authentication's **Authorized domains**; the `/fredy/` path is
-not part of the Firebase domain entry.
+You can select multiple providers and sort by:
 
-### With Unraid
+- Newest
+- Travel time
+- Distance
+- Price
+- Size
 
-Should you use [Unraid](https://unraid.net/), you can now install Fredy from the community store :)
+Open a listing to see its details, map location, provider source, travel information, and your own actions.
 
-Configure `FIREBASE_WEB_CONFIG` and Google Application Default Credentials in the container
-before opening the UI. There is no built-in admin/password login.
+### Saved Searches
 
-------------------------------------------------------------------------
+Creating a saved search takes four steps:
 
-## 📸 Screenshots
+1. **Providers**. Choose the sources and their search criteria. Each provider source keeps its own application policy.
+2. **Home criteria**. Set the place, renting or buying choice, price, rooms, size, and other supported criteria.
+3. **Real-world fit**. Add commute limits and affordability information that help identify homes you can live with, not only homes that match a portal filter.
+4. **Delivery/review**. Choose notification channels, review the search, and save it.
 
-| Fredy Maps View                                  | Dashboard                                               | Found Listings                                                              |
-|--------------------------------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| ![Screenshot showing Fredy](doc/screenshot1.png) | ![Screenshot showing job configuration in Fredy](doc/screenshot3.png) | ![Screenshot showing found listings in Fredy](doc/screenshot2.png) |
+Fredy then checks the selected providers on the instance schedule and brings new matches to Home.
 
-------------------------------------------------------------------------
+Affordability results are estimates, not financial advice. Verify taxes, purchase costs, interest rates, and any financing decision with the appropriate professionals.
 
-## 🧩 Core Concepts
+## Listing actions and applications
 
-Fredy is built around a handful of simple concepts:
+On mobile, the primary listing actions appear in this order:
 
-### Provider 🌐
+1. **Apply**
+2. **Google Maps**
+3. **Provider listing**
 
-A **provider** is a real-estate platform. When you create a job, you paste the search URL from
-the platform into Fredy.\
-⚠️ Always make sure the search results are sorted by **date**, so Fredy picks up the newest
-listings first.
+The listing action menu also includes **I applied myself**, **Add notes**, **Got a viewing**, and **Archive**. When Fredy submits an application, the listing becomes **Applied** and any submitted message is available from the listing.
 
-Fredy ships with 19 providers:
+Application support belongs to each provider source. Fredy can submit applications only where the selected provider, listing, and your profile meet that provider's requirements. Automatic application submission is opt-in per provider source in a saved search. It is never a promise that every matching listing will receive an application.
 
-**🇩🇪 Germany**
+Current provider-submitted application paths include:
 
-| | | |
-|---|---|---|
-| 1a Immobilien | Immo Südwest Presse | Neubau Kompass |
-| Deutsche Wohnen | Immobilien.de | OhneMakler |
-| Engel & Völkers | Immoscout | Regionalimmobilien24 |
-| IMAXX | Immowelt | Schwarzes Brett Bremen |
-| InBerlinWohnen | Kleinanzeigen | Sparkasse Immobilien |
-| McMakler | Wg gesucht | |
+- **ImmoScout24**, with provider validation before a supported submission.
+- **Deutsche Wohnen**, with the provider-specific contact and income information it requires.
+- **HOWOGE offers surfaced through InBerlinWohnen**, which require the provider's confirmation email after Fredy submits the request.
 
-**🇦🇹 Austria** · willhaben  
-**🇨🇭 Switzerland** · Flatfox
+Other providers remain notification-only for provider-submitted applications. You can always open the provider listing and record **I applied myself**.
 
-**Every provider declares the countries it covers**, and the job form puts the matching flag in
-front of its name so a mixed list can be read at a glance. The declaration is one line on the
-provider's `metaInformation`:
+## Privacy and account expectations
 
-```javascript
-export const metaInformation = {
-  name: 'your provider name',
-  baseUrl: 'https://www.yourprovider.fr/',
-  id: 'yourprovider',
-  countries: ['fr'],
-};
-```
+Fredy stores account, search, listing, profile, and activity data in Firestore for this instance. The operator controls who can sign in through the allowlist. Authentication uses a Firebase identity in your browser and a bearer token for protected app requests. Fredy does not create a separate password account or server-side browser session.
 
-Addresses are then geocoded in those countries, and the map opens on them so you can draw a search
-area there. A provider spanning several is fine: `countries: ['de', 'at', 'ch']`.
+Fredy sends information to a provider only when you use a provider feature that requires it and the applicable consent and eligibility checks pass. Application profile fields and provider credentials are not guessed or silently completed. Review provider requirements before enabling automatic application submission.
 
-If you run a portal Fredy does not cover yet, contributions are very welcome, see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+## Providers
 
-### Notification adapter 📡
+Fredy currently supports these sources:
 
-An **adapter** is a *kind* of connection Fredy can send through (Slack,
-Telegram, Email, ntfy, discord ...).\
-Each adapter decides what it needs from you, for example an API key or a webhook URL.\
-You never configure an adapter on its own. You configure a **channel**, which is one
-filled-in adapter.
+**Germany:** 1a Immobilien, Deutsche Wohnen, Engel & Völkers, IMAXX, Immobilien.de, Immo Südwest Presse, ImmoScout24, Immowelt, InBerlinWohnen, Kleinanzeigen, McMakler, Neubau Kompass, OhneMakler, Regionalimmobilien24, Schwarzes Brett Bremen, Sparkasse Immobilien, and Wg gesucht.
 
-### Notification channel 🔔
+**Austria:** willhaben.
 
-A **channel** is one saved adapter configuration, for example "Telegram → family chat".\
-You set it up once under **Settings → Notification channels** and reuse it in as many jobs
-as you like. Rotating a token then means editing one channel instead of every job that used it.
+**Switzerland:** Flatfox.
 
-A job can hold as many channels as you want, and every new listing goes out through all of
-them at once. Several channels of the same type are fine, so "Telegram → family chat" and
-"Telegram → work chat" can both be on the same search.
+Provider coverage and supported search fields can differ by source because each provider supplies its own listings and search interface. Fredy shows the provider attached to every listing.
 
-Every channel belongs to whoever created it. An administrator can share one with all users, or
-with other administrators only. Sharing lets other people *send* through a channel, it never
-reveals its credentials. Anyone who needs their own variant can duplicate the channel and fill
-in their own.
+## Notifications
 
-A channel that is still used by a job cannot be deleted.
+Create a notification channel once and reuse it across saved searches. Current customer-facing delivery options include:
 
-### Job 📅
+- Slack and Slack with Webhooks
+- Telegram
+- Discord Webhook
+- Mattermost
+- ntfy
+- Pushover
+- Browser Notifications
+- Apprise
+- Generic HTTP POST
+- Email through SMTP, SendGrid, MailJet, or Resend
 
-A **job** combines providers and notification channels.\
-Example: "Search apartments on ImmoScout24 + Immowelt and send results
-to Slack + Telegram."\
-Jobs run automatically at the interval you configure under **Administration → Execution**,
-where you can also restrict them to working hours.
+Each channel stores the destination and credentials needed by that service. You control which channels receive each saved search.
 
-### Guarded rental inquiries ✉️
+## Credits and data
 
-Fredy can send its generated rental inquiry through a supported provider instead of leaving it as
-copyable text. The feature is **off by default**. Fill in the provider's contact fields and consent
-under **Settings → Inquiry profile**; the email address always comes from the signed-in Fredy account
-and cannot be overridden by an API request.
+Travel planning and transit data come from [Transitous](https://transitous.org/), a community-run [MOTIS](https://github.com/motis-project/motis) instance. Map and street data come from [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors. Please respect the [Transitous usage policy](https://transitous.org/api/).
 
-There are two ways to send:
+## Attribution and license
 
-- open a supported listing, edit the generated draft and confirm the provider-specific send action
-- enable **Automatic inquiries** in one job's optional settings; only that job sends its generated
-  drafts automatically
+Fredy is the original project of **Christian Kellner**. This fork must retain clear attribution to the original project and author.
 
-Before every real request Fredy asks ImmoScout to validate the same payload without sending it. A
-listing that requires profile fields Fredy does not have is skipped rather than filled with guesses.
-Each listing is reserved before delivery so a double-click and the scheduled run cannot both send.
-Confirmed requests are stored with their provider request id. A timeout or other ambiguous outcome
-is marked **unknown** and is never retried automatically, because ImmoScout may already have received
-it. Rejections record the provider phase, HTTP status and a short redacted provider error without
-logging applicant contact fields. Telegram reports a successful automatic application as one message beginning with `[Applied]`
-instead of following the listing with a second copyable draft.
+Fredy is licensed under Apache-2.0 with two additional conditions. It is **source-available, not OSI open source**.
 
-Only ImmoScout and Deutsche Wohnen can currently carry generated messages. Deutsche Wohnen asks for
-a phone number plus provider-defined income categories; configure those and grant its separate consent
-under **Settings → Inquiry profile**. Unlike ImmoScout, its contact endpoint has no validation-only mode,
-so Fredy validates locally and makes one real request; ambiguous results remain non-retryable.
+### Commons Clause
 
-InBerlinWohnen links HOWOGE offers to HOWOGE's own application workflow. That workflow accepts only
-name and email, sends a double-opt-in confirmation email, and exposes no field for the generated message.
-For HOWOGE partner links, Fredy submits the fresh signed form once and treats the server-accepted DOI
-request as **Applied**; the applicant must still confirm HOWOGE's email. Other InBerlinWohnen partner
-hosts remain notification-only until their application flows are implemented.
+The Licensed Work and its derivative works may not be used by any person or organization to Sell the Licensed Work.
 
-------------------------------------------------------------------------
+“Sell” or “Selling” means practicing any or all of the rights granted to you under the License to provide to third parties, for a fee or other consideration (including without limitation fees for hosting or consulting/support services related to the Software), a product or service whose value derives, entirely or substantially, from the functionality of the Licensed Work.
 
-## 💶 Financing Calculator
+This restriction does not apply to internal business purposes or non-commercial use. Self-hosting Fredy for yourself is permitted. Read the full [LICENSE](LICENSE) for the complete terms.
 
-The **Financing** page works out what a listing would cost you every month, and whether that
-fits your household.
+### Attribution and Naming Clause
 
-Every job declares whether it searches to **rent** or to **buy**, and the page has one tab for
-each. Both share the same household block (income for one or two people, living costs, any loan
-you are already paying off) and the same rule of thumb: housing costs plus existing debt at or
-below 35 % of net income.
+Any derivative work based on this software must include clear and visible attribution to the original project “Fredy” and its author(s). Derivative works may not be distributed, published, or presented under a different name or branding without the explicit written permission of the original copyright holder.
 
-### Renting
+## Support
 
-Portals quote Kaltmiete, households pay warm. Set the Nebenkosten surcharge once, and Fredy
-reports the highest cold rent you can take on, what that comes to warm, and what is left over
-each month. The renting tab asks for nothing beyond that.
-
-### Buying
-
-The buying tab models the purchase the way a European bank would, as an **Annuitätendarlehen**:
-
-- the **monthly rate**, and how it splits into interest and repayment over the years
-- the **Kaufnebenkosten**: Grunderwerbsteuer for your Bundesland, Notar + Grundbuch, and the
-  Maklerprovision. On a 400.000 € house in NRW these add roughly 46.000 € that you have to
-  finance or pay out of your own pocket
-- the **Restschuld** left when the Zinsbindung runs out, which you have to refinance at
-  whatever rates exist then
-- the **age at which you and your partner become debt-free**
-- the **highest purchase price** that keeps you inside the 35 % rule
-
-Loan scenarios can be compared side by side, each with a Sollzins, a Tilgung, a Zinsbindung, a
-monthly rate and an optional Sondertilgung. Tilgung and monthly rate describe the same thing
-from opposite ends, so editing one rewrites the other and you can enter whichever figure you
-have. The term is calculated at a constant Sollzins. Fredy does not guess what a follow-up loan
-will cost after the Zinsbindung, it reports the Restschuld instead.
-
-### Where the result shows up
-
-Each tab saves and deletes on its own. Once one is saved, its verdict appears elsewhere:
-
-- an **affordability filter** on the listings overview, next to the status and provider
-  filters, plus a small verdict chip on each listing
-- a **rent card or a financing card** on the listing detail page, whichever matches the job
-  that found the listing
-
-Which calculation a listing gets follows the deal type of its job, so a 1.200 € rent is never
-read as a very cheap house. Nothing appears until the matching tab is filled in.
-
-> **This is an estimate, not financial advice.** The Grunderwerbsteuer rates ship as editable
-> defaults and Bundesländer change them from time to time, so check the figure for your state
-> and get a binding offer from your bank before committing to anything.
-
-------------------------------------------------------------------------
-
-## Travel Time
-
-Two flats the same kilometre from your office can be eight minutes and fifty minutes away from
-it. Fredy measures the journey instead of the distance.
-
-Set your addresses under **Settings → Travel time**. Each gets a name and a mode: public
-transport, car, or on foot. For public transport you also pick a time of day, since a journey at
-eight in the morning is not the journey at midnight. The day is always the next working day, so
-every listing is measured against the same timetable.
-
-Travel times then show up wherever the distance already did: on listing cards and in the table, in
-the map popup, in your notifications, and on the listing detail page.
-
-### Filtering
-
-Both the listings overview and the map have a **"reachable within"** filter. Pick a mode and a
-ceiling, for example public transport within 30 minutes, and the list or the map drops everything
-above it. Listings Fredy has not measured yet are hidden by the filter.
-
-### Seeing the route
-
-On a listing's detail page, **Show route** draws the journey on the map: the straight line, the
-drive, the walk, or the public transport connection leg by leg in the operators' own line colours.
-Hovering the public transport time opens the journey itself, one row per leg with the line, the stop
-it goes to and how long that part takes.
-
-### Estimated and exact
-
-Fredy reports two kinds of number and always labels which one you are looking at.
-
-**Estimated** comes from the background sweep. Once per address, Fredy asks how long it takes to
-reach every stop in the region, then adds the walk from the closest stop to the front door. That is
-one request per address no matter how many listings you have, which keeps the load on a
-volunteer-run service low. Hover the *Estimated* chip to see the stops it used. Compared against
-exact routing across Berlin, it lands within a few minutes.
-
-**Exact** is fetched when you open a listing. Fredy requests the real journey, which also fills in
-the car, bike and walking times and the drawable routes, and stores it so it is only requested once.
-
-A mode that could not be routed is left out rather than shown as zero, and a listing that has not
-been measured yet says so. The straight-line distance is still shown, so a failed lookup leaves you
-no worse off than before.
-
-### For operators
-
-Defaults that normally need no change:
-
-| Setting | Default | What it does |
-|---|---|---|
-| `motisBaseUrl` | `https://api.transitous.org/api` | Point at your own MOTIS instance if you outgrow the public one. |
-| `travelTimeMaxMinutes` | `90` | How far the region-wide lookup reaches, and the main size dial. |
-| `travelTimeStreetLookupsPerRun` | `15` | Ceiling on street routings per sweep. `0` turns them off. |
-| `travelTimeLimitPerRun` | `500` | Listings one sweep works through. Not a request count. |
-| `travelTimeMaxAgeDays` | `30` | When a stored travel time is looked up again. |
-
-The sweep runs every two hours and never at startup. Street routing happens only where public
-transport cannot answer at all, where you asked for car or walking, and when you open a listing.
-
-------------------------------------------------------------------------
-
-## Public Transport
-
-"Gute Verkehrsanbindung" in a listing tells you nothing. Fredy shows the actual connection, on
-the map and on every listing, without a detour to a timetable site.
-
-### On the map
-
-The map view has a **public transport layer**, switched on by default. It draws the rail,
-S-Bahn, U-Bahn, tram and light rail network, colour-coded by mode, and marks every station and
-bus stop with its own icon. It works on the standard map and on the satellite view.
-
-Point at a stop and Fredy opens its **departure board**:
-
-- which lines call there, as colored badges
-- where each departure is headed
-- when it leaves, how many minutes that is from now, and how late it is running
-
-The layer can be turned off with the **ÖPNV** switch in the map panel. The setting lives in the
-URL, so a link you bookmark or share keeps it.
-
-### On every listing
-
-The marker popup on the map and the listing detail page both show the **three nearest stops**
-with their walking distance. Each opens the same departure board, so "how do I get to work from
-here" is answered without leaving the listing.
-
-------------------------------------------------------------------------
-
-## Immoscout
-
-Immoscout has implemented advanced bot detection. In order to work around this, we are using a reversed engineered version of their mobile api. See [Immoscout Reverse Engineering Documentation](https://github.com/orangecoding/fredy/blob/master/reverse-engineered-immoscout.md)
-
-Paste the search URL from your browser as usual. Beside flats and houses this covers plots, garages, WG rooms, short term lets, assisted living and foreclosures, region, radius and drawn-shape searches, and the "pretty" URLs the website generates when a search carries a single filter (`haus-mit-garage-kaufen`, `3-zimmer-wohnung-mieten`, `wohnung-bis-800-euro-warm`, ...). Commercial searches (offices, shops, gastronomy) are not supported.
-
-Worth knowing:
-
--   A filter that Immoscout's own API does not offer for the type you are searching (a pets filter on a house purchase, say) is **dropped** and logged, because sending it makes their API reject the whole search.
--   A filter Fredy has no translation for yet is dropped as well, and says so in the log: `no translator for query parameter "..." ... please report the search URL`. Your search then runs **wider** than you set it, so if results look too broad, check the log first.
--   If a search URL cannot be mapped at all, the job fails with `Real estate type not found: <path>`. Please open an issue with the URL, it is a one line fix.
-
-## 🛡️ Bot Detection & Proxies
-
-Most browser-based providers (kleinanzeigen, wg-gesucht, ohnemakler, ...) are scraped through a hardened headless browser ([CloakBrowser](https://www.npmjs.com/package/cloakbrowser)). It makes the **browser fingerprint** indistinguishable from a real Chrome, which is enough when you run Fredy on a normal home connection.
-
-On a **server / VPS the requests usually originate from a datacenter IP**, and providers behind anti-bot systems (e.g. AWS CloudFront/WAF) block those based on **IP reputation alone**, no matter how perfect the fingerprint is. The typical symptom: it works locally but you get `We have been detected as a bot :-/` on the server.
-
-### The fix: a residential proxy
-
-A **residential proxy** routes Fredy's browser through the internet connection of a real household, so the provider sees a "normal user" IP instead of a datacenter. For German portals, use a **German (DE) residential** (or mobile/4G) proxy. Plain VPNs and **datacenter proxies do not help** here, they share the same bad reputation as your server.
-
-**Configure it** under **Administration → Execution → Proxy URL**. Supported formats:
-
-```
-http://user:pass@host:port
-socks5://user:pass@host:port
-```
-
-Leave the field empty to disable. The proxy applies to all headless-browser providers and takes effect on the next job run (no restart needed). Immoscout uses a separate mobile API and is not affected.
-
-### Where to get a residential proxy
-
-Residential proxies are a paid service (usually billed per GB, Fredy's traffic is small). Well-known providers offering German residential IPs include:
-
-| Provider | Notes |
-|---|---|
-| [IPRoyal](https://iproyal.com) | Pay-as-you-go, no monthly minimum, good for low volume |
-| [Webshare](https://www.webshare.io) | Cheap entry tier, has a small free plan to test with |
-| [Decodo (formerly Smartproxy)](https://decodo.com) | Easy setup, country/city targeting |
-| [SOAX](https://soax.com) | Residential + mobile, fine-grained geo-targeting |
-| [Bright Data](https://brightdata.com) | Largest pool, most features, higher complexity/price |
-| [Oxylabs](https://oxylabs.io) | Enterprise-grade, larger plans |
-
-This is not an endorsement, pick whatever fits your budget. For low-volume use like Fredy, a pay-as-you-go plan (e.g. IPRoyal) or a cheap entry tier (e.g. Webshare) is usually plenty. Make sure to select **Germany** as the proxy location and keep the search interval reasonable (the higher the interval, the less you look like a bot).
-
-## 🔐 Authentication
-
-Fredy uses Firebase Authentication directly. The browser initializes Firebase once with
-`browserLocalPersistence`, signs in with the configured provider, and sends a freshly refreshed
-Firebase ID token as `Authorization: Bearer <token>` on every API request and authenticated event
-stream. Fredy does not issue a cookie or persist a server-side browser session. The server verifies
-the token with Firebase Admin, derives the Firebase UID and email, and checks the Firestore
-`allowed_users` collection on every authenticated request.
-
-For production:
-
-1. Add Firebase to the GCP project and enable the Google sign-in provider.
-2. Create `allowed_users/<lowercase-email>` with `email`, `isAdmin`, and `addedAt` fields.
-3. Set `FIREBASE_WEB_CONFIG` to the Firebase web-app JSON.
-4. Run Fredy with Application Default Credentials that can read and write Firestore and verify
-   Firebase tokens. Cloud Run uses its runtime service account; local Node runs can use
-   `gcloud auth application-default login`.
-5. Add the deployed origin to Firebase Authentication's authorized domains.
-
-Local Docker and offline tests use the Firestore emulator and do not exercise the real Google popup,
-Firebase token refresh, or cross-origin browser persistence. Use the emulator-backed contract suite
-for storage behavior and an actual Firebase project for the browser sign-in flow.
-
-
-## 🐞 Debug Information
-
-Since Fredy **22.5.0** there is a built-in way to capture everything Fredy logs into the
-database for a limited time and download it as a single zip file. This is the recommended
-way to attach diagnostics to a bug report. I decided against simply putting all logs into
-a debug bundle due to privacy reasons!
-
-**How it works**
-
-- Debug logging is **opt-in** and admin-only. As long as it is off, Fredy behaves exactly
-  as before (console output only, nothing in the DB).
-- When you turn it on, every log line (`debug`, `info`, `warn`, `error`) is additionally
-  written into the `debug_logs` Firestore collection. The console keeps logging at its usual level.
-- The recorded data is hard-capped at **5 MiB** via a rolling buffer: once the cap is hit,
-  the oldest entries are dropped automatically so the newest ones always survive.
-- The on/off flag is persisted, so debug logging stays on across restarts (and you'll see
-  the warning banner everywhere until you turn it off again).
-
-**Capturing a debug bundle**
-
-1. Open Fredy as an **admin** and go to **Administration → Debug**.
-2. Click **"Enable debug logging" / "Debug-Logging aktivieren"**. A red banner appears on
-   every page while recording is on.
-3. **Reproduce the bug**.
-4. Come back to **Administration → Debug** and check the progress bar, if it stayed at 0 %,
-   nothing was captured.
-5. Click **"Download debug information" / "Debug Informationen herunterladen"**. You get a
-   zip named `YYYY-MM-DD-FredyDebug-<version>.zip` containing two files:
-   - `logs.txt` - every log line captured while recording was on, prefixed with timestamp
-     and level.
-   - `sys.txt` - runtime snapshot (Fredy version, Node.js version, OS, Docker detection,
-     CPU, memory, sanitized settings). Proxy credentials and session secrets are
-     **stripped** before export.
-6. Attach the zip to the bug report.
-7. Optional but recommended: click **"Disable debug logging"** to stop recording, and
-   **"Delete stored debug logs"** once you've sent the zip so the DB does not keep them
-   around.
-
-**What is _not_ included**
-
-- passwords/privacy relevant things
-- Anything that Fredy itself does not pass through its `logger`. If a third-party library
-  writes directly to `process.stderr`, that output stays on the console only.
-
-## 🛠️ Development
-
-### Development Mode
-
-``` bash
-yarn run start:backend:dev
-yarn run start:frontend:dev
-```
-
-Development mode can run against the Firestore emulator without `FIREBASE_WEB_CONFIG`; it is a
-storage and API-development environment, not a Google sign-in environment. To exercise browser
-authentication, provide a real Firebase web config, enable the provider, allowlist the test email,
-and use the exact frontend origin in Firebase authorized domains. Check your Terminal to see what
-port the frontend is running on.
-
-### Run Tests
-
-#### "Online" tests
-These tests are directly executed against the actual providers.
-``` bash
-yarn run test
-```
-
-#### "Offline" tests
-These tests are using the test fixtures instead of the actual providers. Much faster and "good enough" to test the core functionality.
-``` bash
-yarn run test:offline
-```
-
-#### Download new fixtures
-If you have to refresh the fixtures (every once in a while needed because the providers change their code), run this command:
-``` bash
-yarn run test:download-fixtures
-```
-
-### Adding a new language
-
-Fredy's UI is fully multilingual. Translation files live in `ui/src/locales/`. To add a new language, create a single JSON file there, no code changes required.
-
-**Example: `ui/src/locales/fr.json`**
-```json
-{
-  "_meta": {
-    "flag": "🇫🇷",
-    "name": "Français",
-    "locale": "fr-FR",
-    "semiLocale": "fr"
-  },
-  "nav.dashboard": "Tableau de bord",
-  "common.save": "Enregistrer",
-  ...
-}
-```
-
-The `_meta` fields:
-
-| Field | Description |
-|---|---|
-| `flag` | Unicode flag emoji shown in the language selector |
-| `name` | Display name shown in the language selector |
-| `locale` | BCP 47 locale string used for date and number formatting (e.g. `fr-FR`) |
-| `semiLocale` | Semi UI locale key for component-level strings (date pickers, pagination, etc.) |
-
-> **Important:** `semiLocale` must exactly match a locale filename from the Semi UI locale sources (without the `.js` extension). See the [available Semi UI locales on GitHub](https://github.com/DouyinFE/semi-design/tree/main/packages/semi-ui/locale/source) for the full list of supported keys.
-
-After adding the file, rebuild the frontend (`yarn build:frontend` or restart the dev server) and the new language will appear automatically in **Settings → Preferences → Language**.
-
-------------------------------------------------------------------------
-
-## 📐 Architecture
-
-``` mermaid
-flowchart TD
- subgraph Jobs["Jobs"]
-        A1["Job 1"]
-        A2["Job 2"]
-        A3["Job 3"]
-  end
- subgraph Providers["Providers"]
-        C1["Provider 1"]
-        C2["Provider 2"]
-        C3["Provider 3"]
-  end
- subgraph NotificationChannels["Notification Channels"]
-        F1["Channel 1"]
-        F2["Channel 2"]
-  end
-
-    A1 --> B["FredyPipelineExecutioner"]
-    A2 --> B
-    A3 --> B
-    B --> C1 & C2 & C3
-    C1 --> D["Similarity Check"]
-    C2 --> D
-    C3 --> D
-    D --> E{"Duplicate?"}
-    E -- No --> F1 & F2
-```
-
-------------------------------------------------------------------------
-## 🤖 Using AI such as Claude Code
-When I started building Fredy, LLMs were still basically the wet dream of a few nerdy scientists.
-
-Nowadays, it’s easier than ever to throw a prompt into the LLM of your choice and let 'the AI' build your stuff. I’m not against that. I use Claude Code myself for smaller tasks, and I do think these tools can be really useful.
-
-That said, I still believe humans should stay in charge. AI is great-ish at writing code, but it still lacks creativity, context, and the ability to see the full picture.
-
-So, if you want to contribute to Fredy, using AI tools to get things done is totally fine. Just please don’t stop thinking.
-
-I’ve had one too many PRs full of hallucinated bullshit.
-
-**Thanks ;)**
-
-------------------------------------------------------------------------
-
-## 👐 Contributing
-
-Thanks to everyone who has contributed!
-
-<a href="https://github.com/orangecoding/fredy/graphs/contributors"><img src="https://contrib.rocks/image?repo=orangecoding/fredy" /></a>
-
-See the [Contributing
-Guide](https://github.com/orangecoding/fredy/blob/master/CONTRIBUTING.md).
-
-------------------------------------------------------------------------
-
-## 🗺️ Credits & Data
-
-Timetables, journey planning and travel times come from
-[Transitous](https://transitous.org/), a community-run [MOTIS](https://github.com/motis-project/motis)
-instance. It is free, needs no API key, and is maintained by volunteers, so please be considerate
-with the load you put on it and read [their usage policy](https://transitous.org/api/) before
-pointing a large instance at it. Street and map data come from
-[OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
-
-<a href="https://transitous.org/">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://transitous.org/images/logo-text.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://transitous.org/images/logo-text-dark.svg">
-  <img alt="Transitous" src="https://transitous.org/images/logo-text-dark.svg" width="180">
-</picture>
-</a>
-
-------------------------------------------------------------------------
-
-## 📄 License
-
-[Apache-2.0](LICENSE) with two additional conditions:
-
-- **Commons Clause** - you may not sell the software, or sell a product or service whose value
-  derives entirely or substantially from it. Self-hosting Fredy for yourself is explicitly fine.
-- **Attribution and Naming Clause** - substantial derivative works must credit the original
-  project "Fredy" and its author.
-
-Because of these conditions Fredy is **source-available, not OSI open source**. Read the full
-[LICENSE](LICENSE) before building anything commercial on top of it.
-
-------------------------------------------------------------------------
-
-## 💬 Support
-
-- **Bugs and feature requests**: [GitHub Issues](https://github.com/orangecoding/fredy/issues).
-  For bugs, attach a debug bundle, see [Debug Information](#-debug-information).
-- **An Immoscout search URL Fredy cannot map**: open an issue with the URL, it is usually a one
-  line fix.
-
-------------------------------------------------------------------------
-
-## ⭐ Star History
-
-<a href="https://github.com/orangecoding/fredy/stargazers">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="doc/star-history/star-history-dark.svg">
-    <img alt="Fredy star history" src="doc/star-history/star-history-light.svg">
-  </picture>
-</a>
+For bugs and feature requests, use the [Fredy fork issue tracker](https://github.com/adhi1419/fredy/issues). When reporting a problem, include the provider, saved-search context, and the steps that reproduce it. Do not include passwords, provider credentials, or other private information.
