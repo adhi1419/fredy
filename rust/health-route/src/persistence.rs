@@ -176,6 +176,23 @@ impl From<DependencyError> for JobWriteError {
     }
 }
 
+/// Internal outcome of a single Firestore `PATCH`. `PreconditionFailed` is kept separate from an
+/// opaque dependency failure so a racing create can re-resolve through the owner-preserving update
+/// path instead of surfacing a misleading `500`.
+#[derive(Debug)]
+enum CommitError {
+    /// The `currentDocument.exists=false` precondition was not met: a document already exists.
+    PreconditionFailed,
+    /// Any other write failure, kept opaque at the HTTP boundary.
+    Dependency(DependencyError),
+}
+
+impl From<DependencyError> for CommitError {
+    fn from(error: DependencyError) -> Self {
+        CommitError::Dependency(error)
+    }
+}
+
 /// Dormant owner-preserving write contract, kept separate from the read trait so routes can adopt
 /// reads and writes independently. Create assigns ownership to the authenticated actor; update
 /// mutates only an existing job owned by that actor and preserves its owner.
@@ -192,6 +209,19 @@ pub trait JobWriteAdapter {
         job_id: &str,
         actor_user_id: &str,
         input: &JobWriteInput,
+    ) -> Result<JobWriteOutcome, JobWriteError>;
+
+    /// Enable or disable an existing job. This is the write behind Node's
+    /// `PUT /api/jobs/:jobId/status` route and `setJobStatus({ jobId, status })`: the actor must own
+    /// the job (owner-only, no admin/share bypass), only the `enabled` flag is patched, and the
+    /// owner and `lastRunAt` are preserved. It fails closed on a missing actor, an empty id, a job
+    /// that does not exist, or a stored document that cannot be decoded. `enabled` is a `bool` at
+    /// this typed boundary, so Node's `!!status` coercion has already happened for us.
+    fn set_job_status(
+        &self,
+        job_id: &str,
+        actor_user_id: &str,
+        enabled: bool,
     ) -> Result<JobWriteOutcome, JobWriteError>;
 }
 
@@ -284,15 +314,23 @@ impl FirestorePersistenceAdapter {
     /// Write `fields` to `collection/document_id` via a Firestore REST `PATCH`. Passing an explicit
     /// `updateMask` (Node's `ref.update`) leaves fields outside the mask untouched - this is how the
     /// existing owner (`userId`) and `lastRunAt` survive an update. Omitting the mask (Node's
-    /// `ref.set`) writes exactly the supplied field set for a create. Firestore `PATCH` is
-    /// create-or-update, so callers enforce existence/ownership before calling this.
+    /// `ref.set`) writes exactly the supplied field set for a create.
+    ///
+    /// Firestore `PATCH` is create-or-update, which by itself is a last-writer-wins upsert. When
+    /// `require_absent` is set, the request carries the `currentDocument.exists=false` precondition
+    /// so the server rejects the write if a document already exists at `document_id`. This makes a
+    /// create atomic: a concurrent creator that wins the race causes this write to fail the
+    /// precondition (`CommitError::PreconditionFailed`) instead of silently overwriting the owner
+    /// another actor just assigned. `updateMask` and `require_absent` are never combined: a masked
+    /// update targets an existing document, while the precondition asserts absence.
     fn commit_fields(
         &self,
         collection: &str,
         document_id: &str,
         fields: Value,
         update_mask: Option<&[&str]>,
-    ) -> Result<(), DependencyError> {
+        require_absent: bool,
+    ) -> Result<(), CommitError> {
         let request = self
             .client
             .patch(self.document_url(collection, document_id))
@@ -306,11 +344,21 @@ impl FirestorePersistenceAdapter {
                     .collect::<Vec<_>>(),
             );
         }
+        if require_absent {
+            request = request.query(&[("currentDocument.exists", "false")]);
+        }
         let response = request.send().map_err(|_| DependencyError)?;
-        if response.status().is_success() {
-            Ok(())
+        let status = response.status();
+        if status.is_success() {
+            return Ok(());
+        }
+        // Firestore returns 409 Conflict (FAILED_PRECONDITION) when an `exists=false` precondition
+        // is not met because the document already exists. Surface that distinctly so a racing
+        // create can re-resolve through the owner-preserving update path; everything else is opaque.
+        if require_absent && status.as_u16() == 409 {
+            Err(CommitError::PreconditionFailed)
         } else {
-            Err(DependencyError)
+            Err(CommitError::Dependency(DependencyError))
         }
     }
 
@@ -449,6 +497,12 @@ impl JobWriteAdapter for FirestorePersistenceAdapter {
     /// Create a job owned by the authenticated actor. Fails closed on a missing actor or job id.
     /// If a document already exists at `job_id` this is not a create, so it is routed through the
     /// owner-preserving update path rather than silently overwriting an owner.
+    ///
+    /// The pre-read is an optimization, not the safety boundary: the create `PATCH` carries the
+    /// `currentDocument.exists=false` precondition, so two actors that both observe "absent" cannot
+    /// both create - the loser's write fails the precondition and is re-resolved through the
+    /// owner-preserving update path. A concurrent create by the same actor therefore becomes an
+    /// `Updated`, and one by a different actor yields `NotOwner`, never a silent owner overwrite.
     fn create_job(
         &self,
         job_id: &str,
@@ -470,7 +524,15 @@ impl JobWriteAdapter for FirestorePersistenceAdapter {
         let mut fields = mutable_write_fields(input, WriteMode::Create);
         fields.insert("userId".to_owned(), encode_string(actor_user_id));
         fields.insert("lastRunAt".to_owned(), encode_null());
-        self.commit_fields(COLLECTION_JOBS, job_id, Value::Object(fields), None)?;
+        match self.commit_fields(COLLECTION_JOBS, job_id, Value::Object(fields), None, true) {
+            Ok(()) => {}
+            // A concurrent creator won the race between our read and our write. Re-resolve through
+            // the owner-preserving update path so ownership is never silently overwritten.
+            Err(CommitError::PreconditionFailed) => {
+                return self.update_job(job_id, actor_user_id, input);
+            }
+            Err(CommitError::Dependency(_)) => return Err(JobWriteError::Dependency),
+        }
 
         let record = self
             .load_job_for_write(job_id)?
@@ -509,12 +571,69 @@ impl JobWriteAdapter for FirestorePersistenceAdapter {
             job_id,
             Value::Object(fields.clone()),
             Some(&field_paths),
-        )?;
+            false,
+        )
+        .map_err(commit_error_to_write_error)?;
 
         let record = self
             .load_job_for_write(job_id)?
             .ok_or(JobWriteError::Dependency)?;
         Ok(JobWriteOutcome::Updated(record))
+    }
+
+    /// Enable or disable an existing job, mirroring Node `setJobStatus`
+    /// (`jobsCol().doc(jobId).update({ enabled: !!status })`) behind the `PUT /:jobId/status` route.
+    /// Ownership is enforced exactly as `update_job`: owner-only, with no administrator or share
+    /// bypass. Only `enabled` is written, under an update mask that names just that field, so the
+    /// stored owner (`userId`), `lastRunAt`, and every other field are preserved untouched. It
+    /// fails closed on a missing actor, an empty id, a non-existent job, or a document that cannot
+    /// be decoded. `enabled` is already a `bool` here, so Node's `!!status` coercion is a no-op at
+    /// this typed boundary.
+    fn set_job_status(
+        &self,
+        job_id: &str,
+        actor_user_id: &str,
+        enabled: bool,
+    ) -> Result<JobWriteOutcome, JobWriteError> {
+        if actor_user_id.is_empty() {
+            return Err(JobWriteError::MissingIdentity);
+        }
+        if job_id.is_empty() {
+            return Err(JobWriteError::InvalidJobId);
+        }
+        let existing = self
+            .load_job_for_write(job_id)?
+            .ok_or(JobWriteError::InvalidJobId)?;
+        if !existing.is_modifiable_by(actor_user_id) {
+            return Err(JobWriteError::NotOwner);
+        }
+
+        // A single-field masked write: `enabled` is the only path in the mask, so `userId`,
+        // `lastRunAt`, and the rest of the search survive exactly as Node's `ref.update` leaves them.
+        let fields = status_write_fields(enabled);
+        self.commit_fields(
+            COLLECTION_JOBS,
+            job_id,
+            Value::Object(fields),
+            Some(STATUS_FIELD_PATHS),
+            false,
+        )
+        .map_err(commit_error_to_write_error)?;
+
+        let record = self
+            .load_job_for_write(job_id)?
+            .ok_or(JobWriteError::Dependency)?;
+        Ok(JobWriteOutcome::Updated(record))
+    }
+}
+
+/// Map an internal `CommitError` onto the public write error. A precondition failure only ever
+/// arises on an `exists=false` create, which `create_job` handles before reaching here, so on the
+/// masked-update paths it can only mean the document changed underneath us: treat it as an opaque
+/// dependency failure rather than inventing a new public variant.
+fn commit_error_to_write_error(error: CommitError) -> JobWriteError {
+    match error {
+        CommitError::PreconditionFailed | CommitError::Dependency(_) => JobWriteError::Dependency,
     }
 }
 
@@ -607,6 +726,20 @@ fn mutable_write_fields(input: &JobWriteInput, mode: WriteMode) -> Map<String, V
         (WriteMode::Update, None) => {}
     }
 
+    fields
+}
+
+/// The single field path a status write masks. Sharing one constant between the write and its mask
+/// guarantees the mask can never drift wider than the field actually written.
+const STATUS_FIELD_PATHS: &[&str] = &["enabled"];
+
+/// Build the Firestore field map for a status write: exactly `enabled`, nothing else. This is the
+/// storage-shape counterpart to Node `setJobStatus`'s `{ enabled: !!status }`, and is deliberately
+/// the whole payload so the accompanying `STATUS_FIELD_PATHS` mask leaves the owner, `lastRunAt`,
+/// and every other stored field untouched.
+fn status_write_fields(enabled: bool) -> Map<String, Value> {
+    let mut fields = Map::new();
+    fields.insert("enabled".to_owned(), encode_bool(enabled));
     fields
 }
 
@@ -890,6 +1023,9 @@ fn encode_path_component(value: &str) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::thread;
 
     fn job(owner: Option<&str>, shared_with_user: &[&str]) -> JobRecord {
         JobRecord {
@@ -1125,5 +1261,126 @@ mod tests {
         let record = job(Some("owner"), &[]);
         assert_eq!(JobWriteOutcome::Created(record.clone()).record(), &record);
         assert_eq!(JobWriteOutcome::Updated(record.clone()).record(), &record);
+    }
+
+    #[test]
+    fn status_write_touches_only_enabled_in_both_states() {
+        // The status seam must write exactly `enabled` and nothing else, so the masked update can
+        // never disturb the owner, lastRunAt, or any other stored field.
+        for enabled in [true, false] {
+            let fields = status_write_fields(enabled);
+            assert_eq!(fields.len(), 1, "status write must be a single field");
+            assert_eq!(fields["enabled"], json!({ "booleanValue": enabled }));
+            assert!(
+                !fields.contains_key("userId"),
+                "owner is never in a status write"
+            );
+            assert!(
+                !fields.contains_key("lastRunAt"),
+                "lastRunAt is never in a status write"
+            );
+        }
+    }
+
+    #[test]
+    fn status_field_mask_matches_the_written_field_exactly() {
+        // The mask and the payload share one source, so a status write can never mask more (which
+        // would delete unwritten fields) or less (which would fail to persist the flag).
+        assert_eq!(STATUS_FIELD_PATHS, ["enabled"]);
+        let fields = status_write_fields(true);
+        let written: Vec<&str> = fields.keys().map(String::as_str).collect();
+        assert_eq!(written, STATUS_FIELD_PATHS);
+    }
+
+    #[test]
+    fn status_write_authorization_is_owner_only_like_update() {
+        // The seam gates on the same `is_modifiable_by` predicate as `update_job`: owner only, with
+        // no administrator or explicit-share bypass, and fail-closed on an empty identity.
+        assert!(job(Some("owner"), &[]).is_modifiable_by("owner"));
+        assert!(!job(Some("owner"), &["viewer"]).is_modifiable_by("viewer"));
+        assert!(!job(Some("owner"), &["admin"]).is_modifiable_by("admin"));
+        assert!(!job(Some("owner"), &[]).is_modifiable_by("stranger"));
+        assert!(!job(Some("owner"), &[]).is_modifiable_by(""));
+    }
+
+    #[test]
+    fn commit_error_never_leaks_a_precondition_variant_to_callers() {
+        // Precondition failures are handled inside create_job; anywhere else they collapse to an
+        // opaque dependency error rather than a distinct public variant.
+        assert_eq!(
+            commit_error_to_write_error(CommitError::PreconditionFailed),
+            JobWriteError::Dependency
+        );
+        assert_eq!(
+            commit_error_to_write_error(CommitError::Dependency(DependencyError)),
+            JobWriteError::Dependency
+        );
+    }
+
+    #[test]
+    fn create_sends_absent_precondition_and_reresolves_a_lost_race() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("mock Firestore listener binds");
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let winner = json!({
+                "name": "projects/test-project/databases/(default)/documents/jobs/j-race",
+                "fields": { "userId": { "stringValue": "winner" } }
+            })
+            .to_string();
+            let responses = [
+                ("404 Not Found", "{}".to_owned()),
+                ("409 Conflict", "{}".to_owned()),
+                ("200 OK", winner),
+            ];
+            let mut request_lines = Vec::new();
+
+            for (status, body) in responses {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut request_line = String::new();
+                {
+                    let mut reader = BufReader::new(&mut stream);
+                    reader.read_line(&mut request_line).unwrap();
+                    loop {
+                        let mut header = String::new();
+                        reader.read_line(&mut header).unwrap();
+                        if header == "\r\n" || header.is_empty() {
+                            break;
+                        }
+                    }
+                }
+                request_lines.push(request_line.trim_end().to_owned());
+                write!(
+                    stream,
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .unwrap();
+            }
+            request_lines
+        });
+
+        let adapter = FirestorePersistenceAdapter {
+            project_id: "test-project".to_owned(),
+            base_url: format!("http://{address}/v1"),
+            client: Client::builder()
+                .timeout(Duration::from_secs(2))
+                .build()
+                .unwrap(),
+            access_tokens: None,
+        };
+
+        assert_eq!(
+            adapter.create_job("j-race", "loser", &JobWriteInput::default()),
+            Err(JobWriteError::NotOwner)
+        );
+        let request_lines = server.join().unwrap();
+        assert!(request_lines[0].starts_with("GET "));
+        assert!(request_lines[1].starts_with("PATCH "));
+        assert!(
+            request_lines[1].contains("currentDocument.exists=false"),
+            "create request lacked atomic absence precondition: {}",
+            request_lines[1]
+        );
+        assert!(request_lines[2].starts_with("GET "));
     }
 }

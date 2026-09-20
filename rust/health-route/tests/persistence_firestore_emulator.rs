@@ -354,3 +354,228 @@ fn firestore_job_writes_are_owner_preserving_and_authorized() {
         Err(JobWriteError::InvalidJobId)
     );
 }
+
+/// Read the raw stored `enabled` flag straight from the emulator, bypassing the adapter, so a test
+/// can assert on the true persisted status independently of the returned projection.
+fn raw_enabled(client: &Client, host: &str, project: &str, id: &str) -> Option<bool> {
+    let url = document_url(host, project, "jobs", id);
+    let response = client.get(url).send().unwrap();
+    if !response.status().is_success() {
+        return None;
+    }
+    let document = response.json::<Value>().unwrap();
+    document["fields"]["enabled"]["booleanValue"].as_bool()
+}
+
+/// Read the raw stored `dealType` straight from the emulator, bypassing the adapter.
+fn raw_deal_type(client: &Client, host: &str, project: &str, id: &str) -> Option<String> {
+    let url = document_url(host, project, "jobs", id);
+    let response = client.get(url).send().unwrap();
+    if !response.status().is_success() {
+        return None;
+    }
+    let document = response.json::<Value>().unwrap();
+    document["fields"]["dealType"]["stringValue"]
+        .as_str()
+        .map(str::to_owned)
+}
+
+#[test]
+#[ignore = "requires FIRESTORE_EMULATOR_HOST and the repository emulator"]
+fn firestore_same_owner_create_on_existing_id_updates_and_preserves_owner_dealtype_and_last_run() {
+    let Some(host) = emulator_host() else {
+        return;
+    };
+    let project = env::var("FIRESTORE_PROJECT_ID").unwrap_or_else(|_| "fredy-compose".to_owned());
+    let client = Client::new();
+    purge(&client, &host, &project);
+
+    let adapter = FirestorePersistenceAdapter::from_environment().unwrap();
+
+    // Seed via the create path so the stored shape is exactly what the adapter writes: owner
+    // assigned, dealType defaulted to "rent", lastRunAt null.
+    let created = adapter
+        .create_job("j-existing", "owner", &write_input("Original"))
+        .unwrap();
+    assert!(matches!(created, JobWriteOutcome::Created(_)));
+
+    // The scheduler stamps lastRunAt out-of-band, as it would in production between writes.
+    update_document_fields(
+        &client,
+        &document_url(&host, &project, "jobs", "j-existing"),
+        json!({ "lastRunAt": { "integerValue": "1717000000000" } }),
+        &["lastRunAt"],
+    );
+
+    // A second create at the same id by the SAME owner is not a create: the exists=false
+    // precondition (and the pre-read) route it through the owner-preserving update path. The
+    // supplied input omits dealType, so the stored "rent" must survive, as must the owner and the
+    // out-of-band lastRunAt.
+    let again = adapter
+        .create_job("j-existing", "owner", &write_input("Renamed via create"))
+        .unwrap();
+    let record = match again {
+        JobWriteOutcome::Updated(record) => record,
+        other => panic!("same-owner create on an existing id must Update, got {other:?}"),
+    };
+    assert_eq!(record.name.as_deref(), Some("Renamed via create"));
+    assert_eq!(record.owner_user_id.as_deref(), Some("owner"));
+    assert_eq!(record.deal_type.as_deref(), Some("rent"));
+    assert_eq!(record.last_run_at, Some(1_717_000_000_000));
+
+    // Confirm against the raw persisted document too, independent of the returned projection.
+    assert_eq!(
+        raw_owner(&client, &host, &project, "j-existing").as_deref(),
+        Some("owner")
+    );
+    assert_eq!(
+        raw_deal_type(&client, &host, &project, "j-existing").as_deref(),
+        Some("rent")
+    );
+}
+
+#[test]
+#[ignore = "requires FIRESTORE_EMULATOR_HOST and the repository emulator"]
+fn firestore_malformed_stored_job_fails_closed_on_every_write_path() {
+    let Some(host) = emulator_host() else {
+        return;
+    };
+    let project = env::var("FIRESTORE_PROJECT_ID").unwrap_or_else(|_| "fredy-compose".to_owned());
+    let client = Client::new();
+    purge(&client, &host, &project);
+
+    // A job whose `sharedWithUser` is a string rather than a string array cannot be decoded into the
+    // access-critical projection. The write paths that must observe the true stored owner therefore
+    // cannot prove ownership, so they must fail closed with `Malformed` rather than proceeding.
+    write_document(
+        &client,
+        &document_url(&host, &project, "jobs", "j-broken"),
+        json!({
+            "userId": string("owner"),
+            "enabled": { "booleanValue": true },
+            "name": string("Broken"),
+            "sharedWithUser": string("not-an-array"),
+            "provider": { "arrayValue": {} },
+            "notificationAdapter": { "arrayValue": {} },
+            "dealType": string("rent"),
+            "lastRunAt": { "nullValue": null }
+        }),
+    );
+
+    let adapter = FirestorePersistenceAdapter::from_environment().unwrap();
+
+    // status seam: cannot authorize against an undecodable owner.
+    assert_eq!(
+        adapter.set_job_status("j-broken", "owner", false),
+        Err(JobWriteError::Malformed)
+    );
+    // update: same fail-closed decision.
+    assert_eq!(
+        adapter.update_job("j-broken", "owner", &write_input("Edit")),
+        Err(JobWriteError::Malformed)
+    );
+    // create at the same id: the pre-read observes the malformed doc and fails closed rather than
+    // routing to update or overwriting.
+    assert_eq!(
+        adapter.create_job("j-broken", "owner", &write_input("Recreate")),
+        Err(JobWriteError::Malformed)
+    );
+
+    // The malformed document is untouched by any of the rejected writes.
+    assert_eq!(
+        raw_owner(&client, &host, &project, "j-broken").as_deref(),
+        Some("owner")
+    );
+    assert_eq!(
+        raw_enabled(&client, &host, &project, "j-broken"),
+        Some(true)
+    );
+}
+
+#[test]
+#[ignore = "requires FIRESTORE_EMULATOR_HOST and the repository emulator"]
+fn firestore_set_job_status_is_owner_only_and_preserves_owner_and_last_run() {
+    let Some(host) = emulator_host() else {
+        return;
+    };
+    let project = env::var("FIRESTORE_PROJECT_ID").unwrap_or_else(|_| "fredy-compose".to_owned());
+    let client = Client::new();
+    purge(&client, &host, &project);
+
+    let adapter = FirestorePersistenceAdapter::from_environment().unwrap();
+
+    // Owner-created job (enabled defaults to true), shared with `viewer`, with an out-of-band
+    // lastRunAt to prove the status write leaves it untouched.
+    adapter
+        .create_job("j-status", "owner", &write_input("Status Job"))
+        .unwrap();
+    update_document_fields(
+        &client,
+        &document_url(&host, &project, "jobs", "j-status"),
+        json!({ "lastRunAt": { "integerValue": "1717000000000" } }),
+        &["lastRunAt"],
+    );
+
+    // Owner disables the job: only `enabled` flips; owner, lastRunAt, name and dealType all survive.
+    let disabled = adapter.set_job_status("j-status", "owner", false).unwrap();
+    let record = match disabled {
+        JobWriteOutcome::Updated(record) => record,
+        other => panic!("expected Updated, got {other:?}"),
+    };
+    assert!(!record.enabled);
+    assert_eq!(record.owner_user_id.as_deref(), Some("owner"));
+    assert_eq!(record.last_run_at, Some(1_717_000_000_000));
+    assert_eq!(record.name.as_deref(), Some("Status Job"));
+    assert_eq!(record.deal_type.as_deref(), Some("rent"));
+    assert_eq!(
+        raw_enabled(&client, &host, &project, "j-status"),
+        Some(false)
+    );
+
+    // Owner re-enables: idempotent round-trip back to enabled.
+    let enabled = adapter.set_job_status("j-status", "owner", true).unwrap();
+    assert!(enabled.record().enabled);
+    assert_eq!(
+        raw_enabled(&client, &host, &project, "j-status"),
+        Some(true)
+    );
+
+    // Shared user: an explicit share grants reads, never a status change.
+    assert_eq!(
+        adapter.set_job_status("j-status", "viewer", false),
+        Err(JobWriteError::NotOwner)
+    );
+    // Unshared admin: administrator status carries no mutation bypass in this contract.
+    assert_eq!(
+        adapter.set_job_status("j-status", "admin", false),
+        Err(JobWriteError::NotOwner)
+    );
+    // Stranger: unrelated user cannot change status.
+    assert_eq!(
+        adapter.set_job_status("j-status", "stranger", false),
+        Err(JobWriteError::NotOwner)
+    );
+    // Every denial left the flag enabled and the owner intact.
+    assert_eq!(
+        raw_enabled(&client, &host, &project, "j-status"),
+        Some(true)
+    );
+    assert_eq!(
+        raw_owner(&client, &host, &project, "j-status").as_deref(),
+        Some("owner")
+    );
+
+    // Fail-closed guards mirror the other write paths.
+    assert_eq!(
+        adapter.set_job_status("j-status", "", true),
+        Err(JobWriteError::MissingIdentity)
+    );
+    assert_eq!(
+        adapter.set_job_status("", "owner", true),
+        Err(JobWriteError::InvalidJobId)
+    );
+    assert_eq!(
+        adapter.set_job_status("ghost", "owner", true),
+        Err(JobWriteError::InvalidJobId)
+    );
+}
