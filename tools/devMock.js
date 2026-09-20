@@ -11,7 +11,7 @@
 import http from 'node:http';
 const now = Date.now();
 
-const users = [{ id: 1, username: 'admin', isAdmin: true, lastLogin: now, numberOfJobs: 2 }];
+const users = [{ id: 1, username: 'admin', isAdmin: true, lastLogin: now, numberOfJobs: 4 }];
 
 const jobs = [
   {
@@ -35,7 +35,7 @@ const jobs = [
   {
     id: 'job2',
     name: 'Berlin Rentals',
-    enabled: true,
+    enabled: false,
     running: false,
     blacklist: ['keller', 'EG'],
     provider: [{ id: 'immo', name: 'Immowelt', url: 'https://www.immowelt.de/suche/berlin/wohnungen/mieten' }],
@@ -43,6 +43,30 @@ const jobs = [
     specFilter: {},
     numberOfFoundListings: 2,
     isOnlyShared: false,
+  },
+  {
+    id: 'job3',
+    name: 'Running Search',
+    enabled: true,
+    running: true,
+    blacklist: [],
+    provider: [{ id: 'immo', name: 'Immowelt', url: 'https://www.immowelt.de/suche/hamburg/wohnungen/mieten' }],
+    notificationAdapter: [],
+    specFilter: {},
+    numberOfFoundListings: 1,
+    isOnlyShared: false,
+  },
+  {
+    id: 'job4',
+    name: 'Partner Search',
+    enabled: true,
+    running: false,
+    blacklist: [],
+    provider: [{ id: 'metadataOnly', name: 'Metadata-only provider', url: 'https://example.com/search' }],
+    notificationAdapter: [],
+    specFilter: {},
+    numberOfFoundListings: 4,
+    isOnlyShared: true,
   },
 ];
 
@@ -129,6 +153,16 @@ const listings = [
   },
 ];
 
+const notificationAdapterMetadata = [
+  {
+    id: 'browser',
+    name: 'Browser Notifications',
+    description: 'Displays native desktop push notifications directly in your browser.',
+    config: {},
+  },
+];
+const notificationChannels = [{ id: 'channel-1', name: 'Browser notifications', adapterId: 'browser' }];
+
 const providerMetadata = [
   { id: 'immoscout', name: 'ImmobilienScout24', baseUrl: 'https://www.immobilienscout24.de' },
   { id: 'immo', name: 'Immowelt', baseUrl: 'https://www.immowelt.de' },
@@ -149,92 +183,164 @@ const dashboard = {
 };
 
 const routes = {
+  'GET /api/auth/config': { enabled: false },
   'GET /api/auth/me': { userId: 1, username: 'admin@example.com', isAdmin: true },
   'GET /api/jobs/provider': providerMetadata,
   'GET /api/jobs': jobs,
   'GET /api/jobs/shareableUserList': [],
-  'GET /api/jobs/notificationAdapter': [],
+  'GET /api/jobs/notificationAdapter': notificationAdapterMetadata,
+  'GET /api/notificationChannels': notificationChannels,
   'GET /api/admin/generalSettings': { demoMode: false, interval: 30 },
-  'GET /api/user/settings': {},
+  'GET /api/user/settings': {
+    language: 'en',
+    theme: 'light',
+    inquiry_profile: {
+      name: 'Alex Example',
+      street: 'Main Street',
+      houseNumber: '1',
+      postcode: '10115',
+      city: 'Berlin',
+    },
+  },
   'GET /api/dashboard': dashboard,
   'GET /api/demo': { demoMode: false },
   'POST /api/user/settings/listing-deletion-preference': {},
 };
 
-const server = http.createServer((req, res) => {
-  const origin = req.headers.origin || 'http://localhost:5175';
-  const path = req.url.split('?')[0];
-  const key = req.method + ' ' + path;
+function readJson(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      try {
+        resolve(body.length > 0 ? JSON.parse(body) : {});
+      } catch {
+        resolve({});
+      }
+    });
+  });
+}
 
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+function sendJson(res, status, value) {
+  res.writeHead(status);
+  res.end(JSON.stringify(value));
+}
 
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
-    return;
-  }
+export function createDevMockServer({ port = 9998 } = {}) {
+  const mockJobs = structuredClone(jobs);
+  const server = http.createServer(async (req, res) => {
+    const origin = req.headers.origin || 'http://localhost:5175';
+    const path = req.url.split('?')[0];
+    const key = req.method + ' ' + path;
 
-  if (path === '/api/jobs/events') {
-    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    res.write(': connected\n\n');
-    const interval = setInterval(() => res.write(': ping\n\n'), 15000);
-    req.on('close', () => clearInterval(interval));
-    return;
-  }
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  res.setHeader('Content-Type', 'application/json');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return;
+    }
 
-  const userMatch = path.match(/^\/api\/admin\/users\/(\d+)$/);
-  if (req.method === 'GET' && userMatch) {
-    const user = users.find((u) => u.id === parseInt(userMatch[1]));
-    res.writeHead(user ? 200 : 404);
-    res.end(JSON.stringify(user || { message: 'Not found' }));
-    return;
-  }
+    if (path === '/api/jobs/events') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      });
+      res.write(': connected\n\n');
+      const interval = setInterval(() => res.write(': ping\n\n'), 15000);
+      req.on('close', () => clearInterval(interval));
+      return;
+    }
 
-  const listingMatch = path.match(/^\/api\/listings\/([^/]+)$/);
-  if (
-    req.method === 'GET' &&
-    listingMatch &&
-    !path.includes('/table') &&
-    !path.includes('/map') &&
-    !path.includes('/watch')
-  ) {
-    const listing = listings.find((l) => l.id === listingMatch[1]);
-    res.writeHead(listing ? 200 : 404);
-    res.end(JSON.stringify(listing || { message: 'Not found' }));
-    return;
-  }
+    res.setHeader('Content-Type', 'application/json');
 
-  if (path.startsWith('/api/jobs/data')) {
-    res.writeHead(200);
-    res.end(JSON.stringify({ result: jobs, totalNumber: jobs.length, page: 1 }));
-    return;
-  }
-  if (path.startsWith('/api/listings/table')) {
-    res.writeHead(200);
-    res.end(
-      JSON.stringify({
-        result: listings,
-        totalNumber: listings.length,
-        page: 1,
-        availableProviders,
-      }),
-    );
-    return;
-  }
-  if (path.startsWith('/api/listings/map')) {
-    res.writeHead(200);
-    res.end(JSON.stringify({ listings: listings.filter((l) => l.is_active), maxPrice: 2200 }));
-    return;
-  }
+    const statusMatch = path.match(/^\/api\/jobs\/([^/]+)\/status$/);
+    if (req.method === 'PUT' && statusMatch) {
+      const body = await readJson(req);
+      const job = mockJobs.find((candidate) => candidate.id === statusMatch[1]);
+      if (!job || job.isOnlyShared) {
+        sendJson(res, job ? 403 : 404, { message: job ? 'Shared search is read-only' : 'Not found' });
+        return;
+      }
+      job.enabled = body.status === true;
+      sendJson(res, 200, job);
+      return;
+    }
 
-  const data = routes[key];
-  res.writeHead(200);
-  res.end(JSON.stringify(data !== undefined ? data : {}));
-});
+    const runMatch = path.match(/^\/api\/jobs\/([^/]+)\/run$/);
+    if (req.method === 'POST' && runMatch) {
+      const job = mockJobs.find((candidate) => candidate.id === runMatch[1]);
+      if (!job || job.isOnlyShared) {
+        sendJson(res, job ? 403 : 404, { message: job ? 'Shared search is read-only' : 'Not found' });
+        return;
+      }
+      if (job.running) {
+        sendJson(res, 409, { message: 'Job is already running' });
+        return;
+      }
+      job.running = true;
+      sendJson(res, 202, job);
+      return;
+    }
 
-server.listen(9998, () => console.warn('Dev mock ready on :9998'));
+    const userMatch = path.match(/^\/api\/admin\/users\/(\d+)$/);
+    if (req.method === 'GET' && userMatch) {
+      const user = users.find((u) => u.id === parseInt(userMatch[1]));
+      res.writeHead(user ? 200 : 404);
+      res.end(JSON.stringify(user || { message: 'Not found' }));
+      return;
+    }
+
+    const listingMatch = path.match(/^\/api\/listings\/([^/]+)$/);
+    if (
+      req.method === 'GET' &&
+      listingMatch &&
+      !path.includes('/table') &&
+      !path.includes('/map') &&
+      !path.includes('/watch')
+    ) {
+      const listing = listings.find((l) => l.id === listingMatch[1]);
+      res.writeHead(listing ? 200 : 404);
+      res.end(JSON.stringify(listing || { message: 'Not found' }));
+      return;
+    }
+
+    if (path.startsWith('/api/jobs/data') || path.startsWith('/api/jobs/table')) {
+      res.writeHead(200);
+      res.end(JSON.stringify({ result: mockJobs, totalNumber: mockJobs.length, page: 1 }));
+      return;
+    }
+    if (path.startsWith('/api/listings/table')) {
+      res.writeHead(200);
+      res.end(
+        JSON.stringify({
+          result: listings,
+          totalNumber: listings.length,
+          page: 1,
+          availableProviders,
+        }),
+      );
+      return;
+    }
+    if (path.startsWith('/api/listings/map')) {
+      res.writeHead(200);
+      res.end(JSON.stringify({ listings: listings.filter((l) => l.is_active), maxPrice: 2200 }));
+      return;
+    }
+
+    const data = key === 'GET /api/jobs' ? mockJobs : routes[key];
+    sendJson(res, 200, data !== undefined ? data : {});
+  });
+  server.listen(port, () => console.warn(`Dev mock ready on :${port}`));
+  return server;
+}
+
+if (process.argv[1]?.endsWith('/tools/devMock.js')) {
+  createDevMockServer();
+}

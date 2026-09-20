@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.frontend.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["test/ui/finalResponsiveSlice.test.ts", "test/ui/listingFilters.test.ts"]
+}
