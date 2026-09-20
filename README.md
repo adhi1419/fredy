@@ -8,6 +8,41 @@
 
 Fredy was created by **Christian Kellner**. This fork keeps the original Fredy attribution and source-available license conditions. Read the [license](LICENSE) before redistributing or building a commercial service around Fredy.
 
+## See Fredy in action
+
+Fredy keeps the important choices visible without making the home search feel busy. The same workspace adapts from a quiet desktop feed to a one-handed mobile flow.
+
+<div align="center">
+  <img src="doc/screenshots/home-quiet-feed-desktop.png" alt="Fredy Home in Quiet feed view with four new homes, provider filters, and listing activity tabs" width="1200" />
+  <br />
+  <em>Home starts with a quiet feed for scanning new matches.</em>
+</div>
+
+<div align="center">
+  <img src="doc/screenshots/home-list-map-desktop.png" alt="Fredy Home in List plus map view showing four homes across Germany with map markers" width="1200" />
+  <br />
+  <em>List + map adds location context when geography matters.</em>
+</div>
+
+<div align="center">
+  <img src="doc/screenshots/saved-searches-desktop.png" alt="Fredy Saved Searches page showing Munich Apartments and Berlin Rentals with listing, provider, and channel counts" width="1200" />
+  <br />
+  <em>Saved Searches keeps the searches that supply Home easy to manage.</em>
+</div>
+
+<div align="center">
+  <img src="doc/screenshots/listing-actions-mobile.png" alt="Fredy mobile listing detail with Apply first, followed by Google Maps and the provider listing actions" width="390" />
+  <img src="doc/screenshots/saved-search-four-steps-mobile.png" alt="Fredy mobile saved-search setup showing step 1 of 4, Providers, with the search name and provider area" width="390" />
+  <br />
+  <em>Mobile layouts keep listing actions and the four-step search setup within easy reach.</em>
+</div>
+
+<div align="center">
+  <img src="doc/screenshots/applicant-profile-onboarding-desktop.png" alt="Fredy first-time setup form asking for a name and address before searching" width="1000" />
+  <br />
+  <em>First-time setup asks explicitly for only the common profile facts Fredy needs.</em>
+</div>
+
 ## What Fredy does
 
 - Searches 19 real-estate providers across Germany, Austria, and Switzerland.
