@@ -410,12 +410,13 @@ const JobGrid = () => {
                 <Divider margin="8px" />
 
                 <div className="jobGrid__card__footer">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div className="jobGrid__card__status">
                     <Switch
                       onChange={(checked) => onJobStatusChanged(job.id, checked)}
                       checked={job.enabled}
                       disabled={job.isOnlyShared}
                       size="small"
+                      aria-label={t('jobs.cardActive')}
                     />
                     <Text type="secondary" size="small">
                       {t('jobs.cardActive')}
@@ -430,6 +431,7 @@ const JobGrid = () => {
                           size="small"
                           theme="solid"
                           icon={<IconPlayCircle />}
+                          aria-label={t('jobs.popoverRunJob')}
                           disabled={job.isOnlyShared || job.running}
                           onClick={() => onJobRun(job.id)}
                         />
@@ -441,6 +443,7 @@ const JobGrid = () => {
                           type="secondary"
                           size="small"
                           icon={<IconEdit />}
+                          aria-label={t('jobs.popoverEditJob')}
                           disabled={job.isOnlyShared}
                           onClick={() => navigate(`/jobs/edit/${job.id}`)}
                         />
@@ -452,6 +455,7 @@ const JobGrid = () => {
                           type="tertiary"
                           size="small"
                           icon={<IconCopy />}
+                          aria-label={t('jobs.popoverCloneJob')}
                           disabled={job.isOnlyShared}
                           onClick={() => navigate('/jobs/new', { state: { cloneFrom: job.id } })}
                         />
@@ -463,6 +467,7 @@ const JobGrid = () => {
                           type="danger"
                           size="small"
                           icon={<IconDescend2 />}
+                          aria-label={t('jobs.popoverDeleteListings')}
                           disabled={job.isOnlyShared}
                           onClick={() => onListingRemoval(job.id)}
                         />
@@ -474,6 +479,7 @@ const JobGrid = () => {
                           type="danger"
                           size="small"
                           icon={<IconDelete />}
+                          aria-label={t('jobs.popoverDeleteJob')}
                           disabled={job.isOnlyShared}
                           onClick={() => onJobRemoval(job.id)}
                         />

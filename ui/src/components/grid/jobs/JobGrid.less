@@ -144,7 +144,6 @@
           opacity: 0.7;
         }
       }
-
       &--purple {
         background: @color-purple-bg;
         border-color: @color-purple-border;
@@ -186,4 +185,52 @@
   font-size: @text-sm;
   padding: 4px 8px;
   color: @color-text;
+}
+
+.jobGrid__card__status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .jobGrid__card__footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: @space-2;
+  }
+
+  .jobGrid__card__status {
+    min-height: 44px;
+
+    .semi-switch-native-control {
+      width: 44px !important;
+      height: 44px !important;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  .jobGrid__actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+
+    > div {
+      width: 100%;
+      min-width: 0;
+      height: 44px;
+    }
+
+    .semi-button {
+      width: 100%;
+      min-width: 44px;
+      min-height: 44px;
+      height: 44px;
+      padding: 0;
+    }
+  }
 }
