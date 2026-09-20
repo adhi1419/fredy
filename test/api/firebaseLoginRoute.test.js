@@ -45,6 +45,22 @@ describe('GET /api/auth/config', () => {
     });
     expect(mocks.authHook).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['absent', undefined],
+    ['invalid', 'not-json'],
+  ])('returns a disabled bootstrap response when Firebase web config is %s', async (_name, value) => {
+    if (value === undefined) delete process.env.FIREBASE_WEB_CONFIG;
+    else process.env.FIREBASE_WEB_CONFIG = value;
+    const instance = await buildApp();
+
+    const response = await instance.inject({ method: 'GET', url: '/api/auth/config' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toBe('application/json; charset=utf-8');
+    expect(response.body).toBe('{"enabled":false,"firebaseConfig":null}');
+    expect(mocks.authHook).not.toHaveBeenCalled();
+  });
 });
 
 describe('GET /api/auth/me', () => {

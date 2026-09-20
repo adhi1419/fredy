@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
 license = "Apache-2.0"
-description = "Dormant executable parity implementation of Fredy's health route"
+description = "Dormant executable parity implementation of Fredy's health and public auth-config routes"
 publish = false
 
 [lib]
@@ -13,6 +13,9 @@ path = "src/lib.rs"
 [[bin]]
 name = "fredy-health-route"
 path = "src/main.rs"
+
+[dependencies]
+serde_json = { version = "=1.0.140", features = ["preserve_order"] }
 
 [profile.release]
 codegen-units = 1

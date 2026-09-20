@@ -85,7 +85,8 @@ describe('Bun and TypeScript foundation', () => {
     const deploy = read('.github/workflows/deploy.yml');
 
     expect(manifest).toContain('name = "fredy-health-route"');
-    expect(manifest).not.toContain('[dependencies]');
+    expect(manifest).toContain('[dependencies]');
+    expect(manifest).toContain('serde_json = { version = "=1.0.140", features = ["preserve_order"] }');
     expect(toolchain).toContain('channel = "1.85.1"');
     expect(toolchain).toContain('components = ["rustfmt", "clippy"]');
     expect(rustWorkflow).toContain("if: needs.changes.outputs.rust == 'true'");
