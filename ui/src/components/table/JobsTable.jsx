@@ -58,6 +58,7 @@ const JobsTable = ({ jobs, onRun, onEdit, onClone, onDeleteListings, onDeleteJob
               size="small"
               checked={job.enabled}
               disabled={job.isOnlyShared}
+              aria-label={t('jobs.cardActive')}
               onChange={(checked) => onStatusChange(job.id, checked)}
             />
             {job.running && (
@@ -82,6 +83,7 @@ const JobsTable = ({ jobs, onRun, onEdit, onClone, onDeleteListings, onDeleteJob
                 size="small"
                 theme="solid"
                 icon={<IconPlayCircle />}
+                aria-label={t('jobs.tableRunJob')}
                 disabled={job.isOnlyShared || job.running}
                 onClick={() => onRun(job.id)}
               />
@@ -91,6 +93,7 @@ const JobsTable = ({ jobs, onRun, onEdit, onClone, onDeleteListings, onDeleteJob
                 type="secondary"
                 size="small"
                 icon={<IconEdit />}
+                aria-label={t('jobs.tableEditJob')}
                 disabled={job.isOnlyShared}
                 onClick={() => onEdit(job.id)}
               />
@@ -100,6 +103,7 @@ const JobsTable = ({ jobs, onRun, onEdit, onClone, onDeleteListings, onDeleteJob
                 type="tertiary"
                 size="small"
                 icon={<IconCopy />}
+                aria-label={t('jobs.tableCloneJob')}
                 disabled={job.isOnlyShared}
                 onClick={() => onClone(job.id)}
               />
@@ -109,6 +113,7 @@ const JobsTable = ({ jobs, onRun, onEdit, onClone, onDeleteListings, onDeleteJob
                 type="danger"
                 size="small"
                 icon={<IconDescend2 />}
+                aria-label={t('jobs.tableDeleteListings')}
                 disabled={job.isOnlyShared}
                 onClick={() => onDeleteListings(job.id)}
               />
@@ -118,6 +123,7 @@ const JobsTable = ({ jobs, onRun, onEdit, onClone, onDeleteListings, onDeleteJob
                 type="danger"
                 size="small"
                 icon={<IconDelete />}
+                aria-label={t('jobs.tableDeleteJob')}
                 disabled={job.isOnlyShared}
                 onClick={() => onDeleteJob(job.id)}
               />
