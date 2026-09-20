@@ -42,6 +42,11 @@ import DemoBanner from './components/demo/DemoBanner.jsx';
 import { LEGACY_REDIRECTS } from './services/routes/legacyRedirects.js';
 import { applyTheme, normalizeTheme } from './services/theme/theme.js';
 import { signOutFirebase, subscribeToAuthState } from './services/auth/firebaseAuth.js';
+import ApplicantProfileOnboardingPage from './views/onboarding/ApplicantProfileOnboardingPage.jsx';
+import {
+  APPLICANT_PROFILE_ONBOARDING_PATH,
+  resolveApplicantProfileOnboarding,
+} from './services/onboarding/applicantProfileOnboarding.js';
 
 const semiLocaleModules = import.meta.glob('/node_modules/@douyinfe/semi-ui-19/lib/es/locale/source/*.js', {
   eager: true,
@@ -71,6 +76,7 @@ export default function FredyApp() {
   const initInFlight = React.useRef(false);
   const currentUser = useSelector((state) => state.user.currentUser);
   const settings = useSelector((state) => state.generalSettings.settings);
+  const userSettings = useSelector((state) => state.userSettings);
   const language = useSelector((state) => state.userSettings.settings.language);
   /*
    * Straight off the user's stored settings, with nothing cached in front of it. Until those have
@@ -170,6 +176,12 @@ export default function FredyApp() {
   };
 
   const isAdmin = () => currentUser != null && currentUser.isAdmin;
+  const onboardingDecision = resolveApplicantProfileOnboarding({
+    settingsLoaded: userSettings.loaded,
+    settingsLoadFailed: userSettings.loadFailed,
+    profile: userSettings.settings?.inquiry_profile,
+    pathname: location.pathname,
+  });
   const { Content } = Layout;
   return loading ? null : (
     <I18nProvider language={language ?? 'en'}>
@@ -188,63 +200,76 @@ export default function FredyApp() {
           // body attribute on their own, but the charts paint onto a canvas from colours they read once
           // per render, and a canvas keeps whatever it was last painted with until something redraws it.
           <Layout className="app" key={theme}>
-            <Navigation isAdmin={isAdmin()} />
+            <Navigation isAdmin={isAdmin()} primaryVisible={!onboardingDecision.requiresSetup} />
             <Layout className="app__main">
               <Content className="app__content">
                 <DebugLoggingBanner />
                 {settings.demoMode && <DemoBanner />}
                 <Routes>
-                  <Route path="/403" element={<InsufficientPermission />} />
-                  <Route path="/jobs/new" element={<JobMutation />} />
-                  <Route path="/jobs/edit/:jobId" element={<JobMutation />} />
-                  <Route path="/dashboard" element={<Home />} />
-                  <Route path="/jobs" element={<Jobs />} />
-                  <Route path="/listings" element={<Listings />} />
-                  <Route path="/listings/listing/:listingId" element={<ListingDetail />} />
-                  <Route path="/map" element={<MapView />} />
-                  <Route path="/finance" element={<FinanceCalculator />} />
+                  {onboardingDecision.requiresSetup ? (
+                    <>
+                      <Route path={APPLICANT_PROFILE_ONBOARDING_PATH} element={<ApplicantProfileOnboardingPage />} />
+                      <Route
+                        path="*"
+                        element={<Navigate to={APPLICANT_PROFILE_ONBOARDING_PATH} state={{ from: location }} replace />}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Route path={APPLICANT_PROFILE_ONBOARDING_PATH} element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/403" element={<InsufficientPermission />} />
+                      <Route path="/jobs/new" element={<JobMutation />} />
+                      <Route path="/jobs/edit/:jobId" element={<JobMutation />} />
+                      <Route path="/dashboard" element={<Home />} />
+                      <Route path="/jobs" element={<Jobs />} />
+                      <Route path="/listings" element={<Listings />} />
+                      <Route path="/listings/listing/:listingId" element={<ListingDetail />} />
+                      <Route path="/map" element={<MapView />} />
+                      <Route path="/finance" element={<FinanceCalculator />} />
 
-                  {/* Settings that belong to whoever is signed in. No guard: they are theirs.
+                      {/* Settings that belong to whoever is signed in. No guard: they are theirs.
                       One entry in the account menu, and the tabs below the heading are the only place
                       these five pages are named. */}
-                  <Route path="/settings" element={<SettingsLayout />}>
-                    <Route index element={<Navigate to="/settings/preferences" replace />} />
-                    <Route path="preferences" element={<PreferencesPage />} />
-                    <Route path="travel-time" element={<TravelTimePage />} />
-                    <Route path="listings" element={<ListingDetailsPage />} />
-                    <Route path="notifications" element={<NotificationsPage />} />
-                    <Route path="inquiry-profile" element={<InquiryProfilePage />} />
-                  </Route>
+                      <Route path="/settings" element={<SettingsLayout />}>
+                        <Route index element={<Navigate to="/settings/preferences" replace />} />
+                        <Route path="preferences" element={<PreferencesPage />} />
+                        <Route path="travel-time" element={<TravelTimePage />} />
+                        <Route path="listings" element={<ListingDetailsPage />} />
+                        <Route path="notifications" element={<NotificationsPage />} />
+                        <Route path="inquiry-profile" element={<InquiryProfilePage />} />
+                      </Route>
 
-                  {/* Settings that belong to the instance. Guarded once, at the parent, so a new
+                      {/* Settings that belong to the instance. Guarded once, at the parent, so a new
                       page cannot be added without inheriting the check. */}
-                  <Route
-                    path="/admin"
-                    element={
-                      <PermissionAwareRoute currentUser={currentUser}>
-                        <AdminLayout />
-                      </PermissionAwareRoute>
-                    }
-                  >
-                    <Route index element={<Navigate to="/admin/system" replace />} />
-                    <Route path="system" element={<SystemPage />} />
-                    <Route path="execution" element={<ExecutionPage />} />
-                    <Route path="connectivity" element={<ConnectivityPage />} />
-                    <Route path="backup" element={<BackupPage />} />
-                    <Route path="debug" element={<DebugPage />} />
-                  </Route>
+                      <Route
+                        path="/admin"
+                        element={
+                          <PermissionAwareRoute currentUser={currentUser}>
+                            <AdminLayout />
+                          </PermissionAwareRoute>
+                        }
+                      >
+                        <Route index element={<Navigate to="/admin/system" replace />} />
+                        <Route path="system" element={<SystemPage />} />
+                        <Route path="execution" element={<ExecutionPage />} />
+                        <Route path="connectivity" element={<ConnectivityPage />} />
+                        <Route path="backup" element={<BackupPage />} />
+                        <Route path="debug" element={<DebugPage />} />
+                      </Route>
 
-                  {/* The addresses these things used to live at, kept so existing bookmarks and the
+                      {/* The addresses these things used to live at, kept so existing bookmarks and the
                       links in older notification emails still land somewhere sensible. The table
                       lives in legacyRedirects.js so a test can check every entry still resolves. */}
-                  {Object.entries(LEGACY_REDIRECTS).map(([from, to]) => (
-                    <Route key={from} path={from} element={<Navigate to={to} replace />} />
-                  ))}
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  {/* Catch-all: an authenticated user landing on an unknown path (e.g. still on
+                      {Object.entries(LEGACY_REDIRECTS).map(([from, to]) => (
+                        <Route key={from} path={from} element={<Navigate to={to} replace />} />
+                      ))}
+                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                      {/* Catch-all: an authenticated user landing on an unknown path (e.g. still on
                       /login during the post-login transition) is sent to the dashboard instead
                       of matching no route. */}
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </>
+                  )}
                 </Routes>
               </Content>
               <FredyFooter />

@@ -49,12 +49,12 @@ import Navigation from '../../ui/src/components/navigation/Navigation.jsx';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const styles = fs.readFileSync(path.join(here, '../../ui/src/components/navigation/Navigate.less'), 'utf8');
 
-function renderNavigation(pathname) {
+function renderNavigation(pathname, props = {}) {
   return renderToStaticMarkup(
     React.createElement(
       MemoryRouter,
       { initialEntries: [pathname] },
-      React.createElement(Navigation, { isAdmin: true }),
+      React.createElement(Navigation, { isAdmin: true, ...props }),
     ),
   );
 }
@@ -70,6 +70,14 @@ describe('two-tab shell component', () => {
     expect(styles).toContain('.fredy-shell-nav__account-label');
     expect(styles).not.toMatch(/\.fredy-shell-nav__account-button\s+span/);
     expect(styles).toMatch(/\.fredy-shell-nav__account-button\s*{[^}]*min-width:\s*44px/s);
+  });
+
+  it('renders an account-only shell during mandatory onboarding', () => {
+    const html = renderNavigation('/onboarding/applicant-profile', { primaryVisible: false });
+
+    expect(html).not.toContain('fredy-shell-nav__primary-link');
+    expect(html).not.toContain('fredy-shell-nav__mobile-primary');
+    expect(html).toContain('fredy-shell-nav__account-button');
   });
 
   it.each(['/settings/preferences', '/admin/system'])('leaves both primary tabs unselected on %s', (pathname) => {

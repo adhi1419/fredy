@@ -48,6 +48,7 @@ export interface UserSettings {
 export interface UserSettingsState {
   settings: UserSettings;
   loaded: boolean;
+  loadFailed: boolean;
 }
 
 export interface UserSettingsRootState {
@@ -75,6 +76,10 @@ export interface SaveFinanceSectionParams {
   profile: SettingsObject;
 }
 
+export interface SaveInquiryProfileOptions {
+  validateCommon?: boolean;
+}
+
 export interface UserSettingsEffects {
   getUserSettings(): Promise<void>;
   setHomeAddresses(addresses: readonly HomeAddress[]): Promise<unknown>;
@@ -86,13 +91,13 @@ export interface UserSettingsEffects {
   setListingsViewMode(listingsViewMode: 'grid' | 'table'): Promise<void>;
   setJobsViewMode(jobsViewMode: 'grid' | 'table'): Promise<void>;
   setListingDeletionPreference(preference: ListingDeletionPreference): Promise<void>;
-  saveInquiryProfile(profile: SettingsObject): Promise<void>;
+  saveInquiryProfile(profile: SettingsObject, options?: SaveInquiryProfileOptions): Promise<SettingsObject>;
   setLanguage(language: string): Promise<void>;
   setTheme(theme: 'dark' | 'light'): Promise<void>;
 }
 
 export function createUserSettingsState(): UserSettingsState {
-  return { settings: {}, loaded: false };
+  return { settings: {}, loaded: false, loadFailed: false };
 }
 
 export function createUserSettingsEffects(
@@ -105,12 +110,19 @@ export function createUserSettingsEffects(
       try {
         const response = await transport.get('/api/user/settings');
         set((state) => ({
-          userSettings: { ...state.userSettings, settings: asUserSettings(response.json), loaded: true },
+          userSettings: {
+            ...state.userSettings,
+            settings: asUserSettings(response.json),
+            loaded: true,
+            loadFailed: false,
+          },
         }));
       } catch (exception) {
         console.error('Error while trying to get resource for api/user/settings. Error:', exception);
         // Mark as loaded even on error to prevent blocking the UI.
-        set((state) => ({ userSettings: { ...state.userSettings, loaded: true } }));
+        set((state) => ({
+          userSettings: { ...state.userSettings, loaded: true, loadFailed: true },
+        }));
       }
     },
 
@@ -201,10 +213,19 @@ export function createUserSettingsEffects(
       }
     },
 
-    async saveInquiryProfile(profile) {
+    async saveInquiryProfile(profile, options = {}) {
       try {
-        await transport.post('/api/user/settings/inquiry-profile', { inquiry_profile: profile });
-        setSetting(set, 'inquiry_profile', profile);
+        const payload = {
+          inquiry_profile: profile,
+          ...(options.validateCommon === true ? { validate_common: true } : {}),
+        };
+        const response = await transport.post('/api/user/settings/inquiry-profile', payload);
+        if (response.status >= 400) throw response;
+        const storedProfile = asRecord(response.json).inquiry_profile;
+        const stored = asRecord(storedProfile);
+        const nextProfile = Object.keys(stored).length > 0 ? stored : profile;
+        setSetting(set, 'inquiry_profile', nextProfile);
+        return nextProfile;
       } catch (exception) {
         console.error('Error while trying to save inquiry profile. Error:', exception);
         throw exception;

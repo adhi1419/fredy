@@ -1150,5 +1150,20 @@
   "settings.inquiryProfile.deutscheWohnenPrivacyConsent": "Ich stimme zu, dass Fredy meine erzeugte Anfrage, Name, Telefonnummer, Einkommenskategorien und Anmelde-E-Mail für eine Bewerbung an Deutsche Wohnen/Vonovia sendet.",
   "settings.inquiryProfile.howogeTitle": "HOWOGE über InBerlinWohnen",
   "settings.inquiryProfile.howogeHelp": "HOWOGE nimmt nur Name und E-Mail-Adresse entgegen und sendet danach eine Double-Opt-in-Bestätigungsmail. Es gibt kein Feld für eine eigene Nachricht. Fredy wertet die angenommene Anfrage als Beworben; die E-Mail muss trotzdem bestätigt werden.",
-  "settings.inquiryProfile.howogeApplicationConsent": "Ich stimme zu, dass Fredy meinen Namen und die E-Mail-Adresse des angemeldeten Kontos für passende Inserate an HOWOGE übermittelt und jede angenommene Anfrage als Beworben zählt. Mir ist bekannt, dass HOWOGE eine Bestätigungsmail sendet."
+  "settings.inquiryProfile.howogeApplicationConsent": "Ich stimme zu, dass Fredy meinen Namen und die E-Mail-Adresse des angemeldeten Kontos für passende Inserate an HOWOGE übermittelt und jede angenommene Anfrage als Beworben zählt. Mir ist bekannt, dass HOWOGE eine Bestätigungsmail sendet.",
+  "onboarding.applicantProfile.kicker": "Ersteinrichtung",
+  "onboarding.applicantProfile.title": "Sag Fredy, wer sich bewirbt",
+  "onboarding.applicantProfile.subtitle": "Gib die Angaben an, die Fredy für dein Bewerberprofil verwenden darf, bevor du loslegst.",
+  "onboarding.applicantProfile.identityTitle": "Dein Name und deine Adresse",
+  "onboarding.applicantProfile.identityHelp": "Diese gemeinsamen Angaben werden ausdrücklich abgefragt. Fredy leitet sie nie aus Nachrichtentexten oder Anbieterantworten ab.",
+  "onboarding.applicantProfile.streetPlaceholder": "z. B. Hauptstraße",
+  "onboarding.applicantProfile.houseNumberPlaceholder": "z. B. 1",
+  "onboarding.applicantProfile.postcodePlaceholder": "z. B. 10115",
+  "onboarding.applicantProfile.cityPlaceholder": "z. B. Berlin",
+  "onboarding.applicantProfile.providerNoteTitle": "Anbieterdetails bleiben in Mein Konto",
+  "onboarding.applicantProfile.providerNoteBody": "Beschäftigung, Einkommen, Haushaltsangaben und Anbieter-Einwilligungen werden hier nicht erraten. Ergänze oder ändere diese anbieterbezogenen Angaben später unter Mein Konto, wenn du bereit bist.",
+  "onboarding.applicantProfile.validation": "Gib deinen vollständigen Namen und eine vollständige Adresse ein, bevor du fortfährst.",
+  "onboarding.applicantProfile.save": "Speichern und weiter",
+  "onboarding.applicantProfile.saveError": "Dein Profil konnte nicht gespeichert werden. Prüfe die Angaben und versuche es erneut.",
+  "onboarding.applicantProfile.loading": "Dein Profil wird geladen …"
 }

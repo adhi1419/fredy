@@ -4,7 +4,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { isInquiryProfileReady, sanitizeInquiryProfile } from '../../../lib/services/inquiries/profile.js';
+import {
+  isCommonInquiryProfileReady,
+  isInquiryProfileReady,
+  sanitizeInquiryProfile,
+} from '../../../lib/services/inquiries/profile.js';
 
 describe('sanitizeInquiryProfile', () => {
   it('removes an email override while preserving applicant facts', () => {
@@ -44,5 +48,29 @@ describe('isInquiryProfileReady', () => {
         'inberlinwohnen',
       ),
     ).toBe(false);
+  });
+});
+
+describe('isCommonInquiryProfileReady', () => {
+  const complete = {
+    name: 'Alice Example',
+    street: 'Main Street',
+    houseNumber: '1',
+    postcode: '10115',
+    city: 'Berlin',
+    employmentType: 'explicitly supplied',
+    deutscheWohnenPrivacyAccepted: false,
+  };
+
+  it('accepts explicit common identity and address facts without provider consent', () => {
+    expect(isCommonInquiryProfileReady(complete)).toBe(true);
+  });
+
+  it.each(['name', 'street', 'houseNumber', 'postcode', 'city'])('rejects missing %s', (field) => {
+    expect(isCommonInquiryProfileReady({ ...complete, [field]: '' })).toBe(false);
+  });
+
+  it('requires a full name rather than inferring a surname', () => {
+    expect(isCommonInquiryProfileReady({ ...complete, name: 'Alice' })).toBe(false);
   });
 });

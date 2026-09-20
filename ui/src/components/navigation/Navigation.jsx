@@ -20,14 +20,14 @@ const ICONS = { home: IconHome, 'saved-searches': IconSearch };
  * The application shell. Page bodies remain owned by their existing routes; this component only
  * owns the two primary destinations and the account escape hatch for settings/admin.
  */
-export default function Navigation({ isAdmin }) {
+export default function Navigation({ isAdmin, primaryVisible = true }) {
   const t = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const actions = useActions();
   const accountRef = useRef(null);
   const [accountOpen, setAccountOpen] = useState(false);
-  const activeKey = resolvePrimaryKey(location.pathname);
+  const activeKey = primaryVisible ? resolvePrimaryKey(location.pathname) : null;
 
   useEffect(() => {
     setAccountOpen(false);
@@ -81,7 +81,7 @@ export default function Navigation({ isAdmin }) {
     );
   };
 
-  const accountItems = ACCOUNT_NAV.filter((item) => !item.adminOnly || isAdmin);
+  const accountItems = primaryVisible ? ACCOUNT_NAV.filter((item) => !item.adminOnly || isAdmin) : [];
 
   return (
     <>
@@ -94,8 +94,8 @@ export default function Navigation({ isAdmin }) {
         >
           Fredy
         </button>
-        <nav className="fredy-shell-nav__desktop-primary" aria-label={t('nav.primary')}>
-          {PRIMARY_NAV.map((item) => primaryLink(item))}
+        <nav className="fredy-shell-nav__desktop-primary" aria-label={t('nav.primary')} aria-hidden={!primaryVisible}>
+          {primaryVisible && PRIMARY_NAV.map((item) => primaryLink(item))}
         </nav>
         <div className="fredy-shell-nav__account-wrap">
           <button
@@ -123,9 +123,11 @@ export default function Navigation({ isAdmin }) {
           )}
         </div>
       </header>
-      <nav className="fredy-shell-nav__mobile-primary" aria-label={t('nav.primary')}>
-        {PRIMARY_NAV.map((item) => primaryLink(item, true))}
-      </nav>
+      {primaryVisible && (
+        <nav className="fredy-shell-nav__mobile-primary" aria-label={t('nav.primary')}>
+          {PRIMARY_NAV.map((item) => primaryLink(item, true))}
+        </nav>
+      )}
     </>
   );
 }
