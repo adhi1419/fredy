@@ -82,6 +82,7 @@ export default function ProviderMutator({
               url: providerUrl,
               id: selectedProvider.id,
               name: selectedProvider.name,
+              applicationPolicy: providerToEdit.applicationPolicy,
             }),
             oldProviderToEdit: providerToEdit,
           });

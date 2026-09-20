@@ -7,40 +7,32 @@ import { Fragment, useState, useCallback, useEffect, useRef } from 'react';
 
 import NotificationChannelPicker from './components/notificationAdapter/NotificationChannelPicker';
 import NotificationChannelEditor from './components/notificationAdapter/NotificationChannelEditor';
-import NotificationChannelTable from '../../../components/table/NotificationChannelTable';
-import ProviderTable from '../../../components/table/ProviderTable';
 import ProviderMutator from './components/provider/ProviderMutator';
-import AreaFilter from './components/areaFilter/AreaFilter';
-import CommuteFilter from './components/CommuteFilter.jsx';
+import GuidedJobForm from './GuidedJobForm.jsx';
 import Headline from '../../../components/headline/Headline';
 import { useActions, useSelector } from '../../../services/state/store';
 import { xhrPost, errorMessage } from '../../../services/xhr';
 import { useNavigate, useParams, useLocation } from 'react-router';
-import { Input, Switch, Button, TagInput, Toast, Select, Banner, Collapse } from '@douyinfe/semi-ui-19';
+import { Button, Toast, Banner } from '@douyinfe/semi-ui-19';
 import './JobMutation.less';
-import { SegmentPart } from '../../../components/segment/SegmentPart';
 import { loadDraft, saveDraft, clearDraft } from '../../../services/jobs/jobDraft.js';
 import { missingRequirements } from '../../../services/jobs/jobValidation.js';
-import { summariseJobRefinements } from '../../../services/jobs/jobSummary.js';
+import { describeJobRefinements } from '../../../services/jobs/jobSummary.js';
 import { withReturnTo } from '../../../services/routes/returnTo.js';
 import { formatEuro } from '../../../components/cards/chartTheme.js';
 // The frontend copy of the server's detection. The two must agree: the pipeline falls back to its
 // own when a job carries no deal type, so a form that guessed differently would show one thing and
 // store another. Kept in step by test/ui/dealTypeCopyInSync.test.js.
 import { detectDealTypeFromUrl } from '../../../services/jobs/dealType.js';
-import { isInquiryContactProfileReady, isInquiryProviderSupported } from '../../../services/inquiries/profile.js';
+import { isInquiryContactProfileReady } from '../../../services/inquiries/profile.js';
 import {
-  IconArrowLeft,
-  IconBell,
-  IconBriefcase,
-  IconPaperclip,
-  IconPlayCircle,
-  IconPlusCircle,
-  IconUser,
-  IconFilter,
-  IconHome,
-  IconSetting,
-} from '@douyinfe/semi-icons';
+  buildGuidedJobPayload,
+  firstBlockedGuidedStep,
+  migrateLegacyDraftProviderPolicies,
+  missingGuidedRequirements,
+  setSourceAutomaticPolicy,
+} from '../../../services/jobs/guidedSearchForm.js';
+import { IconArrowLeft } from '@douyinfe/semi-icons';
 import { useTranslation, useLocale } from '../../../services/i18n/i18n.jsx';
 
 export default function JobMutator() {
@@ -56,6 +48,7 @@ export default function JobMutator() {
   const jobs = useSelector((state) => state.jobsData.jobs);
   const shareableUserList = useSelector((state) => state.jobsData.shareableUserList);
   const allChannels = useSelector((state) => state.notificationChannels.channels);
+  const providerMetadata = useSelector((state) => state.provider);
   const inquiryProfile = useSelector((state) => state.userSettings.settings?.inquiry_profile);
   const params = useParams();
   const location = useLocation();
@@ -98,17 +91,19 @@ export default function JobMutator() {
   const [spatialFilter, setSpatialFilter] = useState(defaultSpatialFilter);
   const [specFilter, setSpecFilter] = useState(defaultSpecFilter);
   const [commuteFilter, setCommuteFilter] = useState(defaultCommuteFilter);
+  // Retained only so legacy drafts can still round-trip; guided saves never send this field and no
+  // visible job-wide control is rendered.
   const [autoSendInquiry, setAutoSendInquiry] = useState(defaultAutoSendInquiry);
   const [dealType, setDealType] = useState(defaultDealType);
   /** Whether the value in the deal type field was guessed rather than chosen. */
   const [dealTypeWasInferred, setDealTypeWasInferred] = useState(false);
-  const inquiryProviderIds = providerData
-    .filter((provider) => provider.enabled !== false && isInquiryProviderSupported(provider.id))
-    .map((provider) => provider.id);
-  const hasInquiryProvider = inquiryProviderIds.length > 0;
-  const contactProfileReady =
-    hasInquiryProvider &&
-    inquiryProviderIds.every((providerId) => isInquiryContactProfileReady(inquiryProfile, providerId));
+  const [currentStep, setCurrentStep] = useState(0);
+  const [validationError, setValidationError] = useState(null);
+  const guidedPanelRef = useRef(null);
+  const policyProfileReady = useCallback(
+    (source) => isInquiryContactProfileReady(inquiryProfile, source?.id),
+    [inquiryProfile],
+  );
 
   // Derived on every render rather than kept alongside the ids. A second copy of the selection in
   // state is a copy that has to be resolved once the channels load and then kept in step, and the
@@ -152,7 +147,11 @@ export default function JobMutator() {
 
     if (draft.name !== undefined) setName(draft.name);
     if (draft.dealType !== undefined) setDealType(draft.dealType);
-    if (draft.providerData !== undefined) setProviderData(draft.providerData);
+    if (draft.providerData !== undefined) {
+      setProviderData(
+        migrateLegacyDraftProviderPolicies(draft.providerData, draft.autoSendInquiry === true, providerMetadata),
+      );
+    }
     if (draft.selectedChannelIds !== undefined) setSelectedChannelIds(draft.selectedChannelIds);
     if (draft.blacklist !== undefined) setBlacklist(draft.blacklist);
     if (draft.shareWithUsers !== undefined) setShareWithUsers(draft.shareWithUsers);
@@ -238,43 +237,103 @@ export default function JobMutator() {
   };
 
   const handleSpecFilterChange = (key, value) => {
-    if (!SPEC_FILTERS.map(({ key }) => key).includes(key)) return;
+    if (!SPEC_FILTERS.map(({ key: filterKey }) => filterKey).includes(key)) return;
 
     setSpecFilter({ ...specFilter, [key]: value ? parseFloat(value) : null });
   };
 
-  // A list, not a boolean. A disabled Save with nothing explaining it leaves the user hunting
-  // through eight sections for whichever one is incomplete.
-  const missing = missingRequirements({ name, dealType, providerData, selectedChannels });
+  const formState = { name, dealType, providerData, selectedChannels };
+  const missing = missingRequirements(formState);
+  const requirementLabels = {
+    name: t('jobs.mutation.sectionName'),
+    provider: t('jobs.mutation.sectionProviders'),
+    dealType: t('jobs.mutation.sectionDealType'),
+    channel: t('jobs.mutation.sectionNotifications'),
+  };
 
-  // What the collapsed section holds, so it does not have to be opened to find out.
-  const refinementSummary = summariseJobRefinements(
-    { blacklist, specFilter, spatialFilter, commuteFilter, shareWithUsers, enabled, autoSendInquiry },
+  const announceValidation = (step) => {
+    const requirement = missingGuidedRequirements(step, formState)[0];
+    if (!requirement) {
+      setValidationError(null);
+      return false;
+    }
+    setCurrentStep(step);
+    setValidationError(t('jobs.mutation.guidedValidation', { field: requirementLabels[requirement.key] }));
+    return true;
+  };
+
+  const handleStepSelect = (targetStep) => {
+    if (targetStep <= currentStep) {
+      setValidationError(null);
+      setCurrentStep(targetStep);
+      return;
+    }
+    const blockedStep = firstBlockedGuidedStep(formState, targetStep);
+    if (blockedStep != null) {
+      announceValidation(blockedStep);
+      return;
+    }
+    setValidationError(null);
+    setCurrentStep(targetStep);
+  };
+
+  const handleContinue = () => {
+    if (announceValidation(currentStep)) return;
+    setValidationError(null);
+    setCurrentStep((step) => Math.min(step + 1, 3));
+  };
+
+  const handleBack = () => {
+    setValidationError(null);
+    setCurrentStep((step) => Math.max(step - 1, 0));
+  };
+
+  const refinementSummary = describeJobRefinements(
+    { blacklist, specFilter, spatialFilter, commuteFilter, shareWithUsers, enabled },
     { t, formatPrice: (value) => formatEuro(value, locale) },
   );
+  const reviewSummary = refinementSummary.length > 0 ? refinementSummary : [t('jobs.mutation.guidedReviewNoFilters')];
 
   const handleProviderEdit = (data) => {
     setProviderData(
-      providerData.map((provider) => (provider.url === data.oldProviderToEdit.url ? data.newData : provider)),
+      providerData.map((provider) =>
+        provider.url === data.oldProviderToEdit.url
+          ? { ...data.newData, applicationPolicy: data.newData.applicationPolicy ?? provider.applicationPolicy }
+          : provider,
+      ),
+    );
+  };
+
+  const handleProviderPolicyChange = (source, enabledPolicy) => {
+    setProviderData((current) =>
+      current.map((provider) =>
+        provider.url === source.url
+          ? setSourceAutomaticPolicy(provider, providerMetadata, enabledPolicy, {
+              profileReady: policyProfileReady(provider),
+            })
+          : provider,
+      ),
     );
   };
 
   const mutateJob = async () => {
     try {
-      await xhrPost('/api/jobs', {
-        provider: providerData,
-        notificationAdapter: selectedChannels.map((channel) => ({ configuredAdapterId: channel.id })),
-        shareWithUsers,
-        name,
-        blacklist,
-        spatialFilter,
-        specFilter,
-        commuteFilter,
-        autoSendInquiry,
-        dealType,
-        enabled,
-        jobId: jobToBeEdit?.id || null,
-      });
+      await xhrPost(
+        '/api/jobs',
+        buildGuidedJobPayload({
+          providerData,
+          selectedChannels,
+          shareWithUsers,
+          name,
+          blacklist,
+          spatialFilter,
+          specFilter,
+          commuteFilter,
+          dealType,
+          enabled,
+          jobId: jobToBeEdit?.id || null,
+        }),
+      );
       await actions.jobsData.getJobs();
       // Only once the save actually landed. Clearing before would throw the draft away on a
       // rejection, which is exactly when it is worth the most.
@@ -283,10 +342,19 @@ export default function JobMutator() {
       navigate('/jobs');
     } catch (Exception) {
       // The rejection carries the reason under `json.error`; reading `json.message` produced
-      // `Toast.error(undefined)`, so a refused save (a 403 in demo mode, a validation error)
-      // rendered an empty toast and looked like nothing had happened at all.
+      // `Toast.error(undefined)`, so a refused save rendered an empty toast and looked like nothing
+      // had happened at all.
       console.error('Error while trying to save the job.', Exception);
       Toast.error(errorMessage(Exception, t('jobs.mutation.saveError')));
+    }
+  };
+
+  const handleTestChannel = async (channel) => {
+    try {
+      await actions.notificationChannels.tryChannel(channel.id);
+      Toast.success(t('notification.trySuccess'));
+    } catch (error) {
+      Toast.error(t('notification.tryError', { error: errorMessage(error, t('common.unknownError')) }));
     }
   };
 
@@ -353,287 +421,71 @@ export default function JobMutator() {
           }
         />
       )}
-      <form className="jobMutation__form">
-        {/* The three things a job cannot exist without, and nothing else. Everything optional is
-            folded away below, so the shortest path to a working job is a straight read down this
-            column rather than a scroll past nine open cards. */}
-        <SegmentPart name={t('jobs.mutation.sectionName')} Icon={IconPaperclip}>
-          <Input
-            autoFocus
-            type="text"
-            maxLength={40}
-            placeholder={t('jobs.mutation.namePlaceholder')}
-            width={6}
-            value={name}
-            onChange={(value) => setName(value)}
-          />
-        </SegmentPart>
-
-        <SegmentPart
-          name={t('jobs.mutation.sectionProviders')}
-          Icon={IconBriefcase}
-          helpText={t('jobs.mutation.providersHelp')}
-          helpMode="popover"
-        >
-          <Button
-            type="primary"
-            icon={<IconPlusCircle />}
-            className="jobMutation__newButton"
-            onClick={() => {
-              setProviderToEdit(null);
-              setProviderCreationVisibility(true);
-            }}
-          >
-            {t('jobs.mutation.addProvider')}
-          </Button>
-
-          <ProviderTable
-            providerData={providerData}
-            onRemove={(providerUrl) => {
-              setProviderData(providerData.filter((provider) => provider.url !== providerUrl));
-            }}
-            onEdit={(provider) => {
-              setProviderCreationVisibility(true);
-              setProviderToEdit(provider);
-            }}
-          />
-        </SegmentPart>
-
-        {/* Directly under the providers, because that is where its value is read from: the hint
-            about a guessed answer has to sit next to the thing it was guessed from. */}
-        <SegmentPart
-          name={t('jobs.mutation.sectionDealType')}
-          Icon={IconHome}
-          helpText={t('jobs.mutation.dealTypeHelp')}
-          helpMode="popover"
-        >
-          <Select
-            placeholder={t('jobs.mutation.dealTypePlaceholder')}
-            value={dealType}
-            onChange={(value) => {
-              setDealType(value);
-              setDealTypeWasInferred(false);
-            }}
-            style={{ width: '100%', maxWidth: 220 }}
-          >
-            <Select.Option value="rent">{t('jobs.mutation.dealTypeRent')}</Select.Option>
-            <Select.Option value="buy">{t('jobs.mutation.dealTypeBuy')}</Select.Option>
-          </Select>
-          {dealTypeWasInferred && <p className="jobMutation__inferredHint">{t('jobs.mutation.dealTypeInferred')}</p>}
-        </SegmentPart>
-
-        <SegmentPart
-          Icon={IconBell}
-          name={t('jobs.mutation.sectionNotifications')}
-          helpText={t('jobs.mutation.notificationsHelp')}
-          helpMode="popover"
-        >
-          <div className="jobMutation__notificationActions">
-            <Button
-              type="primary"
-              className="jobMutation__newButton"
-              icon={<IconPlusCircle />}
-              onClick={() => setPickerVisible(true)}
-            >
-              {t('jobs.mutation.addNotification')}
-            </Button>
-            <Button
-              type="secondary"
-              icon={<IconSetting />}
-              className="jobMutation__newButton"
-              onClick={() => leaveWithReturnPath('/settings/notifications')}
-            >
-              {t('notification.channels.manage')}
-            </Button>
-          </div>
-
-          <NotificationChannelTable
-            channels={selectedChannels}
-            // Detach, not delete: taking a channel off this job must never remove it from the
-            // instance. Deleting lives on the Settings page and is blocked while a job uses it.
-            actions={['test', 'edit', 'clone', 'detach']}
-            showVisibility={false}
-            showUsage={false}
-            emptyText={t('notification.channels.emptyInJob')}
-            onTest={async (channel) => {
-              try {
-                await actions.notificationChannels.tryChannel(channel.id);
-                Toast.success(t('notification.trySuccess'));
-              } catch (error) {
-                Toast.error(t('notification.tryError', { error: errorMessage(error, t('common.unknownError')) }));
-              }
-            }}
-            onEdit={(channel) => setChannelEditor({ mode: 'edit', channelId: channel.id })}
-            onClone={(channel) => setChannelEditor({ mode: 'clone', channelId: channel.id })}
-            onDetach={(channel) => setSelectedChannelIds((current) => current.filter((id) => id !== channel.id))}
-          />
-        </SegmentPart>
-
-        {/* keepDOM={false} is the point of the fold, not a detail of it: the area filter mounts an
-            800px MapLibre canvas, and it used to do so on every visit to this form - including the
-            edits that never touch it. The header line says what is inside, so the section does not
-            have to be opened to find out. */}
-        <Collapse accordion={false} keepDOM={false} className="jobMutation__refine">
-          <Collapse.Panel
-            itemKey="refine"
-            header={
-              <span className="jobMutation__refineHeader">
-                <span className="jobMutation__refineTitle">{t('jobs.mutation.sectionRefine')}</span>
-                <span className="jobMutation__refineSummary">{refinementSummary}</span>
-              </span>
-            }
-          >
-            <SegmentPart
-              Icon={IconFilter}
-              name={t('jobs.mutation.sectionCriteriaFilter')}
-              helpText={t('jobs.mutation.criteriaFilterHelp')}
-              helpMode="popover"
-            >
-              <div className="jobMutation__specFilter">
-                {SPEC_FILTERS.map((filter) => (
-                  <div key={filter.key} className="jobMutation__specFilterItem">
-                    <div className="jobMutation__specFilterLabel">{filter.translation}</div>
-                    <Input
-                      type="number"
-                      placeholder={t('jobs.mutation.criteriaNumberPlaceholder')}
-                      value={specFilter?.[filter.key]}
-                      onChange={(value) => handleSpecFilterChange(filter.key, value)}
-                    />
-                  </div>
-                ))}
-              </div>
-            </SegmentPart>
-
-            {/* After the price and size criteria and before the blacklist: it is the same kind of
-                statement about what this search will accept, and it is the one that needs the
-                travel times, which only exist once a listing has been found. */}
-            <SegmentPart
-              Icon={IconFilter}
-              name={t('jobs.mutation.sectionCommuteFilter')}
-              helpText={t('jobs.mutation.commuteFilterHelp')}
-              helpMode="popover"
-            >
-              <CommuteFilter value={commuteFilter} onChange={setCommuteFilter} />
-            </SegmentPart>
-
-            <SegmentPart
-              Icon={IconFilter}
-              name={t('jobs.mutation.sectionBlacklist')}
-              helpText={t('jobs.mutation.blacklistHelp')}
-              helpMode="popover"
-            >
-              <TagInput
-                value={blacklist || []}
-                placeholder={t('jobs.mutation.blacklistPlaceholder')}
-                onChange={(v) => setBlacklist([...v])}
-              />
-            </SegmentPart>
-
-            <SegmentPart
-              Icon={IconFilter}
-              name={t('jobs.mutation.sectionAreaFilter')}
-              helpText={t('jobs.mutation.areaFilterHelp')}
-              helpMode="popover"
-            >
-              {/* Three steps rather than the four-sentence paragraph that used to describe this
-                  mouse gesture in prose, and inside the panel rather than above it, where the
-                  drawing actually happens. */}
-              <ol className="jobMutation__areaSteps">
-                <li>{t('jobs.mutation.areaStep1')}</li>
-                <li>{t('jobs.mutation.areaStep2')}</li>
-                <li>{t('jobs.mutation.areaStep3')}</li>
-              </ol>
-              <div className={`jobMutation__areaMap${areaExpanded ? ' jobMutation__areaMap--expanded' : ''}`}>
-                <AreaFilter
-                  spatialFilter={spatialFilter}
-                  onChange={handleSpatialFilterChange}
-                  providerData={providerData}
-                />
-              </div>
-              <Button theme="borderless" size="small" onClick={() => setAreaExpanded((current) => !current)}>
-                {areaExpanded ? t('jobs.mutation.areaCollapse') : t('jobs.mutation.areaExpand')}
-              </Button>
-            </SegmentPart>
-
-            <SegmentPart
-              Icon={IconPlayCircle}
-              name={t('jobs.mutation.sectionAutoSendInquiry')}
-              helpText={t('jobs.mutation.autoSendInquiryHelp')}
-              helpMode="popover"
-            >
-              <Switch
-                className="jobMutation__spaceTop"
-                onChange={(checked) => setAutoSendInquiry(checked)}
-                checked={autoSendInquiry}
-                disabled={(!hasInquiryProvider || !contactProfileReady) && !autoSendInquiry}
-              />
-              {!hasInquiryProvider && (
-                <p className="jobMutation__inferredHint">{t('jobs.mutation.autoSendInquiryUnsupported')}</p>
-              )}
-              {hasInquiryProvider && !contactProfileReady && (
-                <div>
-                  <p className="jobMutation__inferredHint">{t('jobs.mutation.autoSendInquiryProfileMissing')}</p>
-                  <Button size="small" theme="light" onClick={() => leaveWithReturnPath('/settings/inquiry-profile')}>
-                    {t('jobs.mutation.completeInquiryProfile')}
-                  </Button>
-                </div>
-              )}
-              <p className="jobMutation__inferredHint">{t('jobs.mutation.autoSendInquiryWarning')}</p>
-            </SegmentPart>
-
-            <SegmentPart
-              Icon={IconUser}
-              name={t('jobs.mutation.sectionSharing')}
-              helpText={t('jobs.mutation.sharingHelp')}
-              helpMode="popover"
-            >
-              {shareableUserList.length === 0 ? (
-                <div>{t('jobs.mutation.sharingNoUsers')}</div>
-              ) : (
-                <Select
-                  filter
-                  multiple
-                  placeholder={t('jobs.mutation.sharingSearchPlaceholder')}
-                  autoClearSearchValue={false}
-                  defaultValue={shareWithUsers}
-                  onChange={(value) => setShareWithUsers(value)}
-                  style={{ width: '100%' }}
-                >
-                  {shareableUserList.map((user) => (
-                    <Select.Option value={user.id} key={user.id}>
-                      {user.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              )}
-            </SegmentPart>
-
-            <SegmentPart
-              Icon={IconPlayCircle}
-              name={t('jobs.mutation.sectionActivation')}
-              helpText={t('jobs.mutation.activationHelp')}
-              helpMode="popover"
-            >
-              <Switch className="jobMutation__spaceTop" onChange={(checked) => setEnabled(checked)} checked={enabled} />
-            </SegmentPart>
-          </Collapse.Panel>
-        </Collapse>
-
-        {/* Sticky, because on a phone the form is still taller than the screen and Save used to be
-            several screens below the fold. */}
-        <div className="jobMutation__footer">
-          <div className="jobMutation__footerActions">
-            {/* Cancel used to be `danger`, so the red button was the harmless one and Save sat next
-                to it in the colour that usually means "go ahead". */}
-            <Button type="tertiary" onClick={leaveForm}>
-              {t('jobs.mutation.cancel')}
-            </Button>
-            <Button type="primary" icon={<IconPlusCircle />} disabled={missing.length > 0} onClick={mutateJob}>
-              {t('jobs.mutation.save')}
-            </Button>
-          </div>
-        </div>
-      </form>
+      <GuidedJobForm
+        currentStep={currentStep}
+        onStepSelect={handleStepSelect}
+        onBack={handleBack}
+        onContinue={handleContinue}
+        onSave={mutateJob}
+        validationError={validationError}
+        panelRef={guidedPanelRef}
+        name={name}
+        setName={(value) => {
+          setName(value);
+          setValidationError(null);
+        }}
+        providerData={providerData}
+        providerMetadata={providerMetadata}
+        policyProfileReady={policyProfileReady}
+        onProviderPolicyChange={handleProviderPolicyChange}
+        onProviderAdd={() => {
+          setProviderToEdit(null);
+          setProviderCreationVisibility(true);
+        }}
+        onProviderRemove={(providerUrl) =>
+          setProviderData((current) => current.filter((provider) => provider.url !== providerUrl))
+        }
+        onProviderEdit={(provider) => {
+          setProviderCreationVisibility(true);
+          setProviderToEdit(provider);
+        }}
+        onCompleteInquiryProfile={() => leaveWithReturnPath('/settings/inquiry-profile')}
+        dealType={dealType}
+        setDealType={(value) => {
+          setDealType(value);
+          setDealTypeWasInferred(false);
+          setValidationError(null);
+        }}
+        dealTypeWasInferred={dealTypeWasInferred}
+        specFilters={SPEC_FILTERS}
+        specFilter={specFilter}
+        onSpecFilterChange={handleSpecFilterChange}
+        blacklist={blacklist}
+        setBlacklist={(value) => {
+          setBlacklist(value);
+          setValidationError(null);
+        }}
+        spatialFilter={spatialFilter}
+        onSpatialFilterChange={handleSpatialFilterChange}
+        areaExpanded={areaExpanded}
+        setAreaExpanded={setAreaExpanded}
+        commuteFilter={commuteFilter}
+        setCommuteFilter={setCommuteFilter}
+        selectedChannels={selectedChannels}
+        onAddNotification={() => setPickerVisible(true)}
+        onManageNotifications={() => leaveWithReturnPath('/settings/notifications')}
+        onTestChannel={handleTestChannel}
+        onEditChannel={(channel) => setChannelEditor({ mode: 'edit', channelId: channel.id })}
+        onCloneChannel={(channel) => setChannelEditor({ mode: 'clone', channelId: channel.id })}
+        onDetachChannel={(channel) => setSelectedChannelIds((current) => current.filter((id) => id !== channel.id))}
+        shareableUserList={shareableUserList}
+        shareWithUsers={shareWithUsers}
+        setShareWithUsers={setShareWithUsers}
+        enabled={enabled}
+        setEnabled={setEnabled}
+        reviewSummary={reviewSummary}
+        canSave={missing.length === 0}
+      />
     </Fragment>
   );
 }

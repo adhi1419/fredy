@@ -1,0 +1,203 @@
+@import '../../../tokens.less';
+
+.guidedJobForm__steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: @space-2;
+  margin: 0 0 @space-4;
+  padding: 0;
+  list-style: none;
+}
+
+.guidedJobForm__step {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+  width: 100%;
+  min-height: 4rem;
+  padding: @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-card;
+  background: @color-fill-subtle;
+  color: @color-muted;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible,
+  &[aria-selected='true'] {
+    border-color: @color-accent;
+    color: @color-text;
+  }
+
+  &[aria-selected='true'] {
+    background: @color-accent-dim;
+  }
+
+  strong,
+  small {
+    display: block;
+  }
+
+  strong {
+    color: @color-text;
+    font-size: @text-sm;
+  }
+
+  small {
+    margin-top: @space-1;
+    font-size: @text-xs;
+  }
+}
+
+.guidedJobForm__stepNumber {
+  display: grid;
+  flex: 0 0 2rem;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+.guidedJobForm__step svg {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.guidedJobForm__mobileProgress {
+  display: none;
+}
+
+.guidedJobForm__panel {
+  min-height: 18rem;
+}
+
+.guidedJobForm__sectionStack {
+  display: grid;
+  gap: @space-4;
+}
+
+.guidedJobForm__stepHint,
+.guidedJobForm__mutedHint {
+  margin: 0;
+  color: @color-muted;
+  font-size: @text-sm;
+}
+
+.guidedJobForm__validation {
+  margin-bottom: @space-4;
+  padding: @space-3 @space-4;
+  border: 1px solid @color-error;
+  border-radius: @radius-card;
+  background: @color-error-dim;
+  color: @color-error;
+}
+
+.guidedJobForm__review {
+  padding: @space-4;
+  border: 1px solid @color-border;
+  border-radius: @radius-card;
+  background: @color-fill-subtle;
+
+  h3 {
+    margin: 0 0 @space-2;
+    color: @color-text;
+    font-size: @text-md;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: @color-muted;
+  }
+}
+
+.guidedJobForm__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: @space-3;
+  margin-top: @space-4;
+  padding-top: @space-4;
+  border-top: 1px solid @color-border;
+}
+
+.guidedJobForm__footerRight {
+  display: flex;
+  gap: @space-3;
+}
+
+.providerTable__policy {
+  min-width: 15rem;
+}
+
+.providerTable__policyControl,
+.providerTable__policyHint {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+}
+
+.providerTable__policyHint {
+  margin-top: @space-1;
+  color: @color-muted;
+  font-size: @text-xs;
+}
+
+@media (max-width: 850px) {
+  .guidedJobForm__steps {
+    display: none;
+  }
+
+  .guidedJobForm__mobileProgress {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    display: block;
+    margin-bottom: @space-4;
+    padding: @space-3;
+    border: 1px solid @color-border;
+    border-radius: @radius-card;
+    background: @color-fill-subtle;
+    color: @color-text;
+    font-weight: 700;
+  }
+
+  .guidedJobForm__panel {
+    scroll-margin-top: 5rem;
+  }
+
+  .guidedJobForm__step,
+  .guidedJobForm__footer button,
+  .providerTable__policyControl button,
+  .providerTable__policyControl .semi-switch {
+    min-height: 44px;
+  }
+
+  .guidedJobForm__footer {
+    padding-bottom: @space-3;
+  }
+
+  .guidedJobForm__footerRight {
+    flex: 1;
+
+    button {
+      flex: 1;
+    }
+  }
+
+  .guidedJobForm__panel .jobMutation__notificationActions {
+    display: grid;
+    grid-template-columns: 1fr;
+
+    .semi-button {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
+  .providerTable__policy {
+    min-width: 0;
+  }
+}
