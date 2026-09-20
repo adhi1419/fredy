@@ -97,3 +97,40 @@ describe('Firebase auth initialization', () => {
     expect(client.signOut).toHaveBeenCalledWith(auth);
   });
 });
+
+describe('safe profile photo URL policy', () => {
+  it('accepts only absolute HTTPS URLs and rejects everything else', async () => {
+    // Importing the module runs createAuthClient(), which fetches the bootstrap config once. Stub it
+    // to a disabled config so the load resolves without a real network call.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ enabled: false }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const { safePhotoUrl } = await import('../../ui/src/services/auth/firebaseAuth.js');
+
+    expect(safePhotoUrl('https://lh3.googleusercontent.com/a/x')).toBe('https://lh3.googleusercontent.com/a/x');
+    expect(safePhotoUrl('  https://host/pic.png  ')).toBe('https://host/pic.png');
+
+    for (const value of [
+      null,
+      undefined,
+      42,
+      '',
+      '   ',
+      'http://host/pic.png',
+      'data:image/png;base64,AAAA',
+      'blob:https://host/uuid',
+      'javascript:alert(1)',
+      '//host/pic.png',
+      '/relative/pic.png',
+    ]) {
+      expect(safePhotoUrl(value)).toBeNull();
+    }
+  });
+});

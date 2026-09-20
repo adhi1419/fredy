@@ -19,6 +19,27 @@ import { resolveApiUrl } from '../apiUrl.js';
 export interface FirebaseAuthIdentity {
   uid: string;
   email?: string | null;
+  photoURL?: string | null;
+}
+
+/**
+ * Accept a profile photo URL only when it is an absolute HTTPS URL. Firebase's Google provider
+ * returns HTTPS avatar URLs; anything else (http, data:, javascript:, blob:, a relative path, or a
+ * non-string) is rejected so the account trigger falls back to initials rather than rendering an
+ * untrusted or mixed-content image.
+ *
+ * @param value The candidate photo URL from Firebase auth state.
+ * @returns The URL when it is a safe HTTPS URL, otherwise null.
+ */
+export function safePhotoUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  try {
+    return new URL(trimmed).protocol === 'https:' ? trimmed : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface FirebaseAuthClient {

@@ -35,7 +35,17 @@ vi.mock('@douyinfe/semi-icons', async () => {
   };
 });
 
-vi.mock('../../ui/src/services/auth/firebaseAuth.js', () => ({ signOutFirebase: vi.fn() }));
+vi.mock('../../ui/src/services/auth/firebaseAuth.js', () => ({
+  signOutFirebase: vi.fn(),
+  safePhotoUrl: (value: unknown) => {
+    if (typeof value !== 'string') return null;
+    try {
+      return new URL(value).protocol === 'https:' ? value : null;
+    } catch {
+      return null;
+    }
+  },
+}));
 
 vi.mock('../../ui/src/services/i18n/i18n.jsx', () => ({
   useTranslation: () => (key: string) => key,
@@ -64,12 +74,13 @@ const menuSource = read('ui/src/components/myAccountWireframe/MyAccountWireframe
 const settingsSource = read('ui/src/views/settings/SettingsLayout.tsx');
 const adminSource = read('ui/src/views/admin/AdminLayout.jsx');
 
-function renderNavigation(pathname: string, primaryVisible = true): string {
+function renderNavigation(pathname: string, primaryVisible = true, photoUrl: string | null = null): string {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[pathname]}>
       <Navigation
         currentUser={{ username: 'alex.rivera@example.com', isAdmin: true }}
         isAdmin
+        photoUrl={photoUrl}
         primaryVisible={primaryVisible}
       />
     </MemoryRouter>,
@@ -93,6 +104,36 @@ describe('two-destination product shell', () => {
     expect(html).toContain('fredy-shell-nav__account-avatar');
     expect(html).toContain('>AR</span>');
     expect(navigationStyles).toMatch(/\.fredy-shell-nav__account-button\s*{[^}]*min-height:\s*44px/s);
+  });
+
+  it('keeps the account trigger icon-only while preserving an accessible label', () => {
+    const html = renderNavigation('/jobs');
+    // Direction A: the trigger is icon-only, so the visible "Account" label span is gone.
+    expect(html).not.toContain('fredy-shell-nav__account-label');
+    expect(navigationStyles).not.toContain('fredy-shell-nav__account-label');
+    // The button keeps its accessible name via aria-label rather than visible text.
+    expect(html).toMatch(/aria-label="nav\.openAccountMenu"/);
+  });
+
+  it('renders the Firebase profile photo with no-referrer and keeps initials as the fallback', () => {
+    const photo = 'https://lh3.googleusercontent.com/a/avatar=s96-c';
+    const html = renderNavigation('/jobs', true, photo);
+    expect(html).toContain('fredy-shell-nav__account-photo');
+    expect(html).toContain(photo);
+    expect(html).toMatch(/referrerpolicy="no-referrer"/i);
+    // Initials remain in the DOM underneath the photo as the fallback layer.
+    expect(html).toContain('>AR</span>');
+    // Object-fit cover, rounding, and a 44px-reachable trigger are guaranteed by CSS.
+    expect(navigationStyles).toMatch(/\.fredy-shell-nav__account-photo\s*{[^}]*object-fit:\s*cover/s);
+    expect(navigationStyles).toMatch(/\.fredy-shell-nav__account-photo\s*{[^}]*border-radius:\s*50%/s);
+  });
+
+  it('falls back to initials for a missing or unsafe photo URL', () => {
+    for (const unsafe of [null, 'http://insecure.example/a.png', 'javascript:alert(1)', 'not a url']) {
+      const html = renderNavigation('/jobs', true, unsafe as string | null);
+      expect(html).not.toContain('fredy-shell-nav__account-photo');
+      expect(html).toContain('>AR</span>');
+    }
   });
 
   it('keeps exactly one personal destination and makes Administration conditional', () => {

@@ -1,115 +1,257 @@
-# Fredy simplified UX wireframes
+# Fredy holy-grail wireframe revision
 
-**Status:** APPROVED AND FROZEN.
+**Status:** APPROVED AND FROZEN — DIRECTION A · STAY CARDS.
 
-**Approval:** APPROVED by the operator on 2026-09-19.
+**Approval:** Direction A signed off by the operator on 2026-09-20.
 
-## Approval record
+**Supersedes:** the 2026-09-19 visual specification. Direction A, with Fredy’s forest/sage palettes and Airbnb-style layout patterns, is now the production visual authority.
 
-The operator approved this specification after desktop/mobile, light/dark, Home feed/map, listing lifecycle, account menu, and guided Saved Search review. Production implementation must match this document and the interactive HTML. Any change to primary navigation, Home activity states, mobile frozen actions, or the guided flow requires a new explicit design decision.
+## Why the design was reopened
 
-## Decision already made
+The operator requested one coherent product pass rather than incremental changes against the prior wireframe:
 
-Fredy has exactly two primary destinations:
+- repurpose listing state symbols for **Applied** and **Viewed** and use the same vocabulary in Home filters
+- replace destructive listing removal with **Archive**
+- remove **Watch** and generic **Status** entries
+- manage lifecycle only through explicit lifecycle actions
+- replace affordability in the listing’s primary card/widget with travel time and distance
+- make Saved Search runs idempotent repair passes that reconcile missing data and safely perform missed actions
+- make the whole Saved Search card open Edit; remove Edit from overflow
+- keep only one Create Search entry, at the bottom of Saved Searches
+- move the visual language toward Airbnb-style marketplace clarity: photo-first, airy, rounded, direct, and mobile-friendly
 
-1. **Home** — the former Dashboard and Listings surfaces become one continuous discovery and decision loop.
-2. **Saved Searches** — create, edit, run, pause, and repair searches.
+The self-contained source of truth is `design/wireframes/index.html`. It exposes all three candidates in one script-free comparison board, including Home, Saved Searches, Listing Detail, responsive behavior, and the idempotent run contract.
 
-Settings and Administration live behind the account menu. Listing detail and search editing remain deep-linkable routes, but they do not become primary tabs. Critical operational states such as active debug capture or stopped execution may appear beside the account control; routine settings may not compete with the core navigation.
+## Product structure that remains fixed
 
-The earlier Command center, Discovery canvas, and Guided journey options were rejected as too cluttered because they preserved too many route-shaped destinations and controls. They are superseded by this round.
+Fredy retains exactly two primary destinations:
 
-## Fixed product journey
+1. **Home** — listings, activity filters, provider filtering, sorting, and feed/map representations.
+2. **Saved Searches** — create, edit, run, pause, duplicate, and repair searches.
 
-1. Open **Home** and see new or saved homes.
-2. Filter or change the representation without navigating to a separate listings section.
-3. Open a home while preserving filter, scroll, and map state.
-4. Assess affordability, commute, transit, source facts, notes, and guarded inquiry readiness.
-5. Return to the same Home context or continue to the next home.
-6. Open **Saved Searches** only when creating, editing, pausing, running, or repairing a search.
-7. Open personal or administrative controls from the account menu.
+Listing Detail and Edit Search remain deep routes. Personal settings and Administration remain behind the account control. A visible status must describe something actionable; routine technical state does not compete with primary navigation.
 
-The numbers and listing names in the HTML are illustrative fixtures, not product metrics. The artifact remains offline and uses the approved Paper/forest light and near-black/sage dark directions.
+## New non-negotiable behavior contract
 
-## Selected Home — Quiet feed + List and map
+### One listing lifecycle
 
-Home opens as a chronological, card-light Quiet feed. One inline attention row appears only when a Saved Search needs action. The operator can switch to a synchronized List + map view without leaving Home or losing activity, provider, sorting, or search state.
+A listing has one lifecycle state used everywhere:
 
-The search controls are intentionally layered:
+- **New** — no explicit symbol on the card; appears in the New filter.
+- **Applied** — check-in-circle symbol and Applied label; appears in the Applied filter.
+- **Viewed** — eye symbol and Viewed label; appears in the Viewed filter.
+- **Archived** — archive symbol only where history needs it; appears in the Archived filter and leaves the active feed.
+
+The symbol, Listing Detail state, and Home filter state are three views of the same persisted value. They may not drift or be maintained as separate booleans.
+
+The only user-facing lifecycle mutations are:
+
+1. **Mark applied**
+2. **Mark viewed**
+3. **Archive**
+
+There is no Watch action, generic Status action, or Delete action in listing UI. Archive is reversible through Archived history. A provider-confirmed inquiry may set Applied automatically. Submitted inquiry text is evidence attached to Applied, not another status.
+
+### Travel replaces affordability in the listing’s primary presentation
+
+Listing cards and the first Listing Detail fact show the selected reference route:
+
+- travel duration
+- travel distance
+- reference label, such as Work
+- mode or route freshness when useful
+
+Example: **12 min · 3.8 km to Work**.
+
+Affordability is removed from the listing’s primary card/widget. It may remain in deeper criteria, filters, or evidence only if later implementation scope preserves it; it must not displace route usefulness in the main listing scan.
+
+### Saved Search cards are direct edit targets
+
+- Clicking the body of a Saved Search card opens Edit Search.
+- Edit is absent from the overflow menu.
+- The overflow menu may contain Run & repair, Pause/Resume, and Duplicate.
+- A dedicated Run & repair button may remain visible on desktop; mobile may keep it in overflow when space is constrained.
+- Search results still return to Home.
+
+### One Create Search entry
+
+Saved Searches has no Create Search action in the page heading. The only Create Search entry is the bottom creation card, after existing searches. Empty state uses that same creation card rather than introducing a second control.
+
+## Idempotent Saved Search run contract
+
+Every manual or scheduled run is a repeatable **search + reconcile + act** pass. Re-running the same search over the same listing must repair incomplete state without creating duplicate external effects.
+
+### Repairable listing fields
+
+Each run recomputes and reconciles at least:
+
+1. **Location** — normalized address, geocode, coordinates, and route-dependent location data where inputs are available.
+2. **Inquiry text** — regenerate or restore the deterministic intended message when it is missing or stale, while preserving immutable submitted evidence.
+3. **Notification status boolean** — reconcile whether notification work is complete from the action ledger rather than trusting a stale flag.
+
+Repairs are field-scoped and preserve owner, lifecycle, notes, submitted evidence, and unrelated user edits.
+
+### Previously missed actions
+
+A run may perform an action that was previously missed only when its action ledger proves one of these states:
+
+- never attempted
+- explicitly failed before an external side effect
+- externally idempotent under the same stable action key
+
+Every external action uses a stable identity derived from search, listing, action type, and intended payload/version. The completed action record is written durably so the next run becomes a no-op.
+
+An **unknown external outcome is not “missed.”** It remains a visible manual-review item and is never retried blindly. This preserves the existing rule against duplicate provider inquiries or duplicate notifications when the remote side may already have accepted the first request.
+
+### Run result presentation
+
+Run & repair summarizes outcomes rather than exposing implementation steps as controls:
+
+- listings discovered
+- locations repaired
+- inquiry text restored
+- notification state reconciled
+- missed actions completed safely
+- unknown outcomes requiring review
+
+A failure on one listing does not block repair or discovery for other listings. Repeating the run must be safe.
+
+## Candidate visual directions
+
+All three candidates implement the same behavior above. Selection is only about layout, density, and emphasis.
+
+### Direction A — Stay cards (selected)
+
+**Desktop:** a three-column, photo-first marketplace grid with a large rounded search bar, pill filters, restrained listing metadata, and Applied/Viewed symbols floating over imagery.
+
+**Mobile:** one generous card per row, horizontal lifecycle filter pills, bottom primary navigation, and the existing one-handed Listing Detail dock.
+
+**Saved Searches:** full-width rounded cards with direct edit behavior; Run & repair is visible on desktop; the only Create Search card closes the list.
+
+**Why recommend it:** it is the clearest expression of the requested Airbnb-style direction, creates the fastest visual scan, and requires the least new interaction grammar. Travel distance fits naturally into secondary card facts without clutter.
+
+**Trade-off:** fewer listings are visible above the fold than in Direction C.
+
+### Direction B — Map explorer
+
+**Desktop:** compact listing cards in a left rail and a persistent map on the right. Price pins and the selected listing remain synchronized. Lifecycle symbols and travel distance stay in the list.
+
+**Mobile:** list-first; the map becomes an explicit view rather than a split layout.
+
+**Saved Searches and Edit Search:** same direct-edit/idempotent-run contract as Direction A.
+
+**Why choose it:** strongest when location is the primary decision factor.
+
+**Trade-off:** more visual weight and higher implementation/testing cost; less calm for users who mostly scan new listings.
+
+### Direction C — Editorial stays
+
+**Desktop:** a narrower, denser vertical list with wide landscape thumbnails, larger editorial titles, square-ish controls, and stronger comparison rhythm.
+
+**Mobile:** compact single-column cards designed to show more listings per screen.
+
+**Saved Searches:** flatter rows with less card chrome while retaining direct edit and one bottom Create Search card.
+
+**Why choose it:** highest information density and fastest keyboard/desktop comparison.
+
+**Trade-off:** least recognizably Airbnb-style and less visually immersive than Direction A.
+
+## Shared surface specification
+
+### Home
+
+Home keeps one query model and offers:
 
 1. free-text search
-2. mutually exclusive activity: **New**, **Applied**, **Viewed**, or **Archived**
-3. multi-select provider filter
-4. sort by newest, travel time, distance, price, size, and later compatible listing fields
-5. Feed or List + map representation
+2. mutually exclusive New, Applied, Viewed, and Archived filters
+3. provider multi-select
+4. sort by newest, travel time, distance, price, and size
+5. feed or map representation
 
-Archived is a user lifecycle action, not a separate deletion mechanism. The Review-one concept is not a default Home layout; focused review may return later as an optional flow if evidence supports it.
+Applied and Viewed filter pills reuse the same check/eye icon language as listing symbols. There is no Watch filter and no separate generic status filter.
 
-**Selected because:** it combines the calm default of Quiet feed with the spatial leverage of List + map while keeping one Home route and one filter state.
+### Listing cards
 
-## Shared surfaces
+A card contains:
+
+- listing image
+- Applied or Viewed symbol when relevant
+- title and district
+- price
+- rooms/size summary
+- selected travel duration and distance
+- provider/rating only when useful
+- explicit lifecycle overflow containing Mark applied, Mark viewed, and Archive
+
+The image/title opens Listing Detail. No heart/watch affordance is shown.
+
+### Listing Detail
+
+The first decision evidence is travel duration and distance. Lifecycle actions appear together and mutate the one lifecycle. Applied opens submitted inquiry evidence. Unknown inquiry outcomes remain visible and require review.
+
+The mobile dock remains:
+
+- Apply or Applied on the left
+- icon-only Open in Google Maps
+- icon-only Open provider listing
 
 ### Saved Searches
 
-A simple list shows search name, criteria, state, last run, and one contextual action. Results always return to Home. Search creation begins with a provider URL; rules and delivery unfold only after recognition.
+The heading contains title and explanation only. Existing search cards follow immediately. Each card shows:
 
-### Listing detail
+- name and concise criteria
+- run health and last-run time
+- whether manual review is needed
+- the promise that every run repairs incomplete listing work
 
-Listing detail preserves Home query, selected representation, map position, and scroll context. Fit appears first; route/transit and source evidence reveal progressively. The guarded inquiry action remains explicit and never retries an unknown outcome automatically.
+Clicking the card opens Edit Search. The bottom Create Search card is the sole creation entry.
 
-### Account menu
+### Edit Search
 
-The account menu has at most three actions:
-
-1. **My account** — rolls personal preferences, travel and addresses, affordability, notifications, inquiry profile, theme, and language into one destination.
-2. **Admin panel** — appears only for administrators and rolls execution, connectivity, users, access, backup, and debug into one destination.
-3. **Sign out**.
-
-Only critical state such as active debug capture or stopped execution may add a compact warning beside the account control. Individual preferences never become menu items.
-
-## Heading density
-
-Every product surface except the Saved Searches index uses a compact heading: small context label, short title, one-line explanation, and only a minimal action when required. Listing detail, Home, guided search steps, and account/admin pages may not reserve a large hero-like header region. Saved Searches may retain a larger heading because it is the management entry point and carries Create search.
-
-## One-handed mobile listing contract
-
-Mobile primary navigation is frozen at the bottom, not the top. Listing detail has a second frozen action row immediately above it:
-
-- primary **Apply** action on the left
-- icon-only **Open in Google Maps** in the middle, with an accessible label
-- icon-only **Open provider listing** on the right, with an accessible label
-
-The listing owns one lifecycle: New, Applied, Viewed, Archived, offer, or rejected. A confirmed provider application automatically moves the listing to **Applied**. The Apply control becomes **Applied** and opens a scrollable popover containing the submitted application message; the message is evidence attached to the applied listing rather than another status. The same screen provides **I applied myself**, **Add notes**, and **Got a viewing**, and **Archive**; these update that lifecycle instead of maintaining a separate inquiry status.
-
-## Guided Saved Search and provider capability model
-
-Add and edit use one guided flow:
+The existing four-step flow remains:
 
 1. Providers and search URLs
 2. Home criteria
-3. Real-world fit: commute and affordability
+3. Real-world fit
 4. Delivery and review
 
-The wireframe models the technical direction as:
+Edit Search explains that Save & run repair applies changed intent to future matches and safely reconciles prior listings. It does not imply that unknown external outcomes will be retried.
 
-- each Saved Search may contain multiple provider sources
-- auto-apply policy is enabled independently for each provider source
-- every resulting job-listing owns its application lifecycle and delivery attempt outcome
-- provider capability metadata declares whether applications are supported and whether an account connection is required
-- future providers may expose a **Connect account** action without changing the Saved Search flow
+## Airbnb-style design language
 
-This replaces the current single job-level auto-apply boolean. It remains a model hypothesis until the exact Saved Search → provider source → job-listing relationship is confirmed.
+The selected direction should use marketplace principles rather than copy Airbnb branding. “Airbnb-style” applies only to layout, density, imagery, spacing, cards, pills, and interaction patterns. Fredy's established Paper/forest light palette and near-black/sage dark palette remain authoritative:
 
-## Responsive contract
+- photo-first hierarchy
+- rounded cards and pill controls
+- generous whitespace
+- short plain-language labels
+- dark neutral text and restrained borders
+- Fredy's deep forest action accent with sage supporting tones
+- price and route facts optimized for scanning
+- motion limited to small hover/focus/selection transitions
 
-Desktop opens in Quiet feed and may switch to List + map. Mobile freezes Home and Saved Searches at the bottom for one-handed reach, keeps Home list-first, stacks listing evidence, and freezes Open listing + Apply above primary navigation. Touch targets remain at least 44 CSS pixels in production and respect the safe-area inset.
+Fredy remains visibly Fredy. Existing attribution, privacy, accessibility, light/dark support, and source-available license presentation remain unchanged.
 
-Loading reserves the selected Home shape. Empty states retain the minimum search/filter context and lead to **Create search**. Errors preserve successful listing data and offer local recovery. A broken search cannot block other searches or Home.
+## Responsive and accessibility contract
 
-## Route and migration contract
+- Touch targets are at least 44 CSS pixels.
+- Controls have visible focus and semantic labels.
+- State is never color-only; Applied, Viewed, and Archived each pair icon and text.
+- Cards remain operable by keyboard without nesting conflicting interactive elements in production.
+- Desktop may use a split map; mobile is list-first.
+- Mobile primary navigation remains fixed at the bottom and respects safe-area insets.
+- Loading reserves the selected layout. Errors preserve successful listing data and offer local recovery.
 
-Visible navigation changes do not require destructive route changes. Existing listing, job/search, settings, and admin deep links should resolve into the new shell. The Bun/TypeScript migration should first define typed contracts for authenticated transport, Home listings, Saved Searches, provider capabilities, unified listing/application lifecycle, user settings, and account/admin scope. Broad TSX conversion and final Paper/forest production styling wait for explicit selection of the Home option.
+## Approval and implementation authority
 
-## Implementation boundary
+The operator selected **A · Stay cards** after reviewing the complete comparison board. Directions B and C remain rejected alternatives, not implementation targets.
 
-The UX specification is approved. The separate persistence decision for provider-source auto-apply policy and per-job-listing lifecycle remains an architecture-program gate; its implementation may not alter the approved navigation, activity labels, frozen mobile actions, or guided flow without renewed UX approval.
+Implementation must now:
+
+1. Treat Direction A as **APPROVED AND FROZEN**.
+2. Treat the Direction A section as the visual authority.
+3. Update the modernization roadmap and implementation slices against it.
+4. Re-scope any queued PR whose UI assumptions conflict with this revision.
+5. Implement behavior contracts behind executable lifecycle and idempotency tests before claiming visual completion.
+
+**Approval record:** Direction A is signed off. Preserve Fredy’s forest/sage semantic color roles: inactive dark-mode activity pills use sage/green text; the selected pill uses deep forest fill with white text.
