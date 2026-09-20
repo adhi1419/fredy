@@ -35,7 +35,7 @@ Current baseline after PR #52:
 Completion means all of the following:
 
 - [ ] Migrate all frontend application source and frontend tests to strict TypeScript/TSX, leaving JavaScript only for explicitly audited build/tool configuration that cannot reasonably move.
-- [ ] Keep each TypeScript conversion behind a real domain/component boundary with executable behavior tests; do not create shallow pass-through seams or one mechanical mega-PR — `listingFilters.js` and its direct test are replaced by strict compiler-covered TypeScript, implemented and parent-reviewed on `refactor/listing-filters-typescript`; publication pending.
+- [x] Keep each TypeScript conversion behind a real domain/component boundary with executable behavior tests; do not create shallow pass-through seams or one mechanical mega-PR — strict compiler-covered `listingFilters.ts` and its direct TypeScript test are parent-reviewed and published by PR #55 (`c9a50a4`); rebase auto-merge enabled.
 - [ ] Tighten the frontend compiler/CI boundary as migration advances so converted code cannot silently fall back to `any` or unchecked JavaScript.
 - [ ] Implement Rust Firebase bearer verification, per-request Firestore allowlist enforcement, exact-origin CORS, authenticated SSE, and the frozen HTTP error contract — real dormant `/api/auth/me` auth/allowlist parity is delegated to Luna worker `7f4f5765` on `feat/rust-firebase-auth-me`.
 - [ ] Implement Rust Firestore persistence adapters behind the characterized job/listing/settings/channel/application contracts before cutting over dependent routes.
