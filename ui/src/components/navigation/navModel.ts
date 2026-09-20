@@ -7,12 +7,15 @@
  * The product shell has exactly two primary destinations. Route families are kept here rather than
  * in the component so deep links can highlight the right tab without changing or redirecting the
  * existing page routes.
- *
- * @typedef {{ key: 'home'|'saved-searches', path: string, labelKey: string, routePrefixes: string[] }} PrimaryDestination
  */
+export interface PrimaryDestination {
+  key: 'home' | 'saved-searches';
+  path: string;
+  labelKey: string;
+  routePrefixes: readonly string[];
+}
 
-/** @type {PrimaryDestination[]} */
-export const PRIMARY_NAV = [
+export const PRIMARY_NAV: readonly PrimaryDestination[] = [
   {
     key: 'home',
     path: '/dashboard',
@@ -27,8 +30,14 @@ export const PRIMARY_NAV = [
   },
 ];
 
-/** @type {{ key: 'account'|'admin', path: string, labelKey: string, adminOnly?: boolean }[]} */
-export const ACCOUNT_NAV = [
+export interface AccountDestination {
+  key: 'account' | 'admin';
+  path: string;
+  labelKey: string;
+  adminOnly?: boolean;
+}
+
+export const ACCOUNT_NAV: readonly AccountDestination[] = [
   { key: 'account', path: '/settings', labelKey: 'nav.myAccount' },
   { key: 'admin', path: '/admin', labelKey: 'nav.adminPanel', adminOnly: true },
 ];
@@ -37,52 +46,62 @@ export const ACCOUNT_NAV = [
  * Returns the primary destination that owns a pathname. Settings and admin deliberately return
  * null: they are reachable from the account control but must not compete with the two tabs.
  *
- * @param {string} pathname
- * @returns {'home'|'saved-searches'|null}
+ * @param pathname
+ * @returns
  */
-export function resolvePrimaryKey(pathname) {
+export function resolvePrimaryKey(pathname: string): 'home' | 'saved-searches' | null {
   const path = pathname.split(/[?#]/, 1)[0];
-  return (
-    PRIMARY_NAV.find(({ routePrefixes }) =>
-      routePrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`)),
-    )?.key ?? null
+  const match = PRIMARY_NAV.find(({ routePrefixes }) =>
+    routePrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`)),
   );
+  if (match) {
+    return match.key;
+  }
+  return null;
 }
 
 /**
  * Compatibility model for code and tests that need to inspect all shell destinations.
- *
- * @typedef {Object} NavNode
- * @property {string} key
- * @property {string} labelKey
- * @property {string} [path]
- * @property {boolean} [adminOnly]
  */
-export const NAV_TREE = [...PRIMARY_NAV.map(({ path, labelKey }) => ({ key: path, labelKey })), ...ACCOUNT_NAV];
+export interface NavNode {
+  key: string;
+  labelKey: string;
+  path?: string;
+  adminOnly?: boolean;
+}
 
-/** @param {boolean} isAdmin @returns {NavNode[]} */
-export function navTreeFor(isAdmin) {
+export const NAV_TREE: readonly NavNode[] = [
+  ...PRIMARY_NAV.map(({ path, labelKey }) => ({ key: path, labelKey })),
+  ...ACCOUNT_NAV,
+];
+
+export function navTreeFor(isAdmin: boolean): readonly NavNode[] {
   return NAV_TREE.filter((node) => !node.adminOnly || isAdmin);
 }
 
-/** @param {NavNode[]} tree @returns {string[]} */
-export function routeKeysOf(tree) {
+export function routeKeysOf(tree: readonly NavNode[]): readonly string[] {
   return tree
     .map((node) => (node.key.startsWith('/') ? node.key : node.path))
-    .filter((path) => typeof path === 'string' && path.startsWith('/'));
+    .filter((path): path is string => typeof path === 'string' && path.startsWith('/'));
 }
 
 /**
  * Resolve the old route-key shape for callers that still need it. Primary deep links resolve to the
  * root route for their family; settings/admin stay individually addressable.
  *
- * @param {NavNode[]} tree
- * @param {string} pathname
- * @returns {string}
+ * @param tree
+ * @param pathname
+ * @returns
  */
-export function resolveActiveKey(tree, pathname) {
+export function resolveActiveKey(tree: readonly NavNode[], pathname: string): string {
   const primary = resolvePrimaryKey(pathname);
-  if (primary) return PRIMARY_NAV.find((item) => item.key === primary).path;
+  if (primary !== null) {
+    const navItem = PRIMARY_NAV.find((item) => item.key === primary);
+    if (navItem) return navItem.path;
+  }
   const route = routeKeysOf(tree).find((key) => pathname === key || pathname.startsWith(`${key}/`));
-  return route ?? `/${pathname.split('/').filter(Boolean)[0] ?? ''}`;
+  if (route) {
+    return route;
+  }
+  return `/${pathname.split('/').filter(Boolean)[0] ?? ''}`;
 }

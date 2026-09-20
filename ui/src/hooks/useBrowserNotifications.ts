@@ -5,9 +5,25 @@
 
 import { useEffect, useMemo } from 'react';
 import heart from '../assets/heart.png';
-import { useSelector } from '../services/state/store';
 import { usesBrowserAdapter } from '../services/notifications/browserAdapter.js';
 import { createAuthenticatedEventStream } from '../services/sse/authenticatedEventStream.js';
+import { useSelector } from '../services/state/store.js';
+
+interface BrowserNotificationUser {
+  userId?: string;
+}
+
+interface BrowserNotificationState {
+  user: { currentUser: BrowserNotificationUser | null };
+  jobsData: { jobs?: unknown };
+}
+
+interface BrowserNotificationEventData {
+  title: string;
+  body: string;
+  image?: string;
+  link?: string;
+}
 
 /**
  * Deliver browser notifications for jobs that are configured to send them.
@@ -21,11 +37,13 @@ import { createAuthenticatedEventStream } from '../services/sse/authenticatedEve
  * The event stream itself is opened regardless. It costs one connection, it is how the job status
  * in the UI stays live, and the server decides what it sends.
  *
- * @returns {void}
+ * @returns
  */
-export function useBrowserNotifications() {
-  const currentUser = useSelector((state) => state.user.currentUser);
-  const jobs = useSelector((state) => state.jobsData.jobs);
+export function useBrowserNotifications(): void {
+  const currentUser = useSelector<BrowserNotificationState, BrowserNotificationUser | null>(
+    (state) => state.user.currentUser,
+  );
+  const jobs = useSelector<BrowserNotificationState, unknown>((state) => state.jobsData.jobs);
 
   const wantsBrowserNotifications = useMemo(() => usesBrowserAdapter(jobs), [jobs]);
 
@@ -34,7 +52,7 @@ export function useBrowserNotifications() {
     if (!wantsBrowserNotifications) return;
 
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+      void Notification.requestPermission();
     }
   }, [currentUser?.userId, wantsBrowserNotifications]);
 
@@ -45,7 +63,7 @@ export function useBrowserNotifications() {
       onEvent: (event) => {
         if (event.type !== 'notification:browser') return;
         try {
-          const data = JSON.parse(event.data || '{}');
+          const data = JSON.parse(event.data || '{}') as BrowserNotificationEventData;
           if (data && 'Notification' in window && Notification.permission === 'granted') {
             const notification = new Notification(data.title, {
               body: data.body,

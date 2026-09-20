@@ -17,8 +17,12 @@ import {
   routeKeysOf,
 } from '../../ui/src/components/navigation/navModel.js';
 
+interface LocaleData {
+  [key: string]: string;
+}
+
 const here = path.dirname(fileURLToPath(import.meta.url));
-const locales = ['en', 'de', 'tr'].map((locale) =>
+const locales: readonly LocaleData[] = ['en', 'de', 'tr'].map((locale) =>
   JSON.parse(fs.readFileSync(path.join(here, `../../ui/src/locales/${locale}.json`), 'utf-8')),
 );
 
@@ -54,9 +58,12 @@ describe('two-tab shell navigation model', () => {
   });
 
   it('translates every visible shell label in all supported locales', () => {
-    const keys = [...PRIMARY_NAV, ...ACCOUNT_NAV, { labelKey: 'nav.primary' }, { labelKey: 'nav.account' }].map(
-      ({ labelKey }) => labelKey,
-    );
+    const keys: readonly string[] = [
+      ...PRIMARY_NAV,
+      ...ACCOUNT_NAV,
+      { labelKey: 'nav.primary' },
+      { labelKey: 'nav.account' },
+    ].map(({ labelKey }) => labelKey);
     for (const locale of locales) {
       for (const key of keys) expect(locale[key]).toBeTruthy();
     }

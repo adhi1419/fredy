@@ -3,6 +3,6 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-/* Copyright (c) 2026 by Christian Kellner. */
+export const BROWSER_ADAPTER_ID: 'browser';
 
-export function useBrowserNotifications(): void;
+export function usesBrowserAdapter(jobs: unknown): boolean;

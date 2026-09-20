@@ -13,10 +13,8 @@
  *
  * A table rather than a wall of `<Navigate>` elements, so that "does every old address still land
  * somewhere real" is a question a test can answer.
- *
- * @type {Record<string, string>}
  */
-export const LEGACY_REDIRECTS = {
+export const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
   // Personal settings, from before they were grouped under one heading.
   '/generalSettings': '/settings/preferences',
   '/userSettings': '/settings/preferences',
@@ -32,19 +30,19 @@ export const LEGACY_REDIRECTS = {
 /**
  * Where an old address points now.
  *
- * @param {string} pathname
- * @returns {string|null} The new location, or null when the path was never moved.
+ * @param pathname
+ * @returns
  */
-export function resolveLegacyPath(pathname) {
+export function resolveLegacyPath(pathname: string): string | null {
   return LEGACY_REDIRECTS[pathname] ?? null;
 }
 
 /**
  * The path part of a redirect target, without its query.
  *
- * @param {string} target
- * @returns {string}
+ * @param target
+ * @returns
  */
-export function targetPathname(target) {
+export function targetPathname(target: string): string {
   return target.split('?')[0];
 }
