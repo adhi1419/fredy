@@ -112,8 +112,15 @@ describe('Cloud Run runtime contract', () => {
 
     expect(fixture.rustHealth.productionEnabled).toBe(false);
     expect(fixture.rustHealth.nodeRemainsAuthoritative).toBe(true);
+    expect(fixture.rustHealth.compiledParity).toBe(true);
+    expect(fixture.rustHealth.liveCutover).toBe(false);
+    expect(fixture.rustHealth.parityRoutes).toEqual(['GET /health', 'GET /api/auth/config']);
     expect(rustSource).toContain('pub const BIND_ADDRESS: &str = "0.0.0.0";');
     expect(rustSource).toContain('pub const DEFAULT_PORT: u16 = 9998;');
+    expect(rustSource).toContain('"/api/auth/config"');
+    expect(rustSource).toContain('serde_json::from_str');
+    const wire = JSON.parse(readContractFile('wire'));
+    expect(wire.http.authConfig.cases.map(({ name }) => name)).toEqual(['enabled', 'absent', 'invalid']);
     expect(workflow).not.toContain("- 'rust/**'");
     expect(workflow).not.toContain('rust/health-route');
   });

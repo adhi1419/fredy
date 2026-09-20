@@ -34,7 +34,6 @@ const FRONTEND_ORIGIN = wireContract.assumptions.frontendOrigin;
 let app;
 
 beforeEach(async () => {
-  vi.stubEnv('FIREBASE_WEB_CONFIG', JSON.stringify(wireContract.http.authConfig.body.firebaseConfig));
   mocks.verifyIdToken.mockResolvedValue({ uid: 'uid-alice', email: 'alice@example.com', email_verified: true });
   mocks.getAllowedUser.mockResolvedValue({ email: 'alice@example.com', isAdmin: false });
   mocks.getUserIdentity.mockResolvedValue({ id: 'uid-alice', username: 'alice@example.com', isAdmin: false });
@@ -80,9 +79,19 @@ describe('shared HTTP wire contract', () => {
     expect(Buffer.from(fallback.body)).toEqual(Buffer.from(wireContract.http.apiOnlyFallback.bodyBytes));
   });
 
-  it('keeps public Firebase bootstrap separate from authorization', async () => {
-    const response = await injectCase(wireContract.http.authConfig);
-    expectJson(response, wireContract.http.authConfig);
+  it('keeps every public Firebase bootstrap case separate from authorization', async () => {
+    for (const testCase of wireContract.http.authConfig.cases) {
+      const rawConfig = testCase.environment.FIREBASE_WEB_CONFIG;
+      if (rawConfig == null) delete process.env.FIREBASE_WEB_CONFIG;
+      else vi.stubEnv('FIREBASE_WEB_CONFIG', rawConfig);
+
+      const response = await injectCase(
+        { ...testCase, method: wireContract.http.authConfig.method, path: wireContract.http.authConfig.path },
+        { headers: { origin: wireContract.cors.allowOrigin } },
+      );
+      expectJson(response, testCase);
+      expect(Buffer.from(response.body)).toEqual(Buffer.from(testCase.bodyBytes));
+    }
     expect(mocks.verifyIdToken).not.toHaveBeenCalled();
   });
 

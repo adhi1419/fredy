@@ -6,10 +6,12 @@ This document freezes the deployment and runtime boundary that a future Rust rou
 
 ### First dormant Rust executable (no production cutover)
 
-- `rust/health-route` is a separately executable, dependency-free Rust implementation of only `GET /health` and the API-only `404` fallback.
+- `rust/health-route` is a separately executable, dormant Rust implementation of `GET /health`, the API-only `404` fallback, and public `GET /api/auth/config` parity.
+- The auth-config route uses the pinned `serde_json` dependency to parse `FIREBASE_WEB_CONFIG` safely and serialize `{ enabled, firebaseConfig }` with Node-compatible JSON bytes. Missing or invalid configuration returns the disabled response; it never establishes authorization.
+- Auth-config responses honor the exact configured `FRONTEND_ORIGIN`. Approved requests return the fixed CORS headers; approved preflight returns `204` with no body, while mismatched origins are denied without reflecting the attacker origin.
 - It binds `0.0.0.0`, uses `PORT` when it is a valid non-zero port, and falls back to `9998`.
 - Its `GET /health` response is `200`, `application/json; charset=utf-8`, and the exact bytes `{"status":"ok"}`. Unrelated paths and non-GET methods return `404` with `{"error":"Not found"}`.
-- The executable is compiled and parity-tested in conditional pull-request validation only. Node remains authoritative: the Rust binary is not copied into the production image, is not started by `index.js`, and is not included in production Cloud Run workflow inputs or traffic.
+- Rust parity is compiled and exercised in conditional pull-request validation only. Node remains authoritative: the Rust binary is not copied into the production image, is not started by `index.js`, and is not included in production Cloud Run workflow inputs or traffic. This is compiled parity, not a live route cutover.
 
 ### Container and process boundary
 

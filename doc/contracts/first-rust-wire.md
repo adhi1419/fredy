@@ -21,16 +21,22 @@ changing the fixture.
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /health`          | `200`, JSON `{ "status": "ok" }`, exact body bytes `{"status":"ok"}`, JSON content type; no Origin is required                                                                                                              | [`test/api/apiServer.test.js`](../../test/api/apiServer.test.js), [`rust/health-route/tests/health_route.rs`](../../rust/health-route/tests/health_route.rs)                                                     |
 | API-only fallback      | Unknown paths return `404`, JSON `{ "error": "Not found" }`; no frontend HTML fallback                                                                                                                                      | [`test/api/apiServer.test.js`](../../test/api/apiServer.test.js)                                                                                           |
-| `GET /api/auth/config` | Public; returns `{ enabled, firebaseConfig }` with the public Firebase web config. It does not establish authorization.                                                                                                     | [`test/api/firebaseLoginRoute.test.js`](../../test/api/firebaseLoginRoute.test.js)                                                                         |
+| `GET /api/auth/config` | Public; returns `{ enabled, firebaseConfig }` with the public Firebase web config, including disabled `null` behavior when absent/invalid. It does not establish authorization; with an Origin it follows the exact Pages-origin CORS contract. | [`test/api/firebaseLoginRoute.test.js`](../../test/api/firebaseLoginRoute.test.js), [`test/api/wireContract.test.js`](../../test/api/wireContract.test.js), [`rust/health-route/tests/health_route.rs`](../../rust/health-route/tests/health_route.rs) |
 | `GET /api/auth/me`     | Requires one direct Firebase bearer token. Success projects only `userId`, `username`, and `isAdmin`.                                                                                                                       | [`test/api/firebaseLoginRoute.test.js`](../../test/api/firebaseLoginRoute.test.js), [`test/api/security.test.js`](../../test/api/security.test.js)         |
 | Auth failures          | Missing/malformed bearer: `401 invalid authorization`; Firebase verification failure: `401 invalid token`; invalid verified claims: `401 invalid token claims`; verified identity absent from allowlist: `403 not allowed`. | [`test/api/security.test.js`](../../test/api/security.test.js)                                                                                             |
 | CORS                   | Exact Pages origin only. Bearer preflight allows `GET,POST,PUT,DELETE,OPTIONS` and `Authorization,Content-Type`, returns `204` with no body, `86400` max age, and `Vary: Origin`.                                           | [`test/api/apiServer.test.js`](../../test/api/apiServer.test.js)                                                                                           |
 | SSE `/api/jobs/events` | `text/event-stream`; handshake comment `: connected`; then `hello`, job-status frames, and `: ping <milliseconds>` heartbeat comments, each terminated by a blank line; heartbeat cadence is 25 seconds.                    | [`test/services/sse/sseBroker.test.js`](../../test/services/sse/sseBroker.test.js), [`test/api/wireContract.test.js`](../../test/api/wireContract.test.js) |
 | Hijacked SSE CORS      | The same approved CORS headers are present on the raw/hijacked response as on an ordinary bearer response.                                                                                                                  | [`test/api/apiServer.test.js`](../../test/api/apiServer.test.js)                                                                                           |
 
-The exact expected cases are kept in [`test/wireContracts.json`](../../test/wireContracts.json) so
-parity tests can compare status, selected headers, JSON bodies, and SSE bytes without depending on
-Node-specific objects.
+The exact expected cases are kept in [`test/wireContracts.json`](../../test/wireContracts.json) so parity
+tests can compare status, selected headers, JSON bodies, and SSE bytes without depending on
+Node-specific objects. The auth-config cases cover an enabled parsed web config, an absent config, and
+invalid JSON; absent and invalid values both produce the disabled `{"enabled":false,"firebaseConfig":null}`
+bytes used by Node.
+
+The dormant Rust implementation compiles this public route and its exact-origin CORS behavior only.
+It does not verify Firebase bearer tokens or authorize any protected route. Node remains the live
+implementation and production traffic is not redirected to Rust.
 
 ## Not contractual
 

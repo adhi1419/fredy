@@ -33,12 +33,37 @@
     "authConfig": {
       "method": "GET",
       "path": "/api/auth/config",
-      "status": 200,
-      "contentType": "application/json; charset=utf-8",
-      "body": {
-        "enabled": true,
-        "firebaseConfig": { "apiKey": "public-key", "projectId": "fredy" }
-      }
+      "cases": [
+        {
+          "name": "enabled",
+          "environment": {
+            "FIREBASE_WEB_CONFIG": "{\"apiKey\":\"public-key\",\"projectId\":\"fredy\"}"
+          },
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "bodyBytes": "{\"enabled\":true,\"firebaseConfig\":{\"apiKey\":\"public-key\",\"projectId\":\"fredy\"}}",
+          "body": {
+            "enabled": true,
+            "firebaseConfig": { "apiKey": "public-key", "projectId": "fredy" }
+          }
+        },
+        {
+          "name": "absent",
+          "environment": {},
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "bodyBytes": "{\"enabled\":false,\"firebaseConfig\":null}",
+          "body": { "enabled": false, "firebaseConfig": null }
+        },
+        {
+          "name": "invalid",
+          "environment": { "FIREBASE_WEB_CONFIG": "not-json" },
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "bodyBytes": "{\"enabled\":false,\"firebaseConfig\":null}",
+          "body": { "enabled": false, "firebaseConfig": null }
+        }
+      ]
     },
     "authMe": {
       "method": "GET",

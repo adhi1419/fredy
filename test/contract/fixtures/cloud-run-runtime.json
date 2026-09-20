@@ -19,7 +19,10 @@
   },
   "rustHealth": {
     "productionEnabled": false,
-    "nodeRemainsAuthoritative": true
+    "nodeRemainsAuthoritative": true,
+    "compiledParity": true,
+    "liveCutover": false,
+    "parityRoutes": ["GET /health", "GET /api/auth/config"]
   },
   "container": {
     "required": [
@@ -110,6 +113,8 @@
     "The steady-state Cloud Run deployment does not mount persistent storage there",
     "There is no separate readiness endpoint, startup probe, or application-level `SIGTERM`/`SIGINT` drain handler",
     "### First dormant Rust executable (no production cutover)",
+    "Rust parity is compiled and exercised in conditional pull-request validation only.",
+    "This is compiled parity, not a live route cutover.",
     "Node remains authoritative: the Rust binary is not copied into the production image"
   ]
 }
