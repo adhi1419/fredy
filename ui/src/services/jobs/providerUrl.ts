@@ -3,6 +3,19 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+/** The smallest provider metadata boundary needed to validate a pasted URL. */
+export interface ProviderMetadata {
+  baseUrl: string;
+}
+
+/** Every reason a provider URL can be refused. */
+export type ProviderUrlProblem = 'noProvider' | 'empty' | 'unparsable' | 'wrongHost' | 'bareHost';
+
+/** The validation result narrows the problem field through `ok`. */
+export type ProviderUrlValidation =
+  | { ok: true; problem: null; expectedHost: string }
+  | { ok: false; problem: ProviderUrlProblem; expectedHost: string | null };
+
 /**
  * Whether the URL someone pasted is actually a search on the portal they picked.
  *
@@ -15,19 +28,10 @@
  */
 
 /**
- * Why a URL was refused. `null` means it was not.
- *
- * @typedef {'noProvider'|'empty'|'unparsable'|'wrongHost'|'bareHost'|null} ProviderUrlProblem
+ * A URL reduced to its bare host, so that protocol and a leading `www.` do not cause a false
+ * negative when comparing the user's input against the provider's base URL.
  */
-
-/**
- * A url reduced to its bare host, so that protocol and a leading `www.` do not cause a false
- * negative when comparing the user's input against the provider's base url.
- *
- * @param {string|null|undefined} url
- * @returns {string|null}
- */
-export function normalizeHost(url) {
+export function normalizeHost(url: string | null | undefined): string | null {
   if (url == null) {
     return null;
   }
@@ -48,11 +52,8 @@ export function normalizeHost(url) {
  *
  * A path of `/`, no query and no fragment means the user copied the address of the front page
  * rather than of their search results.
- *
- * @param {string} url
- * @returns {boolean}
  */
-function carriesASearch(url) {
+function carriesASearch(url: string): boolean {
   const trimmed = String(url).trim();
   const withProtocol = /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
   try {
@@ -63,14 +64,11 @@ function carriesASearch(url) {
   }
 }
 
-/**
- * Check a pasted provider URL.
- *
- * @param {string|null|undefined} url
- * @param {{id: string, name: string, baseUrl: string}|null|undefined} provider
- * @returns {{ok: boolean, problem: ProviderUrlProblem, expectedHost: string|null}}
- */
-export function validateProviderUrl(url, provider) {
+/** Check a pasted provider URL. */
+export function validateProviderUrl(
+  url: string | null | undefined,
+  provider: ProviderMetadata | null | undefined,
+): ProviderUrlValidation {
   const expectedHost = normalizeHost(provider?.baseUrl);
 
   if (provider == null) {

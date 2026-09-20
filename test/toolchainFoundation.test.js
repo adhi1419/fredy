@@ -38,6 +38,7 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/apiUrl.ts',
       'ui/src/services/jobs/guidedSearchForm.ts',
       'ui/src/services/authenticatedTransport.ts',
+      'ui/src/services/jobs/providerUrl.ts',
       'ui/src/services/home/homeViewState.ts',
       'ui/src/services/listings/listingFilters.ts',
       'ui/src/services/state/financeState.ts',
@@ -58,11 +59,14 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/finalResponsiveSlice.test.ts',
       'test/ui/listingFilters.test.ts',
       'test/ui/guidedSearchForm.test.ts',
+      'test/ui/providerUrl.test.ts',
     ]);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/guidedSearchForm.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/guidedSearchForm.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/providerUrl.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/providerUrl.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/listings/listingFilters.ts'))).toBe(true);
@@ -73,6 +77,8 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'test/ui/guidedSearchForm.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/finalResponsiveSlice.test.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'test/ui/finalResponsiveSlice.test.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/providerUrl.test.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'test/ui/providerUrl.test.js'))).toBe(false);
   });
 
   it('requires both lockfiles and the executable lock policy guard', () => {

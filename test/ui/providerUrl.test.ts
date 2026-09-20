@@ -6,24 +6,28 @@
 import { describe, it, expect } from 'vitest';
 
 import { normalizeHost, validateProviderUrl } from '../../ui/src/services/jobs/providerUrl.js';
+import type { ProviderMetadata, ProviderUrlProblem } from '../../ui/src/services/jobs/providerUrl.js';
 
 const immoscout = {
-  id: 'immoscout',
-  name: 'Immoscout',
   baseUrl: 'https://www.immobilienscout24.de/',
-};
+} satisfies ProviderMetadata;
+
+type NormalizeHostCase = [url: string, expected: string];
+const normalizeHostCases: NormalizeHostCase[] = [
+  ['https://www.immobilienscout24.de/', 'immobilienscout24.de'],
+  ['http://immobilienscout24.de/Suche', 'immobilienscout24.de'],
+  ['www.immobilienscout24.de', 'immobilienscout24.de'],
+  ['IMMOBILIENSCOUT24.DE', 'immobilienscout24.de'],
+];
+
+const nullHostCases: Array<[url: string | null | undefined]> = [[null], [undefined], [''], ['   '], ['http://']];
 
 describe('normalizeHost', () => {
-  it.each([
-    ['https://www.immobilienscout24.de/', 'immobilienscout24.de'],
-    ['http://immobilienscout24.de/Suche', 'immobilienscout24.de'],
-    ['www.immobilienscout24.de', 'immobilienscout24.de'],
-    ['IMMOBILIENSCOUT24.DE', 'immobilienscout24.de'],
-  ])('reduces %s to its bare host', (url, expected) => {
+  it.each(normalizeHostCases)('reduces %s to its bare host', (url, expected) => {
     expect(normalizeHost(url)).toBe(expected);
   });
 
-  it.each([[null], [undefined], [''], ['   '], ['http://']])('answers null for %s', (url) => {
+  it.each(nullHostCases)('answers null for %s', (url) => {
     expect(normalizeHost(url)).toBeNull();
   });
 });
@@ -37,20 +41,24 @@ describe('validateProviderUrl', () => {
     expect(result).toMatchObject({ ok: true, problem: null, expectedHost: 'immobilienscout24.de' });
   });
 
-  it.each([
+  const acceptedSearchCases: Array<[what: string, url: string]> = [
     ['a query-only search', 'https://www.immobilienscout24.de/?price=-1200'],
     ['a fragment-only search', 'https://www.immobilienscout24.de/#/results'],
     ['a url typed without its protocol', 'www.immobilienscout24.de/Suche/de/koeln/wohnung-mieten'],
-  ])('accepts %s', (_what, url) => {
+  ];
+
+  it.each(acceptedSearchCases)('accepts %s', (_what, url) => {
     expect(validateProviderUrl(url, immoscout).ok).toBe(true);
   });
 
-  it.each([
+  const bareHostCases: Array<[url: string]> = [
     ['https://www.immobilienscout24.de/'],
     ['https://www.immobilienscout24.de'],
     ['https://immobilienscout24.de//'],
     ['immobilienscout24.de'],
-  ])('refuses the bare homepage %s', (url) => {
+  ];
+
+  it.each(bareHostCases)('refuses the bare homepage %s', (url) => {
     // The old check passed these. They save cleanly, run on schedule, and find nothing - which
     // looks exactly like a working job that the portal has no results for.
     const result = validateProviderUrl(url, immoscout);
@@ -63,13 +71,17 @@ describe('validateProviderUrl', () => {
     expect(result).toMatchObject({ ok: false, problem: 'wrongHost', expectedHost: 'immobilienscout24.de' });
   });
 
-  it.each([
+  const refusalCases: Array<
+    [what: string, url: string | null | undefined, provider: ProviderMetadata | null, problem: ProviderUrlProblem]
+  > = [
     ['no provider picked', 'https://www.immobilienscout24.de/Suche/x', null, 'noProvider'],
     ['an empty url', '', immoscout, 'empty'],
     ['a whitespace url', '   ', immoscout, 'empty'],
     ['a missing url', null, immoscout, 'empty'],
     ['something that is not a url', 'not a url at all', immoscout, 'unparsable'],
-  ])('refuses %s', (_what, url, provider, problem) => {
+  ];
+
+  it.each(refusalCases)('refuses %s', (_what, url, provider, problem) => {
     const result = validateProviderUrl(url, provider);
     expect(result.ok).toBe(false);
     expect(result.problem).toBe(problem);
@@ -80,7 +92,7 @@ describe('validateProviderUrl', () => {
   });
 
   it('refuses a provider whose base url is unusable rather than accepting anything', () => {
-    const broken = { id: 'x', name: 'X', baseUrl: '' };
+    const broken: ProviderMetadata = { baseUrl: '' };
     expect(validateProviderUrl('https://anything.example/search', broken)).toMatchObject({
       ok: false,
       problem: 'wrongHost',
