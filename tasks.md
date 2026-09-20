@@ -1,6 +1,6 @@
 # Fredy modernization tasks
 
-The canonical tracker is now `tasks.md` on `main` through PR #24. This working copy records in-flight PR status until the next program update is published.
+The canonical tracker is now `tasks.md` on `main` through PR #31. This working copy records in-flight PR status until the next program update is published.
 
 ## Completed architecture and delivery
 
@@ -35,10 +35,11 @@ The canonical tracker is now `tasks.md` on `main` through PR #24. This working c
 - [x] PR #25: freeze the first Rust wire contract for health, Firebase auth, CORS, and SSE — merged; test/document-only change correctly did not deploy.
 - [x] PR #27: extract listings state as the first strict TypeScript domain-state module — merged and deployed in 35 seconds.
 - [x] PR #26: implement phase-one listing/application lifecycle unification with real production callers — merged and deployed successfully.
-- [ ] Confirm per-Saved-Search provider-source policy → per-job-listing lifecycle model before migrating the job-level auto-apply flag.
-- [ ] PR #28: freeze provider, notification, and schedule Rust parity contracts — open with rebase auto-merge.
-- [ ] PR #29: expose conservative provider application capabilities and listing-dependent eligibility — open with rebase auto-merge.
-- [ ] PR #30: extract Saved Searches state as the next strict TypeScript domain module — open with rebase auto-merge.
+- [x] PR #33: define per-Saved-Search provider-source application policy with legacy compatibility and sensitive-field exclusion — merged and deployed to Cloud Run successfully in 59 seconds; execution cutover remains separate.
+- [x] PR #29: freeze provider, notification, and schedule Rust parity contracts — merged; test/document-only change correctly did not deploy.
+- [x] PR #28: expose conservative provider application capabilities and listing-dependent eligibility — merged and deployed successfully in 61 seconds.
+- [x] PR #30: extract Saved Searches state as the next strict TypeScript domain module — merged and deployed successfully in 39 seconds.
+- [x] PR #32: extract the complete user-settings state/effect contract as the next strict TypeScript domain module — merged and deployed to Pages successfully in 47 seconds.
 - [ ] Freeze the remaining Cloud Run deployment contract.
 - [ ] Continue splitting frontend state into deep domain modules while preserving selector/action compatibility.
 - [ ] Migrate nonvisual frontend services, state, and hooks to strict TypeScript in small PRs.
@@ -63,14 +64,15 @@ The canonical tracker is now `tasks.md` on `main` through PR #24. This working c
 - [x] Exercise all Feed/List+map × New/Applied/Viewed/Archived states plus Saved Searches, Listing, guided Search, and Account surfaces.
 - [x] Validate self-contained HTML, inline JavaScript, light/dark, desktop/mobile, compact headings, one-handed CTA order, and HTTP 200 preview serving.
 - [x] Deliver the current self-contained HTML and visual evidence through the dashboard because the work-host loopback URL is not reachable from macOS Firefox.
-- [ ] Confirm provider-source application policy, capability, and future Connect account interaction.
+- [ ] Complete future Connect account interaction; provider capabilities are merged in PR #28 and source policy is merged in PR #33.
 - [x] Perform final human interaction review and approve the UX specification — approved by the operator on 2026-09-19.
 - [x] Freeze the approved decision document and interactive HTML for rebase-auto-merge publication.
 - [x] PR #24: merge the approved simplified two-tab UX specification.
+- [x] PR #31: merge operator-directed Google Maps CTA and Applied-message popover refinement.
 
 ## After UX approval
 
-- [ ] Implement the two-tab shell and account/admin entry points.
+- [ ] PR #34: publish the implemented, parent-validated, and isolated-review-corrected two-tab shell/account entry points — open with rebase auto-merge.
 - [ ] Implement Home feed/map/activity/provider/sort state.
 - [ ] Implement one-handed mobile listing detail and unified lifecycle actions.
 - [ ] Implement guided Saved Search add/edit flow.
