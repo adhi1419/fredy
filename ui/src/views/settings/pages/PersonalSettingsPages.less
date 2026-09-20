@@ -1,0 +1,68 @@
+@import '../../../tokens.less';
+
+.personalSettingsPage {
+  display: grid;
+  gap: @space-4;
+
+  &__section {
+    overflow: hidden;
+    border: 1px solid @color-border;
+    border-radius: @radius-card;
+    background: @color-fill-subtle;
+  }
+
+  &__header {
+    display: grid;
+    gap: @space-1;
+    padding: @space-3 @space-4;
+    border-bottom: 1px solid @color-border;
+    background: @color-surface;
+
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h2 {
+      color: @color-text;
+      font-family: @font-ui;
+      font-size: @text-md;
+      line-height: 1.3;
+    }
+
+    p {
+      color: @color-muted;
+      font-family: @font-ui;
+      font-size: @text-sm;
+      line-height: 1.45;
+    }
+  }
+
+  &__content {
+    padding: @space-4;
+  }
+
+  &__saveRow {
+    display: flex;
+    justify-content: flex-end;
+
+    button {
+      min-height: 44px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .personalSettingsPage {
+    gap: @space-3;
+
+    &__header,
+    &__content {
+      padding: @space-3;
+    }
+
+    &__content .semi-select {
+      max-width: 100%;
+    }
+  }
+}
