@@ -70,11 +70,21 @@ impl HttpResponse {
         }
         if let Some(origin) = &self.allow_origin {
             write!(writer, "Access-Control-Allow-Origin: {origin}\r\n")?;
-            write!(writer, "Access-Control-Allow-Methods: {ALLOWED_METHODS_HEADER}\r\n")?;
-            write!(writer, "Access-Control-Allow-Headers: {ALLOWED_HEADERS_HEADER}\r\n")?;
+            write!(
+                writer,
+                "Access-Control-Allow-Methods: {ALLOWED_METHODS_HEADER}\r\n"
+            )?;
+            write!(
+                writer,
+                "Access-Control-Allow-Headers: {ALLOWED_HEADERS_HEADER}\r\n"
+            )?;
             writer.write_all(b"Access-Control-Max-Age: 86400\r\n")?;
         }
-        write!(writer, "Content-Length: {}\r\nConnection: close\r\n\r\n", self.body.len())?;
+        write!(
+            writer,
+            "Content-Length: {}\r\nConnection: close\r\n\r\n",
+            self.body.len()
+        )?;
         writer.write_all(&self.body)
     }
 }
@@ -336,10 +346,7 @@ mod tests {
     fn auth_config_absent_or_invalid_config_is_disabled() {
         for raw in [None, Some("not-json")] {
             let response = response_for_with_config("GET", "/api/auth/config", raw);
-            assert_eq!(
-                response.body,
-                br#"{"enabled":false,"firebaseConfig":null}"#
-            );
+            assert_eq!(response.body, br#"{"enabled":false,"firebaseConfig":null}"#);
         }
     }
 
