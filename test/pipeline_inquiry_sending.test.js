@@ -13,6 +13,18 @@ const providerConfig = {
   filter: () => true,
   normalize: (listing) => listing,
 };
+const applicationCapabilities = {
+  immoscout: { automatic: true, eligibility: 'provider' },
+  deutscheWohnen: { automatic: true, eligibility: 'provider' },
+  inberlinwohnen: { automatic: true, eligibility: 'listing' },
+  unsupported: { automatic: false, eligibility: 'none' },
+};
+const pipeline = (Fredy, jobConfig, providerId, applicationCapability = null, providerSource = null) =>
+  new Fredy(providerConfig, jobConfig, providerId, {}, undefined, {
+    providerSource: providerSource ?? jobConfig.provider.find((source) => source.id === providerId),
+    applicationCapability:
+      applicationCapability ?? applicationCapabilities[providerId] ?? applicationCapabilities.unsupported,
+  });
 const listing = () => ({
   id: 'listing-1',
   link: 'https://www.immobilienscout24.de/expose/170874105',
@@ -23,6 +35,7 @@ const job = (overrides = {}) => ({
   notificationAdapter: [],
   dealType: 'rent',
   autoSendInquiry: true,
+  provider: [{ id: 'immoscout' }, { id: 'deutscheWohnen' }, { id: 'inberlinwohnen' }],
   ...overrides,
 });
 
@@ -50,7 +63,7 @@ describe('pipeline automatic inquiry sending', () => {
 
   it('delivers a generated draft for an enabled ImmoScout rental job', async () => {
     const Fredy = await mockFredy();
-    const instance = new Fredy(providerConfig, job(), 'immoscout', {}, undefined);
+    const instance = pipeline(Fredy, job(), 'immoscout');
     const item = listing();
 
     await instance._sendInquiryMessages([item]);
@@ -66,7 +79,7 @@ describe('pipeline automatic inquiry sending', () => {
 
   it('delivers a generated draft for an enabled Deutsche Wohnen rental job', async () => {
     const Fredy = await mockFredy();
-    const instance = new Fredy(providerConfig, job(), 'deutscheWohnen', {}, undefined);
+    const instance = pipeline(Fredy, job(), 'deutscheWohnen');
     const item = {
       ...listing(),
       link: 'https://www.deutsche-wohnen.com/mieten/mietangebote/test-89-1471120007',
@@ -84,7 +97,7 @@ describe('pipeline automatic inquiry sending', () => {
 
   it('applies to a HOWOGE partner listing without requiring a generated message', async () => {
     const Fredy = await mockFredy();
-    const instance = new Fredy(providerConfig, job(), 'inberlinwohnen', {}, undefined);
+    const instance = pipeline(Fredy, job(), 'inberlinwohnen');
     const item = {
       ...listing(),
       link: 'https://www.howoge.de/immobiliensuche/wohnungssuche/detail/1770-20776-16.html?t=ibw',
@@ -105,32 +118,107 @@ describe('pipeline automatic inquiry sending', () => {
   it('skips newly supported providers until their profile fields and consent are configured', async () => {
     setUserSettings({ inquiry_profile: { name: 'Alice Example' } });
     const Fredy = await mockFredy();
-    const instance = new Fredy(providerConfig, job(), 'deutscheWohnen', {}, undefined);
+    const instance = pipeline(Fredy, job(), 'deutscheWohnen');
 
     await instance._sendInquiryMessages([listing()]);
+
+    expect(inquiryDeliveries).toEqual([]);
+  });
+
+  it('sends only sources enabled and eligible in a mixed-provider job', async () => {
+    const Fredy = await mockFredy();
+    const mixedJob = job({
+      autoSendInquiry: false,
+      provider: [
+        { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } },
+        { id: 'deutscheWohnen', applicationPolicy: { automatic: 'disabled' } },
+        { id: 'inberlinwohnen', applicationPolicy: { automatic: 'enabled' } },
+      ],
+    });
+
+    await pipeline(Fredy, mixedJob, 'immoscout')._sendInquiryMessages([listing()]);
+    await pipeline(Fredy, mixedJob, 'deutscheWohnen')._sendInquiryMessages([
+      {
+        ...listing(),
+        link: 'https://www.deutsche-wohnen.com/mieten/mietangebote/test-89-1471120007',
+      },
+    ]);
+    await pipeline(Fredy, mixedJob, 'inberlinwohnen')._sendInquiryMessages([
+      {
+        ...listing(),
+        link: 'https://www.howoge.de/immobiliensuche/wohnungssuche/detail/1770-20776-16.html?t=ibw',
+        inquiryMessage: null,
+      },
+    ]);
+
+    expect(inquiryDeliveries.map(({ providerId }) => providerId)).toEqual(['immoscout', 'inberlinwohnen']);
+  });
+
+  it('keeps policy attached to the exact source when one provider has multiple URLs', async () => {
+    const Fredy = await mockFredy();
+    const sources = [
+      { id: 'immoscout', url: 'https://example.com/search/disabled', applicationPolicy: { automatic: 'disabled' } },
+      { id: 'immoscout', url: 'https://example.com/search/enabled', applicationPolicy: { automatic: 'enabled' } },
+    ];
+    const multiSourceJob = job({ autoSendInquiry: true, provider: sources });
+
+    await pipeline(Fredy, multiSourceJob, 'immoscout', null, sources[0])._sendInquiryMessages([listing()]);
+    await pipeline(Fredy, multiSourceJob, 'immoscout', null, sources[1])._sendInquiryMessages([listing()]);
+
+    expect(inquiryDeliveries).toHaveLength(1);
+  });
+
+  it('keeps a legacy job flag as the fallback for a source without policy', async () => {
+    const Fredy = await mockFredy();
+    const legacyJob = job({ autoSendInquiry: true, provider: [{ id: 'immoscout' }] });
+
+    await pipeline(Fredy, legacyJob, 'immoscout')._sendInquiryMessages([listing()]);
+
+    expect(inquiryDeliveries).toHaveLength(1);
+  });
+
+  it('does not send for an unsupported capability or an ineligible listing', async () => {
+    const Fredy = await mockFredy();
+    const enabledJob = job({
+      autoSendInquiry: false,
+      provider: [{ id: 'immoscout', applicationPolicy: { automatic: 'enabled' } }],
+    });
+    await pipeline(Fredy, enabledJob, 'immoscout', applicationCapabilities.unsupported)._sendInquiryMessages([
+      listing(),
+    ]);
+
+    const listingScopedJob = job({
+      autoSendInquiry: false,
+      provider: [{ id: 'inberlinwohnen', applicationPolicy: { automatic: 'enabled' } }],
+    });
+    await pipeline(Fredy, listingScopedJob, 'inberlinwohnen')._sendInquiryMessages([
+      {
+        ...listing(),
+        link: 'https://www.degewo.de/immobilien/1',
+        inquiryMessage: null,
+      },
+    ]);
 
     expect(inquiryDeliveries).toEqual([]);
   });
 
   it('does nothing when the job did not explicitly enable auto-send', async () => {
     const Fredy = await mockFredy();
-    const instance = new Fredy(providerConfig, job({ autoSendInquiry: false }), 'immoscout', {}, undefined);
+    const instance = pipeline(Fredy, job({ autoSendInquiry: false }), 'immoscout');
     await instance._sendInquiryMessages([listing()]);
     expect(inquiryDeliveries).toEqual([]);
   });
 
   it('does nothing for unsupported providers or purchase jobs', async () => {
     const Fredy = await mockFredy();
-    await new Fredy(providerConfig, job(), 'inberlinwohnen', {}, undefined)._sendInquiryMessages([listing()]);
-    await new Fredy(providerConfig, job({ dealType: 'buy' }), 'immoscout', {}, undefined)._sendInquiryMessages([
-      listing(),
-    ]);
+    await pipeline(Fredy, job(), 'inberlinwohnen')._sendInquiryMessages([listing()]);
+    await pipeline(Fredy, job({ dealType: 'buy' }), 'immoscout')._sendInquiryMessages([listing()]);
     expect(inquiryDeliveries).toEqual([]);
   });
 
   it('keeps the pipeline batch alive when delivery fails', async () => {
     const Fredy = await mockFredy();
-    const instance = new Fredy(providerConfig, job(), 'immoscout', {}, undefined);
+    const instance = pipeline(Fredy, job(), 'immoscout');
     const items = [listing()];
     setInquiryDeliveryError(new Error('provider unavailable'));
     await expect(instance._sendInquiryMessages(items)).resolves.toBe(items);
@@ -138,7 +226,7 @@ describe('pipeline automatic inquiry sending', () => {
 
   it('skips delivery when generation produced no draft', async () => {
     const Fredy = await mockFredy();
-    const instance = new Fredy(providerConfig, job(), 'immoscout', {}, undefined);
+    const instance = pipeline(Fredy, job(), 'immoscout');
     await instance._sendInquiryMessages([{ ...listing(), inquiryMessage: null }]);
     expect(inquiryDeliveries).toEqual([]);
   });
