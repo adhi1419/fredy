@@ -90,6 +90,58 @@ export interface HomeMapListing extends HomeListing {
   longitude: number;
 }
 
+/**
+ * Return the stable listing ID used by every Home decision surface, or null for an unaddressable
+ * row. Missing IDs remain visible but cannot accidentally navigate to a made-up detail URL.
+ */
+export function homeListingNavigationId(listing: HomeListing | null | undefined): string | null {
+  const id = listing?.id;
+  return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+/**
+ * Choose the first addressable listing represented by a grouped marker. A marker can contain a
+ * legacy row without an ID alongside navigable rows, so marker activation must use the same ID seam
+ * as the list row instead of assuming the first row is always addressable.
+ */
+export function homeMapMarkerTarget(listings: readonly HomeMapListing[]): string | null {
+  for (const listing of listings) {
+    const id = homeListingNavigationId(listing);
+    if (id != null) return id;
+  }
+  return null;
+}
+
+export type HomeMapMarkerTrigger = 'pointer' | 'keyboard';
+
+export type HomeMapMarkerAction =
+  | { trigger: HomeMapMarkerTrigger; kind: 'group'; listings: HomeMapListing[] }
+  | { trigger: HomeMapMarkerTrigger; kind: 'listing'; id: string };
+
+/**
+ * Keep marker activation deterministic: a collision group always opens the chooser, while a
+ * single marker keeps its direct navigation path.
+ */
+export function homeMapMarkerAction(
+  listings: readonly HomeMapListing[],
+  trigger: HomeMapMarkerTrigger,
+): HomeMapMarkerAction | null {
+  if (listings.length > 1) return { trigger, kind: 'group', listings: [...listings] };
+
+  const id = homeMapMarkerTarget(listings);
+  return id == null ? null : { trigger, kind: 'listing', id };
+}
+
+/** Restore focus only while the original marker remains mounted in the document. */
+export function restoreHomeMapMarkerFocus(marker: Pick<HTMLElement, 'isConnected' | 'focus'> | null): void {
+  if (marker?.isConnected) marker.focus();
+}
+
+/** Return a chooser ID only when the requested listing belongs to the active group. */
+export function homeMapGroupSelectionId(listings: readonly HomeMapListing[], selectedId: string): string | null {
+  return listings.some((listing) => homeListingNavigationId(listing) === selectedId) ? selectedId : null;
+}
+
 export const HOME_PAGE_SIZE = 40;
 
 export const HOME_VIEWS: readonly HomeView[] = Object.freeze(['feed', 'map']);

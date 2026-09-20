@@ -46,6 +46,7 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/authenticatedTransport.ts',
       'ui/src/services/jobs/providerUrl.ts',
       'ui/src/services/home/homeViewState.ts',
+      'ui/src/views/listings/mapUtils.ts',
       'ui/src/views/home/Home.tsx',
       'ui/src/services/listings/listingFilters.ts',
       'ui/src/services/state/financeState.ts',
@@ -65,6 +66,8 @@ describe('Bun and TypeScript foundation', () => {
     expect(testConfig.include).toEqual([
       'test/ui/finalResponsiveSlice.test.ts',
       'test/ui/homeSurface.test.ts',
+      'test/ui/homeConvergence.test.ts',
+      'test/ui/mapGrouping.test.ts',
       'test/ui/listingFilters.test.ts',
       'test/ui/guidedSearchForm.test.ts',
       'test/ui/providerUrl.test.ts',
@@ -91,12 +94,16 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'ui/src/services/jobs/jobFilters.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/home/homeViewState.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/listings/mapUtils.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/listings/mapUtils.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/views/home/Home.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/views/home/Home.jsx'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/services/listings/listingFilters.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/listings/listingFilters.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/listingFilters.test.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'test/ui/listingFilters.test.js'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'test/ui/mapGrouping.test.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'test/ui/mapGrouping.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/guidedSearchForm.test.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'test/ui/guidedSearchForm.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/jobValidation.test.ts'))).toBe(true);
@@ -110,6 +117,7 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'test/ui/jobDraft.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/jobSummary.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/jobFilters.test.js'))).toBe(false);
+    expect(read('ui/src/views/jobs/savedSearchesLegacy.d.ts')).not.toContain("declare module '*mapUtils.js'");
   });
 
   it('requires both lockfiles and the executable lock policy guard', () => {
