@@ -3,6 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import type { ReactElement } from 'react';
 import { Tooltip } from '@douyinfe/semi-ui-19';
 
 import { formatEuroPrice } from '../../services/price/priceService.js';
@@ -25,7 +26,20 @@ import './PriceChangeBadge.less';
  * @param {number|null|undefined} props.changedAt Epoch milliseconds of that change.
  * @returns {React.ReactElement|null}
  */
-export default function PriceChangeBadge({ price, previousPrice, changedAt }) {
+export interface PriceChangeBadgeProps {
+  /** Current price. */
+  price?: number | null;
+  /** Price before the most recent change. */
+  previousPrice?: number | null;
+  /** Epoch milliseconds of that change. */
+  changedAt?: number | null;
+}
+
+export default function PriceChangeBadge({
+  price,
+  previousPrice,
+  changedAt,
+}: PriceChangeBadgeProps): ReactElement | null {
   const t = useTranslation();
   const locale = useLocale();
 

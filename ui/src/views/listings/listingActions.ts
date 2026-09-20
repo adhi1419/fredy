@@ -3,18 +3,29 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+export type MobileListingAction = 'apply' | 'maps' | 'provider';
+
+interface ListingActionRecord {
+  address?: unknown;
+  latitude?: unknown;
+  longitude?: unknown;
+  lifecycle?: { state?: string } | null;
+  inquiry_send_status?: string;
+  inquiry_message?: unknown;
+}
+
 /**
  * The frozen order of the one-handed mobile listing action row.
  *
  * @type {readonly ['apply', 'maps', 'provider']}
  */
-export const MOBILE_LISTING_ACTION_ORDER = Object.freeze(['apply', 'maps', 'provider']);
+export const MOBILE_LISTING_ACTION_ORDER = Object.freeze(['apply', 'maps', 'provider'] as const);
 
 /**
  * Translation keys used by the icon-only mobile actions. Keeping the labels beside the order
  * prevents a visual reorder from silently breaking the accessible names.
  */
-export const MOBILE_LISTING_ACTION_LABELS = Object.freeze({
+export const MOBILE_LISTING_ACTION_LABELS: Readonly<Record<MobileListingAction, string>> = Object.freeze({
   apply: 'listing.detail.mobile.apply',
   maps: 'listing.detail.mobile.openMaps',
   provider: 'listing.detail.mobile.openProvider',
@@ -35,7 +46,7 @@ const SAFE_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:']);
  * @param {unknown} value
  * @returns {string|null}
  */
-export function getSafeExternalUrl(value) {
+export function getSafeExternalUrl(value: unknown): string | null {
   if (typeof value !== 'string' || value.trim().length === 0) return null;
   try {
     const url = new URL(value.trim());
@@ -52,7 +63,7 @@ export function getSafeExternalUrl(value) {
  * @param {{address?: unknown, latitude?: unknown, longitude?: unknown}|null|undefined} listing
  * @returns {string|null}
  */
-export function getGoogleMapsUrl(listing) {
+export function getGoogleMapsUrl(listing: ListingActionRecord | null | undefined): string | null {
   const address = typeof listing?.address === 'string' ? listing.address.trim() : '';
   const latitude = Number(listing?.latitude);
   const longitude = Number(listing?.longitude);
@@ -78,7 +89,7 @@ export function getGoogleMapsUrl(listing) {
  * @param {{lifecycle?: {state?: string}, inquiry_send_status?: string}|null|undefined} listing
  * @returns {boolean}
  */
-export function isListingApplied(listing) {
+export function isListingApplied(listing: ListingActionRecord | null | undefined): boolean {
   return listing?.lifecycle?.state === 'applied' || listing?.inquiry_send_status === 'sent';
 }
 
@@ -88,7 +99,7 @@ export function isListingApplied(listing) {
  * @param {{inquiry_message?: unknown}|null|undefined} listing
  * @returns {string|null}
  */
-export function getAppliedMessage(listing) {
+export function getAppliedMessage(listing: ListingActionRecord | null | undefined): string | null {
   const message = typeof listing?.inquiry_message === 'string' ? listing.inquiry_message.trim() : '';
   return message || null;
 }

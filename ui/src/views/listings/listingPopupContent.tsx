@@ -8,6 +8,34 @@ import { IconChevronLeft, IconChevronRight, IconDelete, IconEyeOpened, IconLink 
 import no_image from '../../assets/no_image.png';
 import { availableModes, formatMinutes, hasAnyTime } from '../../components/transit/travelTimeFormat.js';
 import { formatEuroPrice } from '../../services/price/priceService.js';
+import type { TravelTimeEntry } from '../../components/transit/travelTimeFormat.js';
+
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
+
+interface PopupListing {
+  id: string;
+  title?: string | null;
+  provider?: string | null;
+  image_url?: string | null;
+  link?: string | null;
+  price?: string | number | null;
+  address?: string | null;
+  job_name?: string | null;
+  size?: string | number | null;
+  travelTimes?: readonly TravelTimeEntry[];
+}
+
+interface ListingPopupParams {
+  listings: readonly PopupListing[];
+  t: Translate;
+  locale?: string;
+  onPageChange?: () => void;
+}
+
+interface ListingPopupContent {
+  element: HTMLElement;
+  transitMount: HTMLElement;
+}
 
 /**
  * Builds the DOM for a listing popup on the map.
@@ -30,7 +58,12 @@ import { formatEuroPrice } from '../../services/price/priceService.js';
  * @returns {{element: HTMLElement, transitMount: HTMLElement}} The popup content and the empty node
  * the nearby stops are to be rendered into.
  */
-export function createListingPopupContent({ listings, t, locale, onPageChange }) {
+export function createListingPopupContent({
+  listings,
+  t,
+  locale,
+  onPageChange,
+}: ListingPopupParams): ListingPopupContent {
   const element = document.createElement('div');
   element.className = 'map-popup-content';
 
@@ -48,7 +81,7 @@ export function createListingPopupContent({ listings, t, locale, onPageChange })
   const render = () => {
     body.innerHTML = renderListingBody(listings[index], index, listings.length, t, locale);
 
-    const step = (delta) => {
+    const step = (delta: number): void => {
       index = (index + delta + listings.length) % listings.length;
       render();
       onPageChange?.();
@@ -59,7 +92,11 @@ export function createListingPopupContent({ listings, t, locale, onPageChange })
 
   render();
 
-  return { element, transitMount: transit.querySelector('.map-popup-content__transit-mount') };
+  const transitMount = transit.querySelector<HTMLElement>('.map-popup-content__transit-mount');
+  if (transitMount == null) {
+    throw new Error('Listing transit mount was not created.');
+  }
+  return { element, transitMount };
 }
 
 /**
@@ -68,10 +105,10 @@ export function createListingPopupContent({ listings, t, locale, onPageChange })
  * @param {string} value
  * @returns {string}
  */
-function escapeHtml(value) {
+function escapeHtml(value: unknown): string {
   return String(value).replace(
     /[&<>"']/g,
-    (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char],
+    (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char,
   );
 }
 
@@ -85,7 +122,7 @@ function escapeHtml(value) {
  * @param {(key: string, vars?: Record<string, string|number>) => string} t
  * @returns {string} Markup, or an empty string.
  */
-function renderTravelTimes(listing, t) {
+function renderTravelTimes(listing: PopupListing, t: Translate): string {
   const usable = Array.isArray(listing.travelTimes) ? listing.travelTimes.filter(hasAnyTime) : [];
   if (usable.length === 0) {
     return '';
@@ -111,7 +148,7 @@ function renderTravelTimes(listing, t) {
  * @param {string} [locale] - BCP 47 locale for the price.
  * @returns {string}
  */
-function renderListingBody(listing, index, total, t, locale) {
+function renderListingBody(listing: PopupListing, index: number, total: number, t: Translate, locale?: string): string {
   const capitalizedProvider = listing.provider
     ? listing.provider.charAt(0).toUpperCase() + listing.provider.slice(1)
     : 'N/A';

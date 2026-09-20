@@ -3,6 +3,8 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import type { LineString, Point } from 'geojson';
+import type { LayerSpecification } from 'maplibre-gl';
 import { describe, it, expect } from 'vitest';
 import {
   applyRouteLayers,
@@ -12,30 +14,66 @@ import {
   ROUTE_LABEL_LAYER_ID,
   ROUTE_LINE_LAYER_ID,
   ROUTE_SOURCE_ID,
+  type RouteData,
+  type RouteMap,
 } from '../../ui/src/views/listings/detailMapLayers.js';
+
+interface TestSource {
+  type: 'geojson';
+  data: RouteData;
+  setData(data: RouteData): void;
+}
+
+interface TestLayer {
+  id: string;
+  filter?: unknown;
+}
+
+interface TestRouteMap extends RouteMap {
+  layers: TestLayer[];
+  sources: Record<string, TestSource>;
+  getSource(id: string): TestSource | undefined;
+  getLayer(id: string): TestLayer | undefined;
+}
+
+type RouteFeature = RouteData['features'][number];
+type RouteLineFeature = RouteFeature & { geometry: LineString };
+type RoutePointFeature = RouteFeature & { geometry: Point };
+
+const lineFeatures = (data: RouteData): RouteLineFeature[] =>
+  data.features.filter((feature): feature is RouteLineFeature => feature.geometry.type === 'LineString');
+
+const pointFeatures = (data: RouteData): RoutePointFeature[] =>
+  data.features.filter((feature): feature is RoutePointFeature => feature.geometry.type === 'Point');
 
 /**
  * The same kind of stand-in `mapOverlayLayers.test.js` uses: only the style methods these helpers
  * touch, recording what happened so the assertions can read the resulting style. No DOM.
  */
-function makeMap() {
-  const sources = {};
-  const layers = [];
+function makeMap(): TestRouteMap {
+  const sources: Record<string, TestSource> = {};
+  const layers: TestLayer[] = [];
 
   return {
     layers,
     sources,
-    getSource: (id) => sources[id],
-    addSource: (id, spec) => {
-      sources[id] = { ...spec, setData: (data) => (sources[id].data = data) };
+    getSource: (id: string) => sources[id],
+    addSource: (id: string, spec: { type: 'geojson'; data: RouteData }) => {
+      const source: TestSource = {
+        ...spec,
+        setData: (data: RouteData) => {
+          source.data = data;
+        },
+      };
+      sources[id] = source;
     },
-    removeSource: (id) => {
+    removeSource: (id: string) => {
       if (!(id in sources)) throw new Error(`removeSource called for missing source ${id}`);
       delete sources[id];
     },
-    getLayer: (id) => layers.find((layer) => layer.id === id),
-    addLayer: (layer) => layers.push(layer),
-    removeLayer: (id) => {
+    getLayer: (id: string) => layers.find((layer) => layer.id === id),
+    addLayer: (layer: LayerSpecification) => layers.push(layer),
+    removeLayer: (id: string) => {
       const index = layers.findIndex((layer) => layer.id === id);
       if (index === -1) throw new Error(`removeLayer called for missing layer ${id}`);
       layers.splice(index, 1);
@@ -50,7 +88,7 @@ const HOMES = [
   { label: '', coords: { lat: 51.2177, lng: 6.7835 } },
 ];
 
-const layerIds = (map) => map.layers.map((layer) => layer.id);
+const layerIds = (map: TestRouteMap): string[] => map.layers.map((layer) => layer.id);
 
 describe('detailMapLayers', () => {
   describe('buildRouteData', () => {
@@ -68,7 +106,7 @@ describe('detailMapLayers', () => {
     });
 
     it('draws each line from the listing to that address', () => {
-      const [line] = buildRouteData(LISTING, HOMES).features;
+      const [line] = lineFeatures(buildRouteData(LISTING, HOMES));
 
       expect(line.geometry.coordinates).toEqual([
         [LISTING.longitude, LISTING.latitude],
@@ -77,7 +115,7 @@ describe('detailMapLayers', () => {
     });
 
     it('labels the midpoint with the rounded distance, prefixed by the address label', () => {
-      const [, label] = buildRouteData(LISTING, HOMES).features;
+      const [label] = pointFeatures(buildRouteData(LISTING, HOMES));
 
       expect(label.geometry.coordinates[0]).toBeCloseTo(6.7735, 6);
       expect(label.geometry.coordinates[1]).toBeCloseTo(51.2327, 6);
@@ -85,7 +123,7 @@ describe('detailMapLayers', () => {
     });
 
     it('leaves out the prefix when the address has no label', () => {
-      const [, , , label] = buildRouteData(LISTING, HOMES).features;
+      const [, label] = pointFeatures(buildRouteData(LISTING, HOMES));
 
       expect(label.properties.distance).toMatch(/^[\d.]+ (m|km)$/);
     });
@@ -99,7 +137,9 @@ describe('detailMapLayers', () => {
         },
       ];
 
-      const [line, label] = buildRouteData(LISTING, HOMES, travelTimes, 'car').features;
+      const data = buildRouteData(LISTING, HOMES, travelTimes, 'car');
+      const [line] = lineFeatures(data);
+      const [label] = pointFeatures(data);
 
       expect(line.geometry.coordinates.length).toBeGreaterThan(2);
       // Drawn from the listing outwards, like every other line this file produces.
@@ -110,7 +150,7 @@ describe('detailMapLayers', () => {
     it('falls back to the straight line for an address that has no route yet', () => {
       const travelTimes = [{ label: 'Work', car: { minutes: 14, distanceMeters: 5400 } }];
 
-      const [line] = buildRouteData(LISTING, HOMES, travelTimes, 'car').features;
+      const [line] = lineFeatures(buildRouteData(LISTING, HOMES, travelTimes, 'car'));
 
       expect(line.geometry.coordinates).toHaveLength(2);
     });
@@ -118,7 +158,7 @@ describe('detailMapLayers', () => {
     it('defaults to the straight line, so nothing is drawn that was never asked for', () => {
       const travelTimes = [{ label: 'Work', car: { minutes: 14, geometry: 'ygtvh^wmwt~FoFrH??wcAhnA' } }];
 
-      expect(buildRouteData(LISTING, HOMES, travelTimes).features[0].geometry.coordinates).toHaveLength(2);
+      expect(lineFeatures(buildRouteData(LISTING, HOMES, travelTimes))[0].geometry.coordinates).toHaveLength(2);
     });
 
     it('draws a transit journey as one line per leg, in the line colours', () => {
@@ -136,8 +176,9 @@ describe('detailMapLayers', () => {
       ];
 
       // One address only: the second has no travel time and would add its own straight line.
-      const features = buildRouteData(LISTING, [HOMES[0]], travelTimes, 'transit').features;
-      const lines = features.filter((f) => f.geometry.type === 'LineString');
+      const data = buildRouteData(LISTING, [HOMES[0]], travelTimes, 'transit');
+      const features = data.features;
+      const lines = lineFeatures(data);
 
       expect(lines).toHaveLength(2);
       // The walk keeps the default colour; the S-Bahn keeps its own.
@@ -146,15 +187,13 @@ describe('detailMapLayers', () => {
       // Dashed for what you walk, solid for what you ride.
       expect(lines[0].properties.walking).toBe(true);
       expect(lines[1].properties.walking).toBe(false);
-      expect(features.at(-1).properties.distance).toBe('Work: 32 min');
+      expect(features.at(-1)?.properties.distance).toBe('Work: 32 min');
     });
 
     it('falls back to the straight line for a mode with no route stored', () => {
       const travelTimes = [{ label: 'Work', transit: { minutes: 32 } }];
 
-      const lines = buildRouteData(LISTING, HOMES, travelTimes, 'transit').features.filter(
-        (f) => f.geometry.type === 'LineString',
-      );
+      const lines = lineFeatures(buildRouteData(LISTING, HOMES, travelTimes, 'transit'));
       expect(lines[0].geometry.coordinates).toHaveLength(2);
     });
 
@@ -181,8 +220,8 @@ describe('detailMapLayers', () => {
 
       applyRouteLayers(map, buildRouteData(LISTING, HOMES));
 
-      expect(map.getLayer(ROUTE_LINE_LAYER_ID).filter).toEqual(['==', '$type', 'LineString']);
-      expect(map.getLayer(ROUTE_LABEL_LAYER_ID).filter).toEqual(['==', '$type', 'Point']);
+      expect(map.getLayer(ROUTE_LINE_LAYER_ID)?.filter).toEqual(['==', '$type', 'LineString']);
+      expect(map.getLayer(ROUTE_LABEL_LAYER_ID)?.filter).toEqual(['==', '$type', 'Point']);
     });
 
     // A style change drops every custom layer, so this runs again on each `styledata`.
@@ -194,7 +233,7 @@ describe('detailMapLayers', () => {
       applyRouteLayers(map, nextData);
 
       expect(layerIds(map)).toEqual([ROUTE_CASING_LAYER_ID, ROUTE_LINE_LAYER_ID, ROUTE_LABEL_LAYER_ID]);
-      expect(map.getSource(ROUTE_SOURCE_ID).data).toBe(nextData);
+      expect(map.getSource(ROUTE_SOURCE_ID)?.data).toBe(nextData);
     });
 
     it('takes the route back off when there is nothing left to draw', () => {

@@ -3,6 +3,50 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+declare module '@mapbox/mapbox-gl-draw' {
+  import type { IControl } from 'maplibre-gl';
+  import type { Feature, FeatureCollection, Geometry } from 'geojson';
+
+  interface MapboxDrawControls {
+    point?: boolean;
+    line_string?: boolean;
+    polygon?: boolean;
+    trash?: boolean;
+    combine_features?: boolean;
+    uncombine_features?: boolean;
+  }
+
+  interface MapboxDrawOptions {
+    displayControlsDefault?: boolean;
+    controls?: MapboxDrawControls;
+    styles?: ReadonlyArray<Record<string, unknown>>;
+    defaultMode?: string;
+  }
+
+  class MapboxDraw implements IControl {
+    constructor(options?: MapboxDrawOptions);
+    onAdd(map: unknown): HTMLElement;
+    onRemove(map: unknown): void;
+    getAll(): FeatureCollection<Geometry>;
+    set(data: FeatureCollection<Geometry>): string[];
+    add(data: Feature<Geometry> | FeatureCollection<Geometry> | Geometry): string[];
+    delete(ids: string | string[]): this;
+    deleteAll(): this;
+    static constants: {
+      classes: {
+        CANVAS: string;
+        CONTROL_BASE: string;
+        CONTROL_PREFIX: string;
+        CONTROL_GROUP: string;
+        ATTRIBUTION: string;
+        [key: string]: string;
+      };
+    };
+  }
+
+  export default MapboxDraw;
+}
+
 declare module '*components/ListingDeletionModal.jsx' {
   interface ListingDeletionModalProps {
     visible: boolean;
@@ -82,33 +126,6 @@ declare module '*services/jobs/jobSummary.js' {
       formatPrice: (value: number) => string;
     },
   ): string;
-}
-
-declare module '*components/map/maplibre.js' {
-  const maplibregl: typeof import('maplibre-gl');
-  export default maplibregl;
-}
-
-declare module '*components/map/Map.jsx' {
-  interface HomeMapProps {
-    countries?: readonly string[];
-    constrainToCountries?: boolean;
-    initialCenter?: [number, number];
-    initialZoom?: number;
-    controlsMode?: string;
-    onMapReady?: (map: import('maplibre-gl').Map) => void;
-    children?: import('react').ReactNode;
-    defaultShowTransit?: boolean;
-    cooperativeGestures?: boolean;
-    expanded?: boolean;
-    onExpandedChange?: (expanded: boolean) => void;
-    pickMode?: boolean;
-    onPick?: (coords: { lat: number; lng: number }) => void;
-  }
-
-  const MapCanvas: import('react').ComponentType<HomeMapProps>;
-  export const HOME_MARKER_COLOR: string;
-  export default MapCanvas;
 }
 
 declare module '*services/dashboard/attention.js' {
@@ -192,20 +209,6 @@ declare module '*.png' {
   export default source;
 }
 
-declare module '*detailMapLayers.js' {
-  export function applyRouteLayers(map: import('maplibre-gl').Map, data: unknown): void;
-  export function buildRouteData(
-    listing: { latitude: number; longitude: number },
-    homeAddresses: readonly unknown[],
-    travelTimes?: readonly unknown[],
-    routeMode?: string,
-  ): unknown;
-}
-
-declare module '*travelTimeFormat.js' {
-  export const TRAVEL_MODES: readonly { key: string; icon: string; labelKey: string }[];
-}
-
 declare module '*utils.js' {
   export function getAddresses(settings: unknown): Array<{
     label: string;
@@ -217,14 +220,6 @@ declare module '*utils.js' {
 declare module '*components/icons/IconEuro.jsx' {
   const IconEuro: import('react').ComponentType<Record<string, unknown>>;
   export default IconEuro;
-}
-
-declare module '*components/listings/StatusControl.jsx' {
-  const StatusControl: import('react').ComponentType<{
-    status: string | null;
-    onChange: (value: string | null) => void;
-  }>;
-  export default StatusControl;
 }
 
 declare module '*ListingFinanceCard.jsx' {
@@ -239,29 +234,9 @@ declare module '*PriceHistoryChart.jsx' {
   export default PriceHistoryChart;
 }
 
-declare module '*components/transit/NearbyStops.jsx' {
-  const NearbyStops: import('react').ComponentType<{
-    lat: number;
-    lng: number;
-    limit?: number;
-    expandFirst?: boolean;
-  }>;
-  export default NearbyStops;
-}
-
 declare module '*components/connectivity/ConnectivityCard.jsx' {
   const ConnectivityCard: import('react').ComponentType<{ connectivity?: unknown }>;
   export default ConnectivityCard;
-}
-
-declare module '*components/transit/TravelTimes.jsx' {
-  const TravelTimes: import('react').ComponentType<{
-    listingId: string;
-    travelTimes?: readonly unknown[];
-    refine?: boolean;
-    onLoaded?: (entries: readonly unknown[]) => void;
-  }>;
-  export default TravelTimes;
 }
 
 declare module '*AddressEditor.jsx' {

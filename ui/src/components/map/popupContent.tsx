@@ -18,7 +18,7 @@ import { I18nProvider } from '../../services/i18n/i18n.jsx';
  * @returns {() => void} Unmounts the tree again. Safe to call from a MapLibre event handler: the
  * unmount is deferred, because React refuses to tear a root down while it is rendering.
  */
-export function mountPopupNode(container, node, language) {
+export function mountPopupNode(container: HTMLElement, node: import('react').ReactNode, language: string): () => void {
   const root = createRoot(container);
   root.render(<I18nProvider language={language}>{node}</I18nProvider>);
 
@@ -44,7 +44,7 @@ const REFIT_DELAYS = [120, 400, 1000, 2000];
  * @param {import('maplibre-gl').Popup} popup
  * @returns {() => void} Stops watching. Called automatically when the popup closes.
  */
-export function keepPopupInView(map, popup) {
+export function keepPopupInView(map: import('maplibre-gl').Map, popup: import('maplibre-gl').Popup): () => void {
   const fit = () => {
     const element = popup.getElement();
     if (!element || !map.getContainer()) return;

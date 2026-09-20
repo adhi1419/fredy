@@ -3,10 +3,11 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Spin, Typography } from '@douyinfe/semi-ui-19';
 import { IconChevronDown, IconChevronRight } from '@douyinfe/semi-icons';
 import { getNearbyStops } from '../../services/transitClient.js';
+import type { NearbyStop } from '../../services/transitClient.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import DeparturesBoard from './DeparturesBoard.jsx';
 import { formatDistance } from './transitFormat.js';
@@ -25,11 +26,28 @@ const { Text } = Typography;
  * @param {boolean} [props.expandFirst=false] - Opens the closest stop right away.
  * @returns {React.ReactNode}
  */
-export default function NearbyStops({ lat, lng, limit = 3, departureLimit = 6, expandFirst = false }) {
+export interface NearbyStopsProps {
+  lat?: number;
+  lng?: number;
+  /** How many stops to list. */
+  limit?: number;
+  /** How many departures to show per stop. */
+  departureLimit?: number;
+  /** Opens the closest stop right away. */
+  expandFirst?: boolean;
+}
+
+export default function NearbyStops({
+  lat,
+  lng,
+  limit = 3,
+  departureLimit = 6,
+  expandFirst = false,
+}: NearbyStopsProps): ReactNode {
   const t = useTranslation();
-  const [stops, setStops] = useState(null);
+  const [stops, setStops] = useState<NearbyStop[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [expandedId, setExpandedId] = useState(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const requestRef = useRef(0);
 
   useEffect(() => {

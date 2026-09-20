@@ -3,6 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import type { FilterSpecification, LayerSpecification, SourceSpecification } from 'maplibre-gl';
 import { describe, it, expect } from 'vitest';
 import {
   applyBuildingsLayer,
@@ -14,7 +15,43 @@ import {
   OPENFREEMAP_TILEJSON_URL,
   TRANSIT_LAYER_IDS,
   TRANSIT_STOPS_LAYER_ID,
+  type OverlayLayerView,
+  type OverlayMap,
 } from '../../ui/src/components/map/overlayLayers.js';
+
+interface TestLayer extends OverlayLayerView {
+  type: string;
+  layout?: Record<string, unknown>;
+  filter?: FilterSpecification;
+  source?: unknown;
+  'source-layer'?: unknown;
+}
+
+interface AddedLayer {
+  layer: TestLayer;
+  beforeId?: string;
+}
+
+interface TestMap extends OverlayMap {
+  layers: TestLayer[];
+  sources: Record<string, SourceSpecification>;
+  added: AddedLayer[];
+  getSource(id: string): SourceSpecification | undefined;
+  getLayer(id: string): TestLayer | undefined;
+}
+
+function mutableLayer(layer: LayerSpecification): TestLayer {
+  const layout = 'layout' in layer && layer.layout != null ? { ...layer.layout } : undefined;
+  const filter = 'filter' in layer ? layer.filter : undefined;
+  return {
+    id: layer.id,
+    type: layer.type,
+    ...(layout == null ? {} : { layout }),
+    ...(filter == null ? {} : { filter }),
+    ...('source' in layer ? { source: layer.source } : {}),
+    ...('source-layer' in layer ? { 'source-layer': layer['source-layer'] } : {}),
+  };
+}
 
 /**
  * A stand-in for the MapLibre map, reduced to the handful of style methods the overlay helpers
@@ -24,42 +61,43 @@ import {
  * @param {Array<{id: string, type: string, layout?: object}>} [styleLayers] - layers the basemap
  * style ships with. The vector basemap has a text symbol layer, the raster satellite style has none.
  */
-function makeMap(styleLayers = []) {
-  const sources = {};
-  const layers = [...styleLayers];
-  const added = [];
+function makeMap(styleLayers: readonly TestLayer[] = []): TestMap {
+  const sources: Record<string, SourceSpecification> = {};
+  const layers: TestLayer[] = styleLayers.map((layer) => ({ ...layer }));
+  const added: AddedLayer[] = [];
 
   return {
     layers,
     sources,
     /** Layer specs handed to `addLayer`, paired with their `beforeId`. */
     added,
-    getSource: (id) => sources[id],
-    addSource: (id, spec) => {
+    getSource: (id: string) => sources[id],
+    addSource: (id: string, spec: SourceSpecification) => {
       sources[id] = spec;
     },
-    getLayer: (id) => layers.find((layer) => layer.id === id),
-    getFilter: (id) => layers.find((layer) => layer.id === id)?.filter,
-    setFilter: (id, filter) => {
+    getLayer: (id: string) => layers.find((layer) => layer.id === id),
+    getFilter: (id: string) => layers.find((layer) => layer.id === id)?.filter,
+    setFilter: (id: string, filter: FilterSpecification | null | undefined) => {
       const layer = layers.find((existing) => existing.id === id);
       if (!layer) throw new Error(`setFilter called for missing layer ${id}`);
-      layer.filter = filter;
+      layer.filter = filter ?? undefined;
     },
-    addLayer: (layer, beforeId) => {
-      added.push({ layer, beforeId });
+    addLayer: (layer: LayerSpecification, beforeId?: string) => {
+      const addedLayer = mutableLayer(layer);
+      added.push({ layer: addedLayer, beforeId });
       const index = beforeId ? layers.findIndex((existing) => existing.id === beforeId) : -1;
       if (index === -1) {
-        layers.push(layer);
+        layers.push(addedLayer);
       } else {
-        layers.splice(index, 0, layer);
+        layers.splice(index, 0, addedLayer);
       }
     },
-    removeLayer: (id) => {
+    removeLayer: (id: string) => {
       const index = layers.findIndex((layer) => layer.id === id);
       if (index === -1) throw new Error(`removeLayer called for missing layer ${id}`);
       layers.splice(index, 1);
     },
-    setLayoutProperty: (id, property, value) => {
+    setLayoutProperty: (id: string, property: string, value: unknown) => {
       const layer = layers.find((existing) => existing.id === id);
       if (!layer) throw new Error(`setLayoutProperty called for missing layer ${id}`);
       layer.layout = { ...layer.layout, [property]: value };
@@ -72,7 +110,7 @@ function makeMap(styleLayers = []) {
  * The shape of the vector basemap: a label layer overlays are supposed to stay underneath, plus the
  * basemap's own transit POIs, which would otherwise double every stop icon.
  */
-const LABELLED_STYLE = [
+const LABELLED_STYLE: TestLayer[] = [
   { id: 'background', type: 'background' },
   { id: 'water', type: 'fill' },
   { id: 'place-labels', type: 'symbol', layout: { 'text-field': ['get', 'name'] } },
@@ -82,17 +120,15 @@ const LABELLED_STYLE = [
   { id: 'poi_r7', type: 'symbol', layout: { 'text-field': ['get', 'name'] }, filter: ['>=', ['get', 'rank'], 7] },
 ];
 
-/** @param {ReturnType<typeof makeMap>} map */
-const basemapPoiVisibility = (map) => map.getLayer('poi_transit')?.layout?.visibility;
+const basemapPoiVisibility = (map: TestMap): unknown => map.getLayer('poi_transit')?.layout?.visibility;
 
 /** The shape of the satellite basemap: raster only, no labels of its own. */
-const RASTER_STYLE = [
+const RASTER_STYLE: TestLayer[] = [
   { id: 'satellite-tiles', type: 'raster' },
   { id: 'satellite-labels', type: 'raster' },
 ];
 
-/** @param {ReturnType<typeof makeMap>} map */
-const layerIds = (map) => map.layers.map((layer) => layer.id);
+const layerIds = (map: TestMap): string[] => map.layers.map((layer) => layer.id);
 
 describe('overlayLayers', () => {
   describe('ensureOpenFreeMapSource', () => {
@@ -236,12 +272,14 @@ describe('overlayLayers', () => {
       applyTransitLayers(map, true);
       const stops = map.getLayer(TRANSIT_STOPS_LAYER_ID);
 
+      expect(stops).toBeDefined();
+      if (stops == null) throw new Error('Transit stops layer was not added.');
       expect(stops.type).toBe('symbol');
-      expect(stops.layout['icon-image']).toEqual(
+      expect(stops.layout?.['icon-image']).toEqual(
         expect.arrayContaining(['match', expect.arrayContaining(['get', 'class'])]),
       );
       // Every stop stays clickable, so none may be dropped by collision.
-      expect(stops.layout['icon-allow-overlap']).toBe(true);
+      expect(stops.layout?.['icon-allow-overlap']).toBe(true);
     });
 
     it('is a no-op when disabled twice', () => {

@@ -13,10 +13,11 @@ import {
   formatDistance,
   minutesUntil,
   modeLabelKey,
+  type TranslateFn,
 } from '../../ui/src/components/transit/transitFormat.js';
 
 /** Stands in for the i18n `t`, echoing the key and its interpolated values. */
-const t = (key, vars = {}) => (Object.keys(vars).length > 0 ? `${key}:${JSON.stringify(vars)}` : key);
+const t: TranslateFn = (key, vars = {}) => (Object.keys(vars).length > 0 ? `${key}:${JSON.stringify(vars)}` : key);
 
 const NOW = Date.parse('2026-07-31T15:30:00Z');
 

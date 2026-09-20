@@ -13,6 +13,7 @@ import {
   formatRoadDistance,
   hasAnyTime,
   primaryMode,
+  type TravelTimeEntry,
 } from '../../components/transit/travelTimeFormat.js';
 
 export type HomeView = 'feed' | 'map';
@@ -74,11 +75,8 @@ export interface HomeQueryPayload {
   filter: HomeQueryFilter;
 }
 
-/** One stored travel-time entry as it rides along on a listing row (shape owned by travelTimeFormat). */
-export interface HomeTravelTimeEntry {
-  label?: string | null;
-  [mode: string]: unknown;
-}
+/** One stored travel-time entry as it rides along on a listing row. */
+export type HomeTravelTimeEntry = TravelTimeEntry;
 
 /** Known listing fields used by Home; unmodeled API fields remain available as unknown extensions. */
 export interface HomeListing {

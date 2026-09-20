@@ -3,9 +3,10 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Spin, Typography } from '@douyinfe/semi-ui-19';
 import { getDepartures } from '../../services/transitClient.js';
+import type { DeparturesResponse } from '../../services/transitClient.js';
 import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
 import {
   contrastingTextColor,
@@ -36,15 +37,33 @@ const REFRESH_INTERVAL = 60000;
  * @param {boolean} [props.showStopName=false] - Renders the resolved stop name as a heading.
  * @returns {React.ReactNode}
  */
-export default function DeparturesBoard({ stopId, lat, lng, name, limit = 8, showStopName = false }) {
+export interface DeparturesBoardProps {
+  stopId?: string;
+  lat?: number;
+  lng?: number;
+  /** Stop name as shown on the map, helps resolve by coordinates. */
+  name?: string;
+  limit?: number;
+  /** Renders the resolved stop name as a heading. */
+  showStopName?: boolean;
+}
+
+export default function DeparturesBoard({
+  stopId,
+  lat,
+  lng,
+  name,
+  limit = 8,
+  showStopName = false,
+}: DeparturesBoardProps): ReactNode {
   const t = useTranslation();
   const locale = useLocale();
-  const [board, setBoard] = useState(null);
+  const [board, setBoard] = useState<DeparturesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   // Rendering a countdown means the component has to re-render on its own, not only when the data
   // changes - "in 4 min" is wrong a minute later even if nothing was refetched.
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState<number>(() => Date.now());
   const requestRef = useRef(0);
 
   const load = useCallback(async () => {

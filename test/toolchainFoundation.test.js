@@ -102,6 +102,30 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/views/finance/components/ResultSummary.tsx',
       'ui/src/views/finance/components/ScenarioForm.tsx',
       'ui/src/views/finance/components/VerdictBanner.tsx',
+      'ui/src/components/listings/AffordabilityChip.tsx',
+      'ui/src/components/listings/ExternalListingLink.tsx',
+      'ui/src/components/listings/FilterSelect.tsx',
+      'ui/src/components/listings/PriceChangeBadge.tsx',
+      'ui/src/components/listings/StatusControl.tsx',
+      'ui/src/components/map/Map.tsx',
+      'ui/src/components/map/MapControls.tsx',
+      'ui/src/components/map/MapDrawingExtension.ts',
+      'ui/src/components/map/countryBounds.ts',
+      'ui/src/components/map/maplibre.ts',
+      'ui/src/components/map/overlayLayers.ts',
+      'ui/src/components/map/popupContent.tsx',
+      'ui/src/components/map/transitIcons.ts',
+      'ui/src/components/transit/CommuteBadge.tsx',
+      'ui/src/components/transit/DeparturesBoard.tsx',
+      'ui/src/components/transit/NearbyStops.tsx',
+      'ui/src/components/transit/TransitDetails.tsx',
+      'ui/src/components/transit/TravelTimes.tsx',
+      'ui/src/components/transit/transitFormat.ts',
+      'ui/src/components/transit/travelTimeFormat.ts',
+      'ui/src/views/listings/detailMapLayers.ts',
+      'ui/src/views/listings/listingActions.ts',
+      'ui/src/views/listings/listingPopupContent.tsx',
+      'ui/src/views/listings/polyline.ts',
     ]);
     const testConfig = JSON.parse(read('tsconfig.frontend-tests.json'));
     expect(testConfig.extends).toBe('./tsconfig.frontend.json');
@@ -139,6 +163,12 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/useControllableState.test.ts',
       'test/ui/providerOrder.test.ts',
       'test/ui/providerCountries.test.ts',
+      'test/ui/countryBounds.test.ts',
+      'test/ui/mapOverlayLayers.test.ts',
+      'test/ui/transitFormat.test.ts',
+      'test/ui/travelTimeFormat.test.ts',
+      'test/ui/detailMapLayers.test.ts',
+      'test/ui/polyline.test.ts',
     ]);
     const waveOneMigrations = [
       ['ui/src/components/cards/KpiCard.tsx', 'ui/src/components/cards/KpiCard.jsx'],
@@ -184,6 +214,42 @@ describe('Bun and TypeScript foundation', () => {
       ['test/ui/providerCountries.test.ts', 'test/ui/providerCountries.test.js'],
     ];
     for (const [typedPath, legacyPath] of waveOneMigrations) {
+      expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
+      expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
+    }
+    const waveTwoMigrations = [
+      ['ui/src/components/listings/AffordabilityChip.tsx', 'ui/src/components/listings/AffordabilityChip.jsx'],
+      ['ui/src/components/listings/ExternalListingLink.tsx', 'ui/src/components/listings/ExternalListingLink.jsx'],
+      ['ui/src/components/listings/FilterSelect.tsx', 'ui/src/components/listings/FilterSelect.jsx'],
+      ['ui/src/components/listings/PriceChangeBadge.tsx', 'ui/src/components/listings/PriceChangeBadge.jsx'],
+      ['ui/src/components/listings/StatusControl.tsx', 'ui/src/components/listings/StatusControl.jsx'],
+      ['ui/src/components/map/Map.tsx', 'ui/src/components/map/Map.jsx'],
+      ['ui/src/components/map/MapControls.tsx', 'ui/src/components/map/MapControls.jsx'],
+      ['ui/src/components/map/MapDrawingExtension.ts', 'ui/src/components/map/MapDrawingExtension.js'],
+      ['ui/src/components/map/countryBounds.ts', 'ui/src/components/map/countryBounds.js'],
+      ['ui/src/components/map/maplibre.ts', 'ui/src/components/map/maplibre.js'],
+      ['ui/src/components/map/overlayLayers.ts', 'ui/src/components/map/overlayLayers.js'],
+      ['ui/src/components/map/popupContent.tsx', 'ui/src/components/map/popupContent.jsx'],
+      ['ui/src/components/map/transitIcons.ts', 'ui/src/components/map/transitIcons.js'],
+      ['ui/src/components/transit/CommuteBadge.tsx', 'ui/src/components/transit/CommuteBadge.jsx'],
+      ['ui/src/components/transit/DeparturesBoard.tsx', 'ui/src/components/transit/DeparturesBoard.jsx'],
+      ['ui/src/components/transit/NearbyStops.tsx', 'ui/src/components/transit/NearbyStops.jsx'],
+      ['ui/src/components/transit/TransitDetails.tsx', 'ui/src/components/transit/TransitDetails.jsx'],
+      ['ui/src/components/transit/TravelTimes.tsx', 'ui/src/components/transit/TravelTimes.jsx'],
+      ['ui/src/components/transit/transitFormat.ts', 'ui/src/components/transit/transitFormat.js'],
+      ['ui/src/components/transit/travelTimeFormat.ts', 'ui/src/components/transit/travelTimeFormat.js'],
+      ['ui/src/views/listings/detailMapLayers.ts', 'ui/src/views/listings/detailMapLayers.js'],
+      ['ui/src/views/listings/listingActions.ts', 'ui/src/views/listings/listingActions.js'],
+      ['ui/src/views/listings/listingPopupContent.tsx', 'ui/src/views/listings/listingPopupContent.jsx'],
+      ['ui/src/views/listings/polyline.ts', 'ui/src/views/listings/polyline.js'],
+      ['test/ui/countryBounds.test.ts', 'test/ui/countryBounds.test.js'],
+      ['test/ui/mapOverlayLayers.test.ts', 'test/ui/mapOverlayLayers.test.js'],
+      ['test/ui/transitFormat.test.ts', 'test/ui/transitFormat.test.js'],
+      ['test/ui/travelTimeFormat.test.ts', 'test/ui/travelTimeFormat.test.js'],
+      ['test/ui/detailMapLayers.test.ts', 'test/ui/detailMapLayers.test.js'],
+      ['test/ui/polyline.test.ts', 'test/ui/polyline.test.js'],
+    ];
+    for (const [typedPath, legacyPath] of waveTwoMigrations) {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
     }

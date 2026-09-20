@@ -16,13 +16,18 @@
  * per geometry as `legGeometry.precision`.
  * @returns {Array<[number, number]>} `[lng, lat]` pairs, in GeoJSON order.
  */
-export function decodePolyline(encoded, precision) {
-  if (typeof encoded !== 'string' || encoded.length === 0 || !Number.isFinite(precision)) {
+export function decodePolyline(encoded: unknown, precision: unknown): Array<[number, number]> {
+  if (
+    typeof encoded !== 'string' ||
+    encoded.length === 0 ||
+    typeof precision !== 'number' ||
+    !Number.isFinite(precision)
+  ) {
     return [];
   }
 
   const factor = 10 ** precision;
-  const coordinates = [];
+  const coordinates: Array<[number, number]> = [];
   let index = 0;
   let lat = 0;
   let lng = 0;

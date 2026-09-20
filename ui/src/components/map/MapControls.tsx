@@ -8,22 +8,42 @@ import { useTranslation } from '../../services/i18n/i18n.jsx';
 
 const { Text } = Typography;
 
+/** The two basemap choices the control offers. */
+export type MapStyleName = 'STANDARD' | 'SATELLITE';
+
+/** A single-action patch describing which control the user just changed. */
+export interface MapControlsPatch {
+  style?: MapStyleName;
+  show3dBuildings?: boolean;
+  showTransit?: boolean;
+}
+
+export interface MapControlsProps {
+  style: MapStyleName;
+  show3dBuildings: boolean;
+  showTransit: boolean;
+  onChange: (patch: MapControlsPatch) => void;
+  /**
+   * Rendered indented below the transit row while transit is on, for settings that only mean
+   * something once the layer is there.
+   */
+  transitExtra?: import('react').ReactNode;
+}
+
 /**
  * The basemap and overlay switches every map shares.
  *
  * Presentational on purpose: it owns no state and reports changes as a patch object, so the map can
  * forward one update per user action to a parent that keeps the state somewhere else (the map
  * view's URL, for instance) without the two disagreeing in between.
- *
- * @param {Object} props
- * @param {'STANDARD'|'SATELLITE'} props.style
- * @param {boolean} props.show3dBuildings
- * @param {boolean} props.showTransit
- * @param {(patch: {style?: string, show3dBuildings?: boolean, showTransit?: boolean}) => void} props.onChange
- * @param {import('react').ReactNode} [props.transitExtra] - Rendered indented below the transit row
- *   while transit is on, for settings that only mean something once the layer is there.
  */
-export default function MapControls({ style, show3dBuildings, showTransit, onChange, transitExtra = null }) {
+export default function MapControls({
+  style,
+  show3dBuildings,
+  showTransit,
+  onChange,
+  transitExtra = null,
+}: MapControlsProps) {
   const t = useTranslation();
 
   return (
@@ -32,7 +52,16 @@ export default function MapControls({ style, show3dBuildings, showTransit, onCha
         <Text size="small" strong className="map-panel__label">
           {t('map.filterStyleLabel')}
         </Text>
-        <Select size="small" value={style} onChange={(value) => onChange({ style: value })} style={{ width: 110 }}>
+        <Select
+          size="small"
+          value={style}
+          onChange={(value) => {
+            if (value === 'STANDARD' || value === 'SATELLITE') {
+              onChange({ style: value });
+            }
+          }}
+          style={{ width: 110 }}
+        >
           <Select.Option value="STANDARD">{t('map.filterStyleStandard')}</Select.Option>
           <Select.Option value="SATELLITE">{t('map.filterStyleSatellite')}</Select.Option>
         </Select>
