@@ -94,9 +94,8 @@ fn tcp_auth_config_consumes_shared_enabled_absent_and_invalid_cases() {
 
     for case in cases {
         let raw_config = case["environment"]["FIREBASE_WEB_CONFIG"].as_str();
-        let request = format!(
-            "GET /api/auth/config HTTP/1.1\r\nHost: localhost\r\nOrigin: {origin}\r\n\r\n"
-        );
+        let request =
+            format!("GET /api/auth/config HTTP/1.1\r\nHost: localhost\r\nOrigin: {origin}\r\n\r\n");
         let response = round_trip_with_config(request.as_bytes(), raw_config, Some(origin));
 
         let status = case["status"].as_u64().expect("case status is numeric");
@@ -104,10 +103,15 @@ fn tcp_auth_config_consumes_shared_enabled_absent_and_invalid_cases() {
         assert!(response
             .windows(b"Content-Type: application/json; charset=utf-8\r\n".len())
             .any(|header| header == b"Content-Type: application/json; charset=utf-8\r\n"));
-        assert_eq!(response_body(&response), case["bodyBytes"].as_str().unwrap().as_bytes());
+        assert_eq!(
+            response_body(&response),
+            case["bodyBytes"].as_str().unwrap().as_bytes()
+        );
         assert!(response
             .windows(format!("Access-Control-Allow-Origin: {origin}\r\n").len())
-            .any(|header| header == format!("Access-Control-Allow-Origin: {origin}\r\n").as_bytes()));
+            .any(
+                |header| header == format!("Access-Control-Allow-Origin: {origin}\r\n").as_bytes()
+            ));
     }
 }
 
