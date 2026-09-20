@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { Button, Empty, Input, Pagination, Popover, Radio, RadioGroup, Select, Tag, Toast } from '@douyinfe/semi-ui-19';
 import { IconAlertTriangle, IconArrowDown, IconArrowUp, IconMoreStroked, IconSearch } from '@douyinfe/semi-icons';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
@@ -59,6 +59,7 @@ interface SavedSearchRowProps {
   t: Translation;
   onRun: JobAction;
   onEdit: JobAction;
+  onRepair: JobAction;
   onClone: JobAction;
   onDeleteListings: JobAction;
   onDeleteJob: JobAction;
@@ -69,7 +70,7 @@ interface ActionMenuProps {
   job: Job;
   t: Translation;
   onPause: JobAction;
-  onEdit: JobAction;
+  onRepair: JobAction;
   onClone: JobAction;
   onDeleteListings: JobAction;
   onDeleteJob: JobAction;
@@ -109,7 +110,7 @@ function lastRunFor(job: Job, locale: string, t: Translation): string {
   return job.lastRunAt == null ? t('jobs.index.neverRun') : formatDate(job.lastRunAt, false, locale);
 }
 
-function ActionMenu({ job, t, onPause, onEdit, onClone, onDeleteListings, onDeleteJob }: ActionMenuProps) {
+function ActionMenu({ job, t, onPause, onRepair, onClone, onDeleteListings, onDeleteJob }: ActionMenuProps) {
   const readOnly = job.isOnlyShared === true;
   const action = (label: string, callback: () => void, disabled = false) => (
     <Button
@@ -131,7 +132,7 @@ function ActionMenu({ job, t, onPause, onEdit, onClone, onDeleteListings, onDele
       aria-label={t('jobs.index.overflowFor', { name: String(job.name ?? t('jobs.index.unnamed')) })}
     >
       {shouldShowPause(job) && action(t('jobs.index.pause'), () => onPause(job.id))}
-      {action(t('jobs.index.edit'), () => onEdit(job.id), readOnly)}
+      {action(t('jobs.index.runAndRepair'), () => onRepair(job.id), readOnly)}
       {action(t('jobs.index.clone'), () => onClone(job.id), readOnly)}
       {action(t('jobs.index.deleteListings'), () => onDeleteListings(job.id), readOnly)}
       {action(t('jobs.index.delete'), () => onDeleteJob(job.id), readOnly)}
@@ -157,6 +158,7 @@ function SavedSearchRow({
   t,
   onRun,
   onEdit,
+  onRepair,
   onClone,
   onDeleteListings,
   onDeleteJob,
@@ -174,8 +176,36 @@ function SavedSearchRow({
         ? () => onStatusChange(job.id, true)
         : undefined;
 
+  // The whole editable row is the primary way into the editor. Read-only (shared) rows are never
+  // editable, so they get no button semantics, no tab stop and no handlers at all.
+  const openEditor = readOnly ? undefined : () => onEdit(job.id);
+  const editableProps = readOnly
+    ? {}
+    : {
+        role: 'button' as const,
+        tabIndex: 0,
+        'aria-label': t('jobs.index.directActionFor', { action: t('jobs.index.editHint'), name }),
+        onClick: (event: MouseEvent<HTMLElement>) => {
+          if (event.target instanceof Element && event.target.closest('.savedSearches__rowActions')) return;
+          openEditor?.();
+        },
+        onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+          // Only the row's own Enter/Space should edit. A key event that bubbled up from a nested
+          // control (its target is not the row itself) is left to that control.
+          if (event.currentTarget !== event.target) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openEditor?.();
+          }
+        },
+      };
+
   return (
-    <article className="savedSearches__row" data-job-id={job.id}>
+    <article
+      className={`savedSearches__row${readOnly ? '' : ' savedSearches__row--editable'}`}
+      data-job-id={job.id}
+      {...editableProps}
+    >
       <div className="savedSearches__identity">
         <span
           className={`savedSearches__statusDot${job.enabled ? ' savedSearches__statusDot--active' : ''}`}
@@ -224,7 +254,7 @@ function SavedSearchRow({
           job={job}
           t={t}
           onPause={(id) => onStatusChange(id, false)}
-          onEdit={onEdit}
+          onRepair={onRepair}
           onClone={onClone}
           onDeleteListings={onDeleteListings}
           onDeleteJob={onDeleteJob}
@@ -488,6 +518,7 @@ export default function SavedSearchesIndex() {
               t={t}
               onRun={onJobRun}
               onEdit={editJob}
+              onRepair={onJobRun}
               onClone={cloneJob}
               onDeleteListings={onListingRemoval}
               onDeleteJob={onJobRemoval}

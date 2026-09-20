@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { inquiryDeliveries, mockFredy, setInquiryDeliveryError } from './utils.js';
-import { setUserSettings } from './mocks/mockStore.js';
+import { setKnownListingsForRepair, setUserSettings } from './mocks/mockStore.js';
 
 const providerConfig = {
   url: 'https://example.com',
@@ -43,6 +43,7 @@ describe('pipeline automatic inquiry sending', () => {
   beforeEach(() => {
     inquiryDeliveries.length = 0;
     setInquiryDeliveryError(null);
+    setKnownListingsForRepair([]);
     setUserSettings({
       inquiry_profile: {
         name: 'Alice Example',
@@ -198,6 +199,46 @@ describe('pipeline automatic inquiry sending', () => {
         inquiryMessage: null,
       },
     ]);
+
+    expect(inquiryDeliveries).toEqual([]);
+  });
+
+  it('reuses exact source policy and sends one safely missed known inquiry only once', async () => {
+    const Fredy = await mockFredy();
+    const row = {
+      ...listing(),
+      address: 'Main Street 1, Berlin',
+      latitude: 52.5,
+      longitude: 13.4,
+      inquiry_message: 'Sehr geehrte Damen und Herren, ...',
+      inquiry_send_status: null,
+      notification_complete: 1,
+    };
+    setKnownListingsForRepair([row]);
+    const source = { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } };
+    const instance = pipeline(Fredy, job({ autoSendInquiry: false, provider: [source] }), 'immoscout', null, source);
+
+    await instance.reconcile();
+    await instance.reconcile();
+
+    expect(inquiryDeliveries).toHaveLength(1);
+  });
+
+  it('never repairs an inquiry through a disabled provider source policy', async () => {
+    const Fredy = await mockFredy();
+    setKnownListingsForRepair([
+      {
+        ...listing(),
+        latitude: 52.5,
+        longitude: 13.4,
+        inquiry_message: 'Draft',
+        inquiry_send_status: null,
+        notification_complete: 1,
+      },
+    ]);
+    const source = { id: 'immoscout', applicationPolicy: { automatic: 'disabled' } };
+
+    await pipeline(Fredy, job({ autoSendInquiry: true, provider: [source] }), 'immoscout', null, source).reconcile();
 
     expect(inquiryDeliveries).toEqual([]);
   });

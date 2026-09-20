@@ -193,6 +193,8 @@
   "jobs.index.channelCount": "{{count}} Kanäle",
   "jobs.index.listingsFound": "{{count}} Inserate gefunden",
   "jobs.index.edit": "Suche bearbeiten",
+  "jobs.index.runAndRepair": "Ausführen & reparieren",
+  "jobs.index.editHint": "Zum Bearbeiten öffnen",
   "jobs.index.clone": "Suche klonen",
   "jobs.index.deleteListings": "Inserate leeren",
   "jobs.index.delete": "Suche löschen",

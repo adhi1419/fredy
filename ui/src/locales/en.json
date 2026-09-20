@@ -193,6 +193,8 @@
   "jobs.index.channelCount": "{{count}} channels",
   "jobs.index.listingsFound": "{{count}} listings found",
   "jobs.index.edit": "Edit search",
+  "jobs.index.runAndRepair": "Run & repair",
+  "jobs.index.editHint": "Open to edit",
   "jobs.index.clone": "Clone search",
   "jobs.index.deleteListings": "Clear listings",
   "jobs.index.delete": "Delete search",
