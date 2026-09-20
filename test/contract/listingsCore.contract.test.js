@@ -10,6 +10,7 @@
  * control. Seeds and asserts ONLY through the public storage API.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
+import { normalizeProviderFilter } from '../../lib/services/storage/firestore/listingsCore.impl.js';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
 
 let listingsStorage;
@@ -249,6 +250,52 @@ describe('listingsStorage contract', () => {
 
       const desc = await listingsStorage.queryListings({ sortField: 'price', sortDir: 'desc', userId: 'u1' });
       expect(desc.result.map((r) => r.price)).toEqual([2000, 1000, 500]);
+    });
+
+    it('supports scalar, repeated, and comma-separated provider filters', async () => {
+      expect(normalizeProviderFilter('immoscout')).toEqual(['immoscout']);
+      expect(normalizeProviderFilter(['immoscout', 'immowelt'])).toEqual(['immoscout', 'immowelt']);
+      expect(normalizeProviderFilter('immoscout, immowelt,immoscout')).toEqual(['immoscout', 'immowelt']);
+
+      await seedUser('u1');
+      await seedJob('j1', 'u1');
+      await listingsStorage.storeListings('j1', 'immoscout', [makeListing('provider-one')]);
+      await listingsStorage.storeListings('j1', 'immowelt', [makeListing('provider-two')]);
+
+      const result = await listingsStorage.queryListings({ providerFilter: 'immoscout,immowelt', userId: 'u1' });
+      expect(result.totalNumber).toBe(2);
+    });
+
+    it('sorts Home distance and travel-time fields before pagination', async () => {
+      await seedUser('u1');
+      await seedJob('j1', 'u1');
+      const near = makeListing('near');
+      const far = makeListing('far');
+      const missing = makeListing('missing');
+      await listingsStorage.storeListings('j1', 'immoscout', [near, far, missing]);
+      await listingsStorage.updateListingDistances(near.id, [{ label: 'Home', meters: 1000 }]);
+      await listingsStorage.updateListingDistances(far.id, [{ label: 'Home', meters: 5000 }]);
+
+      const byDistance = await listingsStorage.queryListings({ sortField: 'distance', sortDir: 'asc', userId: 'u1' });
+      expect(byDistance.result.map((row) => row.hash)).toEqual(['near', 'far', 'missing']);
+
+      await listingsStorage.saveListingTravelTimes(
+        near.id,
+        [{ label: 'Home', transitMinutes: 45, isEstimate: false, referenceTime: 1000 }],
+        1000,
+      );
+      await listingsStorage.saveListingTravelTimes(
+        far.id,
+        [{ label: 'Home', transitMinutes: 15, isEstimate: false, referenceTime: 1000 }],
+        1000,
+      );
+
+      const byTravelTime = await listingsStorage.queryListings({
+        sortField: 'travel_time',
+        sortDir: 'asc',
+        userId: 'u1',
+      });
+      expect(byTravelTime.result.map((row) => row.hash)).toEqual(['far', 'near', 'missing']);
     });
 
     describe('user scoping', () => {
