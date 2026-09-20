@@ -138,6 +138,49 @@ describe('Home production surface contract', () => {
     expect(homeSource).not.toMatch(/#[0-9a-f]{3,8}/i);
   });
 
+  it('leads Direction A cards with canonical lifecycle symbols matching the activity filters', () => {
+    // Applied and Viewed are the two acted-on states, each carrying a canonical Semi icon (never an
+    // emoji). New carries no symbol; Archived stays a muted history label with no glyph. The symbol
+    // map is keyed on the same activity vocabulary the filters use.
+    expect(homeSource).toContain('IconTickCircle');
+    expect(homeSource).toContain('IconEyeOpened');
+    expect(homeSource).toContain('const LIFECYCLE_SYMBOLS');
+    expect(homeSource).toMatch(/LIFECYCLE_SYMBOLS[\s\S]*applied:\s*IconTickCircle/);
+    expect(homeSource).toMatch(/LIFECYCLE_SYMBOLS[\s\S]*viewed:\s*IconEyeOpened/);
+    expect(homeSource).toContain('const LifecycleSymbol = LIFECYCLE_SYMBOLS[lifecycle];');
+    expect(homeSource).toContain(
+      'LifecycleSymbol && <LifecycleSymbol aria-hidden="true" className="home__lifecycle-symbol" />',
+    );
+    // No emoji anywhere in the Home surface.
+    expect(homeSource).not.toMatch(/\p{Extended_Pictographic}/u);
+    expect(homeStyles).toContain('&__lifecycle-symbol');
+    // Applied and Viewed both take the sage accent role; archived stays muted history.
+    const lifecycleScope = homeStyles.slice(
+      homeStyles.indexOf('&__lifecycle {'),
+      homeStyles.indexOf('&__lifecycle-symbol'),
+    );
+    expect(lifecycleScope).toMatch(/&--new,\s*&--applied,\s*&--viewed\s*{[^}]*color:\s*@color-accent;/s);
+  });
+
+  it('shows travel duration and distance to the reference address instead of affordability', () => {
+    // The primary Direction A presentation carries travel time to the configured reference address,
+    // reusing the row's existing travelTimes via homeCardTravel. Affordability is never shown here.
+    expect(homeSource).toContain('homeCardTravel');
+    expect(homeSource).toContain('const travel = homeCardTravel(listing);');
+    expect(homeSource).toContain('className="home__card-travel"');
+    expect(homeSource).toContain('travel.duration');
+    expect(homeSource).toContain('travel.distance');
+    expect(homeSource).not.toContain('AffordabilityChip');
+    expect(homeSource).not.toContain('affordabilityVerdict');
+    expect(homeStyles).toContain('&__card-travel');
+    // No second data source: the card reuses the shared travel-time formatters only.
+    const stateSource = fs.readFileSync(path.join(root, 'ui/src/services/home/homeViewState.ts'), 'utf8');
+    expect(stateSource).toContain("from '../../components/transit/travelTimeFormat.js'");
+    expect(stateSource).toContain('export function homeCardTravel');
+    expect(stateSource).toContain('primaryMode(entry)');
+    expect(stateSource).toContain('formatRoadDistance(Number(carEntry?.distanceMeters))');
+  });
+
   it('paints the activity pills with the forest/sage semantic roles', () => {
     // The activity pill scope: inactive text is Fredy's sage/green accent, the selected pill is the
     // deep forest solid fill with white (on-accent) text. All expressed as tokens, no literals.

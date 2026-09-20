@@ -30,9 +30,6 @@ import {
   IconBriefcase,
   IconActivity,
   IconExternalOpen,
-  IconStar,
-  IconStarStroked,
-  IconDelete,
   IconExpand,
   IconGridView,
   IconCalendar,
@@ -52,11 +49,9 @@ import { getBoundsFromCoords } from './mapUtils.js';
 import { applyRouteLayers, buildRouteData } from './detailMapLayers.js';
 import { TRAVEL_MODES } from '../../components/transit/travelTimeFormat.js';
 import { getAddresses } from '../../utils.js';
-import { xhrPost, xhrGet, xhrDelete, errorMessage } from '../../services/xhr.js';
-import ListingDeletionModal from '../../components/ListingDeletionModal.jsx';
+import { xhrPost, xhrGet, errorMessage } from '../../services/xhr.js';
 
 import IconEuro from '../../components/icons/IconEuro.jsx';
-import StatusControl from '../../components/listings/StatusControl.jsx';
 import ListingFinanceCard from './components/ListingFinanceCard.jsx';
 import PriceHistoryChart from './components/PriceHistoryChart.jsx';
 import NearbyStops from '../../components/transit/NearbyStops.jsx';
@@ -66,9 +61,9 @@ import AddressEditor from './components/AddressEditor.jsx';
 import './ListingDetail.less';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
 import { useFinanceProfile } from '../../hooks/useFinanceProfile.js';
+import { homeCardTravel } from '../../services/home/homeViewState.js';
 import { sanitizeReturnTo } from '../../services/routes/returnTo.js';
 import type { Map as MapLibreMap, Marker as MapMarker } from 'maplibre-gl';
-import { VERDICT_COLORS, formatEuro, withAlpha } from '../../components/cards/chartTheme.js';
 import {
   getInquirySendEligibility,
   inquiryProviderRequiresMessage,
@@ -86,14 +81,15 @@ import {
 
 const { Title, Text } = Typography;
 const APPLIED_TRIGGER_ID = 'listing-mobile-applied-trigger';
+const LIFECYCLE_LABEL_KEYS = Object.freeze({
+  new: 'home.activityNew',
+  applied: 'home.activityApplied',
+  viewed: 'home.activityViewed',
+  archived: 'home.activityArchived',
+});
 
 type RouteMode = 'straight' | 'transit' | 'car' | 'bike' | 'walk';
 type InquiryStatus = 'sending' | 'sent' | 'failed' | 'unknown' | string;
-
-interface ListingStatus {
-  status?: string;
-  setAt?: number | string | null;
-}
 
 interface ListingDistance {
   label: string;
@@ -109,7 +105,6 @@ interface TravelTimeEntry {
 interface UserSettings {
   inquiry_profile?: unknown;
   home_addresses?: readonly unknown[];
-  listing_deletion_preference?: { hardDelete?: boolean; skipPrompt?: boolean };
 }
 
 interface ListingRecord {
@@ -124,9 +119,7 @@ interface ListingRecord {
   created_at?: number | string | null;
   build_year?: number | string | null;
   energy_class?: string | null;
-  affordabilityVerdict?: keyof typeof VERDICT_COLORS | null;
   dealType?: 'rent' | 'buy';
-  status?: ListingStatus | null;
   lifecycle?: { state?: string } | null;
   inquiry_send_status?: InquiryStatus;
   inquiry_message?: string | null;
@@ -139,7 +132,6 @@ interface ListingRecord {
   distances?: readonly ListingDistance[];
   travelTimes?: readonly TravelTimeEntry[];
   connectivity?: unknown;
-  isWatched?: number;
   is_active?: number;
   description?: string | null;
 }
@@ -153,7 +145,6 @@ interface ListingStoreState {
 interface ListingActions {
   listingsData: {
     getListing: (listingId: string) => Promise<unknown>;
-    setListingStatus: (listingId: string, status: string | null) => Promise<void>;
     setListingLifecycleAction: (listingId: string, action: 'applied' | 'viewing' | 'archive') => Promise<void>;
     setListingNotes: (listingId: string, notes: string) => Promise<void>;
     setListingAddress: (
@@ -162,14 +153,6 @@ interface ListingActions {
     ) => Promise<void>;
     reactivateListings: (ids: readonly string[]) => Promise<void>;
   };
-  userSettings: {
-    setListingDeletionPreference: (preference: { skipPrompt: boolean; hardDelete: boolean }) => Promise<void>;
-  };
-}
-
-interface FinanceThresholds {
-  buy: { affordableMaxPrice: number; stretchMaxPrice: number; purchasePriceThreshold: number } | null;
-  rent: { affordableMaxRent: number } | null;
 }
 
 interface HomeAddress {
@@ -203,14 +186,9 @@ export default function ListingDetail(): ReactNode {
   const returnTo = sanitizeReturnTo(searchParams.get('returnTo'));
   const navigate = useNavigate();
   const actions = useActions<ListingActions>();
-  const {
-    isComplete: buyComplete,
-    rentComplete,
-    thresholds: financeThresholds,
-  } = useFinanceProfile() as {
+  const { isComplete: buyComplete, rentComplete } = useFinanceProfile() as {
     isComplete: boolean;
     rentComplete: boolean;
-    thresholds: FinanceThresholds;
   };
   const listingData = useSelector<ListingStoreState, ListingRecord | null>(
     (state) => state.listingsData.currentListing,
@@ -232,15 +210,12 @@ export default function ListingDetail(): ReactNode {
     (state) => state.generalSettings.settings?.connectivityEnabled === true,
   );
   const homeAddresses = useMemo(() => getAddresses(userSettings) as HomeAddress[], [userSettings]);
-  const listingDeletionPref = userSettings?.listing_deletion_preference;
-  const defaultDeleteType = listingDeletionPref?.hardDelete ? 'hard' : 'soft';
   // The listing does name a provider, but the pin can be dragged anywhere the user's own searches
   // reach, so the map takes the same account-wide union the listings map does.
   const countries = useProviderCountries();
   const map = useRef<MapLibreMap | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
   const [priceHistory, setPriceHistory] = useState<readonly unknown[]>([]);
@@ -479,34 +454,6 @@ export default function ListingDetail(): ReactNode {
     };
   }, [mapReady, listing, listingCoords, homeAddresses, routeTimes, routeMode, t]);
 
-  const confirmDeletion = async (hardDelete: boolean, remember = false) => {
-    try {
-      if (remember) {
-        await actions.userSettings.setListingDeletionPreference({ skipPrompt: true, hardDelete });
-      }
-      await xhrDelete('/api/listings/', { ids: [listing.id], hardDelete });
-      Toast.success(t('listing.detail.toastDeleted'));
-      navigate('/listings');
-    } catch (e) {
-      Toast.error(errorMessage(e, t('listing.detail.toastDeleteError')));
-    } finally {
-      setDeleteModalVisible(false);
-    }
-  };
-
-  const handleWatch = async () => {
-    try {
-      await xhrPost('/api/listings/watch', { listingId: listing.id });
-      Toast.success(
-        listing.isWatched === 1 ? t('listing.detail.toastWatchlistRemoved') : t('listing.detail.toastWatchlistAdded'),
-      );
-      actions.listingsData.getListing(listingId);
-    } catch (e) {
-      console.error('Failed to operate Watchlist:', e);
-      Toast.error(t('listing.detail.toastWatchlistError'));
-    }
-  };
-
   const handleReactivate = async () => {
     try {
       await actions.listingsData.reactivateListings([listing.id]);
@@ -515,17 +462,6 @@ export default function ListingDetail(): ReactNode {
     } catch (e) {
       console.error('Failed to reactivate listing:', e);
       Toast.error(t('listings.toastReactivateError'));
-    }
-  };
-
-  const handleStatusChange = async (next: string | null) => {
-    try {
-      await actions.listingsData.setListingStatus(listing.id, next);
-      await actions.listingsData.getListing(listingId);
-      Toast.success(next ? t('listings.toastStatusMarked', { status: next }) : t('listings.toastStatusCleared'));
-    } catch (e) {
-      console.error('Failed to update status:', e);
-      Toast.error(t('listings.toastStatusUpdateError'));
     }
   };
 
@@ -720,13 +656,17 @@ export default function ListingDetail(): ReactNode {
 
   if (!listingData) return null;
 
-  const statusKeyMap: Record<string, string> = {
-    applied: 'listing.detail.statusApplied',
-    accepted: 'listing.detail.statusAccepted',
-    rejected: 'listing.detail.statusRejected',
-  };
-  const statusLabel = listing.status?.status ? t(statusKeyMap[listing.status.status] ?? listing.status.status) : null;
+  type ListingLifecycle = 'new' | 'applied' | 'viewed' | 'archived';
+  const storedLifecycle = listing.lifecycle?.state;
   const listingApplied = isListingApplied(listing);
+  const lifecycle: ListingLifecycle =
+    storedLifecycle === 'applied' || storedLifecycle === 'viewed' || storedLifecycle === 'archived'
+      ? storedLifecycle
+      : listingApplied
+        ? 'applied'
+        : 'new';
+  const lifecycleLabel = t(LIFECYCLE_LABEL_KEYS[lifecycle]);
+  const primaryTravel = homeCardTravel({ travelTimes: listing.travelTimes });
   const appliedMessage = getAppliedMessage(listing);
   const googleMapsUrl = getGoogleMapsUrl(listing);
   const providerListingUrl = getSafeExternalUrl(listing.link);
@@ -796,52 +736,7 @@ export default function ListingDetail(): ReactNode {
     });
   }
 
-  // The verdict belongs next to the price, not only in the costing block further down. It comes
-  // with the listing from the server, decided against the same profile and thresholds the
-  // affordability filter uses, so this page can never disagree with the row the user clicked.
-  const affordabilityVerdict = listing.affordabilityVerdict ?? null;
   const isRental = listing.dealType === 'rent';
-
-  if (affordabilityVerdict) {
-    data.push({
-      key: t('listing.detail.fieldAffordability'),
-      value: (
-        <span
-          className="listing-detail__affordability"
-          style={{
-            color: VERDICT_COLORS[affordabilityVerdict],
-            backgroundColor: withAlpha(VERDICT_COLORS[affordabilityVerdict], 0.12),
-            borderColor: withAlpha(VERDICT_COLORS[affordabilityVerdict], 0.4),
-          }}
-        >
-          {t(`finance.verdict.${affordabilityVerdict}`)}
-        </span>
-      ),
-      Icon: <IconEuro />,
-      helpText: t(
-        `listings.${isRental ? 'rentAffordabilityTooltip' : 'affordabilityTooltip'}.${affordabilityVerdict}`,
-        {
-          price: formatEuro(
-            isRental
-              ? (financeThresholds.rent?.affordableMaxRent ?? 0)
-              : (financeThresholds.buy?.affordableMaxPrice ?? 0),
-            locale,
-          ),
-        },
-      ),
-    });
-  }
-
-  if (statusLabel) {
-    data.push({
-      key: t('listing.detail.fieldStatus'),
-      value: listing.status?.setAt
-        ? `${statusLabel} ${t('listing.detail.statusSetAt', { date: timeService.format(listing.status.setAt, true, locale) })}`
-        : statusLabel,
-      Icon: <IconActivity />,
-      helpText: t('listing.detail.fieldStatusHelp'),
-    });
-  }
 
   return (
     <div className="listing-detail">
@@ -852,8 +747,10 @@ export default function ListingDetail(): ReactNode {
           <Text type="tertiary">{t('listing.detail.headingDescription')}</Text>
         </div>
         <div className="listing-detail__heading-actions">
-          <span className={`listing-detail__lifecycle${listingApplied ? ' listing-detail__lifecycle--selected' : ''}`}>
-            {listingApplied ? t('home.activityApplied') : (statusLabel ?? t('home.activityNew'))}
+          <span
+            className={`listing-detail__lifecycle${lifecycle !== 'new' ? ' listing-detail__lifecycle--selected' : ''}`}
+          >
+            {lifecycleLabel}
           </span>
           <Button
             icon={<IconArrowLeft />}
@@ -1036,9 +933,13 @@ export default function ListingDetail(): ReactNode {
                   </strong>
                 </div>
                 <div className="listing-detail__fit-metric">
-                  <span>{t('listing.detail.fieldAffordability')}</span>
+                  <span>{t('listing.detail.distanceToHome')}</span>
                   <strong className="listing-detail__fit-metric-value--accent">
-                    {affordabilityVerdict ? t(`finance.verdict.${affordabilityVerdict}`) : t('common.na')}
+                    {primaryTravel
+                      ? [primaryTravel.duration, primaryTravel.distance, primaryTravel.label]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : t('common.na')}
                   </strong>
                 </div>
               </div>
@@ -1396,15 +1297,6 @@ export default function ListingDetail(): ReactNode {
             </div>
             <Space wrap className="listing-detail__rail-actions">
               <Button
-                icon={listing.isWatched === 1 ? <IconStar /> : <IconStarStroked />}
-                onClick={handleWatch}
-                theme="borderless"
-                className={`listing-detail__watch-btn${listing.isWatched === 1 ? ' listing-detail__watch-btn--active' : ''}`}
-              >
-                {listing.isWatched === 1 ? t('listing.detail.watched') : t('listing.detail.watch')}
-              </Button>
-              <StatusControl status={listing.status?.status ?? null} onChange={handleStatusChange} />
-              <Button
                 icon={draftMessage ? <IconRefresh /> : <IconEdit />}
                 onClick={handleDraftMessage}
                 theme="light"
@@ -1437,20 +1329,6 @@ export default function ListingDetail(): ReactNode {
                   {t('listing.detail.reactivate')}
                 </Button>
               )}
-              <Button
-                icon={<IconDelete />}
-                onClick={() => {
-                  if (listingDeletionPref?.skipPrompt) {
-                    confirmDeletion(Boolean(listingDeletionPref.hardDelete));
-                    return;
-                  }
-                  setDeleteModalVisible(true);
-                }}
-                theme="light"
-                type="danger"
-              >
-                {t('listing.detail.delete')}
-              </Button>
             </Space>
 
             {/* Draft inquiry message result */}
@@ -1537,16 +1415,6 @@ export default function ListingDetail(): ReactNode {
           </div>
         </aside>
       </section>
-
-      <ListingDeletionModal
-        visible={deleteModalVisible}
-        title={t('listing.deletion.title')}
-        showOptions
-        defaultDeleteType={defaultDeleteType}
-        message={t('listing.deletion.message')}
-        onConfirm={confirmDeletion}
-        onCancel={() => setDeleteModalVisible(false)}
-      />
     </div>
   );
 }

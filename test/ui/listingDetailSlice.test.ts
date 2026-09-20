@@ -165,7 +165,6 @@ describe('Listing Detail Slice 5', () => {
       'TravelTimes',
       'ConnectivityCard',
       'listing-detail__notes',
-      'ListingDeletionModal',
       'handleReactivate',
       'handleArchive',
       'routeMode',
@@ -173,5 +172,41 @@ describe('Listing Detail Slice 5', () => {
     ]) {
       expect(source).toContain(marker);
     }
+  });
+
+  it('strips Watch, generic Status, and destructive Delete from the lifecycle surface', () => {
+    // The user lifecycle surface keeps only the canonical set: Mark applied / Mark viewed / Archive.
+    // Watch, the generic Status control, and the destructive Delete entry, their handlers, and the
+    // deletion modal are all gone, so none remains reachable from Listing Detail.
+    for (const removed of [
+      'ListingDeletionModal',
+      'StatusControl',
+      'handleStatusChange',
+      'handleWatch',
+      'confirmDeletion',
+      'deleteModalVisible',
+      'setListingStatus',
+      'IconDelete',
+      'IconStarStroked',
+      "t('listing.detail.delete')",
+      "t('listing.detail.watch')",
+      "xhrDelete('/api/listings/'",
+      'statusLabel',
+      "t('listing.detail.fieldStatus')",
+      "t('listing.detail.fieldAffordability')",
+    ]) {
+      expect(source).not.toContain(removed);
+    }
+    // Archive stays a canonical lifecycle action, never a storage delete.
+    expect(source).toContain(
+      "handleLifecycleAction(LISTING_LIFECYCLE_ACTIONS.archive, 'listing.detail.mobile.archiveToast')",
+    );
+    expect(source).toContain("t('listing.detail.mobile.appliedSelf')");
+    expect(source).toContain("t('listing.detail.mobile.viewing')");
+    expect(source).toContain("t('listing.detail.mobile.archive')");
+    // Submitted inquiry evidence and guarded unknown outcomes remain.
+    expect(source).toContain('getAppliedMessage(listing)');
+    expect(source).toContain("listing.inquiry_send_status === 'unknown'");
+    expect(source).toContain("listing.inquiry_send_status === 'failed'");
   });
 });

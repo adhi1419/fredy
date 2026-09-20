@@ -93,6 +93,8 @@
   "home.activityApplied": "Başvuruldu",
   "home.activityViewed": "Görüntülendi",
   "home.activityArchived": "Arşivlendi",
+  "home.travelTo": "Referans adresinize seyahat süresi",
+  "home.travelToLabel": "{label} adresine seyahat süresi",
   "home.sortLabel": "Sırala",
   "home.sortNewest": "En yeni",
   "home.sortTravelTime": "Ulaşım süresi",

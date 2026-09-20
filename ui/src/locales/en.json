@@ -93,6 +93,8 @@
   "home.activityApplied": "Applied",
   "home.activityViewed": "Viewed",
   "home.activityArchived": "Archived",
+  "home.travelTo": "Travel time to your reference address",
+  "home.travelToLabel": "Travel time to {label}",
   "home.sortLabel": "Sort",
   "home.sortNewest": "Newest",
   "home.sortTravelTime": "Travel time",

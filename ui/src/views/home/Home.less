@@ -388,6 +388,8 @@
 
   &__lifecycle {
     display: inline-flex;
+    align-items: center;
+    gap: @space-1;
     padding: 2px @space-2;
     border-radius: @radius-pill;
     background: @color-fill-subtle;
@@ -395,11 +397,37 @@
     font-size: @text-xs;
     font-weight: 600;
 
+    // Applied and Viewed are the two states a user reaches by acting, so they read in Fredy's sage
+    // accent alongside their canonical Semi glyph. New carries no glyph (the absence of action) and
+    // Archived stays the muted history treatment - no symbol, no accent.
     &--new,
-    &--applied {
+    &--applied,
+    &--viewed {
       background: @color-fill-subtle;
       color: @color-accent;
     }
+  }
+
+  &__lifecycle-symbol {
+    font-size: @text-sm;
+  }
+
+  &__card-travel {
+    display: inline-flex;
+    align-items: center;
+    gap: @space-1;
+    color: @color-accent;
+    font-size: @text-xs;
+    font-weight: 600;
+
+    svg {
+      font-size: @text-sm;
+    }
+  }
+
+  &__card-travel-distance {
+    color: @color-muted;
+    font-weight: 400;
   }
 
   &__card-meta {
