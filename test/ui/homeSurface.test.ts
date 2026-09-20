@@ -49,8 +49,31 @@ describe('Home production surface contract', () => {
     expect(homeSource).toContain('HOME_VIEWS.map');
     expect(homeSource).toContain('<HomeMap listings={listings} onNavigate={navigateToListing} />');
     expect(homeSource).toContain('constrainToCountries={false}');
-    expect(homeSource).toContain('listings.map(homeMapListing).filter((listing) => listing !== null)');
+    expect(homeSource).toContain(
+      'listings.map(homeMapListing).filter((listing): listing is HomeMapListing => listing !== null)',
+    );
     expect(homeSource).toContain('home__card--no-image');
+    expect(homeSource).toContain(
+      "const markerElement = grouped.length > 1 ? document.createElement('button') : undefined;",
+    );
+    expect(homeSource).toContain('homeMapMarkerAction(grouped, trigger)');
+    expect(homeSource).toContain('setActiveGroup(action.listings)');
+    expect(homeSource).toContain('className="home__map-chooser"');
+    expect(homeSource).toContain('homeMapGroupSelectionId(activeGroup, id)');
+    expect(homeSource).toContain('firstChooserOption.current?.focus()');
+    expect(homeSource).toContain('const activeGroupTrigger = useRef<HTMLElement | null>(null);');
+    expect(homeSource).toContain('activeGroupTrigger.current = element;');
+    expect(homeSource).toContain('const closeGroupChooser = useCallback(() => {');
+    expect(homeSource).toContain('restoreHomeMapMarkerFocus(trigger);');
+    expect(homeSource).toContain("event.key === 'Escape'");
+    expect(homeSource).toContain("document.addEventListener('keydown', closeOnEscape)");
+    expect(homeSource).toContain("document.removeEventListener('keydown', closeOnEscape)");
+    expect(homeSource).toContain('onClick={closeGroupChooser}');
+    expect(homeSource).toContain('activeGroupTrigger.current = null;');
+    expect(homeStyles).toContain('&__map-marker');
+    expect(homeStyles).toContain('&__map-chooser');
+    expect(homeStyles).toContain('width: 44px');
+    expect(homeStyles).toContain('height: 44px');
     expect(homeStyles).toContain('&__card--no-image');
     expect(homeStyles).toContain('&__heading');
     expect(homeStyles).toContain('&-placeholder');

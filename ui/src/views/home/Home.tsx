@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Button, Toast } from '@douyinfe/semi-ui-19';
 import {
   IconArrowRight,
@@ -31,7 +31,12 @@ import {
   HOME_SORT_OPTIONS,
   HOME_VIEWS,
   homeLifecycleState,
+  homeListingNavigationId,
   homeMapListing,
+  homeMapMarkerAction,
+  homeMapGroupSelectionId,
+  homeMapMarkerTarget,
+  restoreHomeMapMarkerFocus,
   homeProviderOptions,
   homeQueryFromState,
   homeSortOption,
@@ -39,6 +44,7 @@ import {
   readHomeViewState,
   writeHomeViewState,
   type HomeListing,
+  type HomeMapListing,
   type HomeProviderMetadata,
   type HomeQueryPayload,
   type HomeView,
@@ -124,11 +130,61 @@ function formatHomeContext(lastRun: number | null | undefined, t: HomeTranslatio
   return t('home.updated', { time });
 }
 
-function activateListing(event: KeyboardEvent<HTMLElement>, onNavigate: () => void): void {
-  if (event.key === 'Enter' || event.key === ' ') {
-    event.preventDefault();
-    onNavigate();
-  }
+interface HomeListingRowProps {
+  listing: HomeListing;
+  index: number;
+  variant: 'feed' | 'map';
+  onNavigate: (id: string) => void;
+}
+
+/**
+ * One decision row for both Home representations. The list and map views deliberately render the
+ * same listing facts, lifecycle, image fallback, and navigation target so switching representation
+ * never changes what decision the row offers.
+ */
+function HomeListingRow({ listing, index, variant, onNavigate }: HomeListingRowProps) {
+  const t = useTranslation();
+  const locale = useLocale();
+  const lifecycle = homeLifecycleState(listing);
+  const listingId = homeListingNavigationId(listing);
+  const title = listing.title || t('listing.detail.defaultTitle');
+  const facts = [listing.address, listing.provider, listing.size ? `${listing.size} m²` : null]
+    .filter(Boolean)
+    .join(' · ');
+  const rowClassName = `${variant === 'feed' ? 'home__card' : 'home__split-row'}${listing.image_url ? '' : ' home__card--no-image'}`;
+
+  return (
+    <button
+      type="button"
+      className={rowClassName}
+      disabled={listingId == null}
+      aria-label={title}
+      onClick={() => {
+        if (listingId != null) onNavigate(listingId);
+      }}
+    >
+      <div className="home__card-media">
+        {listing.image_url ? (
+          <img src={listing.image_url} alt={title} />
+        ) : (
+          <div className="home__card-placeholder" aria-hidden="true">
+            <IconMapPin />
+          </div>
+        )}
+      </div>
+      <div className="home__card-copy">
+        <span className={`home__lifecycle home__lifecycle--${lifecycle}`}>{t(ACTIVITY_LABEL_KEYS[lifecycle])}</span>
+        <h2>{title}</h2>
+        <p>{facts || t('listing.detail.noAddress')}</p>
+      </div>
+      <div className="home__card-meta">
+        <strong>{listing.price ? formatEuroPrice(listing.price, locale) : t('common.na')}</strong>
+        <span>{formatTime(listing.created_at, false, locale)}</span>
+        <IconMapPin aria-hidden="true" />
+      </div>
+      <span className="home__sr-only">{index + 1}</span>
+    </button>
+  );
 }
 
 /**
@@ -138,39 +194,122 @@ function activateListing(event: KeyboardEvent<HTMLElement>, onNavigate: () => vo
  */
 function HomeMap({ listings, onNavigate }: HomeMapProps) {
   const t = useTranslation();
-  const locale = useLocale();
   const countries = useProviderCountries();
   const [map, setMap] = useState<MapLibreMap | null>(null);
-  const markers = useMemo(() => listings.map(homeMapListing).filter((listing) => listing !== null), [listings]);
+  const [activeGroup, setActiveGroup] = useState<readonly HomeMapListing[] | null>(null);
+  const firstChooserOption = useRef<HTMLButtonElement | null>(null);
+  const activeGroupTrigger = useRef<HTMLElement | null>(null);
+  const markers = useMemo(
+    () => listings.map(homeMapListing).filter((listing): listing is HomeMapListing => listing !== null),
+    [listings],
+  );
+  const groupOptions =
+    activeGroup
+      ?.map((listing) => ({ listing, id: homeListingNavigationId(listing) }))
+      .filter((entry): entry is { listing: HomeMapListing; id: string } => entry.id != null) ?? [];
+
+  const closeGroupChooser = useCallback(() => {
+    const trigger = activeGroupTrigger.current;
+    activeGroupTrigger.current = null;
+    setActiveGroup(null);
+    restoreHomeMapMarkerFocus(trigger);
+  }, []);
+
+  const selectGroupListing = useCallback(
+    (id: string) => {
+      if (!activeGroup) return;
+      const selectedId = homeMapGroupSelectionId(activeGroup, id);
+      if (selectedId != null) {
+        activeGroupTrigger.current = null;
+        onNavigate(selectedId);
+      }
+    },
+    [activeGroup, onNavigate],
+  );
+
+  useEffect(() => {
+    if (activeGroup) firstChooserOption.current?.focus();
+  }, [activeGroup]);
+
+  useEffect(() => {
+    setActiveGroup(null);
+    activeGroupTrigger.current = null;
+  }, [markers]);
+
+  useEffect(() => {
+    if (!activeGroup) return undefined;
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeGroupChooser();
+      }
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [activeGroup, closeGroupChooser]);
+
+  useEffect(() => {
+    // Clear stale refs when navigating away from Home view
+    return () => {
+      setActiveGroup(null);
+      activeGroupTrigger.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!map) return undefined;
 
     const markerColor = getComputedStyle(document.body).getPropertyValue('--f-accent').trim();
-    const created: Array<{ marker: MapMarker; element: HTMLElement; open: () => void }> = [];
-    groupListingsByPosition(markers).forEach(({ lat, lng, listings: grouped }) => {
-      const marker = new maplibregl.Marker(markerColor ? { color: markerColor } : undefined)
+    const created: Array<{
+      marker: MapMarker;
+      element: HTMLElement;
+      onClick: () => void;
+      onKeyDown: (event: globalThis.KeyboardEvent) => void;
+    }> = [];
+    const markerGroups = groupListingsByPosition(markers);
+    markerGroups.forEach(({ lat, lng, listings: grouped }) => {
+      const targetId = homeMapMarkerTarget(grouped);
+      const targetListing = grouped.find((listing) => homeListingNavigationId(listing) === targetId) ?? grouped[0];
+      const label =
+        grouped.length > 1 ? t('home.mapMarkerMany', { count: String(grouped.length) }) : (targetListing.title ?? '');
+      const markerElement = grouped.length > 1 ? document.createElement('button') : undefined;
+      if (markerElement) {
+        markerElement.type = 'button';
+        markerElement.className = 'home__map-marker home__map-marker--group';
+        markerElement.textContent = String(grouped.length);
+      }
+      const marker = new maplibregl.Marker(
+        markerElement ? { element: markerElement } : markerColor ? { color: markerColor } : undefined,
+      )
         .setLngLat([lng, lat])
         .addTo(map);
-      const firstListing = grouped[0];
-      const label =
-        grouped.length > 1 ? t('home.mapMarkerMany', { count: String(grouped.length) }) : (firstListing.title ?? '');
       const element = marker.getElement();
       element.setAttribute('role', 'button');
       element.setAttribute('tabindex', '0');
       element.setAttribute('aria-label', label);
+      if (grouped.length > 1) element.setAttribute('aria-haspopup', 'dialog');
       element.title = label;
-      const open = () => {
-        if (firstListing.id) onNavigate(firstListing.id);
+      const open = (trigger: 'pointer' | 'keyboard') => {
+        const action = homeMapMarkerAction(grouped, trigger);
+        if (!action) return;
+        if (action.kind === 'group') {
+          activeGroupTrigger.current = element;
+          setActiveGroup(action.listings);
+        } else {
+          activeGroupTrigger.current = null;
+          onNavigate(action.id);
+        }
       };
-      element.addEventListener('click', open);
-      element.addEventListener('keydown', (event) => {
+      const onClick = () => open('pointer');
+      const onKeyDown = (event: globalThis.KeyboardEvent) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          open();
+          open('keyboard');
         }
-      });
-      created.push({ marker, element, open });
+      };
+      element.addEventListener('click', onClick);
+      element.addEventListener('keydown', onKeyDown);
+      created.push({ marker, element, onClick, onKeyDown });
     });
 
     const coordinates: Array<[number, number]> = markers.map((listing) => [listing.longitude, listing.latitude]);
@@ -182,12 +321,13 @@ function HomeMap({ listings, onNavigate }: HomeMapProps) {
 
     return () => {
       window.clearTimeout(fitTimer);
-      created.forEach(({ marker, element, open }) => {
-        element.removeEventListener('click', open);
+      created.forEach(({ marker, element, onClick, onKeyDown }) => {
+        element.removeEventListener('click', onClick);
+        element.removeEventListener('keydown', onKeyDown);
         marker.remove();
       });
     };
-  }, [map, markers, onNavigate, t, locale]);
+  }, [map, markers, onNavigate, t]);
 
   return (
     <section className="home__map" aria-label={t('home.mapAria')}>
@@ -200,7 +340,42 @@ function HomeMap({ listings, onNavigate }: HomeMapProps) {
         onMapReady={(readyMap) => setMap(readyMap)}
       />
       {markers.length === 0 && <p className="home__map-empty">{t('home.mapNoCoordinates')}</p>}
-      <span className="home__map-count">{t('home.mapCount', { count: String(listings.length) })}</span>
+      {activeGroup && groupOptions.length > 0 && (
+        <aside
+          className="home__map-chooser"
+          role="dialog"
+          aria-label={t('home.mapMarkerMany', { count: String(activeGroup.length) })}
+        >
+          <div className="home__map-chooser-heading">
+            <strong>{t('home.mapMarkerMany', { count: String(activeGroup.length) })}</strong>
+            <button type="button" aria-label={t('common.cancel')} onClick={closeGroupChooser}>
+              ×
+            </button>
+          </div>
+          <div className="home__map-chooser-options">
+            {groupOptions.map(({ listing, id }, index) => {
+              const title = listing.title || t('listing.detail.defaultTitle');
+              const detail = listing.address || listing.provider || t('listing.detail.noAddress');
+              return (
+                <button
+                  key={id}
+                  ref={index === 0 ? firstChooserOption : undefined}
+                  type="button"
+                  onClick={() => selectGroupListing(id)}
+                  aria-label={title}
+                >
+                  <strong>{title}</strong>
+                  <span>{detail}</span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+      )}
+      <div className="home__map-count">
+        <span>{t('home.mapView')}</span>
+        <strong>{t('home.mapCount', { count: String(markers.length) })}</strong>
+      </div>
     </section>
   );
 }
@@ -438,72 +613,29 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
       )}
       {!loading && listings.length > 0 && values.view === 'feed' && (
         <section className="home__feed" aria-label={t('home.feedAria')}>
-          {listings.map((listing, index) => {
-            const lifecycle = homeLifecycleState(listing);
-            const listingId = listing.id ?? `listing-${index}`;
-            const openListing = () => {
-              if (listing.id) navigateToListing(listing.id);
-            };
-            const facts = [listing.address, listing.provider, listing.size ? `${listing.size} m²` : null]
-              .filter(Boolean)
-              .join(' · ');
-            return (
-              <article
-                key={listingId}
-                className={`home__card${listing.image_url ? '' : ' home__card--no-image'}`}
-                role="button"
-                tabIndex={listing.id ? 0 : -1}
-                aria-label={listing.title || t('listing.detail.defaultTitle')}
-                onClick={openListing}
-                onKeyDown={(event) => activateListing(event, openListing)}
-              >
-                <div className="home__card-media">
-                  {listing.image_url ? (
-                    <img src={listing.image_url} alt={listing.title || t('listing.detail.noImageAlt')} />
-                  ) : (
-                    <div className="home__card-placeholder" aria-hidden="true">
-                      <IconMapPin />
-                    </div>
-                  )}
-                </div>
-                <div className="home__card-copy">
-                  <span className={`home__lifecycle home__lifecycle--${lifecycle}`}>
-                    {t(ACTIVITY_LABEL_KEYS[lifecycle])}
-                  </span>
-                  <h2>{listing.title || t('listing.detail.defaultTitle')}</h2>
-                  <p>{facts || t('listing.detail.noAddress')}</p>
-                </div>
-                <div className="home__card-meta">
-                  <strong>{listing.price ? formatEuroPrice(listing.price, locale) : t('common.na')}</strong>
-                  <span>{formatTime(listing.created_at, false, locale)}</span>
-                  <IconMapPin aria-hidden="true" />
-                </div>
-              </article>
-            );
-          })}
+          {listings.map((listing, index) => (
+            <HomeListingRow
+              key={homeListingNavigationId(listing) ?? `listing-${index}`}
+              listing={listing}
+              index={index}
+              variant="feed"
+              onNavigate={navigateToListing}
+            />
+          ))}
         </section>
       )}
       {!loading && listings.length > 0 && values.view === 'map' && (
         <div className="home__split">
           <section className="home__split-list" aria-label={t('home.feedAria')}>
-            {listings.map((listing, index) => {
-              const listingId = listing.id ?? `listing-${index}`;
-              return (
-                <button
-                  key={listingId}
-                  type="button"
-                  className="home__split-row"
-                  onClick={() => {
-                    if (listing.id) navigateToListing(listing.id);
-                  }}
-                  disabled={!listing.id}
-                >
-                  <strong>{listing.title || t('listing.detail.defaultTitle')}</strong>
-                  <span>{listing.price ? formatEuroPrice(listing.price, locale) : t('common.na')}</span>
-                  <small>{listing.address || listing.provider}</small>
-                </button>
-              );
-            })}
+            {listings.map((listing, index) => (
+              <HomeListingRow
+                key={homeListingNavigationId(listing) ?? `listing-${index}`}
+                listing={listing}
+                index={index}
+                variant="map"
+                onNavigate={navigateToListing}
+              />
+            ))}
           </section>
           <HomeMap listings={listings} onNavigate={navigateToListing} />
         </div>

@@ -103,23 +103,6 @@ declare module '*components/map/Map.jsx' {
   export default MapCanvas;
 }
 
-declare module '*mapUtils.js' {
-  interface MapListing {
-    id?: string;
-    title?: string | null;
-    latitude: number;
-    longitude: number;
-  }
-
-  export function groupListingsByPosition(
-    listings: readonly MapListing[],
-  ): Array<{ lat: number; lng: number; listings: MapListing[] }>;
-  export function getBoundsFromCoords(
-    coordinates: readonly (readonly [number, number])[],
-    padding?: number,
-  ): [[number, number], [number, number]] | null;
-}
-
 declare module '*hooks/useProviderCountries.js' {
   export function useProviderCountries(): string[];
 }

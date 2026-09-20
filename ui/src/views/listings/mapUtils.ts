@@ -3,6 +3,20 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+export interface MapListing {
+  latitude: number | null | undefined;
+  longitude: number | null | undefined;
+}
+
+export interface MapListingGroup<T extends MapListing> {
+  lat: number;
+  lng: number;
+  listings: T[];
+}
+
+export type MapCoordinate = readonly [number, number];
+export type MapBounds = [MapCoordinate, MapCoordinate];
+
 /**
  * Calculates the great-circle distance between two points on a sphere using the Haversine formula.
  *
@@ -10,16 +24,10 @@
  * By calculating the central angle (c) between two points and multiplying it by the Earth's radius (R ≈ 6371km),
  * we get a pretty accurate straight-line distance. It's basically some trigonometry involving
  * sines and cosines of the latitudes and longitudes to find the chord length (a) first.
- *
- * @param {number} lat1 - Latitude of the first point
- * @param {number} lon1 - Longitude of the first point
- * @param {number} lat2 - Latitude of the second point
- * @param {number} lon2 - Longitude of the second point
- * @returns {number} Distance in meters, rounded to one decimal place
  */
-export const distanceMeters = (lat1, lon1, lat2, lon2) => {
+export function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
-  const toRad = (deg) => (deg * Math.PI) / 180;
+  const toRad = (deg: number): number => (deg * Math.PI) / 180;
 
   const phi1 = toRad(lat1);
   const phi2 = toRad(lat2);
@@ -33,7 +41,7 @@ export const distanceMeters = (lat1, lon1, lat2, lon2) => {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return Math.round(R * c * 10) / 10;
-};
+}
 
 /**
  * Coordinates are compared at six decimals, about 11 cm. Two listings geocoded to the same address
@@ -50,15 +58,13 @@ const POSITION_PRECISION = 6;
  * single marker page through all of them.
  *
  * Listings without usable coordinates are dropped - they have no place on the map.
- *
- * @param {Array<{latitude: number, longitude: number}>} listings
- * @returns {Array<{lat: number, lng: number, listings: object[]}>} Groups in the order their first
- * listing appeared.
  */
-export const groupListingsByPosition = (listings) => {
-  const groups = new Map();
+export function groupListingsByPosition<T extends MapListing>(
+  listings: readonly T[] | null | undefined,
+): MapListingGroup<T>[] {
+  const groups = new Map<string, MapListingGroup<T>>();
 
-  for (const listing of listings || []) {
+  for (const listing of listings ?? []) {
     const { latitude, longitude } = listing;
     if (latitude == null || longitude == null || latitude === -1 || longitude === -1) {
       continue;
@@ -74,7 +80,7 @@ export const groupListingsByPosition = (listings) => {
   }
 
   return [...groups.values()];
-};
+}
 
 /**
  * Generates an array of coordinates representing a circle on a map.
@@ -85,15 +91,14 @@ export const groupListingsByPosition = (listings) => {
  * x = center_lon + radius_lon * cos(theta)
  * y = center_lat + radius_lat * sin(theta)
  * where theta ranges from 0 to 2π. This handles the slight "squishing" of distances as you move away from the equator.
- *
- * @param {number[]} center - [longitude, latitude] of the center
- * @param {number} radiusInKm - Radius of the circle in kilometers
- * @param {number} [points=64] - Number of points to generate for the polygon
- * @returns {number[][]} Array of [longitude, latitude] coordinates
  */
-export const generateCircleCoords = (center, radiusInKm, points = 64) => {
+export function generateCircleCoords(
+  center: readonly [number, number],
+  radiusInKm: number,
+  points = 64,
+): Array<[number, number]> {
   const [longitude, latitude] = center;
-  const coords = [];
+  const coords: Array<[number, number]> = [];
 
   // 1 degree of latitude is roughly 110.574 km
   // 1 degree of longitude is roughly 111.32 km * cos(latitude)
@@ -110,7 +115,7 @@ export const generateCircleCoords = (center, radiusInKm, points = 64) => {
   coords.push(coords[0]);
 
   return coords;
-};
+}
 
 /**
  * Calculates the bounding box for a given center and radius.
@@ -119,13 +124,12 @@ export const generateCircleCoords = (center, radiusInKm, points = 64) => {
  * Again, using the 110.574 km per degree latitude and the cosine-adjusted longitude
  * to make sure the bounds actually contain the circle, even at our latitudes.
  * I've added a bit of padding (15% by default) to make sure everything fits nicely on the screen.
- *
- * @param {number[]} center - [longitude, latitude] of the center
- * @param {number} radiusInKm - Radius in kilometers
- * @param {number} [padding=0.15] - Percentage of padding to add
- * @returns {number[][]} Bounding box coordinates [[minLon, minLat], [maxLon, maxLat]]
  */
-export const getBoundsFromCenter = (center, radiusInKm, padding = 0.15) => {
+export function getBoundsFromCenter(
+  center: readonly [number, number],
+  radiusInKm: number,
+  padding = 0.15,
+): [[number, number], [number, number]] {
   const [lng, lat] = center;
   const kmInDegLat = 1 / 110.574;
   const kmInDegLng = 1 / (111.32 * Math.cos((lat * Math.PI) / 180));
@@ -137,16 +141,15 @@ export const getBoundsFromCenter = (center, radiusInKm, padding = 0.15) => {
     [lng - offsetLng, lat - offsetLat],
     [lng + offsetLng, lat + offsetLat],
   ];
-};
+}
 
 /**
  * Calculates the bounding box for a set of coordinates.
- *
- * @param {number[][]} coords - Array of [longitude, latitude] coordinates
- * @param {number} [padding=0.1] - Padding to add to the bounds
- * @returns {number[][]} Bounding box coordinates [[minLon, minLat], [maxLon, maxLat]]
  */
-export const getBoundsFromCoords = (coords, padding = 0.1) => {
+export function getBoundsFromCoords(
+  coords: readonly MapCoordinate[] | null | undefined,
+  padding = 0.1,
+): [[number, number], [number, number]] | null {
   if (!coords || coords.length === 0) return null;
 
   let minLng = Infinity;
@@ -168,4 +171,4 @@ export const getBoundsFromCoords = (coords, padding = 0.1) => {
     [minLng - lngDiff * padding, minLat - latDiff * padding],
     [maxLng + lngDiff * padding, maxLat + latDiff * padding],
   ];
-};
+}
