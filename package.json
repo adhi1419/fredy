@@ -9,7 +9,7 @@
     "start:frontend": "vite -m production",
     "start:frontend:dev": "vite",
     "build:frontend": "vite build",
-    "typecheck:frontend": "tsc --noEmit --project tsconfig.frontend.json && tsc --noEmit --project tsconfig.frontend-tests.json",
+    "typecheck:frontend": "tsc --noEmit --project tsconfig.frontend.json && tsc --noEmit --project tsconfig.frontend-guided.json && tsc --noEmit --project tsconfig.frontend-tests.json && tsc --noEmit --project tsconfig.frontend-guided-tests.json",
     "test:frontend": "TEST_MODE=offline vitest run test/ui",
     "test:foundation": "vitest run test/toolchainFoundation.test.js test/prWorkflow.test.js test/deployWorkflow.test.js",
     "check:lockfiles": "node scripts/check-lockfiles.js",

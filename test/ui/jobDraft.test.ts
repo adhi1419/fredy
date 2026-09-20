@@ -161,7 +161,7 @@ describe('jobDraft', () => {
 
   describe('staying in step with the form', () => {
     const form = fs.readFileSync(
-      path.join(import.meta.dirname, '../../ui/src/views/jobs/mutation/JobMutation.jsx'),
+      path.join(import.meta.dirname, '../../ui/src/views/jobs/mutation/JobMutation.tsx'),
       'utf-8',
     );
 

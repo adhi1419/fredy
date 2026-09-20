@@ -19,6 +19,7 @@ import {
   missingGuidedRequirements,
   setSourceAutomaticPolicy,
   sourcePolicyControl,
+  resolveProviderSource,
   type ApplicationPolicy,
   type GuidedJobPayloadInput,
   type GuidedProviderSource,
@@ -76,9 +77,10 @@ describe('guidedSearchForm', () => {
     ]);
   });
 
-  it('keeps the mobile ribbon visible without overlaying review content with the footer', () => {
+  it('keeps the mobile progress ribbon and places the footer above fixed navigation', () => {
     expect(guidedStyles).toMatch(/guidedJobForm__mobileProgress\s*{[^}]*position:\s*sticky/s);
-    expect(guidedStyles).not.toMatch(/guidedJobForm__footer\s*{[^}]*position:\s*sticky/s);
+    expect(guidedStyles).toMatch(/guidedJobForm__footer\s*{[^}]*position:\s*sticky/s);
+    expect(guidedStyles).toMatch(/guidedJobForm__footer\s*{[^}]*bottom:\s*calc\(64px/s);
     expect(guidedStyles).toMatch(/guidedJobForm__panel\s*{[^}]*scroll-margin-top:/s);
     expect(guidedStyles).toMatch(/jobMutation__notificationActions\s*{[^}]*grid-template-columns:\s*1fr/s);
   });
@@ -97,6 +99,48 @@ describe('guidedSearchForm', () => {
     expect(merged.provider).toMatchObject({ id: 'supported', name: 'Supported' });
     expect(merged.capability.automatic).toBe(true);
     expect(merged.source).not.toHaveProperty('capabilities');
+  });
+
+  it('rejects unsafe URL-only identity before display hydration and canonicalization', () => {
+    const immoscoutMetadata: ProviderMetadata[] = [
+      { id: 'immoscout', name: 'Immoscout', baseUrl: 'https://www.immobilienscout24.de/' },
+    ];
+    const unsafeSources = [
+      { url: 'javascript://www.immobilienscout24.de/Suche/de/berlin' },
+      { url: 'ftp://www.immobilienscout24.de/Suche/de/berlin' },
+      { url: 'https://user:password@www.immobilienscout24.de/Suche/de/berlin' },
+      { url: 'https://www.immobilienscout24.de.evil.example/Suche/de/berlin' },
+      { id: 'immoscout', url: 'javascript://www.immobilienscout24.de/Suche/de/berlin' },
+    ];
+
+    for (const source of unsafeSources) {
+      expect(resolveProviderSource(source, immoscoutMetadata).provider).toBeNull();
+      expect(() => canonicalGuidedProviderSource(source, immoscoutMetadata)).toThrow();
+    }
+  });
+
+  it('resolves a URL-only ImmoScout source for display, edit hydration, and save payloads', () => {
+    const legacy = {
+      url: 'https://www.immobilienscout24.de/Suche/de/berlin/wohnung-mieten',
+      applicationPolicy: { automatic: 'enabled' as const },
+    };
+    const immoscoutMetadata: ProviderMetadata[] = [
+      {
+        id: 'immoscout',
+        name: 'Immoscout',
+        baseUrl: 'https://www.immobilienscout24.de/',
+        countries: ['de'],
+        capabilities: { application: { automatic: true, eligibility: 'provider' } },
+      },
+    ];
+
+    const resolved = resolveProviderSource(legacy, immoscoutMetadata);
+    expect(resolved.source).toMatchObject({ id: 'immoscout', name: 'Immoscout', url: legacy.url });
+    expect(resolved.provider).toMatchObject({ id: 'immoscout', countries: ['de'] });
+    expect(resolved.capability.automatic).toBe(true);
+
+    const payload = buildGuidedJobPayload({ providerData: [legacy], providerMetadata: immoscoutMetadata });
+    expect(payload.provider[0]).toMatchObject({ id: 'immoscout', name: 'Immoscout', url: legacy.url });
   });
 
   it('allows supported provider policy and keeps listing-scoped eligibility visible', () => {

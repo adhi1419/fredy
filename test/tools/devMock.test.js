@@ -97,7 +97,12 @@ describe('dev mock Saved Search contract', () => {
     expect(providers.response.status).toBe(200);
     expect(providers.body).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: 'immoscout', baseUrl: expect.stringContaining('immobilienscout24') }),
+        expect.objectContaining({
+          id: 'immoscout',
+          baseUrl: expect.stringContaining('immobilienscout24'),
+          countries: ['de'],
+          capabilities: { application: expect.objectContaining({ automatic: true, eligibility: 'provider' }) },
+        }),
         expect.objectContaining({ id: 'metadataOnly', baseUrl: 'https://example.com/metadata-only' }),
       ]),
     );

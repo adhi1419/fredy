@@ -5,13 +5,13 @@
 
 import { Fragment, useState, useCallback, useEffect, useRef } from 'react';
 
-import NotificationChannelPicker from './components/notificationAdapter/NotificationChannelPicker';
-import NotificationChannelEditor from './components/notificationAdapter/NotificationChannelEditor';
-import ProviderMutator from './components/provider/ProviderMutator';
-import GuidedJobForm from './GuidedJobForm.jsx';
-import Headline from '../../../components/headline/Headline';
-import { useActions, useSelector } from '../../../services/state/store';
-import { xhrPost, errorMessage } from '../../../services/xhr';
+import NotificationChannelPicker from './components/notificationAdapter/NotificationChannelPicker.jsx';
+import NotificationChannelEditor from './components/notificationAdapter/NotificationChannelEditor.jsx';
+import ProviderMutator from './components/provider/ProviderMutator.jsx';
+import GuidedJobForm from './GuidedJobForm';
+import Headline from '../../../components/headline/Headline.jsx';
+import { useActions, useSelector } from '../../../services/state/store.js';
+import { xhrPost, errorMessage } from '../../../services/xhr.js';
 import { useNavigate, useParams, useLocation } from 'react-router';
 import { Button, Toast, Banner } from '@douyinfe/semi-ui-19';
 import './JobMutation.less';
@@ -29,11 +29,45 @@ import {
   buildGuidedJobPayload,
   firstBlockedGuidedStep,
   migrateLegacyDraftProviderPolicies,
+  resolveProviderSource,
   missingGuidedRequirements,
   setSourceAutomaticPolicy,
 } from '../../../services/jobs/guidedSearchForm.js';
 import { IconArrowLeft } from '@douyinfe/semi-icons';
 import { useTranslation, useLocale } from '../../../services/i18n/i18n.jsx';
+import type { GuidedProviderSource, ProviderMetadata } from '../../../services/jobs/guidedSearchForm.js';
+import type { Job, ShareableUser } from '../../../services/state/jobsState';
+import type { NotificationChannelSummary } from '../../../services/state/notificationState';
+
+type NotificationChannel = NotificationChannelSummary & { id: string };
+type ChannelEditorState = { mode: 'edit' | 'clone'; channelId: string } | null;
+type ProviderEditData = { newData: GuidedProviderSource; oldProviderToEdit: GuidedProviderSource };
+
+interface JobMutationStoreState {
+  jobsData: { jobs: readonly Job[]; shareableUserList: readonly ShareableUser[] };
+  notificationChannels: { channels: readonly NotificationChannel[] };
+  provider: readonly ProviderMetadata[];
+  userSettings: { settings?: { inquiry_profile?: Record<string, unknown> } };
+}
+
+interface JobMutationActions {
+  jobsData: { getJobs: () => Promise<void> };
+  notificationChannels: { getChannels: () => Promise<void>; tryChannel: (channelId: string) => Promise<void> };
+}
+
+interface JobDraft {
+  name?: string | null;
+  dealType?: 'rent' | 'buy' | null;
+  providerData?: readonly GuidedProviderSource[];
+  selectedChannelIds?: string[];
+  blacklist?: string[];
+  shareWithUsers?: string[];
+  enabled?: boolean;
+  spatialFilter?: unknown | null;
+  specFilter?: Record<string, unknown> | null;
+  commuteFilter?: unknown | null;
+  autoSendInquiry?: boolean;
+}
 
 export default function JobMutator() {
   const t = useTranslation();
@@ -45,11 +79,17 @@ export default function JobMutator() {
     { key: 'minRooms', translation: t('jobs.mutation.filterMinRooms') },
   ];
 
-  const jobs = useSelector((state) => state.jobsData.jobs);
-  const shareableUserList = useSelector((state) => state.jobsData.shareableUserList);
-  const allChannels = useSelector((state) => state.notificationChannels.channels);
-  const providerMetadata = useSelector((state) => state.provider);
-  const inquiryProfile = useSelector((state) => state.userSettings.settings?.inquiry_profile);
+  const jobs = useSelector<JobMutationStoreState, readonly Job[]>((state) => state.jobsData.jobs);
+  const shareableUserList = useSelector<JobMutationStoreState, readonly ShareableUser[]>(
+    (state) => state.jobsData.shareableUserList,
+  );
+  const allChannels = useSelector<JobMutationStoreState, readonly NotificationChannel[]>(
+    (state) => state.notificationChannels.channels,
+  );
+  const providerMetadata = useSelector<JobMutationStoreState, readonly ProviderMetadata[]>((state) => state.provider);
+  const inquiryProfile = useSelector<JobMutationStoreState, Record<string, unknown> | undefined>(
+    (state) => state.userSettings.settings?.inquiry_profile,
+  );
   const params = useParams();
   const location = useLocation();
 
@@ -59,50 +99,53 @@ export default function JobMutator() {
 
   const sourceJob = jobToBeEdit || jobToClone;
 
-  const defaultBlacklist = sourceJob?.blacklist || [];
+  const defaultBlacklist = (sourceJob?.blacklist || []).filter((entry): entry is string => typeof entry === 'string');
   const defaultName = jobToClone ? `Copy of - ${sourceJob?.name}` : sourceJob?.name || null;
-  const defaultProviderData = sourceJob?.provider || [];
+  const defaultProviderData = (sourceJob?.provider || []) as GuidedProviderSource[];
   // The job stores references, and a read hands back the hydrated adapter shape carrying the
   // channel id. Ids are what this form keeps: they are here at mount like every other default
   // below, whereas the channel records they name are fetched separately and arrive later.
   const sourceChannelIds = (sourceJob?.notificationAdapter || [])
-    .map((adapter) => adapter.configuredAdapterId)
-    .filter(Boolean);
+    .map((adapter) => (adapter as Record<string, unknown>).configuredAdapterId)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0);
   const defaultEnabled = sourceJob?.enabled ?? true;
   const defaultShareWithUsers = sourceJob?.shared_with_user ?? [];
   const defaultSpatialFilter = sourceJob?.spatialFilter || null;
-  const defaultSpecFilter = sourceJob?.specFilter || null;
+  const defaultSpecFilter = (sourceJob?.specFilter as Record<string, unknown> | null | undefined) || null;
   const defaultCommuteFilter = sourceJob?.commuteFilter || null;
   const defaultAutoSendInquiry = sourceJob?.autoSendInquiry ?? false;
   // Deliberately not defaulted for a new job: the user has to say what they are looking for,
   // because it decides which half of their finance profile applies to everything this job finds.
   const defaultDealType = sourceJob?.dealType || null;
 
-  const [providerToEdit, setProviderToEdit] = useState(null);
+  const [providerToEdit, setProviderToEdit] = useState<GuidedProviderSource | null>(null);
   const [providerCreationVisible, setProviderCreationVisibility] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [channelEditor, setChannelEditor] = useState(null);
-  const [providerData, setProviderData] = useState(defaultProviderData);
-  const [name, setName] = useState(defaultName);
-  const [blacklist, setBlacklist] = useState(defaultBlacklist);
-  const [selectedChannelIds, setSelectedChannelIds] = useState(sourceChannelIds);
-  const [shareWithUsers, setShareWithUsers] = useState(defaultShareWithUsers);
-  const [enabled, setEnabled] = useState(defaultEnabled);
-  const [spatialFilter, setSpatialFilter] = useState(defaultSpatialFilter);
-  const [specFilter, setSpecFilter] = useState(defaultSpecFilter);
-  const [commuteFilter, setCommuteFilter] = useState(defaultCommuteFilter);
+  const [channelEditor, setChannelEditor] = useState<ChannelEditorState>(null);
+  const [providerData, setProviderData] = useState<GuidedProviderSource[]>(defaultProviderData);
+  const [name, setName] = useState<string | null>(defaultName);
+  const [blacklist, setBlacklist] = useState<string[]>(defaultBlacklist as string[]);
+  const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>(sourceChannelIds);
+  const [shareWithUsers, setShareWithUsers] = useState<string[]>(defaultShareWithUsers as string[]);
+  const [enabled, setEnabled] = useState<boolean>(defaultEnabled);
+  const [spatialFilter, setSpatialFilter] = useState<unknown | null>(defaultSpatialFilter);
+  const [specFilter, setSpecFilter] = useState<Record<string, unknown> | null>(defaultSpecFilter);
+  const [commuteFilter, setCommuteFilter] = useState<unknown | null>(defaultCommuteFilter);
   // Retained only so legacy drafts can still round-trip; guided saves never send this field and no
   // visible job-wide control is rendered.
-  const [autoSendInquiry, setAutoSendInquiry] = useState(defaultAutoSendInquiry);
-  const [dealType, setDealType] = useState(defaultDealType);
+  const [autoSendInquiry, setAutoSendInquiry] = useState<boolean>(defaultAutoSendInquiry);
+  const [dealType, setDealType] = useState<'rent' | 'buy' | null>(defaultDealType);
   /** Whether the value in the deal type field was guessed rather than chosen. */
   const [dealTypeWasInferred, setDealTypeWasInferred] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [validationError, setValidationError] = useState(null);
-  const guidedPanelRef = useRef(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const guidedPanelRef = useRef<HTMLElement | null>(null);
   const policyProfileReady = useCallback(
-    (source) => isInquiryContactProfileReady(inquiryProfile, source?.id),
-    [inquiryProfile],
+    (source: GuidedProviderSource) => {
+      const resolved = resolveProviderSource(source, providerMetadata).source;
+      return isInquiryContactProfileReady(inquiryProfile, resolved?.id);
+    },
+    [inquiryProfile, providerMetadata],
   );
 
   // Derived on every render rather than kept alongside the ids. A second copy of the selection in
@@ -113,9 +156,9 @@ export default function JobMutator() {
   // this user - so what is saved below is always what the table showed.
   const selectedChannels = selectedChannelIds
     .map((id) => allChannels.find((channel) => channel.id === id))
-    .filter(Boolean);
+    .filter((channel): channel is NotificationChannel => channel != null);
   const navigate = useNavigate();
-  const actions = useActions();
+  const actions = useActions<JobMutationActions>();
 
   /** Whether the drawing map has been given the full height it used to always occupy. */
   const [areaExpanded, setAreaExpanded] = useState(false);
@@ -126,7 +169,7 @@ export default function JobMutator() {
   const draftChecked = useRef(false);
 
   // Memoize the spatial filter change handler to prevent map reinitializations
-  const handleSpatialFilterChange = useCallback((data) => {
+  const handleSpatialFilterChange = useCallback((data: unknown) => {
     setSpatialFilter(data);
   }, []);
 
@@ -137,12 +180,13 @@ export default function JobMutator() {
   // Pick up whatever was left behind last time. The two links this form offers - "Manage channels"
   // and the picker's empty state - both navigate away and unmount it, and a first-time user has to
   // follow one of them, because a job needs a channel and channels are made on the Settings page.
+
   // Without this, that detour silently threw away everything they had typed.
   useEffect(() => {
     if (draftChecked.current) return;
     draftChecked.current = true;
 
-    const draft = loadDraft(draftId);
+    const draft = loadDraft(draftId) as JobDraft | null;
     if (draft == null) return;
 
     if (draft.name !== undefined) setName(draft.name);
@@ -162,6 +206,11 @@ export default function JobMutator() {
     if (draft.autoSendInquiry !== undefined) setAutoSendInquiry(draft.autoSendInquiry);
     setDraftRestored(true);
   }, [draftId]);
+
+  useEffect(() => {
+    if (providerMetadata.length === 0) return;
+    setProviderData((current) => current.map((source) => resolveProviderSource(source, providerMetadata).source));
+  }, [providerMetadata]);
 
   // Written straight through rather than debounced: the payload is a few hundred bytes and the
   // write is synchronous, so a keystroke costs less than the render it already triggered.
@@ -213,7 +262,7 @@ export default function JobMutator() {
    * @param {string} to
    * @returns {void}
    */
-  const leaveWithReturnPath = (to) => navigate(withReturnTo(to, `${location.pathname}${location.search}`));
+  const leaveWithReturnPath = (to: string) => navigate(withReturnTo(to, `${location.pathname}${location.search}`));
 
   const discardDraft = () => {
     clearDraft(draftId);
@@ -236,10 +285,16 @@ export default function JobMutator() {
     navigate('/jobs');
   };
 
-  const handleSpecFilterChange = (key, value) => {
+  const handleSpecFilterChange = (key: string, value: unknown) => {
     if (!SPEC_FILTERS.map(({ key: filterKey }) => filterKey).includes(key)) return;
 
-    setSpecFilter({ ...specFilter, [key]: value ? parseFloat(value) : null });
+    const numericValue =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string' && value.length > 0
+          ? Number.parseFloat(value)
+          : null;
+    setSpecFilter({ ...specFilter, [key]: numericValue });
   };
 
   const formState = { name, dealType, providerData, selectedChannels };
@@ -251,7 +306,7 @@ export default function JobMutator() {
     channel: t('jobs.mutation.sectionNotifications'),
   };
 
-  const announceValidation = (step) => {
+  const announceValidation = (step: number) => {
     const requirement = missingGuidedRequirements(step, formState)[0];
     if (!requirement) {
       setValidationError(null);
@@ -262,7 +317,7 @@ export default function JobMutator() {
     return true;
   };
 
-  const handleStepSelect = (targetStep) => {
+  const handleStepSelect = (targetStep: number) => {
     if (targetStep <= currentStep) {
       setValidationError(null);
       setCurrentStep(targetStep);
@@ -294,7 +349,7 @@ export default function JobMutator() {
   );
   const reviewSummary = refinementSummary.length > 0 ? refinementSummary : [t('jobs.mutation.guidedReviewNoFilters')];
 
-  const handleProviderEdit = (data) => {
+  const handleProviderEdit = (data: ProviderEditData) => {
     setProviderData(
       providerData.map((provider) =>
         provider.url === data.oldProviderToEdit.url
@@ -304,12 +359,12 @@ export default function JobMutator() {
     );
   };
 
-  const handleProviderPolicyChange = (source, enabledPolicy) => {
+  const handleProviderPolicyChange = (source: GuidedProviderSource, enabledPolicy: boolean) => {
     setProviderData((current) =>
       current.map((provider) =>
         provider.url === source.url
           ? setSourceAutomaticPolicy(provider, providerMetadata, enabledPolicy, {
-              profileReady: policyProfileReady(provider),
+              profileReady: policyProfileReady(resolveProviderSource(provider, providerMetadata).source),
             })
           : provider,
       ),
@@ -322,6 +377,7 @@ export default function JobMutator() {
         '/api/jobs',
         buildGuidedJobPayload({
           providerData,
+          providerMetadata,
           selectedChannels,
           shareWithUsers,
           name,
@@ -349,7 +405,7 @@ export default function JobMutator() {
     }
   };
 
-  const handleTestChannel = async (channel) => {
+  const handleTestChannel = async (channel: NotificationChannel) => {
     try {
       await actions.notificationChannels.tryChannel(channel.id);
       Toast.success(t('notification.trySuccess'));
@@ -362,8 +418,8 @@ export default function JobMutator() {
     <Fragment>
       <ProviderMutator
         visible={providerCreationVisible}
-        onVisibilityChanged={(visible) => setProviderCreationVisibility(visible)}
-        onData={(data) => {
+        onVisibilityChanged={(visible: boolean) => setProviderCreationVisibility(visible)}
+        onData={(data: GuidedProviderSource) => {
           setProviderData([...providerData, data]);
         }}
         onEditData={handleProviderEdit}
@@ -374,7 +430,7 @@ export default function JobMutator() {
         visible={pickerVisible}
         selectedIds={selectedChannelIds}
         onClose={() => setPickerVisible(false)}
-        onPick={(channel) => setSelectedChannelIds((current) => [...current, channel.id])}
+        onPick={(channel: { id: string }) => setSelectedChannelIds((current) => [...current, channel.id])}
         onManageChannels={() => leaveWithReturnPath('/settings/notifications')}
       />
 
@@ -387,7 +443,7 @@ export default function JobMutator() {
           // about this job alone and would not expect to change somebody else's.
           warnUsageAbove={2}
           onClose={() => setChannelEditor(null)}
-          onSaved={(saved) =>
+          onSaved={(saved: { id: string }) =>
             setSelectedChannelIds((current) =>
               // A "Duplicate instead" from the editor returns a different channel, so the job is
               // repointed at the copy and the original is left alone for the jobs still using it.
