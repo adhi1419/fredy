@@ -13,6 +13,7 @@ import queryString from 'query-string';
 import { createJobsDataState, createJobsEffects } from './jobsState.js';
 import { createListingsDataState, createListingsEffects } from './listingsState.js';
 import { createUserSettingsState, createUserSettingsEffects } from './userSettingsState.js';
+import { createFinanceState, createFinanceEffects } from './financeState.js';
 
 /**
  * Optional state-change logging, off unless VITE_DEBUG_STORE is set.
@@ -43,24 +44,6 @@ const logger = (config) => (set, get, api) =>
   );
 
 /**
- * Re-read the derived profile view after the profile changed.
- *
- * Every finance surface reads the summary rather than deriving anything, so it has to be refreshed
- * whenever the profile behind it moves - otherwise the chips keep quoting the old ceilings.
- *
- * @param {(updater: Function) => void} set Zustand setter.
- * @returns {Promise<void>}
- */
-async function refreshFinanceSummary(set) {
-  try {
-    const response = await xhrGet('/api/finance/profile-summary');
-    set((state) => ({ finance: { ...state.finance, summary: response.json } }));
-  } catch (Exception) {
-    console.error('Error while refreshing the finance profile summary. Error:', Exception);
-  }
-}
-
-/**
  * Middleware to track loading state of async actions.
  */
 const loadingTracker = (config) => (set, get, api) => {
@@ -77,8 +60,11 @@ export const useFredyState = create(
     loadingTracker((set) => {
       const jobsEffects = createJobsEffects(set, { get: xhrGet }, queryString.stringify);
       const listingsEffects = createListingsEffects(set, { get: xhrGet, post: xhrPost }, queryString.stringify);
-      const userSettingsEffects = createUserSettingsEffects(set, { get: xhrGet, post: xhrPost }, () =>
-        refreshFinanceSummary(set),
+      const financeEffects = createFinanceEffects(set, { get: xhrGet, post: xhrPost });
+      const userSettingsEffects = createUserSettingsEffects(
+        set,
+        { get: xhrGet, post: xhrPost },
+        financeEffects.getProfileSummary,
       );
 
       // Async actions that directly set state (no separate reducer concept)
@@ -93,73 +79,7 @@ export const useFredyState = create(
             }
           },
         },
-        finance: {
-          /**
-           * Load the derived view of the stored finance profile.
-           *
-           * All of it is computed server-side; the browser holds no finance math of its own.
-           * Called on boot and after every profile write.
-           */
-          async getProfileSummary() {
-            try {
-              const response = await xhrGet('/api/finance/profile-summary');
-              set((state) => ({ finance: { ...state.finance, summary: response.json } }));
-              return response.json;
-            } catch (Exception) {
-              console.error('Error while trying to load the finance profile summary. Error:', Exception);
-              return null;
-            }
-          },
-          /**
-           * Run the calculator against a draft profile the user is still editing.
-           *
-           * Returns the full breakdown plus the budget, ceilings and completeness flags for that
-           * draft, so the calculator's panels need one request rather than four.
-           *
-           * @param {Object} profile
-           * @returns {Promise<Object|null>} Null when the draft is not calculable yet.
-           */
-          async calculate(profile) {
-            try {
-              const response = await xhrPost('/api/finance/calculate', { profile });
-              return response.json;
-            } catch (Exception) {
-              // A 400 here is the normal "not enough entered yet" case, not a failure worth
-              // shouting about; the calculator simply shows nothing.
-              if (Exception?.status !== 400) {
-                console.error('Error while trying to calculate financing. Error:', Exception);
-              }
-              return null;
-            }
-          },
-          /**
-           * The financing breakdown for one listing, measured against the stored profile.
-           *
-           * @param {string} listingId
-           * @returns {Promise<Object|null>}
-           */
-          async getListingFinance(listingId) {
-            try {
-              const response = await xhrGet(`/api/finance/listing/${listingId}`);
-              return response.json;
-            } catch (Exception) {
-              console.error(`Error while trying to load the financing of listing ${listingId}. Error:`, Exception);
-              return null;
-            }
-          },
-          async getAffordability(payload) {
-            set((state) => ({ finance: { ...state.finance, loading: true } }));
-            try {
-              const response = await xhrPost('/api/finance/affordability', payload);
-              set((state) => ({ finance: { ...state.finance, data: response.json, loading: false } }));
-              return response.json;
-            } catch (Exception) {
-              console.error('Error while trying to score listings for affordability. Error:', Exception);
-              set((state) => ({ finance: { ...state.finance, loading: false } }));
-              throw Exception;
-            }
-          },
-        },
+        finance: financeEffects,
         notificationAdapter: {
           async getAdapter() {
             try {
@@ -280,7 +200,7 @@ export const useFredyState = create(
       // Initial state
       const initial = {
         dashboard: { data: null },
-        finance: { data: null, loading: false, summary: null },
+        finance: createFinanceState(),
         notificationAdapter: [],
         notificationChannels: { channels: [], loaded: false },
         listingsData: createListingsDataState(),
