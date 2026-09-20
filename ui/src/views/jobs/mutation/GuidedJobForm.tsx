@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { Button, Input, Select, Switch, TagInput } from '@douyinfe/semi-ui-19';
 import {
   IconBell,
@@ -16,14 +16,74 @@ import {
   IconSetting,
   IconUser,
 } from '@douyinfe/semi-icons';
-import { SegmentPart } from '../../../components/segment/SegmentPart';
-import ProviderTable from '../../../components/table/ProviderTable';
-import NotificationChannelTable from '../../../components/table/NotificationChannelTable';
-import AreaFilter from './components/areaFilter/AreaFilter';
+import { SegmentPart } from '../../../components/segment/SegmentPart.jsx';
+import ProviderChoiceCards from './components/provider/ProviderChoiceCards';
+import NotificationChannelTable from '../../../components/table/NotificationChannelTable.jsx';
+import AreaFilter from './components/areaFilter/AreaFilter.jsx';
 import CommuteFilter from './components/CommuteFilter.jsx';
-import { GUIDED_STEPS } from '../../../services/jobs/guidedSearchForm.js';
+import {
+  GUIDED_STEPS,
+  type GuidedProviderSource,
+  type ProviderMetadata,
+} from '../../../services/jobs/guidedSearchForm.js';
 import { useTranslation } from '../../../services/i18n/i18n.jsx';
+import type { ShareableUser } from '../../../services/state/jobsState';
 import './GuidedJobForm.less';
+
+type Translation = (key: string, variables?: Record<string, string | number>) => string;
+type StateSetter<T> = (value: T) => void;
+type FunctionalStateSetter<T> = (value: T | ((current: T) => T)) => void;
+type SpecFilterDefinition = { key: string; translation: string };
+type NotificationChannel = { id: string; [key: string]: unknown };
+type CommuteFilter = unknown;
+
+interface GuidedJobFormProps {
+  currentStep: number;
+  onStepSelect: (step: number) => void;
+  onBack: () => void;
+  onContinue: () => void;
+  onSave: () => void | Promise<void>;
+  validationError?: string | null;
+  panelRef?: RefObject<HTMLElement | null>;
+  name?: string | null;
+  setName: StateSetter<string>;
+  providerData: readonly GuidedProviderSource[];
+  providerMetadata: readonly ProviderMetadata[];
+  policyProfileReady: (source: GuidedProviderSource) => boolean;
+  onProviderPolicyChange: (source: GuidedProviderSource, enabled: boolean) => void;
+  onProviderAdd: () => void;
+  onProviderRemove: (providerUrl?: string) => void;
+  onProviderEdit: (source: GuidedProviderSource) => void;
+  onCompleteInquiryProfile: (source: GuidedProviderSource) => void;
+  dealType: 'rent' | 'buy' | null;
+  setDealType: StateSetter<'rent' | 'buy' | null>;
+  dealTypeWasInferred: boolean;
+  specFilters: readonly SpecFilterDefinition[];
+  specFilter?: Record<string, unknown> | null;
+  onSpecFilterChange: (key: string, value: unknown) => void;
+  blacklist: string[];
+  setBlacklist: StateSetter<string[]>;
+  spatialFilter: unknown | null;
+  onSpatialFilterChange: (value: unknown) => void;
+  areaExpanded: boolean;
+  setAreaExpanded: FunctionalStateSetter<boolean>;
+  commuteFilter: CommuteFilter;
+  setCommuteFilter: StateSetter<CommuteFilter>;
+  selectedChannels: readonly NotificationChannel[];
+  onAddNotification: () => void;
+  onManageNotifications: () => void;
+  onTestChannel: (channel: NotificationChannel) => void | Promise<void>;
+  onEditChannel: (channel: NotificationChannel) => void;
+  onCloneChannel: (channel: NotificationChannel) => void;
+  onDetachChannel: (channel: NotificationChannel) => void;
+  shareableUserList: readonly ShareableUser[];
+  shareWithUsers: string[];
+  setShareWithUsers: StateSetter<string[]>;
+  enabled: boolean;
+  setEnabled: StateSetter<boolean>;
+  reviewSummary: readonly string[];
+  canSave: boolean;
+}
 
 const STEP_ICONS = [IconBriefcase, IconHome, IconFilter, IconBell];
 
@@ -73,10 +133,10 @@ export default function GuidedJobForm({
   setEnabled,
   reviewSummary,
   canSave,
-} = {}) {
+}: GuidedJobFormProps) {
   const t = useTranslation();
-  const localPanelRef = useRef(null);
-  const validationRef = useRef(null);
+  const localPanelRef = useRef<HTMLElement | null>(null);
+  const validationRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const target = panelRef?.current ?? localPanelRef.current;
@@ -158,7 +218,7 @@ export default function GuidedJobForm({
         <Button type="primary" icon={<IconPlusCircle />} onClick={onProviderAdd}>
           {t('jobs.mutation.addProvider')}
         </Button>
-        <ProviderTable
+        <ProviderChoiceCards
           providerData={providerData}
           providerMetadata={providerMetadata}
           policyProfileReady={policyProfileReady}
@@ -183,7 +243,7 @@ export default function GuidedJobForm({
         <Select
           placeholder={t('jobs.mutation.dealTypePlaceholder')}
           value={dealType}
-          onChange={setDealType}
+          onChange={(value) => setDealType(Array.isArray(value) ? null : ((value ?? null) as 'rent' | 'buy' | null))}
           style={{ width: '100%', maxWidth: 260 }}
         >
           <Select.Option value="rent">{t('jobs.mutation.dealTypeRent')}</Select.Option>
@@ -204,7 +264,7 @@ export default function GuidedJobForm({
               <Input
                 type="number"
                 placeholder={t('jobs.mutation.criteriaNumberPlaceholder')}
-                value={specFilter?.[filter.key]}
+                value={typeof specFilter?.[filter.key] === 'number' ? (specFilter[filter.key] as number) : undefined}
                 onChange={(value) => onSpecFilterChange(filter.key, value)}
               />
             </div>
@@ -220,7 +280,11 @@ export default function GuidedJobForm({
         <TagInput
           value={blacklist || []}
           placeholder={t('jobs.mutation.blacklistPlaceholder')}
-          onChange={setBlacklist}
+          onChange={(value) =>
+            setBlacklist(
+              Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [],
+            )
+          }
         />
       </SegmentPart>
       <SegmentPart
@@ -301,7 +365,11 @@ export default function GuidedJobForm({
             placeholder={t('jobs.mutation.sharingSearchPlaceholder')}
             autoClearSearchValue={false}
             value={shareWithUsers}
-            onChange={setShareWithUsers}
+            onChange={(value) =>
+              setShareWithUsers(
+                Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [],
+              )
+            }
             style={{ width: '100%' }}
           >
             {shareableUserList.map((user) => (
@@ -340,7 +408,7 @@ export default function GuidedJobForm({
     <form className="jobMutation__form" onSubmit={(event) => event.preventDefault()}>
       {renderStepNavigation()}
       {validationError && (
-        <div className="guidedJobForm__validation" role="alert" tabIndex="-1" ref={validationRef}>
+        <div className="guidedJobForm__validation" role="alert" tabIndex={-1} ref={validationRef}>
           {validationError}
         </div>
       )}
@@ -349,7 +417,7 @@ export default function GuidedJobForm({
         id={`guided-panel-${currentStep}`}
         role="tabpanel"
         aria-labelledby={`guided-step-${currentStep}`}
-        tabIndex="-1"
+        tabIndex={-1}
         ref={panel}
       >
         {renderCurrentStep()}

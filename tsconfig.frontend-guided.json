@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.frontend.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": [
+    "ui/src/views/jobs/mutation/GuidedJobForm.tsx",
+    "ui/src/views/jobs/mutation/JobMutation.tsx",
+    "ui/src/views/jobs/mutation/components/provider/ProviderChoiceCards.tsx",
+    "ui/src/views/jobs/savedSearchesLegacy.d.ts"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.frontend-tests.json",
+  "include": [
+    "test/ui/providerChoiceCards.test.ts",
+    "test/ui/jobDraft.test.ts",
+    "ui/src/views/jobs/savedSearchesLegacy.d.ts"
+  ]
+}

@@ -9,7 +9,8 @@ import { Banner, Modal, Select, Input } from '@douyinfe/semi-ui-19';
 import { IconExternalOpen } from '@douyinfe/semi-icons';
 import { transform } from '../../../../../services/transformer/providerTransformer';
 import { useSelector } from '../../../../../services/state/store';
-import { validateProviderUrl } from '../../../../../services/jobs/providerUrl.js';
+import { resolveProviderSource } from '../../../../../services/jobs/guidedSearchForm.js';
+import { getSafeHttpUrl, validateProviderUrl } from '../../../../../services/jobs/providerUrl.js';
 import { labelWithFlags } from '../../../../../services/countryFlags.js';
 import { sortProviders } from '../../../../../services/providerOrder.js';
 
@@ -18,7 +19,7 @@ import { useScreenWidth } from '../../../../../hooks/screenWidth.js';
 import { useTranslation } from '../../../../../services/i18n/i18n.jsx';
 
 const returnOriginalSelectedProvider = (providerToEdit, provider) => {
-  return provider.find((pro) => pro.id === providerToEdit.id);
+  return resolveProviderSource(providerToEdit, provider).provider;
 };
 
 export default function ProviderMutator({
@@ -45,10 +46,11 @@ export default function ProviderMutator({
       setSelectedProvider(null);
       setProviderUrl('');
     }
-  }, [providerToEdit, visible]);
+  }, [providerToEdit, visible, provider]);
 
   const width = useScreenWidth();
   const isMobile = width <= 850;
+  const selectedProviderUrl = getSafeHttpUrl(selectedProvider?.baseUrl);
 
   /**
    * Why the pasted URL cannot be used, in words the user can act on.
@@ -174,10 +176,10 @@ export default function ProviderMutator({
           opened a tab before they had read a word of the instructions, opened a second one if they
           changed their mind about the portal, and was swallowed without a trace by a popup
           blocker. */}
-      {selectedProvider != null && (
+      {selectedProvider != null && selectedProviderUrl != null && (
         <a
           className="providerMutator__openLink"
-          href={selectedProvider.baseUrl}
+          href={selectedProviderUrl}
           target="_blank"
           rel="noreferrer noopener"
         >

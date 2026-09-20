@@ -5,7 +5,12 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { normalizeHost, validateProviderUrl } from '../../ui/src/services/jobs/providerUrl.js';
+import {
+  findProviderByUrl,
+  getSafeProviderUrl,
+  normalizeHost,
+  validateProviderUrl,
+} from '../../ui/src/services/jobs/providerUrl.js';
 import type { ProviderMetadata, ProviderUrlProblem } from '../../ui/src/services/jobs/providerUrl.js';
 
 const immoscout = {
@@ -29,6 +34,58 @@ describe('normalizeHost', () => {
 
   it.each(nullHostCases)('answers null for %s', (url) => {
     expect(normalizeHost(url)).toBeNull();
+  });
+
+  it.each([
+    'javascript://immobilienscout24.de/search',
+    'ftp://immobilienscout24.de/search',
+    'https://user:password@immobilienscout24.de/search',
+  ])('rejects unsafe host input %s', (url) => {
+    expect(normalizeHost(url)).toBeNull();
+  });
+
+  it('normalizes a spoofed subdomain to its host (not null, as normalizeHost is a generic parser)', () => {
+    expect(normalizeHost('https://immobilienscout24.de.evil.example/search')).toBe('immobilienscout24.de.evil.example');
+  });
+});
+
+describe('findProviderByUrl', () => {
+  it('resolves a URL-only legacy source by normalized provider host', () => {
+    const provider = findProviderByUrl('https://www.immobilienscout24.de/Suche/de/berlin', [
+      { id: 'immoscout', baseUrl: 'https://immobilienscout24.de/' },
+      { id: 'immowelt', baseUrl: 'https://www.immowelt.de/' },
+    ]);
+
+    expect(provider).toEqual({ id: 'immoscout', baseUrl: 'https://immobilienscout24.de/' });
+  });
+
+  it.each([
+    'javascript://immobilienscout24.de/Suche/de/berlin',
+    'ftp://immobilienscout24.de/Suche/de/berlin',
+    'https://immobilienscout24.de.evil.example/Suche/de/berlin',
+    'https://user:password@immobilienscout24.de/Suche/de/berlin',
+  ])('does not resolve unsafe or spoofed URL-only identity %s', (url) => {
+    expect(findProviderByUrl(url, [{ id: 'immoscout', baseUrl: 'https://immobilienscout24.de/' }])).toBeNull();
+  });
+});
+
+describe('getSafeProviderUrl', () => {
+  it('returns a canonical href only for a matching HTTP(S) search URL', () => {
+    expect(getSafeProviderUrl('http://www.immobilienscout24.de/Suche/de/berlin', immoscout)).toBe(
+      'http://www.immobilienscout24.de/Suche/de/berlin',
+    );
+    expect(getSafeProviderUrl('www.immobilienscout24.de/Suche/de/berlin', immoscout)).toBe(
+      'https://www.immobilienscout24.de/Suche/de/berlin',
+    );
+  });
+
+  it.each([
+    'javascript://immobilienscout24.de/search',
+    'ftp://immobilienscout24.de/search',
+    'https://user:password@immobilienscout24.de/search',
+    'https://immobilienscout24.de.evil.example/search',
+  ])('returns no href for unsafe or mismatched URL %s', (url) => {
+    expect(getSafeProviderUrl(url, immoscout)).toBeNull();
   });
 });
 
@@ -79,6 +136,15 @@ describe('validateProviderUrl', () => {
     ['a whitespace url', '   ', immoscout, 'empty'],
     ['a missing url', null, immoscout, 'empty'],
     ['something that is not a url', 'not a url at all', immoscout, 'unparsable'],
+    ['an unsupported javascript scheme', 'javascript://immobilienscout24.de/search', immoscout, 'unsupportedScheme'],
+    ['an unsupported ftp scheme', 'ftp://immobilienscout24.de/search', immoscout, 'unsupportedScheme'],
+    [
+      'userinfo disguised as the expected host',
+      'https://user:password@immobilienscout24.de/search',
+      immoscout,
+      'unparsable',
+    ],
+    ['a spoofed subdomain', 'https://immobilienscout24.de.evil.example/search', immoscout, 'wrongHost'],
   ];
 
   it.each(refusalCases)('refuses %s', (_what, url, provider, problem) => {

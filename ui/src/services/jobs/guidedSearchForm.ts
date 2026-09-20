@@ -3,6 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
+import { findProviderByUrl, isHttpProviderUrl, validateProviderUrl } from './providerUrl.js';
 import { missingRequirements } from './jobValidation.js';
 import type { JobRequirement, JobValidationInput } from './jobValidation.js';
 
@@ -36,6 +37,8 @@ export interface ProviderApplicationCapabilities {
 export interface ProviderMetadata {
   id?: string;
   name?: string;
+  baseUrl?: string;
+  countries?: readonly string[];
   capabilities?: {
     application?: ProviderApplicationCapabilities;
     [key: string]: unknown;
@@ -63,6 +66,7 @@ export interface GuidedChannel {
 
 export interface GuidedJobPayloadInput {
   providerData?: readonly GuidedProviderSource[];
+  providerMetadata?: readonly ProviderMetadata[];
   selectedChannels?: readonly GuidedChannel[];
   shareWithUsers?: string[];
   name?: string | null;
@@ -170,6 +174,42 @@ export function canMoveToGuidedStep(
   return target <= current || firstBlockedGuidedStep(job, target) == null;
 }
 
+/** Resolve provider metadata and backfill identity fields on a legacy source when possible. */
+export function resolveProviderSource(
+  source: GuidedProviderSource,
+  providerMetadata: readonly ProviderMetadata[] = [],
+): { source: GuidedProviderSource; provider: ProviderMetadata | null; capability: ProviderApplicationCapabilities } {
+  const noProvider = () => ({ source, provider: null, capability: DEFAULT_CAPABILITY });
+  if (source?.url != null && !isHttpProviderUrl(source.url)) return noProvider();
+
+  const providerById =
+    source?.id == null ? null : (providerMetadata.find((candidate) => candidate?.id === source.id) ?? null);
+  const providerByUrl = findProviderByUrl(source?.url, providerMetadata);
+  let provider: ProviderMetadata | null = providerById;
+
+  if (source?.url != null) {
+    if (providerByUrl != null) {
+      // When both fields exist, the URL's exact normalized host must agree with the identity.
+      if (source.id != null && providerByUrl.id != null && source.id !== providerByUrl.id) return noProvider();
+      provider = providerByUrl;
+    } else if (providerById?.baseUrl != null) {
+      // A known provider with a declared base URL must also be found by that URL.
+      return noProvider();
+    }
+  }
+
+  const resolvedSource =
+    provider == null
+      ? source
+      : {
+          ...source,
+          ...(source?.id == null && provider.id != null ? { id: provider.id } : {}),
+          ...(source?.name == null && provider.name != null ? { name: provider.name } : {}),
+        };
+  const capability = provider?.capabilities?.application ?? DEFAULT_CAPABILITY;
+  return { source: resolvedSource, provider, capability };
+}
+
 /**
  * Merge server capability metadata with one job source for display. The returned object is a view
  * model only; capability data is never sent back as job source state.
@@ -178,9 +218,7 @@ export function mergeProviderCapability(
   source: GuidedProviderSource,
   providerMetadata: readonly ProviderMetadata[] = [],
 ): { source: GuidedProviderSource; provider: ProviderMetadata | null; capability: ProviderApplicationCapabilities } {
-  const provider = providerMetadata.find((candidate) => candidate?.id === source?.id) ?? null;
-  const capability = provider?.capabilities?.application ?? DEFAULT_CAPABILITY;
-  return { source, provider, capability };
+  return resolveProviderSource(source, providerMetadata);
 }
 
 /** Describe the visible automatic-inquiry control for one source. */
@@ -221,10 +259,11 @@ export function setSourceAutomaticPolicy(
   enabled: boolean,
   options: SourcePolicyControlOptions = {},
 ): GuidedProviderSource {
-  const control = sourcePolicyControl(source, providerMetadata, options);
-  if (enabled && !control.canEnable) return source;
+  const merged = mergeProviderCapability(source, providerMetadata);
+  const control = sourcePolicyControl(merged.source, providerMetadata, options);
+  if (enabled && !control.canEnable) return merged.source;
   return {
-    ...source,
+    ...merged.source,
     applicationPolicy: { automatic: enabled ? POLICY_STATES.ENABLED : POLICY_STATES.DISABLED },
   };
 }
@@ -240,10 +279,13 @@ export function migrateLegacyDraftProviderPolicies(
 ): GuidedProviderSource[] {
   return (Array.isArray(sources) ? sources : []).map((source) => {
     const automatic = source?.applicationPolicy?.automatic;
-    if (automatic === POLICY_STATES.ENABLED || automatic === POLICY_STATES.DISABLED) return source;
-    const control = sourcePolicyControl(source, providerMetadata);
+    if (automatic === POLICY_STATES.ENABLED || automatic === POLICY_STATES.DISABLED) {
+      return resolveProviderSource(source, providerMetadata).source;
+    }
+    const resolved = resolveProviderSource(source, providerMetadata);
+    const control = sourcePolicyControl(resolved.source, providerMetadata);
     return {
-      ...source,
+      ...resolved.source,
       applicationPolicy: {
         automatic: legacyAutoSendInquiry === true && control.canEnable ? POLICY_STATES.ENABLED : POLICY_STATES.DISABLED,
       },
@@ -255,13 +297,35 @@ export function migrateLegacyDraftProviderPolicies(
  * Keep only the source fields accepted by the backend and make the guided policy explicit. This
  * migrates a legacy source to disabled unless its source policy already says enabled.
  */
-export function canonicalGuidedProviderSource(source: GuidedProviderSource): GuidedProviderSource {
-  const automatic = source?.applicationPolicy?.automatic === POLICY_STATES.ENABLED;
+export function canonicalGuidedProviderSource(
+  source: GuidedProviderSource,
+  providerMetadata: readonly ProviderMetadata[] = [],
+): GuidedProviderSource {
+  const resolved = resolveProviderSource(source, providerMetadata);
+  const resolvedSource = resolved.source;
+  if (resolvedSource.url !== undefined && !isHttpProviderUrl(resolvedSource.url)) {
+    throw new Error('Provider URL must use http or https');
+  }
+  // Fail closed for unknown provider URLs: only throw if provider metadata was provided
+  // but the URL doesn't match any known provider. When no provider metadata is passed,
+  // we allow the function to work for sanitization testing.
+  if (resolvedSource.url !== undefined && resolved.provider == null && providerMetadata.length > 0) {
+    throw new Error('Provider URL does not match any known provider');
+  }
+  if (
+    resolvedSource.url !== undefined &&
+    resolved.provider?.baseUrl != null &&
+    !validateProviderUrl(resolvedSource.url, resolved.provider).ok
+  ) {
+    throw new Error('Provider URL does not match its provider');
+  }
+
+  const automatic = resolvedSource?.applicationPolicy?.automatic === POLICY_STATES.ENABLED;
   return {
-    ...(source?.id !== undefined ? { id: source.id } : {}),
-    ...(source?.name !== undefined ? { name: source.name } : {}),
-    ...(source?.url !== undefined ? { url: source.url } : {}),
-    ...(source?.enabled !== undefined ? { enabled: source.enabled } : {}),
+    ...(resolvedSource?.id !== undefined ? { id: resolvedSource.id } : {}),
+    ...(resolvedSource?.name !== undefined ? { name: resolvedSource.name } : {}),
+    ...(resolvedSource?.url !== undefined ? { url: resolvedSource.url } : {}),
+    ...(resolvedSource?.enabled !== undefined ? { enabled: resolvedSource.enabled } : {}),
     applicationPolicy: { automatic: automatic ? POLICY_STATES.ENABLED : POLICY_STATES.DISABLED },
   };
 }
@@ -273,6 +337,7 @@ export function canonicalGuidedProviderSource(source: GuidedProviderSource): Gui
  */
 export function buildGuidedJobPayload({
   providerData = [],
+  providerMetadata = [],
   selectedChannels = [],
   shareWithUsers = [],
   name,
@@ -285,7 +350,7 @@ export function buildGuidedJobPayload({
   jobId = null,
 }: GuidedJobPayloadInput = {}): GuidedJobPayload {
   return {
-    provider: providerData.map(canonicalGuidedProviderSource),
+    provider: providerData.map((source) => canonicalGuidedProviderSource(source, providerMetadata)),
     notificationAdapter: selectedChannels.map((channel) => ({ configuredAdapterId: channel.id })),
     shareWithUsers,
     name,

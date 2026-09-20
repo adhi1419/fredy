@@ -164,7 +164,23 @@ const notificationAdapterMetadata = [
 const notificationChannels = [{ id: 'channel-1', name: 'Browser notifications', adapterId: 'browser' }];
 
 const providerMetadata = [
-  { id: 'immoscout', name: 'ImmobilienScout24', baseUrl: 'https://www.immobilienscout24.de' },
+  {
+    id: 'immoscout',
+    name: 'ImmobilienScout24',
+    baseUrl: 'https://www.immobilienscout24.de/',
+    countries: ['de'],
+    capabilities: {
+      application: {
+        manual: true,
+        automatic: true,
+        validation: 'provider',
+        profileRequirements: ['identity', 'contact', 'address', 'household', 'employment', 'income', 'move-in'],
+        consentRequirements: ['provider-privacy'],
+        connectionRequired: false,
+        eligibility: 'provider',
+      },
+    },
+  },
   { id: 'immo', name: 'Immowelt', baseUrl: 'https://www.immowelt.de' },
   { id: 'metadataOnly', name: 'Metadata-only provider', baseUrl: 'https://example.com/metadata-only' },
 ];
