@@ -10,6 +10,7 @@ import { useActions } from '../../services/state/store';
 import { signOutFirebase } from '../../services/auth/firebaseAuth.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import { ACCOUNT_NAV, PRIMARY_NAV, resolvePrimaryKey } from './navModel.js';
+import { homeSearchForNavigation } from '../../services/home/homeViewState.js';
 
 import './Navigate.less';
 
@@ -50,7 +51,8 @@ export default function Navigation({ isAdmin }) {
 
   const goTo = (path) => {
     setAccountOpen(false);
-    navigate(path);
+    const preservedSearch = path === '/dashboard' ? homeSearchForNavigation(location.pathname, location.search) : '';
+    navigate(`${path}${preservedSearch}`);
   };
 
   const handleSignOut = async () => {

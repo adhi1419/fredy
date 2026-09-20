@@ -33,7 +33,7 @@ import MapView from './views/listings/Map.jsx';
 import Navigation from './components/navigation/Navigation.jsx';
 import { Layout } from '@douyinfe/semi-ui-19';
 import FredyFooter from './components/footer/FredyFooter.jsx';
-import Dashboard from './views/dashboard/Dashboard.jsx';
+import Home from './views/home/Home.jsx';
 import FinanceCalculator from './views/finance/FinanceCalculator.jsx';
 import ListingDetail from './views/listings/ListingDetail.jsx';
 import { I18nProvider, availableLanguages } from './services/i18n/i18n.jsx';
@@ -197,7 +197,7 @@ export default function FredyApp() {
                   <Route path="/403" element={<InsufficientPermission />} />
                   <Route path="/jobs/new" element={<JobMutation />} />
                   <Route path="/jobs/edit/:jobId" element={<JobMutation />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Home />} />
                   <Route path="/jobs" element={<Jobs />} />
                   <Route path="/listings" element={<Listings />} />
                   <Route path="/listings/listing/:listingId" element={<ListingDetail />} />

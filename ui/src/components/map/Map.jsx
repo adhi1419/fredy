@@ -111,6 +111,8 @@ const GERMANY_CENTER = [10.4515, 51.1657];
  * @param {string[]} [props.countries] - ISO 3166-1 alpha-2 codes the map should cover. `maxBounds`
  *   is the union of their boxes; unlike the two above this one is live, because the job form
  *   changes it as providers are ticked. Defaults to Germany.
+ * @param {boolean} [props.constrainToCountries] - Set false for an embedded comparison map that
+ *   must fit listings across a viewport shape the country bounds cannot contain.
  * @param {'STANDARD'|'SATELLITE'} [props.style] - Controlled basemap.
  * @param {boolean} [props.show3dBuildings] - Controlled 3D buildings overlay.
  * @param {boolean} [props.showTransit] - Controlled public transport overlay.
@@ -142,6 +144,7 @@ export default function Map({
   initialCenter = GERMANY_CENTER,
   initialZoom = 4,
   countries = DEFAULT_COUNTRIES,
+  constrainToCountries = true,
   style,
   show3dBuildings,
   showTransit,
@@ -214,7 +217,7 @@ export default function Map({
       style: STYLES[styleValue],
       center: initialCenter,
       zoom: initialZoom,
-      maxBounds: boundsForCountries(countries),
+      maxBounds: constrainToCountries ? boundsForCountries(countries) : undefined,
       antialias: true,
       cooperativeGestures,
     });
@@ -265,8 +268,8 @@ export default function Map({
   // bounds by itself if it now sits outside them.
   useEffect(() => {
     if (!mapRef.current) return;
-    mapRef.current.setMaxBounds(boundsForCountries(countries));
-  }, [countries]);
+    mapRef.current.setMaxBounds(constrainToCountries ? boundsForCountries(countries) : null);
+  }, [constrainToCountries, countries]);
 
   // Load spatial filter and setup area filter event listeners
   useEffect(() => {
