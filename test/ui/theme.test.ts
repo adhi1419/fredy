@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,29 +15,34 @@ const uiSrc = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../ui/
 /**
  * The one global theme.js touches. The suite runs without a DOM, and this double covers the whole
  * of its contact with the browser: a single attribute on the body.
- *
- * @returns {{attributes: Record<string, string>}}
  */
-function stubBrowser() {
-  const attributes = {};
-  globalThis.document = {
+interface StubBrowserDocument {
+  attributes: Record<string, string>;
+}
+
+/**
+ * @returns
+ */
+function stubBrowser(): StubBrowserDocument {
+  const attributes: Record<string, string> = {};
+  vi.stubGlobal('document', {
     body: {
-      setAttribute: (name, value) => (attributes[name] = value),
-      getAttribute: (name) => attributes[name] ?? null,
+      setAttribute: (name: string, value: string) => (attributes[name] = value),
+      getAttribute: (name: string) => attributes[name] ?? null,
     },
-  };
+  });
   return { attributes };
 }
 
 describe('theme preference', () => {
-  let browser;
+  let browser: StubBrowserDocument;
 
   beforeEach(() => {
     browser = stubBrowser();
   });
 
   afterEach(() => {
-    delete globalThis.document;
+    vi.unstubAllGlobals();
   });
 
   it('offers exactly the two themes the stylesheets define a palette for', () => {
@@ -74,7 +79,7 @@ describe('theme preference', () => {
   });
 
   it('keeps no copy of the preference, which belongs to the settings table alone', () => {
-    const source = fs.readFileSync(path.join(uiSrc, 'services/theme/theme.js'), 'utf-8');
+    const source = fs.readFileSync(path.join(uiSrc, 'services/theme/theme.ts'), 'utf-8');
     expect(source).not.toMatch(/localStorage|sessionStorage|document\.cookie/);
   });
 });
@@ -85,10 +90,10 @@ describe('themes.less', () => {
   /**
    * The custom properties declared inside one selector block.
    *
-   * @param {string} selector
-   * @returns {string[]}
+   * @param selector
+   * @returns
    */
-  function tokensIn(selector) {
+  function tokensIn(selector: string): string[] {
     const start = source.indexOf(`${selector} {`);
     expect(start, `${selector} block is missing`).toBeGreaterThanOrEqual(0);
     const end = source.indexOf('\n}', start);
@@ -99,10 +104,10 @@ describe('themes.less', () => {
   /**
    * Read the custom-property values declared inside one selector block.
    *
-   * @param {string} selector
-   * @returns {Record<string, string>}
+   * @param selector
+   * @returns
    */
-  function valuesIn(selector) {
+  function valuesIn(selector: string): Record<string, string> {
     const start = source.indexOf(`${selector} {`);
     expect(start, `${selector} block is missing`).toBeGreaterThanOrEqual(0);
     const end = source.indexOf('\n}', start);
@@ -115,25 +120,25 @@ describe('themes.less', () => {
   /**
    * Parse the solid hex colours used by the semantic foreground and background tokens.
    *
-   * @param {string} value
-   * @returns {[number, number, number]}
+   * @param value
+   * @returns
    */
-  function parseHex(value) {
+  function parseHex(value: string): [number, number, number] {
     const hex = value.trim().slice(1);
     const expanded = hex.length === 3 ? [...hex].map((part) => part + part).join('') : hex;
     expect(value, `expected a hex colour, got ${value}`).toMatch(/^#[0-9a-f]{3,6}$/i);
-    return [0, 2, 4].map((offset) => parseInt(expanded.slice(offset, offset + 2), 16));
+    return [0, 2, 4].map((offset) => parseInt(expanded.slice(offset, offset + 2), 16)) as [number, number, number];
   }
 
   /**
    * Calculate the WCAG relative luminance contrast ratio for two solid colours.
    *
-   * @param {string} foreground
-   * @param {string} background
-   * @returns {number}
+   * @param foreground
+   * @param background
+   * @returns
    */
-  function contrastRatio(foreground, background) {
-    const luminance = (value) => {
+  function contrastRatio(foreground: string, background: string): number {
+    const luminance = (value: string): number => {
       const channels = parseHex(value).map((channel) => channel / 255);
       const linear = channels.map((channel) =>
         channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
@@ -148,7 +153,12 @@ describe('themes.less', () => {
     );
   }
 
-  const contrastRequirements = [
+  const contrastRequirements: readonly [
+    label: string,
+    foregroundToken: string,
+    backgroundToken: string,
+    minimum: number,
+  ][] = [
     ['body text on base', '--f-text', '--f-base', 4.5],
     ['body text on surface', '--f-text', '--f-surface', 4.5],
     ['muted text on base', '--f-muted', '--f-base', 4.5],
@@ -212,8 +222,8 @@ describe('themes.less', () => {
   });
 
   it('is the only stylesheet carrying a colour literal', () => {
-    const stylesheets = [];
-    const walk = (dir) => {
+    const stylesheets: string[] = [];
+    const walk = (dir: string) => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(full);
@@ -230,7 +240,7 @@ describe('themes.less', () => {
      *  - white on the dedicated forest control fill, whose contrast is asserted above
      *  - the dead `.chartCard` block, which renders nowhere (only its `__no__data` child is used)
      */
-    const allowed = [
+    const allowed: readonly RegExp[] = [
       /linear-gradient\(#000 0 0\)/g,
       /rgba\(0, 0, 0, [\d.]+\)/g,
       /rgba\(255, 255, 255, 0\.(12|22)\)/g,
@@ -239,7 +249,7 @@ describe('themes.less', () => {
       /color: #fff;/g,
     ];
 
-    const offenders = [];
+    const offenders: string[] = [];
     for (const file of stylesheets) {
       const lines = fs.readFileSync(file, 'utf-8').split('\n');
       lines.forEach((line, index) => {

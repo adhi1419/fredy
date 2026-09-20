@@ -16,10 +16,9 @@
  * so setting it switches both at once and nothing has to be re-rendered for the CSS to follow.
  */
 
-/** @typedef {'dark'|'light'} Theme */
+export type Theme = 'dark' | 'light';
 
-/** @type {Theme[]} */
-export const THEMES = ['dark', 'light'];
+export const THEMES: readonly Theme[] = ['dark', 'light'];
 
 /**
  * What an account gets before it has ever expressed a preference, and what the login screen shows.
@@ -29,19 +28,17 @@ export const THEMES = ['dark', 'light'];
  * the app on a light-mode laptop would be a change nobody asked for.
  *
  * `index.html` ships the same value on the body, so the first frame of a cold load already matches.
- *
- * @type {Theme}
  */
-export const DEFAULT_THEME = 'dark';
+export const DEFAULT_THEME: Theme = 'dark';
 
 /**
  * Coerce anything to a theme this app knows how to paint.
  *
- * @param {unknown} value
- * @returns {Theme}
+ * @param value
+ * @returns
  */
-export function normalizeTheme(value) {
-  return THEMES.includes(/** @type {Theme} */ (value)) ? /** @type {Theme} */ (value) : DEFAULT_THEME;
+export function normalizeTheme(value: unknown): Theme {
+  return value === 'dark' || value === 'light' ? value : DEFAULT_THEME;
 }
 
 /**
@@ -51,19 +48,19 @@ export function normalizeTheme(value) {
  * dark cut, and no custom property can swap a PNG. Everything that can be expressed as a colour
  * should use the tokens instead and let CSS do the switching.
  *
- * @returns {Theme}
+ * @returns
  */
-export function currentTheme() {
+export function currentTheme(): Theme {
   return normalizeTheme(document.body.getAttribute('theme-mode'));
 }
 
 /**
  * Paint the document in a theme.
  *
- * @param {unknown} theme Anything; unknown values fall back to {@link DEFAULT_THEME}.
- * @returns {Theme} The theme that was actually applied.
+ * @param theme Anything; unknown values fall back to {@link DEFAULT_THEME}.
+ * @returns The theme that was actually applied.
  */
-export function applyTheme(theme) {
+export function applyTheme(theme: unknown): Theme {
   const next = normalizeTheme(theme);
   document.body.setAttribute('theme-mode', next);
   return next;

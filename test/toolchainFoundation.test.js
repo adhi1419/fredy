@@ -43,7 +43,7 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/jobs/jobDraft.ts',
       'ui/src/services/jobs/jobSummary.ts',
       'ui/src/services/jobs/jobFilters.ts',
-      'ui/src/services/auth/firebaseAuth.d.ts',
+      'ui/src/services/auth/firebaseAuth.ts',
       'ui/src/services/authenticatedTransport.ts',
       'ui/src/services/jobs/providerUrl.ts',
       'ui/src/services/home/homeViewState.ts',
@@ -51,7 +51,7 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/App.tsx',
       'ui/src/AppLegacyComponents.d.ts',
       'ui/src/components/navigation/Navigation.tsx',
-      'ui/src/components/navigation/navModel.d.ts',
+      'ui/src/components/navigation/navModel.ts',
       'ui/src/views/home/Home.tsx',
       'ui/src/views/listings/ListingDetail.tsx',
       'ui/src/services/listings/listingFilters.ts',
@@ -71,11 +71,17 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/views/settings/pages/personalSettingsDrafts.ts',
       'ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx',
       'ui/src/vite-env.d.ts',
+      'ui/src/services/onboarding/applicantProfileOnboarding.ts',
+      'ui/src/services/routes/legacyRedirects.ts',
+      'ui/src/services/theme/theme.ts',
+      'ui/src/services/notifications/browserAdapter.d.ts',
+      'ui/src/hooks/useBrowserNotifications.ts',
     ]);
     const testConfig = JSON.parse(read('tsconfig.frontend-tests.json'));
     expect(testConfig.extends).toBe('./tsconfig.frontend.json');
     expect(testConfig.compilerOptions.types).toEqual(['node']);
     expect(testConfig.include).toEqual([
+      'ui/src/vite-env.d.ts',
       'test/ui/finalResponsiveSlice.test.ts',
       'test/ui/homeSurface.test.ts',
       'test/ui/applicantProfileOnboarding.test.ts',
@@ -96,6 +102,11 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/jobDraft.test.ts',
       'test/ui/jobSummary.test.ts',
       'test/ui/jobFilters.test.ts',
+      'test/ui/navModel.test.ts',
+      'test/ui/theme.test.ts',
+      'test/ui/firebaseAuth.test.ts',
+      'test/ui/browserNotificationGate.d.ts',
+      'test/ui/browserNotificationGate.test.ts',
     ]);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/services/apiUrl.js'))).toBe(false);
@@ -155,6 +166,45 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'test/ui/jobDraft.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/jobSummary.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/jobFilters.test.js'))).toBe(false);
+    const migratedSources = [
+      [
+        'ui/src/components/navigation/navModel.ts',
+        ['ui/src/components/navigation/navModel.js', 'ui/src/components/navigation/navModel.d.ts'],
+      ],
+      [
+        'ui/src/services/onboarding/applicantProfileOnboarding.ts',
+        [
+          'ui/src/services/onboarding/applicantProfileOnboarding.js',
+          'ui/src/services/onboarding/applicantProfileOnboarding.d.ts',
+        ],
+      ],
+      [
+        'ui/src/services/routes/legacyRedirects.ts',
+        ['ui/src/services/routes/legacyRedirects.js', 'ui/src/services/routes/legacyRedirects.d.ts'],
+      ],
+      ['ui/src/services/theme/theme.ts', ['ui/src/services/theme/theme.js', 'ui/src/services/theme/theme.d.ts']],
+      [
+        'ui/src/services/auth/firebaseAuth.ts',
+        ['ui/src/services/auth/firebaseAuth.js', 'ui/src/services/auth/firebaseAuth.d.ts'],
+      ],
+      [
+        'ui/src/hooks/useBrowserNotifications.ts',
+        ['ui/src/hooks/useBrowserNotifications.js', 'ui/src/hooks/useBrowserNotifications.d.ts'],
+      ],
+    ];
+    for (const [typescriptPath, obsoletePaths] of migratedSources) {
+      expect(fs.existsSync(path.join(root, typescriptPath)), typescriptPath).toBe(true);
+      for (const obsoletePath of obsoletePaths) {
+        expect(fs.existsSync(path.join(root, obsoletePath)), obsoletePath).toBe(false);
+      }
+    }
+    for (const testPath of ['navModel', 'theme', 'firebaseAuth', 'browserNotificationGate']) {
+      expect(fs.existsSync(path.join(root, `test/ui/${testPath}.test.ts`)), testPath).toBe(true);
+      expect(fs.existsSync(path.join(root, `test/ui/${testPath}.test.js`)), testPath).toBe(false);
+    }
+    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.js'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.d.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'test/ui/browserNotificationGate.d.ts'))).toBe(true);
     expect(read('ui/src/views/jobs/savedSearchesLegacy.d.ts')).not.toContain("declare module '*mapUtils.js'");
   });
 

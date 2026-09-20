@@ -4,21 +4,27 @@
  */
 
 /** Route used only during mandatory first-registration profile setup. */
-export const APPLICANT_PROFILE_ONBOARDING_PATH = '/onboarding/applicant-profile';
+export const APPLICANT_PROFILE_ONBOARDING_PATH = '/onboarding/applicant-profile' as const;
 
 /** Common facts required before the authenticated user can enter product routes. */
-export const REQUIRED_COMMON_PROFILE_FIELDS = Object.freeze(['name', 'street', 'houseNumber', 'postcode', 'city']);
+export const REQUIRED_COMMON_PROFILE_FIELDS = Object.freeze([
+  'name',
+  'street',
+  'houseNumber',
+  'postcode',
+  'city',
+] as const);
 
-const present = (value) => typeof value === 'string' && value.trim().length > 0;
+const present = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
 /**
  * Return common applicant fields that are missing or invalid, in form order.
  * Provider-specific income, employment and consent fields are intentionally excluded.
  *
- * @param {Object|null|undefined} profile
- * @returns {string[]}
+ * @param profile
+ * @returns
  */
-export function getInvalidCommonApplicantProfileFields(profile) {
+export function getInvalidCommonApplicantProfileFields(profile?: Record<string, unknown> | null): string[] {
   return REQUIRED_COMMON_PROFILE_FIELDS.filter((field) => {
     if (field === 'name') {
       return !present(profile?.name) || profile.name.trim().split(/\s+/).length < 2;
@@ -31,11 +37,26 @@ export function getInvalidCommonApplicantProfileFields(profile) {
  * Whether a persisted inquiry profile contains the explicitly entered common applicant facts.
  * Provider-specific income, employment and consent fields are intentionally not part of this check.
  *
- * @param {Object|null|undefined} profile
- * @returns {boolean}
+ * @param profile
+ * @returns
  */
-export function isCommonApplicantProfileComplete(profile) {
+export function isCommonApplicantProfileComplete(profile?: Record<string, unknown> | null): boolean {
   return getInvalidCommonApplicantProfileFields(profile).length === 0;
+}
+
+export interface ApplicantProfileDecision {
+  status: 'loading' | 'load-failed' | 'incomplete' | 'complete' | 'save-failed';
+  requiresSetup: boolean;
+  shouldRedirect: boolean;
+  path: string;
+}
+
+export interface ApplicantProfileOnboardingInput {
+  settingsLoaded?: boolean;
+  settingsLoadFailed?: boolean;
+  profile?: unknown;
+  pathname?: string;
+  saveError?: unknown;
 }
 
 /**
@@ -45,8 +66,8 @@ export function isCommonApplicantProfileComplete(profile) {
  * settings request is in flight must not redirect a signed-in user, and a failed save must keep the
  * draft on the onboarding route instead of starting a redirect loop.
  *
- * @param {{settingsLoaded?: boolean, settingsLoadFailed?: boolean, profile?: Object|null, pathname?: string, saveError?: unknown}} input
- * @returns {{status: 'loading'|'load-failed'|'incomplete'|'complete'|'save-failed', requiresSetup: boolean, shouldRedirect: boolean, path: string}}
+ * @param input
+ * @returns
  */
 export function resolveApplicantProfileOnboarding({
   settingsLoaded = false,
@@ -54,7 +75,7 @@ export function resolveApplicantProfileOnboarding({
   profile = null,
   pathname = APPLICANT_PROFILE_ONBOARDING_PATH,
   saveError = null,
-} = {}) {
+}: ApplicantProfileOnboardingInput = {}): ApplicantProfileDecision {
   if (settingsLoaded !== true) {
     return { status: 'loading', requiresSetup: false, shouldRedirect: false, path: APPLICANT_PROFILE_ONBOARDING_PATH };
   }
@@ -68,7 +89,7 @@ export function resolveApplicantProfileOnboarding({
     };
   }
 
-  if (isCommonApplicantProfileComplete(profile)) {
+  if (isCommonApplicantProfileComplete(profile as Record<string, unknown> | null)) {
     return { status: 'complete', requiresSetup: false, shouldRedirect: false, path: APPLICANT_PROFILE_ONBOARDING_PATH };
   }
 

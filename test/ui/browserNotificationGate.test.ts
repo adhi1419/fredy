@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,18 +11,18 @@ import { fileURLToPath } from 'url';
 import { BROWSER_ADAPTER_ID, usesBrowserAdapter } from '../../ui/src/services/notifications/browserAdapter.js';
 import { config as browserAdapterConfig } from '../../lib/notification/adapter/browser.js';
 
-const hook = fs.readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), '../../ui/src/hooks/useBrowserNotifications.js'),
-  'utf-8',
-);
-
 /**
- * @param {string[]} adapterIds
- * @returns {Object}
+ * @param adapterIds
+ * @returns
  */
-function job(...adapterIds) {
+function job(...adapterIds: string[]): { notificationAdapter: Array<{ id: string; name: string; fields: object }> } {
   return { notificationAdapter: adapterIds.map((id) => ({ id, name: id, fields: {} })) };
 }
+
+const hook = fs.readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), '../../ui/src/hooks/useBrowserNotifications.ts'),
+  'utf-8',
+);
 
 describe('when Fredy asks for notification permission', () => {
   it('uses the id the backend adapter actually publishes', () => {

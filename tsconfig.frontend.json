@@ -20,7 +20,7 @@
     "ui/src/services/jobs/jobDraft.ts",
     "ui/src/services/jobs/jobSummary.ts",
     "ui/src/services/jobs/jobFilters.ts",
-    "ui/src/services/auth/firebaseAuth.d.ts",
+    "ui/src/services/auth/firebaseAuth.ts",
     "ui/src/services/authenticatedTransport.ts",
     "ui/src/services/jobs/providerUrl.ts",
     "ui/src/services/home/homeViewState.ts",
@@ -28,7 +28,7 @@
     "ui/src/App.tsx",
     "ui/src/AppLegacyComponents.d.ts",
     "ui/src/components/navigation/Navigation.tsx",
-    "ui/src/components/navigation/navModel.d.ts",
+    "ui/src/components/navigation/navModel.ts",
     "ui/src/views/home/Home.tsx",
     "ui/src/views/listings/ListingDetail.tsx",
     "ui/src/services/listings/listingFilters.ts",
@@ -47,6 +47,11 @@
     "ui/src/views/settings/pages/ListingDetailsPage.tsx",
     "ui/src/views/settings/pages/personalSettingsDrafts.ts",
     "ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx",
-    "ui/src/vite-env.d.ts"
+    "ui/src/vite-env.d.ts",
+    "ui/src/services/onboarding/applicantProfileOnboarding.ts",
+    "ui/src/services/routes/legacyRedirects.ts",
+    "ui/src/services/theme/theme.ts",
+    "ui/src/services/notifications/browserAdapter.d.ts",
+    "ui/src/hooks/useBrowserNotifications.ts"
   ]
 }

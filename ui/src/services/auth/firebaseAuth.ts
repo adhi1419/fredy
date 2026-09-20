@@ -9,20 +9,35 @@ import {
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
+  type Auth,
   setPersistence,
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
 import { resolveApiUrl } from '../apiUrl.js';
 
+export interface FirebaseAuthIdentity {
+  uid: string;
+  email?: string | null;
+}
+
+export interface FirebaseAuthClient {
+  enabled: boolean;
+  auth: Auth;
+  GoogleAuthProvider: typeof GoogleAuthProvider;
+  onAuthStateChanged: typeof onAuthStateChanged;
+  signInWithPopup: typeof signInWithPopup;
+  signOut: typeof signOut;
+}
+
 /**
  * The Firebase client is initialized exactly once for the lifetime of this module. The config is
  * deliberately fetched without cookies or a bearer token: it is the public bootstrap endpoint
  * needed before a Firebase user exists.
  *
- * @returns {Promise<Object>}
+ * @returns
  */
-async function createAuthClient() {
+async function createAuthClient(): Promise<FirebaseAuthClient | { enabled: false }> {
   const response = await fetch(resolveApiUrl('/api/auth/config'), {
     credentials: 'omit',
     headers: { Accept: 'application/json' },
@@ -60,36 +75,40 @@ async function createAuthClient() {
 }
 
 /** A single promise shared by the login screen, request helpers, and SSE client. */
-export const authReady = createAuthClient();
+export const authReady: Promise<FirebaseAuthClient | { enabled: false }> = createAuthClient();
 
 /**
  * Resolve the initialized Firebase client.
- * @returns {Promise<Object>}
+ * @returns
  */
-export function getFirebaseAuthClient() {
+export function getFirebaseAuthClient(): Promise<FirebaseAuthClient | { enabled: false }> {
   return authReady;
 }
 
 /**
  * Get the current Firebase user after initialization has completed.
- * @returns {Promise<Object|null>}
+ * @returns
  */
-export async function getFirebaseCurrentUser() {
+export async function getFirebaseCurrentUser(): Promise<FirebaseAuthIdentity | null> {
   const client = await authReady;
-  return client.enabled ? client.auth.currentUser : null;
+  return client.enabled ? (client.auth.currentUser as FirebaseAuthIdentity | null) : null;
 }
 
 /**
  * Get an ID token for the current user. Public requests are allowed to continue without one when
  * no Firebase user exists or auth initialization failed; protected endpoints will return 401.
  *
- * @param {boolean} [forceRefresh=false] Force Firebase to refresh the token.
- * @returns {Promise<string|null>}
+ * @param forceRefresh Force Firebase to refresh the token.
+ * @returns
  */
-export async function getIdToken(forceRefresh = false) {
+export async function getIdToken(forceRefresh = false): Promise<string | null> {
   try {
-    const user = await getFirebaseCurrentUser();
-    return user ? await user.getIdToken(forceRefresh) : null;
+    const client = await authReady;
+    if (!client.enabled) {
+      return null;
+    }
+    const token = await client.auth.currentUser?.getIdToken(forceRefresh);
+    return token ?? null;
   } catch {
     return null;
   }
@@ -97,9 +116,9 @@ export async function getIdToken(forceRefresh = false) {
 
 /**
  * Sign out of Firebase directly. There is no backend session-cookie endpoint in bearer mode.
- * @returns {Promise<void>}
+ * @returns
  */
-export async function signOutFirebase() {
+export async function signOutFirebase(): Promise<void> {
   const client = await authReady;
   if (client.enabled && client.auth.currentUser) {
     await client.signOut(client.auth);
@@ -108,10 +127,10 @@ export async function signOutFirebase() {
 
 /**
  * Subscribe to Firebase auth state after the singleton client is ready.
- * @param {(user: Object|null) => void} listener
- * @returns {() => void} unsubscribe function
+ * @param listener
+ * @returns unsubscribe function
  */
-export function subscribeToAuthState(listener) {
+export function subscribeToAuthState(listener: (user: FirebaseAuthIdentity | null) => void): () => void {
   let cancelled = false;
   let unsubscribe = () => {};
 

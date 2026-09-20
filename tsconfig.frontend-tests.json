@@ -4,6 +4,7 @@
     "types": ["node"]
   },
   "include": [
+    "ui/src/vite-env.d.ts",
     "test/ui/finalResponsiveSlice.test.ts",
     "test/ui/homeSurface.test.ts",
     "test/ui/applicantProfileOnboarding.test.ts",
@@ -23,6 +24,11 @@
     "test/ui/dealTypeCopyInSync.test.ts",
     "test/ui/jobDraft.test.ts",
     "test/ui/jobSummary.test.ts",
-    "test/ui/jobFilters.test.ts"
+    "test/ui/jobFilters.test.ts",
+    "test/ui/navModel.test.ts",
+    "test/ui/theme.test.ts",
+    "test/ui/firebaseAuth.test.ts",
+    "test/ui/browserNotificationGate.d.ts",
+    "test/ui/browserNotificationGate.test.ts"
   ]
 }
