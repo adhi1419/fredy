@@ -25,6 +25,7 @@
     "ui/src/services/home/homeViewState.ts",
     "ui/src/views/listings/mapUtils.ts",
     "ui/src/views/home/Home.tsx",
+    "ui/src/views/listings/ListingDetail.tsx",
     "ui/src/services/listings/listingFilters.ts",
     "ui/src/services/state/financeState.ts",
     "ui/src/services/state/jobsState.ts",

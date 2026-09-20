@@ -124,10 +124,10 @@ describe('Home production surface contract', () => {
 
   it('carries exact Home context into detail and consumes the safe return path', () => {
     expect(homeSource).toContain('withReturnTo(`/listings/listing/${id}`');
-    expect(fs.readFileSync(path.join(root, 'ui/src/views/listings/ListingDetail.jsx'), 'utf8')).toContain(
+    expect(fs.readFileSync(path.join(root, 'ui/src/views/listings/ListingDetail.tsx'), 'utf8')).toContain(
       "sanitizeReturnTo(searchParams.get('returnTo'))",
     );
-    expect(fs.readFileSync(path.join(root, 'ui/src/views/listings/ListingDetail.jsx'), 'utf8')).toContain(
+    expect(fs.readFileSync(path.join(root, 'ui/src/views/listings/ListingDetail.tsx'), 'utf8')).toContain(
       'returnTo ? navigate(returnTo) : navigate(-1)',
     );
   });

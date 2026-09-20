@@ -8,6 +8,273 @@
     display: none;
   }
 
+  &__heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: @space-4;
+    margin-bottom: @space-4;
+  }
+
+  &__heading-copy,
+  &__fit-summary,
+  &__rail-heading {
+    min-width: 0;
+  }
+
+  &__heading-copy {
+    display: grid;
+    gap: @space-1;
+  }
+
+  &__heading-copy .semi-typography {
+    margin: 0;
+  }
+
+  &__heading-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: @space-2;
+  }
+
+  &__eyebrow {
+    color: @color-accent;
+    font-size: @text-xs;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  &__lifecycle,
+  &__fit-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 3px @space-2;
+    border: 1px solid @color-border;
+    border-radius: @radius-pill;
+    background: @color-fill-subtle;
+    color: @color-muted;
+    font-size: @text-xs;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+
+  &__lifecycle--selected,
+  &__fit-status {
+    border-color: @color-accent;
+    background: @color-accent-fill;
+    color: @color-accent;
+  }
+
+  &__composition {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(270px, 320px);
+    align-items: start;
+    gap: @space-4;
+  }
+
+  &__main {
+    display: grid;
+    min-width: 0;
+    gap: @space-4;
+  }
+
+  &__fit,
+  &__activity,
+  &__evidence,
+  &__action-rail {
+    min-width: 0;
+    border: 1px solid @color-border;
+    border-radius: @radius-card;
+    background: @color-surface;
+  }
+
+  &__fit {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+    overflow: hidden;
+  }
+
+  &__fit .listing-detail__image-container {
+    height: 320px;
+    min-height: 320px;
+    align-self: start;
+    border-radius: 0;
+  }
+
+  &__fit-summary {
+    display: grid;
+    align-content: start;
+    gap: @space-4;
+    padding: @space-5;
+  }
+
+  &__fit-heading,
+  &__section-heading,
+  &__rail-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: @space-3;
+  }
+
+  &__fit-heading .semi-typography,
+  &__section-heading .semi-typography,
+  &__rail-heading .semi-typography {
+    margin: @space-1 0 0;
+  }
+
+  &__fit-address {
+    padding: @space-3 0;
+    border-top: 1px solid @color-border;
+    border-bottom: 1px solid @color-border;
+  }
+
+  &__fit-address .semi-space {
+    max-width: 100%;
+  }
+
+  &__fit-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: @space-3;
+  }
+
+  &__fit-metric {
+    display: grid;
+    gap: @space-1;
+    min-width: 0;
+    padding-left: @space-2;
+    border-left: 2px solid @color-border;
+
+    span {
+      color: @color-muted;
+      font-size: @text-xs;
+      text-transform: uppercase;
+    }
+
+    strong {
+      overflow: hidden;
+      color: @color-text;
+      font-size: @text-base;
+      text-overflow: ellipsis;
+    }
+  }
+
+  &__fit-metric-value--accent {
+    color: @color-accent !important;
+  }
+
+  &__activity,
+  &__evidence {
+    padding: @space-5;
+  }
+
+  &__section-heading {
+    margin-bottom: @space-4;
+
+    > :last-child {
+      max-width: 40ch;
+      color: @color-muted;
+      font-size: @text-sm;
+      text-align: right;
+    }
+  }
+
+  &__activity-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 0.55fr);
+    gap: @space-4;
+  }
+
+  &__activity .listing-detail__notes {
+    padding: 0;
+    border-top: 0;
+  }
+
+  &__activity .listing-detail__lifecycle-actions {
+    align-content: start;
+    margin: 0;
+    padding: @space-2;
+  }
+
+  &__evidence .listing-detail__deep-grid {
+    margin-top: @space-2;
+  }
+
+  &__deep-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: @space-5;
+  }
+
+  &__deep-column {
+    min-width: 0;
+  }
+
+  &__action-rail {
+    position: sticky;
+    top: @space-4;
+    display: grid;
+    gap: @space-4;
+    padding: @space-4;
+  }
+
+  &__rail-heading {
+    display: grid;
+    gap: @space-1;
+
+    > .semi-typography {
+      color: @color-muted;
+      font-size: @text-sm;
+    }
+  }
+
+  &__action-rail-body {
+    display: grid;
+    gap: @space-3;
+  }
+
+  &__rail-primary-action {
+    .semi-button {
+      width: 100%;
+      min-height: 44px;
+    }
+  }
+
+  &__guard {
+    display: grid;
+    gap: @space-1;
+    padding: @space-3;
+    border: 1px solid @color-warning;
+    border-radius: @radius-btn;
+    background: @color-fill-subtle;
+
+    strong {
+      color: @color-text;
+      font-size: @text-sm;
+    }
+
+    .semi-typography {
+      color: @color-muted;
+      font-size: @text-xs;
+    }
+  }
+
+  &__rail-actions {
+    display: grid;
+    gap: @space-2;
+
+    .semi-space-item,
+    .semi-button,
+    .listing-detail__open-btn {
+      min-height: 44px;
+    }
+  }
+
   &__lifecycle-actions {
     display: flex;
     flex-wrap: wrap;
@@ -17,50 +284,15 @@
     border: 1px solid @color-border;
     border-radius: @radius-card;
     background: @color-fill-subtle;
+
+    .semi-button {
+      min-height: 44px;
+    }
   }
 
   /* No backdrop-filter here on purpose: it would make the card a containing block for fixed
      positioning, and the map inside it goes fullscreen by becoming `position: fixed`. Over the flat
      app background the blur bought nothing anyway. */
-  &__card {
-    background-color: @color-surface;
-    border: 1px solid var(--semi-color-border);
-    margin-bottom: 2rem;
-    overflow: hidden;
-
-    .semi-card-body {
-      padding: 0;
-    }
-  }
-
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 1.5rem;
-    gap: 1rem;
-    border-bottom: 1px solid var(--semi-color-border);
-
-    @media (max-width: 768px) {
-      flex-direction: column;
-      align-items: stretch;
-
-      & > .semi-space {
-        width: 100%;
-      }
-
-      &-actions {
-        width: 100%;
-        justify-content: flex-start;
-        margin-top: 0.5rem;
-
-        .semi-button {
-          flex: 1;
-        }
-      }
-    }
-  }
-
   &__image-container {
     width: 100%;
     height: 400px;
@@ -286,6 +518,58 @@
     font-variant-numeric: tabular-nums;
   }
   @media (max-width: 768px) {
+    &__heading {
+      display: block;
+    }
+
+    &__heading-actions {
+      justify-content: flex-start;
+      margin-top: @space-3;
+    }
+
+    &__composition,
+    &__fit,
+    &__deep-grid,
+    &__activity-content {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    &__fit .listing-detail__image-container {
+      height: 260px;
+      min-height: 260px;
+    }
+
+    &__fit-summary,
+    &__activity,
+    &__evidence {
+      padding: @space-4;
+    }
+
+    &__section-heading {
+      display: grid;
+
+      > :last-child {
+        max-width: none;
+        text-align: left;
+      }
+    }
+
+    &__action-rail {
+      position: static;
+      order: 2;
+    }
+
+    &__rail-primary-action {
+      display: none;
+    }
+
+    &__rail-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    &__rail-actions .listing-detail__open-btn {
+      justify-content: center;
+    }
     padding-bottom: calc(10rem + env(safe-area-inset-bottom));
 
     &__mobile-action-dock {
