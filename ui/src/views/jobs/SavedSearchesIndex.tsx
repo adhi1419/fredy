@@ -386,7 +386,7 @@ export default function SavedSearchesIndex() {
 
   const confirmDeletion = async (
     hardDelete: boolean,
-    remember: boolean,
+    remember: boolean = false,
     deletion: PendingDeletion | null = pendingDeletion,
   ) => {
     if (deletion == null) return;

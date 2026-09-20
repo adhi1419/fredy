@@ -56,14 +56,17 @@ interface CommuteJob {
   commuteFilter?: CommuteFilterLike | null;
 }
 
+/** Only the shape {@link getAddresses} reads out of user settings. */
+type CommuteBadgeSettings = { home_addresses?: unknown } | null | undefined;
+
 interface CommuteBadgeState {
-  userSettings: { settings?: unknown };
+  userSettings: { settings?: CommuteBadgeSettings };
   jobsData: { jobs?: readonly CommuteJob[] };
 }
 
 export default function CommuteBadge({ travelTimes, jobId }: CommuteBadgeProps): ReactNode {
   const t = useTranslation();
-  const userSettings = useSelector<CommuteBadgeState, unknown>((state) => state.userSettings.settings);
+  const userSettings = useSelector<CommuteBadgeState, CommuteBadgeSettings>((state) => state.userSettings.settings);
   const jobs = useSelector<CommuteBadgeState, readonly CommuteJob[] | undefined>((state) => state.jobsData.jobs);
 
   const budgeted = useMemo(() => {

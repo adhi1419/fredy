@@ -18,7 +18,7 @@ const t = (key: string) => key;
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const tableSource = fs.readFileSync(
-  path.join(testDir, '../../ui/src/components/table/NotificationChannelTable.jsx'),
+  path.join(testDir, '../../ui/src/components/table/NotificationChannelTable.tsx'),
   'utf8',
 );
 

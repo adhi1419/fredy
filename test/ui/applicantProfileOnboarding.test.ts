@@ -24,7 +24,7 @@ const completeProfile = {
 };
 
 const onboardingSource = fs.readFileSync(
-  path.resolve('ui/src/views/onboarding/ApplicantProfileOnboardingPage.jsx'),
+  path.resolve('ui/src/views/onboarding/ApplicantProfileOnboardingPage.tsx'),
   'utf8',
 );
 

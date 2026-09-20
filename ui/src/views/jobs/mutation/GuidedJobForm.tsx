@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, type ComponentProps, type RefObject } from 'react';
 import { Button, Input, Select, Switch, TagInput } from '@douyinfe/semi-ui-19';
 import {
   IconBell,
@@ -35,7 +35,6 @@ type StateSetter<T> = (value: T) => void;
 type FunctionalStateSetter<T> = (value: T | ((current: T) => T)) => void;
 type SpecFilterDefinition = { key: string; translation: string };
 type NotificationChannel = { id: string; [key: string]: unknown };
-type CommuteFilter = unknown;
 
 interface GuidedJobFormProps {
   currentStep: number;
@@ -67,8 +66,8 @@ interface GuidedJobFormProps {
   onSpatialFilterChange: (value: unknown) => void;
   areaExpanded: boolean;
   setAreaExpanded: FunctionalStateSetter<boolean>;
-  commuteFilter: CommuteFilter;
-  setCommuteFilter: StateSetter<CommuteFilter>;
+  commuteFilter: unknown | null;
+  setCommuteFilter: StateSetter<unknown>;
   selectedChannels: readonly NotificationChannel[];
   onAddNotification: () => void;
   onManageNotifications: () => void;
@@ -299,7 +298,11 @@ export default function GuidedJobForm({
           <li>{t('jobs.mutation.areaStep3')}</li>
         </ol>
         <div className={`jobMutation__areaMap${areaExpanded ? ' jobMutation__areaMap--expanded' : ''}`}>
-          <AreaFilter spatialFilter={spatialFilter} onChange={onSpatialFilterChange} providerData={providerData} />
+          <AreaFilter
+            spatialFilter={spatialFilter as ComponentProps<typeof AreaFilter>['spatialFilter']}
+            onChange={onSpatialFilterChange}
+            providerData={[...providerData]}
+          />
         </div>
         <Button theme="borderless" size="small" onClick={() => setAreaExpanded((current) => !current)}>
           {areaExpanded ? t('jobs.mutation.areaCollapse') : t('jobs.mutation.areaExpand')}
@@ -317,7 +320,10 @@ export default function GuidedJobForm({
         helpText={t('jobs.mutation.commuteFilterHelp')}
         helpMode="popover"
       >
-        <CommuteFilter value={commuteFilter} onChange={setCommuteFilter} />
+        <CommuteFilter
+          value={commuteFilter as ComponentProps<typeof CommuteFilter>['value']}
+          onChange={setCommuteFilter}
+        />
       </SegmentPart>
     </div>
   );
@@ -339,7 +345,7 @@ export default function GuidedJobForm({
           </Button>
         </div>
         <NotificationChannelTable
-          channels={selectedChannels}
+          channels={[...selectedChannels]}
           actions={['test', 'edit', 'clone', 'detach']}
           showVisibility={false}
           showUsage={false}

@@ -4,9 +4,16 @@
     "types": []
   },
   "include": [
+    "ui/src/vite-env.d.ts",
     "ui/src/views/jobs/mutation/GuidedJobForm.tsx",
     "ui/src/views/jobs/mutation/JobMutation.tsx",
     "ui/src/views/jobs/mutation/components/provider/ProviderChoiceCards.tsx",
+    "ui/src/views/jobs/mutation/components/CommuteFilter.tsx",
+    "ui/src/views/jobs/mutation/components/areaFilter/AreaFilter.tsx",
+    "ui/src/views/jobs/mutation/components/notificationAdapter/NotificationChannelEditor.tsx",
+    "ui/src/views/jobs/mutation/components/notificationAdapter/NotificationChannelPicker.tsx",
+    "ui/src/views/jobs/mutation/components/notificationAdapter/NotificationHelpDisplay.tsx",
+    "ui/src/views/jobs/mutation/components/provider/ProviderMutator.tsx",
     "ui/src/views/jobs/savedSearchesLegacy.d.ts"
   ]
 }
