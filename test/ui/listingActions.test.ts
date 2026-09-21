@@ -128,6 +128,11 @@ describe('accessibility action contracts', () => {
     expect(styles).toContain('&__fit-status--selected');
     expect(styles).toContain('color: @color-on-accent;');
     expect(styles).toContain('&__fit-metric--travel');
-    expect(styles).toContain('grid-column: 1 / -1;');
+    const travel = listingDetailSource.indexOf('listing-detail__fit-metric--travel');
+    const lifecycle = listingDetailSource.indexOf('listing-detail__fit-lifecycle');
+    const facts = listingDetailSource.indexOf('listing-detail__fit-metrics', travel + 1);
+    expect(travel).toBeGreaterThan(0);
+    expect(lifecycle).toBeGreaterThan(travel);
+    expect(facts).toBeGreaterThan(lifecycle);
   });
 });

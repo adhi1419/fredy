@@ -69,6 +69,46 @@
     color: @color-on-accent;
   }
 
+  /* The lifecycle badge floating over the photo. Sits above the image with a legible scrim-backed
+     pill so it reads in both themes without inverting the photography. */
+  &__image-badge {
+    position: absolute;
+    top: @space-3;
+    left: @space-3;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: calc(100% - (2 * @space-3));
+    box-shadow: @shadow-md;
+
+    .semi-icon {
+      font-size: @text-base;
+    }
+  }
+
+  /* The scrollspy rail: one horizontally scrollable row of section links, sticky under the page
+     header so it stays reachable while reading. */
+  &__scrollspy {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin-bottom: @space-4;
+    background: @color-surface;
+  }
+
+  /* The lifecycle control group in the Fit card's first viewport. Each control pairs an icon with
+     its label; the group wraps on a phone. */
+  &__fit-lifecycle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @space-2;
+
+    .semi-button {
+      min-height: 44px;
+    }
+  }
+
   &__composition {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(270px, 320px);
@@ -112,7 +152,6 @@
     padding: @space-5;
   }
 
-  &__fit-heading,
   &__section-heading,
   &__rail-heading {
     display: flex;
@@ -121,10 +160,20 @@
     gap: @space-3;
   }
 
-  &__fit-heading .semi-typography,
   &__section-heading .semi-typography,
   &__rail-heading .semi-typography {
     margin: @space-1 0 0;
+  }
+
+  /* The Fit card's title. On desktop the page header H1 already names the listing, so this is
+     hidden to avoid repeating it; on mobile the header is photo-first and hides its H1, so this
+     block carries the title and district below the photo instead. */
+  &__fit-title {
+    display: none;
+
+    .semi-typography {
+      margin: @space-1 0 0;
+    }
   }
 
   &__fit-address {
@@ -139,7 +188,7 @@
 
   &__fit-metrics {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: @space-3;
   }
 
@@ -296,6 +345,7 @@
   &__image-container {
     width: 100%;
     height: 400px;
+    position: relative;
     background-color: var(--semi-color-fill-0);
     display: flex;
     justify-content: center;
@@ -512,6 +562,17 @@
       display: none;
     }
 
+    /* Photo-first on mobile: the page header keeps only the breadcrumb eyebrow and Back/actions;
+       the listing title moves below the photo (see &__fit-title). The header's lifecycle pill is
+       dropped here because the badge floating over the photo already carries the state. */
+    &__heading .listing-detail__heading-title {
+      display: none;
+    }
+
+    &__heading .listing-detail__lifecycle {
+      display: none;
+    }
+
     &__heading-actions {
       justify-content: flex-start;
       margin-top: @space-2;
@@ -525,12 +586,13 @@
     }
 
     &__fit .listing-detail__image-container {
-      height: 220px;
-      min-height: 220px;
+      height: 180px;
+      min-height: 180px;
     }
 
-    &__fit-heading {
-      display: none;
+    &__fit-title {
+      display: grid;
+      gap: @space-1;
     }
 
     &__fit-summary {
@@ -543,9 +605,21 @@
       gap: @space-2;
     }
 
+    &__fit-lifecycle {
+      display: grid;
+      grid-auto-columns: minmax(0, 1fr);
+      grid-auto-flow: column;
+      gap: @space-1;
+
+      .semi-button {
+        min-width: 0;
+        padding-right: @space-2;
+        padding-left: @space-2;
+        font-size: @text-xs;
+      }
+    }
+
     &__fit-metric--travel {
-      grid-column: 1 / -1;
-      order: -1;
       padding-bottom: @space-2;
       border-left-color: @color-accent;
     }

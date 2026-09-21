@@ -74,6 +74,12 @@
   min-height: 18rem;
 }
 
+// The shared ScrollspyTabs rail, hosted at the top of the step panel. It sticks to the top of the
+// scroll area so the section tabs stay reachable while the step content scrolls beneath.
+.guidedJobForm__sectionNav {
+  top: 0;
+}
+
 .guidedJobForm__sectionStack {
   display: grid;
   gap: @space-4;
@@ -234,6 +240,18 @@
   }
 }
 
+// The view-mode URL label: host-only, single line, ellipsised if a non-parseable raw value slips
+// through. The full URL stays in the link title/aria so nothing is hidden from the user or AT.
+.providerChoiceCards__urlLink,
+.providerChoiceCards__urlLabel {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
 .providerChoiceCards__unsupportedStatus {
   color: @color-muted;
   font-size: @text-sm;
@@ -290,6 +308,18 @@
     scroll-margin-top: 5rem;
   }
 
+  // The step nav sticks just below the sticky "Step N of 4" ribbon rather than at the very top.
+  .guidedJobForm__sectionNav {
+    top: 3.25rem;
+  }
+
+  // Keep the step footer in normal flow on phones. A bottom-sticky footer is pulled over tall
+  // provider cards even when extra section padding exists; normal flow plus bottom-nav clearance
+  // keeps every control visible and still leaves Back/Continue at the natural end of the step.
+  .guidedJobForm__sectionStack {
+    padding-bottom: 0;
+  }
+
   .guidedJobForm__step,
   .guidedJobForm__footer button,
   .providerChoiceCards__actions .semi-button,
@@ -298,15 +328,11 @@
   }
 
   .guidedJobForm__footer {
-    position: sticky;
-    bottom: calc(64px + env(safe-area-inset-bottom));
-    z-index: 5;
-    margin-right: -@space-3;
-    margin-left: -@space-3;
-    padding: @space-3;
-    padding-bottom: calc(@space-3 + env(safe-area-inset-bottom));
+    position: static;
+    margin: @space-4 0 calc(80px + env(safe-area-inset-bottom));
+    padding: @space-3 0;
     background: @color-surface;
-    box-shadow: @shadow-md;
+    box-shadow: none;
   }
 
   .guidedJobForm__footerRight {

@@ -251,3 +251,19 @@ describe('Home production surface contract', () => {
     expect(homeStyles).toContain('@media (max-width: 768px)');
   });
 });
+
+describe('iPhone 13 Home containment', () => {
+  it('shows all four lifecycle scopes without horizontal clipping', () => {
+    const narrow = homeStyles.slice(homeStyles.indexOf('@media (max-width: 430px)'));
+    expect(narrow).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
+    expect(narrow).toContain('overflow: visible;');
+    expect(narrow).toMatch(/&__activities\s*{[\s\S]*?button\s*{[\s\S]*?width:\s*100%;/);
+  });
+
+  it('keeps the open provider menu inside the full-width picker', () => {
+    const narrow = homeStyles.slice(homeStyles.indexOf('@media (max-width: 430px)'));
+    expect(narrow).toMatch(
+      /&__provider-options\s*{[\s\S]*?right:\s*0;[\s\S]*?left:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?max-width:\s*none;/,
+    );
+  });
+});

@@ -13,7 +13,7 @@ import {
   type ProviderMetadata,
 } from '../../../../../services/jobs/guidedSearchForm.js';
 import { DEFAULT_COUNTRIES } from '../../../../../components/map/countryBounds.js';
-import { getSafeProviderUrl } from '../../../../../services/jobs/providerUrl.js';
+import { getSafeProviderUrl, normalizeHost } from '../../../../../services/jobs/providerUrl.js';
 import { useTranslation } from '../../../../../services/i18n/i18n.jsx';
 
 interface ProviderChoiceCardsProps {
@@ -27,6 +27,22 @@ interface ProviderChoiceCardsProps {
 }
 
 type Translation = (key: string, variables?: Record<string, string | number>) => string;
+
+/**
+ * A compact, scannable label for a provider search URL in the Edit Search view.
+ *
+ * Raw search URLs run to hundreds of characters and wrapped across the card. The card now shows the
+ * host only (the readable "which provider" part) and keeps the full URL in the link's title/aria so
+ * nothing is lost. A URL that will not parse falls back to a middle-truncated form of the raw text.
+ */
+export function providerUrlLabel(url: string | null | undefined): string | null {
+  if (url == null || String(url).trim().length === 0) return null;
+  const host = normalizeHost(url);
+  if (host != null) return host;
+  const raw = String(url).trim();
+  if (raw.length <= 42) return raw;
+  return `${raw.slice(0, 24)}…${raw.slice(-14)}`;
+}
 
 function policyHintKey(reason: ReturnType<typeof sourcePolicyControl>['reason']): string {
   switch (reason) {
@@ -128,11 +144,20 @@ export default function ProviderChoiceCards({
                 <dt>{t('provider.tableColumnUrl')}</dt>
                 <dd>
                   {safeProviderUrl ? (
-                    <a href={safeProviderUrl} target="_blank" rel="noreferrer noopener">
-                      {displaySource.url}
+                    <a
+                      className="providerChoiceCards__urlLink"
+                      href={safeProviderUrl}
+                      title={displaySource.url ?? undefined}
+                      aria-label={t('jobs.mutation.viewUrlOpenAria', { url: String(displaySource.url ?? '') })}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                    >
+                      {providerUrlLabel(displaySource.url) ?? displaySource.url}
                     </a>
                   ) : (
-                    (displaySource.url ?? t('common.na'))
+                    <span className="providerChoiceCards__urlLabel" title={displaySource.url ?? undefined}>
+                      {providerUrlLabel(displaySource.url) ?? displaySource.url ?? t('common.na')}
+                    </span>
                   )}
                 </dd>
               </div>

@@ -5,7 +5,14 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { Button, Empty, Input, Pagination, Popover, Radio, RadioGroup, Select, Toast } from '@douyinfe/semi-ui-19';
-import { IconAlertTriangle, IconArrowDown, IconArrowUp, IconMoreStroked, IconSearch } from '@douyinfe/semi-icons';
+import {
+  IconAlertTriangle,
+  IconArrowDown,
+  IconArrowUp,
+  IconMoreStroked,
+  IconSearch,
+  IconTickCircle,
+} from '@douyinfe/semi-icons';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
 import { useNavigate } from 'react-router';
 import ListingDeletionModal from '../../components/ListingDeletionModal.jsx';
@@ -27,7 +34,7 @@ import { format as formatDate } from '../../services/time/timeService.js';
 import { errorMessage, xhrDelete, xhrPost, xhrPut } from '../../services/xhr.js';
 import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
 import { debounce } from '../../utils.js';
-import { getSavedSearchDirectAction, shouldShowPause } from './savedSearchActions';
+import { getSavedSearchDirectAction, resolveSavedSearchHealth, shouldShowPause } from './savedSearchActions';
 import './SavedSearchesIndex.less';
 
 interface SavedSearchStoreState {
@@ -61,8 +68,6 @@ interface SavedSearchRowProps {
   onEdit: JobAction;
   onRepair: JobAction;
   onClone: JobAction;
-  onDeleteListings: JobAction;
-  onDeleteJob: JobAction;
   onStatusChange: StatusAction;
 }
 
@@ -72,8 +77,6 @@ interface ActionMenuProps {
   onPause: JobAction;
   onRepair: JobAction;
   onClone: JobAction;
-  onDeleteListings: JobAction;
-  onDeleteJob: JobAction;
 }
 
 function providerCount(job: Job): number {
@@ -110,7 +113,7 @@ function lastRunFor(job: Job, locale: string, t: Translation): string {
   return job.lastRunAt == null ? t('jobs.index.neverRun') : formatDate(job.lastRunAt, false, locale);
 }
 
-function ActionMenu({ job, t, onPause, onRepair, onClone, onDeleteListings, onDeleteJob }: ActionMenuProps) {
+function ActionMenu({ job, t, onPause, onRepair, onClone }: ActionMenuProps) {
   const readOnly = job.isOnlyShared === true;
   const action = (label: string, callback: () => void, disabled = false) => (
     <Button
@@ -125,6 +128,9 @@ function ActionMenu({ job, t, onPause, onRepair, onClone, onDeleteListings, onDe
     </Button>
   );
 
+  // Direction A: the overflow carries only non-destructive lifecycle actions — Run & repair,
+  // Pause/Resume, Duplicate. Deleting a search or clearing its listings is a danger-zone action
+  // that now lives in Edit Search, never a one-click item beside routine controls.
   const content: ReactNode = (
     <div
       className="savedSearches__menu"
@@ -134,8 +140,6 @@ function ActionMenu({ job, t, onPause, onRepair, onClone, onDeleteListings, onDe
       {shouldShowPause(job) && action(t('jobs.index.pause'), () => onPause(job.id))}
       {action(t('jobs.index.runAndRepair'), () => onRepair(job.id), readOnly)}
       {action(t('jobs.index.clone'), () => onClone(job.id), readOnly)}
-      {action(t('jobs.index.deleteListings'), () => onDeleteListings(job.id), readOnly)}
-      {action(t('jobs.index.delete'), () => onDeleteJob(job.id), readOnly)}
     </div>
   );
 
@@ -152,18 +156,7 @@ function ActionMenu({ job, t, onPause, onRepair, onClone, onDeleteListings, onDe
   );
 }
 
-function SavedSearchRow({
-  job,
-  locale,
-  t,
-  onRun,
-  onEdit,
-  onRepair,
-  onClone,
-  onDeleteListings,
-  onDeleteJob,
-  onStatusChange,
-}: SavedSearchRowProps) {
+function SavedSearchRow({ job, locale, t, onRun, onEdit, onRepair, onClone, onStatusChange }: SavedSearchRowProps) {
   const readOnly = job.isOnlyShared === true;
   const statusLabel =
     job.running === true ? t('jobs.index.running') : job.enabled ? t('jobs.index.active') : t('jobs.index.paused');
@@ -200,8 +193,11 @@ function SavedSearchRow({
         },
       };
 
-  const hasRun = job.lastRunAt != null;
   const stateTone = job.running === true ? 'running' : job.enabled ? 'active' : 'paused';
+  const health = resolveSavedSearchHealth(job);
+  // The primary control is a repair-and-run pass in Direction A. Only the runnable state relabels to
+  // "Run & repair"; resume/running/read-only keep their own words from getSavedSearchDirectAction.
+  const primaryLabel = directAction.kind === 'run' ? t('jobs.index.runAndRepair') : directAction.label;
 
   return (
     <article
@@ -215,64 +211,78 @@ function SavedSearchRow({
           <p>
             <span className="savedSearches__fieldLabel">{t('jobs.index.criteria')}:</span> {criteriaFor(job, t, locale)}
           </p>
-          {!readOnly && (
-            <span className="savedSearches__editCue" aria-hidden="true">
-              {t('jobs.index.editHint')} →
-            </span>
+        </div>
+      </div>
+
+      <div className="savedSearches__middle">
+        <div className="savedSearches__lastRun">
+          {health.kind === 'review' ? (
+            <strong className="savedSearches__health savedSearches__health--review" data-testid="savedSearches-health">
+              <IconAlertTriangle aria-hidden="true" />
+              {t('jobs.index.runHealthReview', { count: String(health.reviewCount) })}
+            </strong>
+          ) : health.kind === 'ready' ? (
+            <strong className="savedSearches__health savedSearches__health--ready" data-testid="savedSearches-health">
+              <IconTickCircle aria-hidden="true" />
+              {t('jobs.index.runHealthReady')}
+            </strong>
+          ) : (
+            <strong className="savedSearches__health savedSearches__health--idle" data-testid="savedSearches-health">
+              {t('jobs.index.neverRun')}
+            </strong>
           )}
-        </div>
-      </div>
-
-      <div className="savedSearches__state">
-        <span className="savedSearches__fieldLabel">{t('jobs.index.state')}</span>
-        <div className="savedSearches__stateControl">
-          <span
-            className={`savedSearches__stateChip savedSearches__stateChip--${stateTone}`}
-            data-testid="savedSearches-state"
-          >
-            <span className="savedSearches__stateDot" aria-hidden="true" />
-            {statusLabel}
+          <small>
+            {lastRunFor(job, locale, t)} ·{' '}
+            {t('jobs.index.listingsFound', { count: String(job.numberOfFoundListings || 0) })}
+          </small>
+          <span className="savedSearches__repairNote">
+            {health.kind === 'review' ? t('jobs.index.runHealthReviewNote') : t('jobs.index.repairPromise')}
           </span>
         </div>
-        {readOnly && (
-          <span className="savedSearches__shared" title={t('jobs.cardSharedReadOnly')}>
-            <IconAlertTriangle aria-hidden="true" /> {t('jobs.index.sharedReadOnly')}
-          </span>
-        )}
-      </div>
 
-      <div className="savedSearches__lastRun">
-        <span className="savedSearches__fieldLabel">{t('jobs.index.lastRun')}</span>
-        <strong className={`savedSearches__health savedSearches__health--${hasRun ? 'ready' : 'idle'}`}>
-          {hasRun ? t('jobs.index.runHealthReady') : t('jobs.index.neverRun')}
-        </strong>
-        <small>
-          {lastRunFor(job, locale, t)} ·{' '}
-          {t('jobs.index.listingsFound', { count: String(job.numberOfFoundListings || 0) })}
-        </small>
-        <span className="savedSearches__repairNote">{t('jobs.index.repairPromise')}</span>
+        <div className="savedSearches__state">
+          <div className="savedSearches__stateControl">
+            <span
+              className={`savedSearches__stateChip savedSearches__stateChip--${stateTone}`}
+              data-testid="savedSearches-state"
+            >
+              <span className="savedSearches__stateDot" aria-hidden="true" />
+              {statusLabel}
+            </span>
+            {readOnly && (
+              <span className="savedSearches__shared" title={t('jobs.cardSharedReadOnly')}>
+                <IconAlertTriangle aria-hidden="true" /> {t('jobs.index.sharedReadOnly')}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="savedSearches__rowActions">
-        <Button
-          type="primary"
-          theme="solid"
-          className="savedSearches__directAction"
-          disabled={directAction.disabled}
-          aria-label={t('jobs.index.directActionFor', { action: directAction.label, name })}
-          onClick={onDirectAction}
-        >
-          {directAction.label}
-        </Button>
-        <ActionMenu
-          job={job}
-          t={t}
-          onPause={(id) => onStatusChange(id, false)}
-          onRepair={onRepair}
-          onClone={onClone}
-          onDeleteListings={onDeleteListings}
-          onDeleteJob={onDeleteJob}
-        />
+        {!readOnly && (
+          <span className="savedSearches__editCue" aria-hidden="true">
+            {t('jobs.index.editHint')} →
+          </span>
+        )}
+        <div className="savedSearches__actionRow">
+          <Button
+            type="primary"
+            theme="solid"
+            className="savedSearches__directAction"
+            disabled={directAction.disabled}
+            aria-label={t('jobs.index.directActionFor', { action: primaryLabel, name })}
+            onClick={onDirectAction}
+          >
+            {primaryLabel}
+          </Button>
+          <ActionMenu
+            job={job}
+            t={t}
+            onPause={(id) => onStatusChange(id, false)}
+            onRepair={onRepair}
+            onClone={onClone}
+          />
+        </div>
       </div>
     </article>
   );
@@ -368,21 +378,6 @@ export default function SavedSearchesIndex() {
       handleFilterChange.cancel?.();
     };
   }, [handleFilterChange]);
-
-  const onJobRemoval = (jobId: string) => {
-    setPendingDeletion({ type: 'job', jobId });
-    setDeleteModalVisible(true);
-  };
-
-  const onListingRemoval = (jobId: string) => {
-    const deletion: PendingDeletion = { type: 'listings', jobId };
-    if (listingDeletionPref?.skipPrompt) {
-      void confirmDeletion(Boolean(listingDeletionPref.hardDelete), false, deletion);
-      return;
-    }
-    setPendingDeletion(deletion);
-    setDeleteModalVisible(true);
-  };
 
   const confirmDeletion = async (
     hardDelete: boolean,
@@ -534,8 +529,6 @@ export default function SavedSearchesIndex() {
               onEdit={editJob}
               onRepair={onJobRun}
               onClone={cloneJob}
-              onDeleteListings={onListingRemoval}
-              onDeleteJob={onJobRemoval}
               onStatusChange={onJobStatusChanged}
             />
           ))}

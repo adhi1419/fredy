@@ -207,7 +207,7 @@
   &__provider-picker {
     position: relative;
 
-    summary {
+    .home__provider-trigger {
       display: inline-flex;
       align-items: center;
       gap: @space-2;
@@ -217,24 +217,26 @@
       border-radius: @radius-pill;
       background: @color-surface;
       color: @color-text;
+      font: inherit;
       font-size: @text-base;
       font-weight: 700;
       cursor: pointer;
-      list-style: none;
-
-      &::-webkit-details-marker {
-        display: none;
-      }
 
       strong {
         color: @color-accent;
         font-size: @text-sm;
         font-weight: 700;
       }
-    }
 
-    &[open] summary {
-      border-color: @color-accent;
+      &:hover,
+      &:focus-visible {
+        border-color: @color-accent;
+        outline: none;
+      }
+
+      &[aria-expanded='true'] {
+        border-color: @color-accent;
+      }
     }
   }
 
@@ -255,7 +257,6 @@
     button {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: @space-2;
       min-height: 44px;
       padding: @space-2 @space-3;
@@ -268,18 +269,42 @@
       cursor: pointer;
 
       &:hover,
-      &:focus-visible,
-      &.is-selected {
+      &:focus-visible {
         border-color: @color-accent;
-        background: @color-accent;
-        color: @color-surface;
+        outline: none;
+      }
+
+      &.is-selected {
+        color: @color-accent;
       }
 
       small {
+        margin-left: auto;
         color: @color-warning;
         font-size: @text-xs;
       }
     }
+  }
+
+  // A fixed-width check gutter keeps every provider name left-aligned whether or not it is ticked.
+  &__provider-check {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    color: @color-accent;
+
+    svg {
+      font-size: @text-base;
+    }
+  }
+
+  &__provider-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__provider-empty {
@@ -328,6 +353,7 @@
   }
 
   &__card {
+    position: relative;
     min-width: 0;
   }
 
@@ -418,24 +444,78 @@
     font-size: @text-base;
   }
 
-  // Overflow marker: a non-interactive scan-surface affordance kept out of the tab order. Lifecycle
-  // mutations live on Listing Detail, so no menu opens from a Home card.
+  // Overflow lifecycle menu, anchored to the card. The trigger is a real round button floating over
+  // the photo; its menu opens below with the state-aware Mark applied / Mark viewed / Archive items.
   &__card-dots {
     position: absolute;
     top: @space-2;
     right: @space-2;
-    z-index: 2;
+    z-index: 3;
+  }
+
+  &__card-dots-trigger {
     display: grid;
     place-items: center;
     width: 32px;
+    min-width: 32px;
     height: 32px;
+    min-height: 32px;
+    padding: 0;
+    border: 1px solid @color-border;
     border-radius: 50%;
     background: @color-surface;
     color: @color-text;
+    font: inherit;
+    cursor: pointer;
     box-shadow: @shadow-sm;
 
     svg {
       font-size: @text-base;
+    }
+
+    &:hover,
+    &:focus-visible {
+      border-color: @color-accent;
+      color: @color-accent;
+      outline: none;
+    }
+  }
+
+  &__card-menu {
+    position: absolute;
+    top: calc(100% + @space-1);
+    right: 0;
+    z-index: 4;
+    display: grid;
+    min-width: 200px;
+    gap: @space-1;
+    padding: @space-2;
+    border: 1px solid @color-border-bright;
+    border-radius: @radius-card;
+    background: @color-elevated;
+    box-shadow: @shadow-md;
+  }
+
+  &__card-menu-item {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: @space-2 @space-3;
+    border: 1px solid transparent;
+    border-radius: @radius-btn;
+    background: transparent;
+    color: @color-text;
+    font: inherit;
+    font-size: @text-base;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      border-color: @color-accent;
+      background: @color-accent;
+      color: @color-on-accent;
+      outline: none;
     }
   }
 
@@ -792,7 +872,7 @@
 
     &__providers,
     &__provider-picker,
-    &__provider-picker summary,
+    &__provider-picker .home__provider-trigger,
     &__sort,
     &__sort select {
       width: 100%;
@@ -800,7 +880,7 @@
       max-width: none;
     }
 
-    &__provider-picker summary,
+    &__provider-picker .home__provider-trigger,
     &__sort select {
       box-sizing: border-box;
       justify-content: space-between;
@@ -809,11 +889,64 @@
     &__provider-options {
       right: 0;
       left: auto;
-      min-width: min(240px, calc(100vw - 24px));
+      min-width: 0;
+      width: max-content;
+      max-width: min(280px, calc(100vw - 24px));
     }
 
     &__card--grid .home__card-media {
       aspect-ratio: 1.55;
+    }
+  }
+}
+
+// iPhone-13 width (390px) and narrower: show every lifecycle scope without a partially clipped
+// trailing pill, and keep both tools plus the open provider menu inside the page gutters.
+@media (max-width: 430px) {
+  .home {
+    &__activities {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: @space-2;
+      margin: 0;
+      padding: 0;
+      overflow: visible;
+
+      button {
+        justify-content: center;
+        width: 100%;
+        min-width: 0;
+        padding-right: @space-2;
+        padding-left: @space-2;
+      }
+    }
+
+    &__tools {
+      grid-template-columns: 1fr;
+    }
+
+    &__provider-picker .home__provider-trigger {
+      padding-right: @space-3;
+      padding-left: @space-3;
+
+      strong {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &__provider-options {
+      right: 0;
+      left: 0;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: none;
+
+      button {
+        min-width: 0;
+      }
     }
   }
 }

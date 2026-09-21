@@ -19,6 +19,8 @@ const onboardingStyles = read('ui/src/views/onboarding/ApplicantProfileOnboardin
 const savedSearchesSource = read('ui/src/views/jobs/SavedSearchesIndex.tsx');
 const savedSearchActionsSource = read('ui/src/views/jobs/savedSearchActions.ts');
 const savedSearchesStyles = read('ui/src/views/jobs/SavedSearchesIndex.less');
+const settingsLayoutStyles = read('ui/src/views/settings/SettingsLayout.less');
+const settingsShellStyles = read('ui/src/components/settingsShell/SettingsShell.less');
 const jobsSource = read('ui/src/views/jobs/Jobs.tsx');
 
 describe('final responsive slice', () => {
@@ -54,11 +56,11 @@ describe('final responsive slice', () => {
     expect(savedSearchesSource).toContain("t('jobs.index.addAnother')");
     expect(savedSearchesSource).toContain("t('jobs.index.addAnotherHelp')");
     expect(savedSearchesSource).toContain('className="savedSearches__identity"');
+    expect(savedSearchesSource).toContain('className="savedSearches__middle"');
     expect(savedSearchesSource).toContain('className="savedSearches__state"');
     expect(savedSearchesSource).toContain('className="savedSearches__lastRun"');
     expect(savedSearchesSource).toContain('className="savedSearches__rowActions"');
     expect(savedSearchesSource).toContain("t('jobs.index.criteria')");
-    expect(savedSearchesSource).toContain("t('jobs.index.lastRun')");
     expect(savedSearchesSource).toContain("t('jobs.index.neverRun')");
   });
 
@@ -178,8 +180,22 @@ describe('final responsive slice', () => {
     }
   });
 
+  it('keeps Admin tabs on one horizontally scrollable row', () => {
+    expect(settingsShellStyles).toMatch(
+      /&__tabbar\.semi-tabs-bar\s*{[\s\S]*?display:\s*flex;[\s\S]*?flex-wrap:\s*nowrap;[\s\S]*?overflow-x:\s*auto;/,
+    );
+  });
+
+  it('keeps iPhone Settings centered with symmetric contained gutters', () => {
+    const mobile = settingsLayoutStyles.slice(settingsLayoutStyles.indexOf('@media (max-width: 768px)'));
+    expect(mobile).toMatch(/\.settingsLayout\s*{[\s\S]*?box-sizing:\s*border-box;/);
+    expect(mobile).toMatch(/padding:\s*@space-4 @space-4 calc\(80px \+ env\(safe-area-inset-bottom\)\)/);
+    expect(mobile).toMatch(/&__nav\s*{[\s\S]*?max-width:\s*100%;[\s\S]*?overflow-x:\s*auto;/);
+  });
+
   it('keeps mobile action targets at least 44px', () => {
     expect(savedSearchesStyles).toMatch(/&__sortDirection\s*{[\s\S]*min-height:\s*44px;/);
+
     expect(savedSearchesStyles).toMatch(/&__stateControl\s*{[\s\S]*min-height:\s*44px;/);
     expect(savedSearchesStyles).toMatch(/&__directAction\s*{[\s\S]*min-height:\s*44px;/);
     expect(savedSearchesStyles).toMatch(/&__overflowButton\s*{[\s\S]*min-height:\s*44px;/);
@@ -188,5 +204,95 @@ describe('final responsive slice', () => {
     expect(savedSearchesStyles).toMatch(
       /@media \(max-width: 640px\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/,
     );
+  });
+});
+
+describe('lane B: saved searches merged card, review health, and pill actions', () => {
+  const savedSearchesSource = read('ui/src/views/jobs/SavedSearchesIndex.tsx');
+  const savedSearchesStyles = read('ui/src/views/jobs/SavedSearchesIndex.less');
+  const savedSearchActionsSource = read('ui/src/views/jobs/savedSearchActions.ts');
+  const guidedFormSource = read('ui/src/views/jobs/mutation/GuidedJobForm.tsx');
+  const cardsSource = read('ui/src/views/jobs/mutation/components/provider/ProviderChoiceCards.tsx');
+  const guidedStyles = read('ui/src/views/jobs/mutation/GuidedJobForm.less');
+
+  it('merges last-run health and status into one middle column', () => {
+    expect(savedSearchesSource).toContain('className="savedSearches__middle"');
+    // Both the merged sub-blocks still exist inside that column.
+    expect(savedSearchesSource).toContain('className="savedSearches__lastRun"');
+    expect(savedSearchesSource).toContain('className="savedSearches__state"');
+    expect(savedSearchesStyles).toMatch(/&__middle\s*{[\s\S]*?align-content:\s*center;/);
+  });
+
+  it('surfaces a review-unknown health line without fabricating an absent count', () => {
+    expect(savedSearchesSource).toContain("t('jobs.index.runHealthReview'");
+    expect(savedSearchesSource).toContain("t('jobs.index.runHealthReviewNote')");
+    expect(savedSearchesSource).toContain('resolveSavedSearchHealth(job)');
+    expect(savedSearchActionsSource).toContain('resolveSavedSearchHealth');
+    expect(savedSearchActionsSource).toContain('manualReviewCount');
+    // A warning tone is defined and paired with an icon, never colour alone.
+    expect(savedSearchesStyles).toMatch(/&__health--review\s*{[\s\S]*?color:\s*@color-warning;/);
+    expect(savedSearchesSource).toContain('savedSearches__health--review');
+    expect(savedSearchesSource).toContain('IconTickCircle');
+  });
+
+  it('relabels only the runnable primary action to Run & repair', () => {
+    expect(savedSearchesSource).toContain(
+      "directAction.kind === 'run' ? t('jobs.index.runAndRepair') : directAction.label",
+    );
+  });
+
+  it('rounds the row action controls to the pill radius', () => {
+    expect(savedSearchesStyles).toMatch(/&__directAction\s*{[\s\S]*?border-radius:\s*@radius-pill;/);
+    expect(savedSearchesStyles).toMatch(/&__overflowButton\s*{[\s\S]*?border-radius:\s*@radius-pill;/);
+  });
+
+  it('removes both destructive delete items from the overflow menu but keeps the plumbing', () => {
+    expect(savedSearchesSource).not.toContain("action(t('jobs.index.deleteListings')");
+    expect(savedSearchesSource).not.toContain("action(t('jobs.index.delete')");
+    // Pause, Run & repair and Duplicate remain the only overflow items.
+    expect(savedSearchesSource).toContain("action(t('jobs.index.pause')");
+    expect(savedSearchesSource).toContain("action(t('jobs.index.runAndRepair')");
+    expect(savedSearchesSource).toContain("action(t('jobs.index.clone')");
+    // The deletion capability (modal + request) is retained for the future Edit Search danger zone.
+    expect(savedSearchesSource).toContain("xhrDelete('/api/jobs'");
+    expect(savedSearchesSource).toContain('ListingDeletionModal');
+  });
+
+  it('renders provider URLs host-only in the Edit Search view while keeping the full URL', () => {
+    expect(cardsSource).toContain('providerUrlLabel(displaySource.url)');
+    expect(cardsSource).toContain('normalizeHost');
+    // Full URL preserved in title/aria; never used as the visible link text or as the href fallback.
+    expect(cardsSource).toContain('title={displaySource.url ?? undefined}');
+    expect(cardsSource).toContain("t('jobs.mutation.viewUrlOpenAria'");
+    expect(cardsSource).not.toContain('>{displaySource.url}<');
+    expect(guidedStyles).toMatch(/providerChoiceCards__urlLink[\s\S]*?text-overflow:\s*ellipsis;/);
+  });
+
+  it('places the edit cue in the actions column above Run & repair', () => {
+    const actionsStart = savedSearchesSource.indexOf('className="savedSearches__rowActions"');
+    const editCue = savedSearchesSource.indexOf('className="savedSearches__editCue"');
+    const actionRow = savedSearchesSource.indexOf('className="savedSearches__actionRow"');
+    expect(actionsStart).toBeGreaterThan(0);
+    expect(editCue).toBeGreaterThan(actionsStart);
+    expect(actionRow).toBeGreaterThan(editCue);
+    expect(savedSearchesSource.match(/className="savedSearches__editCue"/g)).toHaveLength(1);
+  });
+  it('wires the shared ScrollspyTabs rail into Edit Search with per-section anchors', () => {
+    expect(guidedFormSource).toContain(
+      "import ScrollspyTabs, { type ScrollspySection } from '../../../components/scrollspy/ScrollspyTabs';",
+    );
+    expect(guidedFormSource).toContain('<ScrollspyTabs');
+    expect(guidedFormSource).toContain("ariaLabel={t('jobs.mutation.sectionsNavLabel')}");
+    expect(guidedFormSource).toContain('className="scrollspyTabs-section"');
+    expect(guidedFormSource).toContain('id="guided-section-providers"');
+  });
+
+  it('keeps the mobile step footer in flow and clear of bottom navigation', () => {
+    const mobile = guidedStyles.slice(guidedStyles.indexOf('@media (max-width: 850px)'));
+    expect(mobile).toMatch(/guidedJobForm__footer\s*{[\s\S]*?position:\s*static;/);
+    expect(mobile).toMatch(
+      /guidedJobForm__footer\s*{[\s\S]*?margin:\s*@space-4 0 calc\(80px \+ env\(safe-area-inset-bottom\)\)/,
+    );
+    expect(mobile).not.toMatch(/guidedJobForm__footer\s*{[\s\S]*?position:\s*(?:fixed|sticky);/);
   });
 });

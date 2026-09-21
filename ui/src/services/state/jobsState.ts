@@ -27,6 +27,15 @@ export interface Job {
   autoSendInquiry?: boolean;
   numberOfFoundListings?: number;
   lastRunAt?: number | null;
+  /**
+   * Number of listings from this search whose external inquiry outcome is unknown and awaiting
+   * manual review. The idempotent run contract never retries an unknown outcome blindly, so the
+   * saved-search row surfaces this as a warning health line instead of "Ready".
+   *
+   * Optional and aggregate: the jobs API may not send it yet. When absent the row falls back to the
+   * existing run-health line rather than fabricating a count.
+   */
+  manualReviewCount?: number | null;
   running?: boolean;
   isOnlyShared?: boolean;
   [key: string]: unknown;

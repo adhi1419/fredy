@@ -3,7 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactElement } from 'react';
 import {
   IconChevronDown,
   IconListView,
@@ -63,19 +63,114 @@ const ACTIVITY_LABEL_KEYS = Object.freeze({
 
 type Activity = keyof typeof ACTIVITY_LABEL_KEYS;
 
+type GlyphProps = { className?: string; 'aria-hidden'?: boolean | 'true' | 'false' };
+
+/**
+ * Direction A leans on a small set of glyphs the Semi icon font does not ship in a form that reads
+ * right here (a map sheet with a pin, an inbox tray for New, an archive box). They are authored as
+ * inline SVG so the surface stays free of emoji and of any icon the test harness has not mocked,
+ * and they inherit the current text colour through `currentColor` rather than any literal.
+ */
+function IconPaperMap({ className, ...rest }: GlyphProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...rest}
+    >
+      <path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4Z" />
+      <path d="M9 4v14M15 6v14" />
+      <circle cx="15.5" cy="11" r="1.6" />
+      <path d="M15.5 15c1.7-1.8 2.6-3 2.6-4.2a2.6 2.6 0 0 0-5.2 0c0 1.2.9 2.4 2.6 4.2Z" />
+    </svg>
+  );
+}
+
+function IconInboxTray({ className, ...rest }: GlyphProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...rest}
+    >
+      <path d="M4 13 6 5h12l2 8v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5Z" />
+      <path d="M4 13h4l1.5 2.5h5L16 13h4" />
+    </svg>
+  );
+}
+
+function IconArchiveBox({ className, ...rest }: GlyphProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="1em"
+      height="1em"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...rest}
+    >
+      <rect x="3.5" y="4.5" width="17" height="4" rx="1" />
+      <path d="M5 8.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5" />
+      <path d="M9.5 12h5" />
+    </svg>
+  );
+}
+
+type Glyph = (props: GlyphProps) => ReactElement;
+
 /**
  * The canonical lifecycle glyphs a Direction A stay card floats over its photo. Keyed on the exact
  * same activity vocabulary as the Home activity filters ({@link HOME_ACTIVITIES}) so a card's badge
- * and the filter that surfaces it can never drift. Semi icons only, never emoji.
+ * and the filter that surfaces it can never drift. Semi icons or inline SVG, never emoji.
  *
- * Only the two states a user reaches by acting carry a symbol: Applied (the application lifecycle is
- * confirmed) and Viewed (a viewing happened). New carries no badge - a badge on every fresh card
- * would be noise. Archived is history, shown as a muted label with no glyph.
+ * Only the two states a user reaches by acting carry a photo badge: Applied (the application
+ * lifecycle is confirmed) and Viewed (a viewing happened).
  */
 const LIFECYCLE_SYMBOLS: Readonly<Partial<Record<Activity, typeof IconTickCircle>>> = Object.freeze({
   applied: IconTickCircle,
   viewed: IconEyeOpened,
 });
+
+/**
+ * Every activity filter pill carries its canonical glyph, so the four scope controls read as a set
+ * rather than two icons and two bare words. New pairs an inbox tray, Archived an archive box, and
+ * Applied/Viewed reuse the exact badge glyphs above so a pill and a card badge never diverge.
+ */
+const ACTIVITY_SYMBOLS: Readonly<Record<Activity, Glyph>> = Object.freeze({
+  new: IconInboxTray,
+  applied: IconTickCircle as unknown as Glyph,
+  viewed: IconEyeOpened as unknown as Glyph,
+  archived: IconArchiveBox,
+});
+
+/** The lifecycle mutations a Home card overflow menu offers, in the order Direction A lists them. */
+const CARD_LIFECYCLE_ACTIONS: readonly {
+  readonly activity: Activity;
+  readonly action: 'applied' | 'viewing' | 'archive';
+  readonly labelKey: string;
+}[] = Object.freeze([
+  { activity: 'applied', action: 'applied', labelKey: 'home.markApplied' },
+  { activity: 'viewed', action: 'viewing', labelKey: 'home.markViewed' },
+  { activity: 'archived', action: 'archive', labelKey: 'home.markArchived' },
+]);
 
 interface HomeStoreState {
   listingsData: ListingsDataState;
@@ -83,7 +178,10 @@ interface HomeStoreState {
 }
 
 interface HomeActions {
-  listingsData: { getListingsData: (query: HomeQueryPayload) => Promise<void> };
+  listingsData: {
+    getListingsData: (query: HomeQueryPayload) => Promise<void>;
+    setListingLifecycleAction: (listingId: string, action: 'applied' | 'viewing' | 'archive') => Promise<void>;
+  };
 }
 
 interface HomeMapProps {
@@ -107,6 +205,7 @@ interface HomeStayCardProps {
   listing: HomeListing;
   variant: 'grid' | 'split';
   onNavigate: (id: string) => void;
+  onLifecycleAction: (id: string, action: 'applied' | 'viewing' | 'archive') => void | Promise<void>;
 }
 
 /**
@@ -114,12 +213,12 @@ interface HomeStayCardProps {
  * companion list render the same photo, lifecycle badge, facts, travel line, and navigation target,
  * so switching representation never changes the decision a card offers.
  *
- * The whole card is the navigation target (image + title open Listing Detail). No Watch, Status, or
- * Delete affordance is shown; lifecycle mutations live on Listing Detail. The overflow dots are a
- * non-interactive marker in this scan surface (kept out of the tab order) so the card stays a single
- * clean click target without nesting a second control inside the button.
+ * The image and copy open Listing Detail. The overflow dots are a real, keyboard-reachable
+ * lifecycle menu (Mark applied / Mark viewed / Archive) sitting outside the navigation button so the
+ * card never nests one control inside another; the menu is state-aware and hides the action that
+ * matches the card's current lifecycle. No Watch, Status, or Delete affordance is shown.
  */
-function HomeStayCard({ listing, variant, onNavigate }: HomeStayCardProps) {
+function HomeStayCard({ listing, variant, onNavigate, onLifecycleAction }: HomeStayCardProps) {
   const t = useTranslation();
   const locale = useLocale();
   const lifecycle = homeLifecycleState(listing);
@@ -139,6 +238,49 @@ function HomeStayCard({ listing, variant, onNavigate }: HomeStayCardProps) {
   // the primary listing presentation carries travel duration and distance to the reference address,
   // reusing the times the row already ships. Affordability is never shown here.
   const travel = homeCardTravel(listing);
+
+  // The overflow lifecycle menu. It is a native disclosure (button + role="menu") so it stays
+  // keyboard-operable and SSR-safe without a portal, and it lives outside the card's navigation
+  // button so the two controls never nest. Only the actions that would change the current state are
+  // offered: the action matching the card's lifecycle is hidden.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const firstItemRef = useRef<HTMLButtonElement | null>(null);
+  const availableActions = CARD_LIFECYCLE_ACTIONS.filter((entry) => entry.activity !== lifecycle);
+
+  const closeMenu = useCallback((restoreFocus: boolean) => {
+    setMenuOpen(false);
+    if (restoreFocus) menuTriggerRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (menuOpen) firstItemRef.current?.focus();
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onPointerDown = (event: globalThis.MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) closeMenu(false);
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMenu(true);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [menuOpen, closeMenu]);
+
+  const runAction = (action: 'applied' | 'viewing' | 'archive') => {
+    closeMenu(true);
+    if (listingId != null) void onLifecycleAction(listingId, action);
+  };
 
   return (
     <article className={`home__card home__card--${variant}`}>
@@ -165,9 +307,6 @@ function HomeStayCard({ listing, variant, onNavigate }: HomeStayCardProps) {
               {lifecycleLabel}
             </span>
           )}
-          <span className="home__card-dots" aria-hidden="true">
-            <IconMore />
-          </span>
         </span>
         <span className="home__card-copy">
           <span className="home__card-title-row">
@@ -197,6 +336,38 @@ function HomeStayCard({ listing, variant, onNavigate }: HomeStayCardProps) {
           )}
         </span>
       </button>
+      {listingId != null && availableActions.length > 0 && (
+        <div className="home__card-dots" ref={menuRef}>
+          <button
+            type="button"
+            ref={menuTriggerRef}
+            className="home__card-dots-trigger"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label={t('home.cardActionsLabel')}
+            title={t('home.cardActionsLabel')}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <IconMore aria-hidden="true" />
+          </button>
+          {menuOpen && (
+            <div className="home__card-menu" role="menu" aria-label={t('home.cardActionsLabel')}>
+              {availableActions.map((entry, index) => (
+                <button
+                  key={entry.action}
+                  ref={index === 0 ? firstItemRef : undefined}
+                  type="button"
+                  role="menuitem"
+                  className="home__card-menu-item"
+                  onClick={() => runAction(entry.action)}
+                >
+                  {t(entry.labelKey)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -423,6 +594,21 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
     }
   }, [actions, query]);
 
+  // A card overflow action mutates the one lifecycle through the canonical action, then reloads the
+  // current query so the moved listing leaves (or joins) the active scope without a second source of
+  // truth. Failures are logged; the feed simply stays as it was.
+  const handleLifecycleAction = useCallback(
+    async (id: string, action: 'applied' | 'viewing' | 'archive') => {
+      try {
+        await actions.listingsData.setListingLifecycleAction(id, action);
+        await loadData();
+      } catch (error) {
+        console.error(`Failed to apply listing lifecycle action ${action}:`, error);
+      }
+    },
+    [actions, loadData],
+  );
+
   useEffect(() => {
     setSearchDraft(values.q ?? '');
   }, [values.q]);
@@ -437,6 +623,50 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   );
 
   const selectedProviders = new Set(values.providerIds);
+  const [providerMenuOpen, setProviderMenuOpen] = useState(false);
+  const providerMenuRef = useRef<HTMLDivElement | null>(null);
+  const providerTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const providerSelectedCount = values.providerIds.length;
+  const providerSummary =
+    providerSelectedCount === 0
+      ? t('home.providerAll')
+      : t('home.providerSelectedCount', { count: String(providerSelectedCount) });
+
+  const closeProviderMenu = useCallback((restoreFocus: boolean) => {
+    setProviderMenuOpen(false);
+    if (restoreFocus) providerTriggerRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!providerMenuOpen) return undefined;
+    const onPointerDown = (event: globalThis.MouseEvent) => {
+      if (!providerMenuRef.current?.contains(event.target as Node)) closeProviderMenu(false);
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeProviderMenu(true);
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [providerMenuOpen, closeProviderMenu]);
+
+  const toggleProvider = (id: string) => {
+    const next = selectedProviders.has(id)
+      ? values.providerIds.filter((entry) => entry !== id)
+      : [...values.providerIds, id];
+    updateState({ providerIds: normalizeProviderIds(next), page: 1 });
+  };
+
+  const selectAllProviders = () => {
+    updateState({ providerIds: [], page: 1 });
+  };
+
   const selectedSort = homeSortOption(values.sort);
   const sortOptions = HOME_SORT_OPTIONS.some((option) => option.key === values.sort)
     ? HOME_SORT_OPTIONS
@@ -485,7 +715,7 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
                 title={label}
                 onClick={() => updateState({ view })}
               >
-                {view === 'feed' ? <IconListView aria-hidden="true" /> : <IconRoute aria-hidden="true" />}
+                {view === 'feed' ? <IconListView aria-hidden="true" /> : <IconPaperMap aria-hidden="true" />}
                 <span className="home__sr-only">{label}</span>
               </button>
             );
@@ -496,7 +726,7 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
       <div className="home__controls">
         <div className="home__activities" role="group" aria-label={t('home.activityLabel')}>
           {HOME_ACTIVITIES.map((activity) => {
-            const ActivitySymbol = LIFECYCLE_SYMBOLS[activity as Activity];
+            const ActivitySymbol = ACTIVITY_SYMBOLS[activity as Activity];
             return (
               <button
                 key={activity}
@@ -513,40 +743,59 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
         </div>
         <div className="home__tools">
           <div className="home__providers" role="group" aria-label={t('home.providerLabel')}>
-            <details className="home__provider-picker">
-              <summary>
+            <div className="home__provider-picker" ref={providerMenuRef}>
+              <button
+                type="button"
+                ref={providerTriggerRef}
+                className="home__provider-trigger"
+                aria-haspopup="menu"
+                aria-expanded={providerMenuOpen}
+                onClick={() => setProviderMenuOpen((open) => !open)}
+              >
                 <span>{t('home.providerLabel')}</span>
-                <strong>{t('home.providerSelectedCount', { count: String(values.providerIds.length) })}</strong>
+                <strong>{providerSummary}</strong>
                 <IconChevronDown aria-hidden="true" />
-              </summary>
-              <div className="home__provider-options">
-                {providerOptions.length === 0 && (
-                  <span className="home__provider-empty">{t('home.providersEmpty')}</span>
-                )}
-                {providerOptions.map((provider) => {
-                  const selected = selectedProviders.has(provider.id);
-                  const stale = selected && !(listingsData.availableProviders ?? []).includes(provider.id);
-                  return (
-                    <button
-                      key={provider.id}
-                      type="button"
-                      className={selected ? 'is-selected' : ''}
-                      aria-pressed={selected}
-                      aria-label={stale ? `${provider.name}: ${t('home.providerUnavailable')}` : provider.name}
-                      onClick={() => {
-                        const next = selected
-                          ? values.providerIds.filter((id) => id !== provider.id)
-                          : [...values.providerIds, provider.id];
-                        updateState({ providerIds: normalizeProviderIds(next), page: 1 });
-                      }}
-                    >
-                      <span>{provider.name}</span>
-                      {stale && <small>{t('home.providerUnavailable')}</small>}
-                    </button>
-                  );
-                })}
-              </div>
-            </details>
+              </button>
+              {providerMenuOpen && (
+                <div className="home__provider-options" role="menu" aria-label={t('home.providerLabel')}>
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={providerSelectedCount === 0}
+                    className={`home__provider-all${providerSelectedCount === 0 ? ' is-selected' : ''}`}
+                    onClick={selectAllProviders}
+                  >
+                    <span className="home__provider-check" aria-hidden="true">
+                      {providerSelectedCount === 0 && <IconTickCircle />}
+                    </span>
+                    <span className="home__provider-name">{t('home.providerAll')}</span>
+                  </button>
+                  {providerOptions.length === 0 && (
+                    <span className="home__provider-empty">{t('home.providersEmpty')}</span>
+                  )}
+                  {providerOptions.map((provider) => {
+                    const selected = selectedProviders.has(provider.id);
+                    const stale = selected && !(listingsData.availableProviders ?? []).includes(provider.id);
+                    return (
+                      <button
+                        key={provider.id}
+                        type="button"
+                        role="menuitemcheckbox"
+                        aria-checked={selected}
+                        className={selected ? 'is-selected' : ''}
+                        onClick={() => toggleProvider(provider.id)}
+                      >
+                        <span className="home__provider-check" aria-hidden="true">
+                          {selected && <IconTickCircle />}
+                        </span>
+                        <span className="home__provider-name">{provider.name}</span>
+                        {stale && <small>{t('home.providerUnavailable')}</small>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
           <label className="home__sort">
             <span className="home__sr-only">{t('home.sortLabel')}</span>
@@ -576,6 +825,7 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
               listing={listing}
               variant="grid"
               onNavigate={navigateToListing}
+              onLifecycleAction={handleLifecycleAction}
             />
           ))}
         </section>
@@ -589,6 +839,7 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
                 listing={listing}
                 variant="split"
                 onNavigate={navigateToListing}
+                onLifecycleAction={handleLifecycleAction}
               />
             ))}
           </section>

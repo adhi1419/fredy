@@ -38,7 +38,7 @@
 
   &__row {
     display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(140px, 0.7fr) minmax(150px, 0.8fr) auto;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
     align-items: center;
     gap: @space-5;
     min-width: 0;
@@ -127,6 +127,15 @@
     text-transform: uppercase;
   }
 
+  // The merged middle column from the frozen Direction A card: run health stacked above the
+  // status chip, both reading as one block of "how is this search doing" evidence.
+  &__middle {
+    display: grid;
+    align-content: center;
+    gap: @space-2;
+    min-width: 0;
+  }
+
   &__state,
   &__lastRun {
     display: grid;
@@ -212,12 +221,9 @@
 
   &__lastRun {
     strong {
-      overflow: hidden;
       color: @color-text;
       font-size: @text-sm;
       font-weight: 700;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
     small {
@@ -227,13 +233,28 @@
     }
   }
 
-  // Run health. Ready reads in the success role; an unrun search stays neutral rather than alarming.
+  // Run health. Ready reads in the success role; an unrun search stays neutral rather than
+  // alarming; a search with unknown inquiry outcomes warns without shouting.
+  &__health {
+    display: inline-flex;
+    align-items: center;
+    gap: @space-1;
+  }
+
+  &__health svg {
+    flex: 0 0 auto;
+  }
+
   &__health--ready {
     color: @color-success-active;
   }
 
   &__health--idle {
     color: @color-muted;
+  }
+
+  &__health--review {
+    color: @color-warning;
   }
 
   // The idempotency promise from Direction A: every run reconciles incomplete listing work.
@@ -246,20 +267,32 @@
 
   &__rowActions {
     display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
     gap: @space-2;
     min-width: 160px;
   }
 
+  &__actionRow {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: @space-2;
+  }
+
+  // Rounded to the pill radius so Run & repair and the overflow trigger match the Direction A
+  // reference (999px pills), not the app's default 4px button corners.
   &__directAction {
     min-width: 96px;
     min-height: 44px;
+    border-radius: @radius-pill;
   }
 
   &__overflowButton {
     min-width: 44px;
     min-height: 44px;
+    border-radius: @radius-pill;
     color: @color-accent;
   }
 
@@ -317,12 +350,12 @@
 
 @media (max-width: 900px) {
   .savedSearches__row {
-    grid-template-columns: minmax(0, 1.3fr) minmax(140px, 0.8fr) auto;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
     gap: @space-4;
     padding: @space-5;
   }
 
-  .savedSearches__lastRun {
+  .savedSearches__middle {
     grid-column: 2;
   }
 
@@ -372,8 +405,7 @@
     grid-column: 1 / -1;
   }
 
-  .savedSearches__state,
-  .savedSearches__lastRun {
+  .savedSearches__middle {
     grid-column: auto;
   }
 
@@ -388,6 +420,10 @@
     flex-direction: column;
     align-items: stretch;
     min-width: 96px;
+  }
+
+  .savedSearches__actionRow {
+    width: 100%;
   }
 
   .savedSearches__directAction {

@@ -9,6 +9,24 @@
     margin-bottom: 0;
   }
 
+  // The Administration tabs used to wrap into several rows on a narrow content column. Keep them on
+  // one line and let the row scroll horizontally instead, so the tab bar stays a single rail with a
+  // clean scroll affordance on both desktop and mobile.
+  &__tabbar.semi-tabs-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+
+    .semi-tabs-content,
+    .semi-tabs-tab {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+  }
+
   &__content {
     padding: @space-4 0;
     display: flex;
