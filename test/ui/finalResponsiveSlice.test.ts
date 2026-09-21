@@ -20,7 +20,7 @@ const savedSearchesSource = read('ui/src/views/jobs/SavedSearchesIndex.tsx');
 const savedSearchActionsSource = read('ui/src/views/jobs/savedSearchActions.ts');
 const savedSearchesStyles = read('ui/src/views/jobs/SavedSearchesIndex.less');
 const settingsLayoutStyles = read('ui/src/views/settings/SettingsLayout.less');
-const settingsShellStyles = read('ui/src/components/settingsShell/SettingsShell.less');
+const routeTabsStyles = read('ui/src/components/settingsRouteTabs/SettingsRouteTabs.less');
 const jobsSource = read('ui/src/views/jobs/Jobs.tsx');
 const jobMutationSource = read('ui/src/views/jobs/mutation/JobMutation.tsx');
 
@@ -58,7 +58,6 @@ describe('final responsive slice', () => {
     expect(savedSearchesSource).toContain("t('jobs.index.addAnotherHelp')");
     expect(savedSearchesSource).toContain('className="savedSearches__identity"');
     expect(savedSearchesSource).toContain('className="savedSearches__middle"');
-    expect(savedSearchesSource).toContain('className="savedSearches__state"');
     expect(savedSearchesSource).toContain('className="savedSearches__lastRun"');
     expect(savedSearchesSource).toContain('className="savedSearches__rowActions"');
     expect(savedSearchesSource).toContain("t('jobs.index.criteria')");
@@ -79,13 +78,20 @@ describe('final responsive slice', () => {
     expect(savedSearchesSource).toContain('disabled={directAction.disabled}');
   });
 
-  it('renders the Direction A marketplace card evidence: run health, repair promise, and edit cue', () => {
+  it('renders the Direction A marketplace card evidence: run health, edit cue, and only the review warning', () => {
     expect(savedSearchesSource).toContain("t('jobs.index.runHealthReady')");
-    expect(savedSearchesSource).toContain("t('jobs.index.repairPromise')");
     expect(savedSearchesSource).toContain('className="savedSearches__editCue"');
-    expect(savedSearchesSource).toContain('className="savedSearches__repairNote"');
+    // Req 6: the generic "Every run reconciles incomplete work" repair promise is removed from the
+    // card entirely; only the unknown-outcome warning (review) still renders a note, for safety.
+    expect(savedSearchesSource).not.toContain("t('jobs.index.repairPromise')");
+    expect(savedSearchesSource).toContain("t('jobs.index.runHealthReviewNote')");
+    expect(savedSearchesSource).toContain("health.kind === 'review' && (");
     // The whole card stays the direct edit target; the cue is a hint, not a second control.
     expect(savedSearchesSource).toContain("{t('jobs.index.editHint')} →");
+    // Req 7: the edit cue is right-aligned within the action area.
+    expect(savedSearchesStyles).toMatch(/&__editCue\s*{[\s\S]*?align-self:\s*flex-end;/);
+    expect(savedSearchesStyles).toMatch(/&__editCue\s*{[\s\S]*?text-align:\s*right;/);
+    expect(savedSearchesStyles).toMatch(/&__editCue\s*{[\s\S]*?opacity:\s*1;/);
     // The stack is spaced cards, not a bordered dense list.
     expect(savedSearchesStyles).toMatch(/&__list\s*{[\s\S]*?gap:\s*@space-4;/);
     expect(savedSearchesStyles).toMatch(/&__row\s*{[\s\S]*?border-radius:\s*@radius-card;/);
@@ -181,26 +187,30 @@ describe('final responsive slice', () => {
   });
 
   it('keeps Admin tabs on one horizontally scrollable row', () => {
-    expect(settingsShellStyles).toMatch(
-      /&__tabbar\.semi-tabs-bar\s*{[\s\S]*?display:\s*flex;[\s\S]*?flex-wrap:\s*nowrap;[\s\S]*?overflow-x:\s*auto;/,
-    );
+    // Admin no longer renders Semi Tabs; it shares the SettingsRouteTabs rail, whose single row
+    // scrolls horizontally rather than wrapping.
+    expect(routeTabsStyles).toMatch(/\.settingsRouteTabs\s*{[\s\S]*?display:\s*flex;[\s\S]*?overflow-x:\s*auto;/);
   });
 
   it('keeps iPhone Settings centered with symmetric contained gutters', () => {
     const mobile = settingsLayoutStyles.slice(settingsLayoutStyles.indexOf('@media (max-width: 768px)'));
     expect(mobile).toMatch(/\.settingsLayout\s*{[\s\S]*?box-sizing:\s*border-box;/);
     expect(mobile).toMatch(/padding:\s*@space-4 @space-4 calc\(80px \+ env\(safe-area-inset-bottom\)\)/);
-    expect(mobile).toMatch(/&__nav\s*{[\s\S]*?max-width:\s*100%;[\s\S]*?overflow-x:\s*auto;/);
+    // The rail's contained horizontal scroll lives in the shared component both areas use.
+    expect(routeTabsStyles).toMatch(/\.settingsRouteTabs\s*{[\s\S]*?max-width:\s*100%;[\s\S]*?overflow-x:\s*auto;/);
   });
 
   it('keeps mobile action targets at least 44px', () => {
     expect(savedSearchesStyles).toMatch(/&__sortDirection\s*{[\s\S]*min-height:\s*44px;/);
 
-    expect(savedSearchesStyles).toMatch(/&__stateControl\s*{[\s\S]*min-height:\s*44px;/);
     expect(savedSearchesStyles).toMatch(/&__directAction\s*{[\s\S]*min-height:\s*44px;/);
     expect(savedSearchesStyles).toMatch(/&__overflowButton\s*{[\s\S]*min-height:\s*44px;/);
     expect(savedSearchesStyles).toMatch(/&__menuAction\s*{[\s\S]*min-height:\s*44px;/);
     expect(savedSearchesStyles).toMatch(/&__createCard\s*{/);
+    // Req 8 mobile stacking: the action row (badge + controls) stacks in the narrow column.
+    expect(savedSearchesStyles).toMatch(
+      /@media \(max-width: 640px\)[\s\S]*\.savedSearches__actionRow\s*{[\s\S]*?flex-direction:\s*column;/,
+    );
     expect(savedSearchesStyles).toMatch(
       /@media \(max-width: 640px\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/,
     );
@@ -215,12 +225,23 @@ describe('lane B: saved searches merged card, review health, and pill actions', 
   const cardsSource = read('ui/src/views/jobs/mutation/components/provider/ProviderChoiceCards.tsx');
   const guidedStyles = read('ui/src/views/jobs/mutation/GuidedJobForm.less');
 
-  it('merges last-run health and status into one middle column', () => {
+  it('keeps the run-health evidence in the middle column and moves status into the action row', () => {
     expect(savedSearchesSource).toContain('className="savedSearches__middle"');
-    // Both the merged sub-blocks still exist inside that column.
+    // The middle column keeps the last-run evidence block.
     expect(savedSearchesSource).toContain('className="savedSearches__lastRun"');
-    expect(savedSearchesSource).toContain('className="savedSearches__state"');
+    // Req 8: the Active/Paused/Running badge now sits inside the action row, on the same line as
+    // Run & repair and the overflow, not in a separate middle sub-column.
+    const actionRowIndex = savedSearchesSource.indexOf('className="savedSearches__actionRow"');
+    const stateChipIndex = savedSearchesSource.indexOf('savedSearches__stateChip savedSearches__stateChip--');
+    const directActionIndex = savedSearchesSource.indexOf('className="savedSearches__directAction"');
+    expect(actionRowIndex).toBeGreaterThan(0);
+    expect(stateChipIndex).toBeGreaterThan(actionRowIndex);
+    expect(directActionIndex).toBeGreaterThan(stateChipIndex);
+    // The dedicated middle status sub-column is gone.
+    expect(savedSearchesSource).not.toContain('className="savedSearches__state"');
     expect(savedSearchesStyles).toMatch(/&__middle\s*{[\s\S]*?align-content:\s*center;/);
+    // The chip is pushed left of the controls on the shared row.
+    expect(savedSearchesStyles).toMatch(/&__actionRow \.savedSearches__stateChip\s*{[\s\S]*?margin-right:\s*auto;/);
   });
 
   it('surfaces a review-unknown health line without fabricating an absent count', () => {
@@ -295,12 +316,23 @@ describe('lane B: saved searches merged card, review health, and pill actions', 
     expect(guidedFormSource).toContain('id="guided-section-providers"');
   });
 
-  it('keeps the mobile step footer in flow and clear of bottom navigation', () => {
+  it('hides the redundant bottom footer on mobile and carries persistent actions in the ribbon', () => {
     const mobile = guidedStyles.slice(guidedStyles.indexOf('@media (max-width: 850px)'));
-    expect(mobile).toMatch(/guidedJobForm__footer\s*{[\s\S]*?position:\s*static;/);
-    expect(mobile).toMatch(
-      /guidedJobForm__footer\s*{[\s\S]*?margin:\s*@space-4 0 calc\(80px \+ env\(safe-area-inset-bottom\)\)/,
-    );
-    expect(mobile).not.toMatch(/guidedJobForm__footer\s*{[\s\S]*?position:\s*(?:fixed|sticky);/);
+    // Req 12: no bottom-anchored footer on mobile — the sticky ribbon owns Back/Continue/Save, so
+    // nothing can overlap content or the global bottom navigation.
+    expect(mobile).toMatch(/guidedJobForm__footer\s*{[^}]*display:\s*none;/);
+    expect(mobile).not.toMatch(/guidedJobForm__footer\s*{[\s\S]*?position:\s*(?:fixed|sticky|static)/);
+    expect(mobile).toMatch(/guidedJobForm__mobileProgress\s*{[^}]*position:\s*sticky/);
+    expect(mobile).toMatch(/guidedJobForm__mobileActions\s*{[^}]*min-height:\s*44px/);
+    // The persistent action controls are rendered inside the ribbon, and Continue keeps calling the
+    // same validating handler the desktop footer uses.
+    expect(guidedFormSource).toContain('className="guidedJobForm__mobileActions"');
+    expect(guidedFormSource).toContain("renderPrimaryAction('mobile')");
+    expect(guidedFormSource).toContain("renderPrimaryAction('footer')");
+    expect(guidedFormSource).toContain('onClick={onContinue}');
+    expect(guidedFormSource).toContain('onClick={onBack}');
+    // Both persistent controls carry explicit aria labels for screen readers.
+    expect(guidedFormSource).toContain("aria-label={t('jobs.mutation.guidedBack')}");
+    expect(guidedFormSource).toContain("aria-label={t('jobs.mutation.guidedContinue')}");
   });
 });

@@ -3,11 +3,11 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { Tabs } from '@douyinfe/semi-ui-19';
-import { Outlet, useLocation, useNavigate } from 'react-router';
+import { Outlet } from 'react-router';
 import type { ReactNode } from 'react';
 
 import Headline from '../headline/Headline.jsx';
+import SettingsRouteTabs, { type SettingsRouteTab } from '../settingsRouteTabs/SettingsRouteTabs.jsx';
 
 import './SettingsShell.less';
 
@@ -17,7 +17,10 @@ import './SettingsShell.less';
  *
  * The strip is driven by the URL rather than by internal tab state. That is the whole point of the
  * restructure: every settings page is a place you can link to, bookmark and reload onto, instead of
- * a tab index that resets to the first pane on every visit.
+ * a tab index that resets to the first pane on every visit. Administration renders through this
+ * shell; Account Preferences renders the same {@link SettingsRouteTabs} rail directly. Both use the
+ * one shared rail so the two areas navigate identically - only the tab list and the optional banner
+ * differ.
  */
 export interface SettingsShellTab {
   path: string;
@@ -40,33 +43,15 @@ export interface SettingsShellProps {
 }
 
 export default function SettingsShell({ title, tabs, banner = null, context = undefined }: SettingsShellProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // Longest prefix wins, so nested Administration pages still mark their parent tab as current
-  // instead of falling through to no selection at all.
-  const activeKey =
-    tabs
-      .map((tab) => tab.path)
-      .filter((path) => location.pathname === path || location.pathname.startsWith(path + '/'))
-      .sort((a, b) => b.length - a.length)[0] ?? tabs[0]?.path;
+  // SettingsShellTab and SettingsRouteTab are the same shape; the alias keeps each area's public
+  // type stable while both feed the one shared rail.
+  const routeTabs: SettingsRouteTab[] = tabs.map((tab) => ({ path: tab.path, label: tab.label, icon: tab.icon }));
 
   return (
     <div className="settingsShell">
       <Headline text={title} />
       {banner}
-      <Tabs
-        type="line"
-        tabPaneMotion={false}
-        activeKey={activeKey}
-        tabBarClassName="settingsShell__tabbar"
-        onTabClick={(key) => {
-          if (key !== activeKey) {
-            navigate(key);
-          }
-        }}
-        tabList={tabs.map((tab) => ({ itemKey: tab.path, tab: tab.label, icon: tab.icon }))}
-      />
+      <SettingsRouteTabs tabs={routeTabs} ariaLabel={title} className="settingsShell__nav" />
       <div className="settingsShell__content">
         <Outlet context={context} />
       </div>

@@ -84,6 +84,8 @@ const appSource = read('ui/src/App.tsx');
 const menuSource = read('ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx');
 const settingsSource = read('ui/src/views/settings/SettingsLayout.tsx');
 const adminSource = read('ui/src/views/admin/AdminLayout.tsx');
+const routeTabsSource = read('ui/src/components/settingsRouteTabs/SettingsRouteTabs.tsx');
+const routeTabsStyles = read('ui/src/components/settingsRouteTabs/SettingsRouteTabs.less');
 
 function renderNavigation(pathname: string, primaryVisible = true, photoUrl: string | null = null): string {
   return renderToStaticMarkup(
@@ -253,9 +255,12 @@ describe('cohesive My account destination', () => {
     const html = renderSettings('/settings/notifications');
     expect(html).toContain('href="/settings/notifications"');
     expect(html).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/settings\/notifications"/);
-    expect(settingsSource).toContain('<NavLink');
+    // The NavLink markup now lives in the shared SettingsRouteTabs rail. SettingsLayout wires it in
+    // rather than hand-rolling its own <NavLink> rail, and never falls back to Semi Tabs.
+    expect(settingsSource).toContain('SettingsRouteTabs');
     expect(settingsSource).not.toContain('<Tabs');
     expect(settingsSource).not.toContain('SettingsShell');
+    expect(routeTabsSource).toContain('<NavLink');
   });
 
   it('uses a compact local heading and keeps Admin on its guarded shared shell', () => {
@@ -267,10 +272,13 @@ describe('cohesive My account destination', () => {
   });
 
   it('keeps mobile navigation contained above fixed primary navigation', () => {
+    // The page keeps its own safe-area bottom gutter; the horizontal-scroll behaviour of the rail
+    // now lives once in the shared SettingsRouteTabs component both areas use.
     expect(settingsStyles).toContain('@media (max-width: 768px)');
-    expect(settingsStyles).toContain('overflow-x: auto');
     expect(settingsStyles).toContain('env(safe-area-inset-bottom)');
     expect(settingsStyles).not.toMatch(/#[0-9a-f]{3,8}/i);
+    expect(routeTabsStyles).toContain('overflow-x: auto');
+    expect(routeTabsStyles).not.toMatch(/#[0-9a-f]{3,8}/i);
   });
 });
 

@@ -5,8 +5,9 @@
 
 import { IconBell, IconEdit, IconHome, IconListView, IconMapPin } from '@douyinfe/semi-icons';
 import type { ElementType, ReactNode } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router';
+import { Outlet, useLocation } from 'react-router';
 
+import SettingsRouteTabs, { type SettingsRouteTab } from '../../components/settingsRouteTabs/SettingsRouteTabs.jsx';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 
 import './SettingsLayout.less';
@@ -34,8 +35,17 @@ export function personalSettingsSectionFor(pathname: string): string {
 
 export default function SettingsLayout(): ReactNode {
   const t = useTranslation();
+  // Read only to key aria-live; SettingsRouteTabs derives its own active tab from the URL.
   const location = useLocation();
-  const activeSection = personalSettingsSectionFor(location.pathname);
+
+  // The bespoke vertical rail is gone: Account Preferences and Administration now navigate through
+  // the one shared SettingsRouteTabs rail (URL-driven, horizontally scrollable, keyboard-navigable),
+  // so the two areas look and behave identically with different tab lists.
+  const tabs: readonly SettingsRouteTab[] = PERSONAL_SETTINGS_SECTIONS.map(({ path, labelKey, Icon }) => ({
+    path,
+    label: t(labelKey),
+    icon: <Icon size="small" aria-hidden="true" />,
+  }));
 
   return (
     <div className="settingsLayout">
@@ -44,27 +54,10 @@ export default function SettingsLayout(): ReactNode {
         <h1 id="my-account-title">{t('settings.title')}</h1>
         <p>{t('settings.accountDescription')}</p>
       </header>
-      <div className="settingsLayout__body">
-        <nav className="settingsLayout__nav" aria-labelledby="my-account-title">
-          {PERSONAL_SETTINGS_SECTIONS.map(({ path, labelKey, Icon }) => {
-            const current = activeSection === path;
-            return (
-              <NavLink
-                key={path}
-                to={path}
-                className={`settingsLayout__navItem${current ? ' is-active' : ''}`}
-                aria-current={current ? 'page' : undefined}
-              >
-                <Icon size="small" aria-hidden="true" />
-                <span>{t(labelKey)}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
-        <section className="settingsLayout__content" aria-live="polite">
-          <Outlet />
-        </section>
-      </div>
+      <SettingsRouteTabs tabs={tabs} ariaLabel={t('settings.title')} className="settingsLayout__nav" />
+      <section className="settingsLayout__content" aria-live="polite" key={location.pathname}>
+        <Outlet />
+      </section>
     </div>
   );
 }

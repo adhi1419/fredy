@@ -70,6 +70,15 @@
   display: none;
 }
 
+.guidedJobForm__mobileActions {
+  display: flex;
+  gap: @space-2;
+}
+
+.guidedJobForm__mobileAction {
+  min-height: 44px;
+}
+
 .guidedJobForm__panel {
   min-height: 18rem;
 }
@@ -311,7 +320,11 @@
     position: sticky;
     top: 0;
     z-index: 4;
-    display: block;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: @space-2 @space-3;
+    justify-content: space-between;
     margin-bottom: @space-4;
     padding: @space-3;
     border: 1px solid @color-border;
@@ -319,6 +332,22 @@
     background: @color-fill-subtle;
     color: @color-text;
     font-weight: 700;
+  }
+
+  .guidedJobForm__mobileProgressLabel {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  // Req 12: the persistent Back / Continue-or-Save controls carry the step forward from inside the
+  // sticky ribbon. They must stay tappable, so both keep the 44px target and the primary action
+  // grows to fill the remaining width.
+  .guidedJobForm__mobileActions {
+    flex: 0 0 auto;
+
+    .semi-button {
+      min-height: 44px;
+    }
   }
 
   .guidedJobForm__panel {
@@ -330,36 +359,22 @@
     top: 3.25rem;
   }
 
-  // Keep the step footer in normal flow on phones. A bottom-sticky footer is pulled over tall
-  // provider cards even when extra section padding exists; normal flow plus bottom-nav clearance
-  // keeps every control visible and still leaves Back/Continue at the natural end of the step.
   .guidedJobForm__sectionStack {
     padding-bottom: 0;
   }
 
   .guidedJobForm__step,
-  .guidedJobForm__footer button,
   .providerChoiceCards__actions .semi-button,
   .providerChoiceCards__policyControl .semi-switch {
     min-height: 44px;
   }
 
+  // Req 12: the bottom footer is redundant on mobile — the sticky ribbon owns Back/Continue/Save —
+  // so it is hidden entirely. This also removes any chance of it overlapping content or the global
+  // bottom navigation, since there is no bottom-anchored control left on the step at all.
   .guidedJobForm__footer {
-    position: static;
-    margin: @space-4 0 calc(80px + env(safe-area-inset-bottom));
-    padding: @space-3 0;
-    background: @color-surface;
-    box-shadow: none;
+    display: none;
   }
-
-  .guidedJobForm__footerRight {
-    flex: 1;
-
-    button {
-      flex: 1;
-    }
-  }
-
   .guidedJobForm__dangerActions {
     display: grid;
     grid-template-columns: 1fr;

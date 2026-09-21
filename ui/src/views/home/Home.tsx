@@ -5,12 +5,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactElement } from 'react';
 import {
+  IconArrowDown,
+  IconArrowUp,
   IconChevronDown,
+  IconClock,
+  IconCrop,
   IconListView,
   IconMapPin,
   IconMore,
+  IconPriceTag,
   IconRoute,
   IconSearch,
+  IconSort,
   IconTickCircle,
   IconEyeOpened,
 } from '@douyinfe/semi-icons';
@@ -22,7 +28,6 @@ import { groupListingsByPosition, getBoundsFromCoords } from '../listings/mapUti
 import { useProviderCountries } from '../../hooks/useProviderCountries.js';
 import { useActions, useSelector } from '../../services/state/store.js';
 import { formatEuroPrice } from '../../services/price/priceService.js';
-import { format as formatTime } from '../../services/time/timeService.js';
 import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
 import {
   HOME_ACTIVITIES,
@@ -46,10 +51,13 @@ import {
   type HomeMapListing,
   type HomeProviderMetadata,
   type HomeQueryPayload,
+  type HomeSortDirection,
+  type HomeSortOption,
   type HomeView,
   type HomeViewStatePatch,
 } from '../../services/home/homeViewState';
 import { withReturnTo } from '../../services/routes/returnTo.js';
+import { relativeListingAge } from '../../services/home/listingAge';
 import type { ListingsDataState } from '../../services/state/listingsState';
 
 import './Home.less';
@@ -172,6 +180,20 @@ const CARD_LIFECYCLE_ACTIONS: readonly {
   { activity: 'archived', action: 'archive', labelKey: 'home.markArchived' },
 ]);
 
+/**
+ * The glyph each sort criterion wears in the icon-based sort control. Keyed on the canonical sort
+ * keys ({@link HOME_SORT_OPTIONS}); an unknown future key the server may introduce falls back to a
+ * neutral sort glyph so the control never renders blank. No criterion carries a visible text label -
+ * the meaning is the icon plus its tooltip/aria label, so the tool row stays compact.
+ */
+const SORT_SYMBOLS: Readonly<Record<string, Glyph>> = Object.freeze({
+  created_at: IconClock as unknown as Glyph,
+  travel_time: IconRoute as unknown as Glyph,
+  distance: IconMapPin as unknown as Glyph,
+  price: IconPriceTag as unknown as Glyph,
+  size: IconCrop as unknown as Glyph,
+});
+
 function moveMenuFocus(event: globalThis.KeyboardEvent, currentIndex: number, items: Array<HTMLButtonElement | null>) {
   let nextIndex: number | null = null;
   if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
@@ -249,6 +271,12 @@ function HomeStayCard({ listing, variant, onNavigate, onLifecycleAction }: HomeS
   // the primary listing presentation carries travel duration and distance to the reference address,
   // reusing the times the row already ships. Affordability is never shown here.
   const travel = homeCardTravel(listing);
+
+  // Every card carries how long ago the listing arrived, in coarse relative buckets ("35 mins ago",
+  // "Yesterday", "Last week"). It replaces the absolute timestamp the card used to show only when it
+  // had no travel line, so the freshness signal is now always present and reads the same whether or
+  // not a commute is known.
+  const age = relativeListingAge(listing.created_at);
 
   // The overflow lifecycle menu. It is a native disclosure (button + role="menu") so it stays
   // keyboard-operable and SSR-safe without a portal, and it lives outside the card's navigation
@@ -340,9 +368,11 @@ function HomeStayCard({ listing, variant, onNavigate, onLifecycleAction }: HomeS
                 <span className="home__card-travel-label">{t('home.cardTo', { label: travel.label })}</span>
               )}
             </span>
-          ) : (
-            <span className="home__card-travel home__card-travel--time">
-              {formatTime(listing.created_at, false, locale)}
+          ) : null}
+          {age && (
+            <span className="home__card-age">
+              <IconClock aria-hidden="true" />
+              {age.count == null ? t(age.key) : t(age.key, { count: String(age.count) })}
             </span>
           )}
         </span>
@@ -687,12 +717,19 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   };
 
   const selectedSort = homeSortOption(values.sort);
+  const activeDirection: HomeSortDirection = values.dir === 'asc' ? 'asc' : 'desc';
   const sortOptions = HOME_SORT_OPTIONS.some((option) => option.key === values.sort)
     ? HOME_SORT_OPTIONS
     : [...HOME_SORT_OPTIONS, selectedSort];
-  const setSort = (value: string) => {
-    const option = homeSortOption(value);
-    updateState({ sort: option.key, dir: option.direction, page: 1 });
+  // Selecting a criterion that is not active makes it active at its own default direction. Selecting
+  // the one already active flips its direction, so a single control both chooses the field and lets
+  // the reader reverse it without a separate direction toggle.
+  const chooseSort = (option: HomeSortOption) => {
+    if (option.key === values.sort) {
+      updateState({ dir: activeDirection === 'asc' ? 'desc' : 'asc', page: 1 });
+    } else {
+      updateState({ sort: option.key, dir: option.direction, page: 1 });
+    }
   };
   const navigateToListing = useCallback(
     (id: string) => navigate(withReturnTo(`/listings/listing/${id}`, `${location.pathname}${location.search}`)),
@@ -734,7 +771,11 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
                 title={label}
                 onClick={() => updateState({ view })}
               >
-                {view === 'feed' ? <IconListView aria-hidden="true" /> : <IconPaperMap aria-hidden="true" />}
+                {view === 'feed' ? (
+                  <IconListView aria-hidden="true" />
+                ) : (
+                  <IconPaperMap aria-hidden="true" className="home__view-icon--map" />
+                )}
                 <span className="home__sr-only">{label}</span>
               </button>
             );
@@ -824,16 +865,39 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
               )}
             </div>
           </div>
-          <label className="home__sort">
-            <span className="home__sr-only">{t('home.sortLabel')}</span>
-            <select value={selectedSort.key} onChange={(event) => setSort(event.target.value)}>
-              {sortOptions.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {t('home.sortPrefix', { label: t(option.labelKey) })}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="home__sort" role="group" aria-label={t('home.sortLabel')}>
+            {sortOptions.map((option) => {
+              const SortSymbol = SORT_SYMBOLS[option.key] ?? (IconSort as unknown as Glyph);
+              const isActive = option.key === values.sort;
+              const criterionLabel = t(option.labelKey);
+              const directionLabel = t(activeDirection === 'asc' ? 'home.sortDirectionAsc' : 'home.sortDirectionDesc');
+              // The active criterion announces its direction and that tapping it flips; an inactive
+              // one announces it will become the active sort. No visible text - the icon plus these
+              // labels carry the meaning.
+              const ariaLabel = isActive
+                ? t('home.sortActiveLabel', { label: criterionLabel, direction: directionLabel })
+                : t('home.sortSelectLabel', { label: criterionLabel });
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={isActive ? 'is-selected' : ''}
+                  aria-pressed={isActive}
+                  aria-label={ariaLabel}
+                  title={ariaLabel}
+                  onClick={() => chooseSort(option)}
+                >
+                  <SortSymbol aria-hidden="true" className="home__sort-symbol" />
+                  {isActive &&
+                    (activeDirection === 'asc' ? (
+                      <IconArrowUp aria-hidden="true" className="home__sort-direction" />
+                    ) : (
+                      <IconArrowDown aria-hidden="true" className="home__sort-direction" />
+                    ))}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

@@ -194,6 +194,33 @@ export default function GuidedJobForm({
   const currentSections = stepSections[currentStep] ?? [];
 
   const panel = panelRef ?? localPanelRef;
+  const isLastStep = currentStep >= GUIDED_STEPS.length - 1;
+  // The continue/save primary action, shared by the desktop footer and the mobile sticky header so
+  // the two can never advance on different rules. Continue still runs validation and advances one
+  // step; the last step swaps to Save.
+  const renderPrimaryAction = (variant: 'footer' | 'mobile') =>
+    isLastStep ? (
+      <Button
+        type="primary"
+        icon={<IconPlusCircle />}
+        disabled={!canSave}
+        onClick={onSave}
+        aria-label={t('jobs.mutation.save')}
+        className={variant === 'mobile' ? 'guidedJobForm__mobileAction' : undefined}
+      >
+        {t('jobs.mutation.save')}
+      </Button>
+    ) : (
+      <Button
+        type="primary"
+        onClick={onContinue}
+        aria-label={t('jobs.mutation.guidedContinue')}
+        className={variant === 'mobile' ? 'guidedJobForm__mobileAction' : undefined}
+      >
+        {t('jobs.mutation.guidedContinue')}
+      </Button>
+    );
+
   const renderStepNavigation = () => (
     <>
       <ol className="guidedJobForm__steps" role="tablist" aria-label={t('jobs.mutation.guidedStepsLabel')}>
@@ -223,8 +250,28 @@ export default function GuidedJobForm({
           );
         })}
       </ol>
-      <div className="guidedJobForm__mobileProgress" role="status" aria-live="polite">
-        {t('jobs.mutation.guidedStepOf', { current: currentStep + 1 })} · {stepLabels[currentStep]}
+      {/* Req 12: on mobile the persistent Back / Continue-or-Save controls live in this sticky
+          "Step N of 4" ribbon, so continuing is always in reach and never depends on scrolling to
+          a bottom footer buried under a tall provider card. The desktop footer is hidden on mobile
+          (see GuidedJobForm.less) and this ribbon is hidden on desktop, so exactly one set of
+          controls is ever active. The label is a polite live region; the controls carry their own
+          aria-labels. */}
+      <div className="guidedJobForm__mobileProgress">
+        <span className="guidedJobForm__mobileProgressLabel" role="status" aria-live="polite">
+          {t('jobs.mutation.guidedStepOf', { current: currentStep + 1 })} · {stepLabels[currentStep]}
+        </span>
+        <div className="guidedJobForm__mobileActions">
+          <Button
+            type="tertiary"
+            onClick={onBack}
+            disabled={currentStep === 0}
+            aria-label={t('jobs.mutation.guidedBack')}
+            className="guidedJobForm__mobileAction"
+          >
+            {t('jobs.mutation.guidedBack')}
+          </Button>
+          {renderPrimaryAction('mobile')}
+        </div>
       </div>
     </>
   );
@@ -512,17 +559,7 @@ export default function GuidedJobForm({
         <Button type="tertiary" onClick={onBack} disabled={currentStep === 0}>
           {t('jobs.mutation.guidedBack')}
         </Button>
-        <div className="guidedJobForm__footerRight">
-          {currentStep < GUIDED_STEPS.length - 1 ? (
-            <Button type="primary" onClick={onContinue}>
-              {t('jobs.mutation.guidedContinue')}
-            </Button>
-          ) : (
-            <Button type="primary" icon={<IconPlusCircle />} disabled={!canSave} onClick={onSave}>
-              {t('jobs.mutation.save')}
-            </Button>
-          )}
-        </div>
+        <div className="guidedJobForm__footerRight">{renderPrimaryAction('footer')}</div>
       </div>
     </form>
   );

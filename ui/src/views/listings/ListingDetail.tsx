@@ -1000,45 +1000,10 @@ export default function ListingDetail(): ReactNode {
                 </strong>
               </div>
 
-              {/* Lifecycle controls stay above secondary facts so they remain visible above the
-              fixed mobile action dock. Each pairs an icon with its label and reflects the current
-              state: the current forward action is hidden; archived exposes restore and disables
-              the forward transitions. */}
-              <div
-                className="listing-detail__fit-lifecycle"
-                role="group"
-                aria-label={t('listing.detail.mobile.lifecycleActions')}
-              >
-                {listingArchived ? (
-                  <>
-                    <Button icon={<IconUndo />} theme="solid" type="primary" onClick={handleUnarchive}>
-                      {t('listing.detail.mobile.unarchive')}
-                    </Button>
-                    <Button icon={<IconTickCircle />} disabled>
-                      {t('home.activityApplied')}
-                    </Button>
-                    <Button icon={<IconEyeOpened />} disabled>
-                      {t('home.activityViewed')}
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    {!listingApplied && (
-                      <Button icon={<IconTickCircle />} onClick={handleManualApply}>
-                        {t('listing.detail.mobile.appliedSelf')}
-                      </Button>
-                    )}
-                    {!listingViewed && (
-                      <Button icon={<IconEyeOpened />} onClick={handleViewing}>
-                        {t('listing.detail.mobile.viewing')}
-                      </Button>
-                    )}
-                    <Button icon={<IconArchive />} onClick={handleArchive}>
-                      {t('listing.detail.mobile.archive')}
-                    </Button>
-                  </>
-                )}
-              </div>
+              {/* Lifecycle mutation controls deliberately do NOT live in the Fit card. They belong
+              once, below the main details, inside "Your Activity" (see listing-detail__activity),
+              so the Fit card stays a read-only snapshot and the fixed mobile action dock carries
+              the primary Apply/Maps/provider actions. */}
 
               <div className="listing-detail__fit-metrics">
                 <div className="listing-detail__fit-metric">
