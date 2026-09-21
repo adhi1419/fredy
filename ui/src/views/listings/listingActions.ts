@@ -31,12 +31,34 @@ export const MOBILE_LISTING_ACTION_LABELS: Readonly<Record<MobileListingAction, 
   provider: 'listing.detail.mobile.openProvider',
 });
 
-/** Canonical API actions behind the four visible listing controls. */
+/**
+ * Canonical API actions behind the visible listing controls.
+ *
+ * The reverse of `archive` is the backend `restore` action (the `/:listingId/status` route accepts
+ * it and `transitionLifecycle` maps `restore` back to the `new` state). It is passed as a literal
+ * at the call site rather than added here, so this frozen map keeps naming only the four controls.
+ */
 export const LISTING_LIFECYCLE_ACTIONS = Object.freeze({
   appliedSelf: 'applied',
   viewing: 'viewing',
   archive: 'archive',
 });
+
+/** The one persisted lifecycle state, read as a view rather than kept as separate booleans. */
+export type ListingLifecycle = 'new' | 'applied' | 'viewed' | 'archived';
+
+/**
+ * Resolve the single lifecycle state a listing is in, folding provider-confirmed delivery into
+ * `applied` so the detail page, the card symbol and the Home filter cannot drift apart.
+ *
+ * @param {{lifecycle?: {state?: string}, inquiry_send_status?: string}|null|undefined} listing
+ * @returns {ListingLifecycle}
+ */
+export function getListingLifecycle(listing: ListingActionRecord | null | undefined): ListingLifecycle {
+  const stored = listing?.lifecycle?.state;
+  if (stored === 'applied' || stored === 'viewed' || stored === 'archived') return stored;
+  return isListingApplied(listing) ? 'applied' : 'new';
+}
 
 const SAFE_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:']);
 

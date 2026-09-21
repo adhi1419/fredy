@@ -38,6 +38,10 @@ import {
   IconRefresh,
   IconEdit,
   IconCopy,
+  IconTickCircle,
+  IconEyeOpened,
+  IconArchive,
+  IconUndo,
 } from '@douyinfe/semi-icons';
 import maplibregl from '../../components/map/maplibre.js';
 import MapCanvas, { HOME_MARKER_COLOR } from '../../components/map/Map.jsx';
@@ -58,6 +62,7 @@ import NearbyStops from '../../components/transit/NearbyStops.jsx';
 import ConnectivityCard from '../../components/connectivity/ConnectivityCard.jsx';
 import TravelTimes from '../../components/transit/TravelTimes.jsx';
 import AddressEditor from './components/AddressEditor.jsx';
+import ScrollspyTabs, { type ScrollspySection } from '../../components/scrollspy/ScrollspyTabs';
 import './ListingDetail.less';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
 import { useFinanceProfile } from '../../hooks/useFinanceProfile.js';
@@ -72,6 +77,7 @@ import {
 import {
   getAppliedMessage,
   getGoogleMapsUrl,
+  getListingLifecycle,
   getSafeExternalUrl,
   isListingApplied,
   LISTING_LIFECYCLE_ACTIONS,
@@ -164,7 +170,10 @@ interface ListingStoreState {
 interface ListingActions {
   listingsData: {
     getListing: (listingId: string) => Promise<unknown>;
-    setListingLifecycleAction: (listingId: string, action: 'applied' | 'viewing' | 'archive') => Promise<void>;
+    setListingLifecycleAction: (
+      listingId: string,
+      action: 'applied' | 'viewing' | 'archive' | 'restore',
+    ) => Promise<void>;
     setListingNotes: (listingId: string, notes: string) => Promise<void>;
     setListingAddress: (
       listingId: string,
@@ -549,7 +558,7 @@ export default function ListingDetail(): ReactNode {
     }
   };
 
-  const handleLifecycleAction = async (action: 'applied' | 'viewing' | 'archive', successKey: string) => {
+  const handleLifecycleAction = async (action: 'applied' | 'viewing' | 'archive' | 'restore', successKey: string) => {
     try {
       await actions.listingsData.setListingLifecycleAction(listing.id, action);
       await actions.listingsData.getListing(listingId);
@@ -586,6 +595,10 @@ export default function ListingDetail(): ReactNode {
     handleLifecycleAction(LISTING_LIFECYCLE_ACTIONS.viewing, 'listing.detail.mobile.viewingToast');
   const handleArchive = () =>
     handleLifecycleAction(LISTING_LIFECYCLE_ACTIONS.archive, 'listing.detail.mobile.archiveToast');
+  // Un-archive is the reverse of Archive. The backend `/status` route accepts `restore` and maps it
+  // back to the `new` state, so no separate endpoint is needed - the action map deliberately does
+  // not name it, so it is passed as the literal the route expects.
+  const handleUnarchive = () => handleLifecycleAction('restore', 'listing.detail.mobile.unarchiveToast');
 
   /**
    * Store an address the user picked, then re-read the listing so map, distances and the nearby
@@ -675,16 +688,21 @@ export default function ListingDetail(): ReactNode {
 
   if (!listingData) return null;
 
-  type ListingLifecycle = 'new' | 'applied' | 'viewed' | 'archived';
-  const storedLifecycle = listing.lifecycle?.state;
-  const listingApplied = isListingApplied(listing);
-  const lifecycle: ListingLifecycle =
-    storedLifecycle === 'applied' || storedLifecycle === 'viewed' || storedLifecycle === 'archived'
-      ? storedLifecycle
-      : listingApplied
-        ? 'applied'
-        : 'new';
+  const lifecycle = getListingLifecycle(listing);
+  const listingApplied = lifecycle === 'applied' || isListingApplied(listing);
+  const listingViewed = lifecycle === 'viewed';
+  const listingArchived = lifecycle === 'archived';
   const lifecycleLabel = t(LIFECYCLE_LABEL_KEYS[lifecycle]);
+  // The lifecycle badge pairs an icon with its label so state is never colour-only. Computed here
+  // rather than inline so the badge JSX stays compact next to its label.
+  const lifecycleIcon: ReactNode =
+    lifecycle === 'applied' ? (
+      <IconTickCircle aria-hidden="true" />
+    ) : lifecycle === 'viewed' ? (
+      <IconEyeOpened aria-hidden="true" />
+    ) : lifecycle === 'archived' ? (
+      <IconArchive aria-hidden="true" />
+    ) : null;
   const primaryTravel = homeCardTravel({ travelTimes: listing.travelTimes });
   const appliedMessage = getAppliedMessage(listing);
   const googleMapsUrl = getGoogleMapsUrl(listing);
@@ -756,13 +774,25 @@ export default function ListingDetail(): ReactNode {
   }
 
   const isRental = listing.dealType === 'rent';
+  const scrollRoot = typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('.app__content');
+
+  // The four reading anchors for the scrollspy rail. Order matches the page's top-to-bottom flow so
+  // the rail reads as a table of contents. Ids are set on the matching <section> elements below.
+  const scrollspySections: readonly ScrollspySection[] = [
+    { id: 'listing-fit', label: t('listing.detail.tabFit'), icon: <IconBriefcase aria-hidden="true" /> },
+    { id: 'listing-activity', label: t('listing.detail.tabActivity'), icon: <IconActivity aria-hidden="true" /> },
+    { id: 'listing-map', label: t('listing.detail.tabMap'), icon: <IconMapPin aria-hidden="true" /> },
+    { id: 'listing-evidence', label: t('listing.detail.tabEvidence'), icon: <IconClock aria-hidden="true" /> },
+  ];
 
   return (
     <div className="listing-detail">
       <header className="listing-detail__heading">
         <div className="listing-detail__heading-copy">
           <span className="listing-detail__eyebrow">{t('listing.detail.eyebrow')}</span>
-          <Title heading={1}>{listing?.title || t('listing.detail.defaultTitle')}</Title>
+          <Title heading={1} className="listing-detail__heading-title">
+            {listing?.title || t('listing.detail.defaultTitle')}
+          </Title>
           <Text className="listing-detail__heading-description" type="tertiary">
             {t('listing.detail.headingDescription')}
           </Text>
@@ -782,6 +812,13 @@ export default function ListingDetail(): ReactNode {
           </Button>
         </div>
       </header>
+
+      <ScrollspyTabs
+        sections={scrollspySections}
+        ariaLabel={t('listing.detail.sectionNav')}
+        scrollRoot={scrollRoot}
+        className="listing-detail__scrollspy"
+      />
 
       <div className="listing-detail__mobile-action-dock" data-testid="listing-mobile-actions">
         {MOBILE_LISTING_ACTION_ORDER.map((action: 'apply' | 'maps' | 'provider') => {
@@ -891,7 +928,7 @@ export default function ListingDetail(): ReactNode {
 
       <section className="listing-detail__composition" aria-label={t('listing.detail.compositionLabel')}>
         <main className="listing-detail__main">
-          <section className="listing-detail__fit" aria-labelledby="listing-fit-heading">
+          <section className="listing-detail__fit" id="listing-fit" aria-labelledby="listing-fit-heading">
             <div
               className={`listing-detail__image-container${!listing.image_url ? ' listing-detail__image-container--placeholder' : ''}`}
             >
@@ -901,21 +938,27 @@ export default function ListingDetail(): ReactNode {
                 style={{ width: '100%', height: '100%' }}
                 preview={!!listing.image_url}
               />
+              {/* Photo-first hierarchy: the lifecycle badge floats over the image (mobile-first, per
+              the frozen Direction A wireframe) so the state reads at a glance without a heading
+              above the photo. It carries the shared fit-status contract - one lifecycle view, never
+              a second boolean - and pairs an icon with the label so state is never colour-only. */}
+              <span
+                className={`listing-detail__image-badge listing-detail__fit-status${lifecycle !== 'new' ? ' listing-detail__fit-status--selected' : ''}`}
+              >
+                {lifecycleIcon}
+                {lifecycleLabel}
+              </span>
             </div>
 
             <div className="listing-detail__fit-summary">
-              <div className="listing-detail__fit-heading">
-                <div>
-                  <span className="listing-detail__eyebrow">{t('listing.detail.fitEyebrow')}</span>
-                  <Title heading={2} id="listing-fit-heading">
-                    {listing?.title || t('listing.detail.defaultTitle')}
-                  </Title>
-                </div>
-                <span
-                  className={`listing-detail__fit-status${lifecycle !== 'new' ? ' listing-detail__fit-status--selected' : ''}`}
-                >
-                  {lifecycleLabel}
-                </span>
+              {/* The title lives in the desktop header H1; on mobile the header is photo-first and
+              hides it, so this block carries the title and district below the photo instead. It is
+              hidden on desktop to avoid repeating the H1 in the Fit card. */}
+              <div className="listing-detail__fit-title">
+                <span className="listing-detail__eyebrow">{t('listing.detail.fitEyebrow')}</span>
+                <Title heading={2} id="listing-fit-heading">
+                  {listing?.title || t('listing.detail.defaultTitle')}
+                </Title>
               </div>
               <div className="listing-detail__fit-address">
                 {' '}
@@ -940,6 +983,61 @@ export default function ListingDetail(): ReactNode {
                   />
                 </Space>
               </div>
+              <div className="listing-detail__fit-metric listing-detail__fit-metric--travel">
+                <span>{t('listing.detail.travelLabel')}</span>
+                <strong className="listing-detail__fit-metric-value--accent">
+                  {primaryTravel
+                    ? primaryTravel.distance
+                      ? t('listing.detail.travelSummary', {
+                          duration: primaryTravel.duration,
+                          distance: primaryTravel.distance,
+                          label: primaryTravel.label,
+                        })
+                      : [primaryTravel.duration, primaryTravel.label].filter(Boolean).join(' · ')
+                    : t('common.na')}
+                </strong>
+              </div>
+
+              {/* Lifecycle controls stay above secondary facts so they remain visible above the
+              fixed mobile action dock. Each pairs an icon with its label and reflects the current
+              state: the current forward action is hidden; archived exposes restore and disables
+              the forward transitions. */}
+              <div
+                className="listing-detail__fit-lifecycle"
+                role="group"
+                aria-label={t('listing.detail.mobile.lifecycleActions')}
+              >
+                {listingArchived ? (
+                  <>
+                    <Button icon={<IconUndo />} theme="solid" type="primary" onClick={handleUnarchive}>
+                      {t('listing.detail.mobile.unarchive')}
+                    </Button>
+                    <Button icon={<IconTickCircle />} disabled>
+                      {t('home.activityApplied')}
+                    </Button>
+                    <Button icon={<IconEyeOpened />} disabled>
+                      {t('home.activityViewed')}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {!listingApplied && (
+                      <Button icon={<IconTickCircle />} onClick={handleManualApply}>
+                        {t('listing.detail.mobile.appliedSelf')}
+                      </Button>
+                    )}
+                    {!listingViewed && (
+                      <Button icon={<IconEyeOpened />} onClick={handleViewing}>
+                        {t('listing.detail.mobile.viewing')}
+                      </Button>
+                    )}
+                    <Button icon={<IconArchive />} onClick={handleArchive}>
+                      {t('listing.detail.mobile.archive')}
+                    </Button>
+                  </>
+                )}
+              </div>
+
               <div className="listing-detail__fit-metrics">
                 <div className="listing-detail__fit-metric">
                   <span>{t('listing.detail.fieldPrice')}</span>
@@ -955,21 +1053,15 @@ export default function ListingDetail(): ReactNode {
                     {listing.rooms ? t('listing.detail.fieldRoomsValue', { count: listing.rooms }) : t('common.na')}
                   </strong>
                 </div>
-                <div className="listing-detail__fit-metric listing-detail__fit-metric--travel">
-                  <span>{t('listing.detail.distanceToHome')}</span>
-                  <strong className="listing-detail__fit-metric-value--accent">
-                    {primaryTravel
-                      ? [primaryTravel.duration, primaryTravel.distance, primaryTravel.label]
-                          .filter(Boolean)
-                          .join(' · ')
-                      : t('common.na')}
-                  </strong>
-                </div>
               </div>
             </div>
           </section>
 
-          <section className="listing-detail__activity" aria-labelledby="listing-activity-heading">
+          <section
+            className="listing-detail__activity"
+            id="listing-activity"
+            aria-labelledby="listing-activity-heading"
+          >
             <div className="listing-detail__section-heading">
               <div>
                 <span className="listing-detail__eyebrow">{t('listing.detail.activityEyebrow')}</span>
@@ -1011,19 +1103,49 @@ export default function ListingDetail(): ReactNode {
                 role="group"
                 aria-label={t('listing.detail.mobile.lifecycleActions')}
               >
-                <Button disabled={listingApplied} onClick={handleManualApply}>
-                  {t('listing.detail.mobile.appliedSelf')}
-                </Button>
+                {listingArchived ? (
+                  <>
+                    <Button icon={<IconUndo />} theme="solid" type="primary" onClick={handleUnarchive}>
+                      {t('listing.detail.mobile.unarchive')}
+                    </Button>
+                    {/* Archived is a resting state: the forward lifecycle actions are unavailable
+                    until the listing is restored, so they render disabled rather than vanishing. */}
+                    <Button icon={<IconTickCircle />} disabled>
+                      {t('listing.detail.mobile.appliedSelf')}
+                    </Button>
+                    <Button icon={<IconEyeOpened />} disabled>
+                      {t('listing.detail.mobile.viewing')}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {!listingApplied && (
+                      <Button icon={<IconTickCircle />} onClick={handleManualApply}>
+                        {t('listing.detail.mobile.appliedSelf')}
+                      </Button>
+                    )}
+                    {!listingViewed && (
+                      <Button icon={<IconEyeOpened />} onClick={handleViewing}>
+                        {t('listing.detail.mobile.viewing')}
+                      </Button>
+                    )}
+                    <Button icon={<IconArchive />} onClick={handleArchive}>
+                      {t('listing.detail.mobile.archive')}
+                    </Button>
+                  </>
+                )}
                 <Button aria-label={t('listing.detail.mobile.addNotes')} onClick={focusNotes}>
                   {t('listing.detail.mobile.addNotes')}
                 </Button>
-                <Button onClick={handleViewing}>{t('listing.detail.mobile.viewing')}</Button>
-                <Button onClick={handleArchive}>{t('listing.detail.mobile.archive')}</Button>
               </div>
             </div>
           </section>
 
-          <section className="listing-detail__evidence" aria-labelledby="listing-evidence-heading">
+          <section
+            className="listing-detail__evidence"
+            id="listing-evidence"
+            aria-labelledby="listing-evidence-heading"
+          >
             <div className="listing-detail__section-heading">
               <div>
                 <span className="listing-detail__eyebrow">{t('listing.detail.evidenceEyebrow')}</span>
@@ -1038,7 +1160,7 @@ export default function ListingDetail(): ReactNode {
                 {/* The map used to run the full width under the card, which pushed it a screen
                 below the figures. In this column it sits beside the details and the costing,
                 so the whole listing fits on one screen. */}
-                <div className="listing-detail__map-wrapper">
+                <div className="listing-detail__map-wrapper" id="listing-map">
                   <Title heading={4} className="listing-detail__map-title">
                     {t('listing.detail.locationTitle')}
                   </Title>

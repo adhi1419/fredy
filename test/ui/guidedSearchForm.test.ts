@@ -77,10 +77,13 @@ describe('guidedSearchForm', () => {
     ]);
   });
 
-  it('keeps the mobile progress ribbon and places the footer above fixed navigation', () => {
+  it('keeps the mobile progress ribbon sticky and the footer clear of fixed navigation', () => {
     expect(guidedStyles).toMatch(/guidedJobForm__mobileProgress\s*{[^}]*position:\s*sticky/s);
-    expect(guidedStyles).toMatch(/guidedJobForm__footer\s*{[^}]*position:\s*sticky/s);
-    expect(guidedStyles).toMatch(/guidedJobForm__footer\s*{[^}]*bottom:\s*calc\(64px/s);
+    expect(guidedStyles).toMatch(/guidedJobForm__footer\s*{[^}]*position:\s*static/s);
+    expect(guidedStyles).toMatch(
+      /guidedJobForm__footer\s*{[^}]*margin:\s*@space-4 0 calc\(80px \+ env\(safe-area-inset-bottom\)\)/s,
+    );
+    expect(guidedStyles).not.toMatch(/guidedJobForm__footer\s*{[^}]*bottom:\s*calc\(64px/s);
     expect(guidedStyles).toMatch(/guidedJobForm__panel\s*{[^}]*scroll-margin-top:/s);
     expect(guidedStyles).toMatch(/jobMutation__notificationActions\s*{[^}]*grid-template-columns:\s*1fr/s);
   });

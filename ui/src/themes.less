@@ -95,15 +95,18 @@
 }
 
 body[theme-mode='light'] {
-  // Warm paper and restrained forest green.
-  --f-base: #f3eee3;
-  --f-surface: #fffaf0;
-  --f-surface-rgb: 255 250 240;
-  --f-elevated: #f7f1e6;
-  --f-hover: #ebe4d8;
-  --f-solid: #e4dacb;
-  --f-border: #d7d0c2;
-  --f-border-bright: #afa696;
+  // Direction A neutral paper: a near-white canvas under pure-white surfaces, restrained forest
+  // green. The neutral ramp (base/surface/elevated/hover/solid/border) mirrors the frozen
+  // Direction A palette (canvas #f7f7f7, surface #ffffff, surface-2 #f2f2f2, line #ddd) so a white
+  // card never sits on a warm-paper elevation or hairline.
+  --f-base: #f7f7f7;
+  --f-surface: #ffffff;
+  --f-surface-rgb: 255 255 255;
+  --f-elevated: #f2f2f2;
+  --f-hover: #ebebeb;
+  --f-solid: #e4e4e4;
+  --f-border: #dddddd;
+  --f-border-bright: #c2c2c2;
 
   --f-accent: #1f624c;
   --f-accent-rgb: 31 98 76;
@@ -117,15 +120,17 @@ body[theme-mode='light'] {
   --f-muted: #5f665e;
   --f-faint: #858b83;
 
-  // Semantic states retain distinct error, warning, info, and success hues.
-  --f-success: #2b7457;
-  --f-success-rgb: 43 116 87;
-  --f-success-dim: #dce9df;
-  --f-success-active: #276b4f;
+  // Semantic states retain distinct error, warning, info, and success hues. Success is the
+  // Direction A pure-green "good" family and warning its amber "warn" family; both are darkened
+  // just enough to clear the 4.5:1 contrast the theme suite requires on the near-white base.
+  --f-success: #00800a;
+  --f-success-rgb: 0 128 10;
+  --f-success-dim: #eaf7eb;
+  --f-success-active: #017a06;
   --f-error: #9e4841;
   --f-error-rgb: 158 72 65;
   --f-error-dim: #f4dfdb;
-  --f-warning: #8b601e;
+  --f-warning: #a65a00;
   --f-info: #356b8a;
   --f-info-rgb: 53 107 138;
 
@@ -134,8 +139,8 @@ body[theme-mode='light'] {
   --f-fill-2: rgb(0 0 0 / 7%);
   --f-fill-strong: rgb(0 0 0 / 11%);
 
-  --f-input-bg: #fffaf0;
-  --f-input-border: #d7d0c2;
+  --f-input-bg: #ffffff;
+  --f-input-border: #dddddd;
 
   --f-scrim: rgb(30 41 34 / 45%);
   --f-shadow-sm: 0 2px 8px rgb(30 41 34 / 10%);
@@ -161,8 +166,8 @@ body[theme-mode='light'] {
   --f-gray-border: #c8cec5;
   --f-gray-bg: rgb(95 104 95 / 8%);
 
-  --f-map-panel: rgb(255 250 240 / 95%);
-  --f-map-panel-border: #afa696;
+  --f-map-panel: rgb(255 255 255 / 95%);
+  --f-map-panel-border: #c2c2c2;
   --f-map-panel-text: #5f665e;
   --f-map-panel-strong: #1e2922;
 }

@@ -92,26 +92,38 @@
 
 @media (max-width: 768px) {
   .settingsLayout {
+    box-sizing: border-box;
     gap: @space-4;
-    padding: @space-4 @space-3 calc(80px + env(safe-area-inset-bottom));
+    // Symmetric left/right gutters. The page used to look lopsided on a phone because the nav rail
+    // below could grow wider than the viewport and drag the centred column off to one side; the
+    // rail is now contained (see &__nav) so these gutters stay even.
+    width: 100%;
+    max-width: 100%;
+    padding: @space-4 @space-4 calc(80px + env(safe-area-inset-bottom));
 
     &__body {
       grid-template-columns: minmax(0, 1fr);
       gap: @space-4;
+      min-width: 0;
     }
 
     &__nav {
-      grid-auto-columns: minmax(148px, 1fr);
+      grid-auto-columns: max-content;
       grid-auto-flow: column;
+      // Contained within the column: the rail scrolls itself instead of widening the page, so the
+      // clipping-with-no-affordance problem becomes a normal horizontal scroll with a thin bar.
+      max-width: 100%;
       overflow-x: auto;
       padding-bottom: @space-1;
       scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
     }
 
     &__navItem {
       border-bottom: 3px solid transparent;
       border-left: 0;
       border-radius: @radius-btn @radius-btn 0 0;
+      white-space: nowrap;
 
       &.is-active {
         border-bottom-color: @color-accent;
