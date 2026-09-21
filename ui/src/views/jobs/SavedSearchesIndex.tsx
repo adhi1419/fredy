@@ -15,7 +15,6 @@ import {
 } from '@douyinfe/semi-icons';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
 import { useNavigate } from 'react-router';
-import ListingDeletionModal from '../../components/ListingDeletionModal.jsx';
 import FilterButton from '../../components/filters/FilterButton.jsx';
 import ActiveFilterChips from '../../components/filters/ActiveFilterChips.jsx';
 import FilterDrawer, { FilterGroup, FilterHelp } from '../../components/filters/FilterDrawer.jsx';
@@ -31,7 +30,7 @@ import { useActions, useSelector } from '../../services/state/store.js';
 import type { Job } from '../../services/state/jobsState';
 import { createAuthenticatedEventStream } from '../../services/sse/authenticatedEventStream.js';
 import { format as formatDate } from '../../services/time/timeService.js';
-import { errorMessage, xhrDelete, xhrPost, xhrPut } from '../../services/xhr.js';
+import { errorMessage, xhrPost, xhrPut } from '../../services/xhr.js';
 import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
 import { debounce } from '../../utils.js';
 import { getSavedSearchDirectAction, resolveSavedSearchHealth, shouldShowPause } from './savedSearchActions';
@@ -39,9 +38,6 @@ import './SavedSearchesIndex.less';
 
 interface SavedSearchStoreState {
   jobsData: { result: readonly Job[]; totalNumber?: number };
-  userSettings: {
-    settings?: { listing_deletion_preference?: { hardDelete?: boolean; skipPrompt?: boolean } };
-  };
 }
 
 interface SavedSearchActions {
@@ -50,12 +46,8 @@ interface SavedSearchActions {
     getJobsData: (params?: Record<string, unknown>) => Promise<void>;
     setJobRunning: (jobId: string, running: boolean) => void;
   };
-  userSettings: {
-    setListingDeletionPreference: (preference: { skipPrompt: boolean; hardDelete: boolean }) => Promise<void>;
-  };
 }
 
-type PendingDeletion = { type: 'job' | 'listings'; jobId: string };
 type Translation = (key: string, vars?: Record<string, string | number>) => string;
 type JobAction = (jobId: string) => void;
 type StatusAction = (jobId: string, enabled: boolean) => void;
@@ -294,9 +286,6 @@ export default function SavedSearchesIndex() {
   const jobsData = useSelector((state: SavedSearchStoreState) => state.jobsData);
   const actions = useActions<SavedSearchActions>();
   const navigate = useNavigate();
-  const userSettings = useSelector((state: SavedSearchStoreState) => state.userSettings.settings);
-  const listingDeletionPref = userSettings?.listing_deletion_preference;
-  const defaultDeleteType = listingDeletionPref?.hardDelete ? 'hard' : 'soft';
 
   const [page, setPage] = useState(1);
   const pageSize = 12;
@@ -304,8 +293,6 @@ export default function SavedSearchesIndex() {
   const [sortDir, setSortDir] = useState('asc');
   const [freeTextFilter, setFreeTextFilter] = useState<string | null>(null);
   const [activityFilter, setActivityFilter] = useState<boolean | null>(null);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterValues = { active: activityFilter };
   const activeFilterCount = countActiveFilters(filterValues);
@@ -378,35 +365,6 @@ export default function SavedSearchesIndex() {
       handleFilterChange.cancel?.();
     };
   }, [handleFilterChange]);
-
-  const confirmDeletion = async (
-    hardDelete: boolean,
-    remember: boolean = false,
-    deletion: PendingDeletion | null = pendingDeletion,
-  ) => {
-    if (deletion == null) return;
-    try {
-      if (remember && deletion.type === 'listings') {
-        await actions.userSettings.setListingDeletionPreference({ skipPrompt: true, hardDelete });
-      }
-      if (deletion.type === 'job') {
-        await xhrDelete('/api/jobs', { jobId: deletion.jobId });
-        Toast.success(t('jobs.toastDeletedWithListings'));
-      } else {
-        await xhrDelete('/api/listings/job', { jobId: deletion.jobId, hardDelete });
-        Toast.success(t('jobs.toastListingsDeleted'));
-      }
-      loadData();
-      if (deletion.type === 'job') {
-        actions.jobsData.getJobs();
-      }
-    } catch (error) {
-      Toast.error(errorMessage(error, t('jobs.toastDeleteError')));
-    } finally {
-      setDeleteModalVisible(false);
-      setPendingDeletion(null);
-    }
-  };
 
   const onJobStatusChanged = async (jobId: string, status: boolean) => {
     try {
@@ -556,19 +514,6 @@ export default function SavedSearchesIndex() {
           />
         </div>
       )}
-
-      <ListingDeletionModal
-        visible={deleteModalVisible}
-        title={pendingDeletion?.type === 'job' ? t('jobs.deletion.title') : t('listing.deletion.title')}
-        showOptions={pendingDeletion?.type !== 'job'}
-        defaultDeleteType={defaultDeleteType}
-        message={pendingDeletion?.type === 'job' ? t('jobs.deletion.message') : t('listing.deletion.message')}
-        onConfirm={confirmDeletion}
-        onCancel={() => {
-          setDeleteModalVisible(false);
-          setPendingDeletion(null);
-        }}
-      />
     </div>
   );
 }

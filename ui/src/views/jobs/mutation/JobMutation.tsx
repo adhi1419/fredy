@@ -10,8 +10,9 @@ import NotificationChannelEditor from './components/notificationAdapter/Notifica
 import ProviderMutator from './components/provider/ProviderMutator.jsx';
 import GuidedJobForm from './GuidedJobForm';
 import Headline from '../../../components/headline/Headline.jsx';
+import ListingDeletionModal from '../../../components/ListingDeletionModal.jsx';
 import { useActions, useSelector } from '../../../services/state/store.js';
-import { xhrPost, errorMessage } from '../../../services/xhr.js';
+import { xhrDelete, xhrPost, errorMessage } from '../../../services/xhr.js';
 import { useNavigate, useParams, useLocation } from 'react-router';
 import { Button, Toast, Banner } from '@douyinfe/semi-ui-19';
 import './JobMutation.less';
@@ -47,13 +48,23 @@ interface JobMutationStoreState {
   jobsData: { jobs: readonly Job[]; shareableUserList: readonly ShareableUser[] };
   notificationChannels: { channels: readonly NotificationChannel[] };
   provider: readonly ProviderMetadata[];
-  userSettings: { settings?: { inquiry_profile?: Record<string, unknown> } };
+  userSettings: {
+    settings?: {
+      inquiry_profile?: Record<string, unknown>;
+      listing_deletion_preference?: { hardDelete?: boolean; skipPrompt?: boolean };
+    };
+  };
 }
 
 interface JobMutationActions {
   jobsData: { getJobs: () => Promise<void> };
   notificationChannels: { getChannels: () => Promise<void>; tryChannel: (channelId: string) => Promise<void> };
+  userSettings: {
+    setListingDeletionPreference: (preference: { skipPrompt: boolean; hardDelete: boolean }) => Promise<void>;
+  };
 }
+
+type PendingDeletion = 'job' | 'listings' | null;
 
 interface JobDraft {
   name?: string | null;
@@ -90,6 +101,10 @@ export default function JobMutator() {
   const inquiryProfile = useSelector<JobMutationStoreState, Record<string, unknown> | undefined>(
     (state) => state.userSettings.settings?.inquiry_profile,
   );
+  const listingDeletionPreference = useSelector<
+    JobMutationStoreState,
+    { hardDelete?: boolean; skipPrompt?: boolean } | undefined
+  >((state) => state.userSettings.settings?.listing_deletion_preference);
   const params = useParams();
   const location = useLocation();
 
@@ -138,6 +153,7 @@ export default function JobMutator() {
   /** Whether the value in the deal type field was guessed rather than chosen. */
   const [dealTypeWasInferred, setDealTypeWasInferred] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const guidedPanelRef = useRef<HTMLElement | null>(null);
   const policyProfileReady = useCallback(
@@ -414,6 +430,43 @@ export default function JobMutator() {
     }
   };
 
+  const confirmDeletion = async (
+    hardDelete: boolean,
+    remember: boolean = false,
+    deletion: Exclude<PendingDeletion, null> | null = pendingDeletion,
+  ) => {
+    const jobId = jobToBeEdit?.id;
+    if (jobId == null || deletion == null) return;
+    try {
+      if (deletion === 'listings') {
+        if (remember) {
+          await actions.userSettings.setListingDeletionPreference({ skipPrompt: true, hardDelete });
+        }
+        await xhrDelete('/api/listings/job', { jobId, hardDelete });
+        Toast.success(t('jobs.toastListingsDeleted'));
+      } else {
+        await xhrDelete('/api/jobs', { jobId });
+        await actions.jobsData.getJobs();
+        clearDraft(draftId);
+        Toast.success(t('jobs.toastDeletedWithListings'));
+        navigate('/jobs');
+      }
+    } catch (error) {
+      Toast.error(errorMessage(error, t('jobs.toastDeleteError')));
+    } finally {
+      setPendingDeletion(null);
+    }
+  };
+
+  const requestDeletion = (deletion: Exclude<PendingDeletion, null>) => {
+    if (jobToBeEdit == null) return;
+    if (deletion === 'listings' && listingDeletionPreference?.skipPrompt) {
+      void confirmDeletion(Boolean(listingDeletionPreference.hardDelete), false, deletion);
+      return;
+    }
+    setPendingDeletion(deletion);
+  };
+
   return (
     <Fragment>
       <ProviderMutator
@@ -541,6 +594,19 @@ export default function JobMutator() {
         setEnabled={setEnabled}
         reviewSummary={reviewSummary}
         canSave={missing.length === 0}
+        isEditing={jobToBeEdit != null}
+        onClearListings={() => requestDeletion('listings')}
+        onDeleteSearch={() => requestDeletion('job')}
+      />
+
+      <ListingDeletionModal
+        visible={pendingDeletion != null}
+        title={pendingDeletion === 'job' ? t('jobs.deletion.title') : t('listing.deletion.title')}
+        showOptions={pendingDeletion === 'listings'}
+        defaultDeleteType={listingDeletionPreference?.hardDelete ? 'hard' : 'soft'}
+        message={pendingDeletion === 'job' ? t('jobs.deletion.message') : t('listing.deletion.message')}
+        onConfirm={confirmDeletion}
+        onCancel={() => setPendingDeletion(null)}
       />
     </Fragment>
   );

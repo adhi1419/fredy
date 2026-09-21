@@ -20,6 +20,7 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const styles = fs.readFileSync(path.join(here, '../../ui/src/views/listings/ListingDetail.less'), 'utf8');
 const listingDetailSource = fs.readFileSync(path.join(here, '../../ui/src/views/listings/ListingDetail.tsx'), 'utf8');
+const listingsStateSource = fs.readFileSync(path.join(here, '../../ui/src/services/state/listingsState.ts'), 'utf8');
 const segmentPartSource = fs.readFileSync(path.join(here, '../../ui/src/components/segment/SegmentPart.tsx'), 'utf8');
 const segmentPartStyles = fs.readFileSync(path.join(here, '../../ui/src/components/segment/SegmentParts.less'), 'utf8');
 
@@ -42,6 +43,10 @@ describe('listing action contract', () => {
       viewing: 'viewing',
       archive: 'archive',
     });
+    expect(listingsStateSource).toContain(
+      "export type ListingLifecycleAction = 'applied' | 'viewing' | 'archive' | 'restore';",
+    );
+    expect(listingDetailSource).toContain('action: ListingLifecycleAction');
   });
 
   it('accepts only HTTP(S) provider URLs', () => {

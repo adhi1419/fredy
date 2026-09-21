@@ -190,6 +190,10 @@ body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
   }
 }
 
+.fredy-shell-nav__health-count {
+  display: none;
+}
+
 .fredy-shell-nav__account-button {
   display: inline-flex;
   min-height: 44px;
@@ -276,6 +280,14 @@ body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
+  }
+
+  .fredy-shell-nav__health-count {
+    display: inline-block;
+    min-width: 1ch;
+    font-size: @text-xs;
+    line-height: 1;
+    text-align: center;
   }
 
   .fredy-shell-nav__health {
