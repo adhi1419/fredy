@@ -134,10 +134,11 @@ describe('accessibility action contracts', () => {
     expect(styles).toContain('color: @color-on-accent;');
     expect(styles).toContain('&__fit-metric--travel');
     const travel = listingDetailSource.indexOf('listing-detail__fit-metric--travel');
-    const lifecycle = listingDetailSource.indexOf('listing-detail__fit-lifecycle');
     const facts = listingDetailSource.indexOf('listing-detail__fit-metrics', travel + 1);
+    // Lifecycle mutation controls no longer live in the Fit card (they belong once, in Your
+    // Activity), so the Fit card runs travel -> facts with nothing between.
+    expect(listingDetailSource).not.toContain('listing-detail__fit-lifecycle');
     expect(travel).toBeGreaterThan(0);
-    expect(lifecycle).toBeGreaterThan(travel);
-    expect(facts).toBeGreaterThan(lifecycle);
+    expect(facts).toBeGreaterThan(travel);
   });
 });

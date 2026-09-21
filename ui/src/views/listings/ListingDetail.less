@@ -97,18 +97,6 @@
     background: @color-surface;
   }
 
-  /* The lifecycle control group in the Fit card's first viewport. Each control pairs an icon with
-     its label; the group wraps on a phone. */
-  &__fit-lifecycle {
-    display: flex;
-    flex-wrap: wrap;
-    gap: @space-2;
-
-    .semi-button {
-      min-height: 44px;
-    }
-  }
-
   &__composition {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(270px, 320px);
@@ -554,7 +542,10 @@
   }
   @media (max-width: 768px) {
     &__heading {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: @space-3;
       margin-bottom: @space-3;
     }
 
@@ -573,9 +564,16 @@
       display: none;
     }
 
+    /* Back moves to the TOP RIGHT on a phone: the header is a single row with the eyebrow on the
+       left and the actions (just Back, once the lifecycle pill is hidden) pinned to the right. */
     &__heading-actions {
-      justify-content: flex-start;
-      margin-top: @space-2;
+      flex: 0 0 auto;
+      justify-content: flex-end;
+      margin-top: 0;
+    }
+
+    &__heading-copy {
+      min-width: 0;
     }
 
     &__composition,
@@ -603,20 +601,6 @@
     &__fit-metrics {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: @space-2;
-    }
-
-    &__fit-lifecycle {
-      display: grid;
-      grid-auto-columns: minmax(0, 1fr);
-      grid-auto-flow: column;
-      gap: @space-1;
-
-      .semi-button {
-        min-width: 0;
-        padding-right: @space-2;
-        padding-left: @space-2;
-        font-size: @text-xs;
-      }
     }
 
     &__fit-metric--travel {

@@ -131,6 +131,29 @@ describe('Listing Detail Slice 5', () => {
     expect(styles).toMatch(/&__mobile-apply,\s*&__mobile-icon-action\s*{[\s\S]*min-height:\s*44px;/);
   });
 
+  it('places Back at the top right on mobile and holds lifecycle controls in Your Activity only', () => {
+    // (9) Back navigation lives in the header actions and is pinned to the right of the header row
+    // on a phone (the header becomes a flex row, actions justified to the flex-end).
+    expect(source).toContain('className="listing-detail__heading-actions"');
+    expect(source).toContain('<IconArrowLeft />');
+    const mobile = styles.slice(styles.indexOf('@media (max-width: 768px)'));
+    expect(mobile).toMatch(/&__heading\s*{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/);
+    expect(mobile).toMatch(/&__heading-actions\s*{[\s\S]*?justify-content:\s*flex-end;/);
+
+    // The lifecycle mutation controls are removed from the Fit card entirely and belong once, below
+    // the main details, inside "Your Activity" (listing-detail__lifecycle-actions).
+    expect(source).not.toContain('listing-detail__fit-lifecycle');
+    expect(styles).not.toContain('&__fit-lifecycle');
+    expect(source).toContain('className="listing-detail__lifecycle-actions"');
+    // The activity lifecycle group is the single home of the state-aware icons and Unarchive.
+    const activityBlock = source.slice(source.indexOf('listing-detail__activity scrollspyTabs-section'));
+    expect(activityBlock).toContain('listing-detail__lifecycle-actions');
+    expect(activityBlock).toContain('handleUnarchive');
+    // The fixed Apply/Maps/provider dock is untouched.
+    expect(source).toContain('data-testid="listing-mobile-actions"');
+    expect(source).toContain('listing-detail__mobile-action-dock');
+  });
+
   it('renders the approved fit/evidence/activity/action-rail composition without legacy outer boundaries', () => {
     for (const marker of [
       'listing-detail__heading',

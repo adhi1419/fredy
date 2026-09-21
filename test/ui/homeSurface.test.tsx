@@ -98,12 +98,18 @@ vi.mock('@douyinfe/semi-icons', async () => {
   const icon = (name: string) => (props: Record<string, unknown>) =>
     createElement('svg', { ...props, 'data-icon': name });
   return {
+    IconArrowDown: icon('arrow-down'),
+    IconArrowUp: icon('arrow-up'),
     IconChevronDown: icon('chevron-down'),
+    IconClock: icon('clock'),
+    IconCrop: icon('crop'),
     IconListView: icon('list'),
     IconMapPin: icon('map-pin'),
     IconMore: icon('more'),
+    IconPriceTag: icon('price-tag'),
     IconRoute: icon('route'),
     IconSearch: icon('search'),
+    IconSort: icon('sort'),
     IconTickCircle: icon('tick-circle'),
     IconEyeOpened: icon('eye'),
   };
@@ -255,11 +261,13 @@ describe('Home production surface contract', () => {
 });
 
 describe('iPhone 13 Home containment', () => {
-  it('shows all four lifecycle scopes without horizontal clipping', () => {
+  it('keeps all four lifecycle scopes in one horizontally scrollable row', () => {
     const narrow = homeStyles.slice(homeStyles.indexOf('@media (max-width: 430px)'));
-    expect(narrow).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
-    expect(narrow).toContain('overflow: visible;');
-    expect(narrow).toMatch(/&__activities\s*{[\s\S]*?button\s*{[\s\S]*?width:\s*100%;/);
+    // The preferred layout: a single non-wrapping, horizontally scrollable row, not a 2-col grid.
+    expect(narrow).toMatch(/&__activities\s*{[\s\S]*?display:\s*flex;/);
+    expect(narrow).toMatch(/&__activities\s*{[\s\S]*?flex-wrap:\s*nowrap;/);
+    expect(narrow).toMatch(/&__activities\s*{[\s\S]*?overflow-x:\s*auto;/);
+    expect(narrow).not.toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
   });
 
   it('keeps the open provider menu inside the full-width picker', () => {
@@ -267,6 +275,63 @@ describe('iPhone 13 Home containment', () => {
     expect(narrow).toMatch(
       /&__provider-options\s*{[\s\S]*?right:\s*0;[\s\S]*?left:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?max-width:\s*none;/,
     );
+  });
+});
+
+describe('Home view switch, sort, and card age', () => {
+  it('enlarges the map view-switch glyph so it reads visibly larger than the list glyph', () => {
+    expect(homeSource).toContain('className="home__view-icon--map"');
+    expect(homeStyles).toMatch(/\.home__view-icon--map\s*{[^}]*font-size:\s*1\.5em/s);
+  });
+
+  it('keeps the icon-only view switch beside the search bar on mobile, not on its own row', () => {
+    const mobile = homeStyles.slice(
+      homeStyles.indexOf('@media (max-width: 768px)'),
+      homeStyles.indexOf('@media (max-width: 430px)'),
+    );
+    // The row does not wrap and the search no longer takes the full width that pushed the switch down.
+    expect(mobile).toMatch(/&__query-row\s*{[^}]*flex-wrap:\s*nowrap/s);
+    expect(mobile).toMatch(/&__search\s*{[^}]*flex:\s*1 1 auto/s);
+    expect(mobile).not.toMatch(/&__search\s*{[^}]*flex:\s*1 1 100%/s);
+    expect(mobile).toMatch(
+      /&__view-switch\s*{[\s\S]*?border:\s*1px solid @color-border;[\s\S]*?border-radius:\s*@radius-pill;/,
+    );
+  });
+
+  it('gives provider roughly seventy percent and keeps icon sorts scrollable in the remainder', () => {
+    const mobile = homeStyles.slice(
+      homeStyles.indexOf('@media (max-width: 768px)'),
+      homeStyles.indexOf('@media (max-width: 430px)'),
+    );
+    expect(mobile).toMatch(/&__providers\s*{[\s\S]*?flex:\s*7 1 0;/);
+    expect(mobile).toMatch(/&__sort\s*{[\s\S]*?flex:\s*3 1 0;[\s\S]*?overflow-x:\s*auto;/);
+  });
+
+  it('renders an icon-based sort control with a visible direction arrow, no text select', () => {
+    mockListings = [APPLIED];
+    const html = renderHome();
+    expect(html).toContain('home__sort');
+    expect(html).toContain('home__sort-symbol');
+    // Default sort is newest (created_at, desc): the active criterion shows the down arrow.
+    expect(html).toContain('home__sort-direction');
+    // The old text <select> is gone; the control is a group of buttons with aria labels.
+    expect(html).not.toContain('<select');
+    expect(html).toContain('home.sortActiveLabel');
+  });
+
+  it('flips the active sort direction in place and activates another criterion via chooseSort', () => {
+    expect(homeSource).toContain('const chooseSort = (option: HomeSortOption) => {');
+    expect(homeSource).toContain("updateState({ dir: activeDirection === 'asc' ? 'desc' : 'asc', page: 1 })");
+    expect(homeSource).toContain('updateState({ sort: option.key, dir: option.direction, page: 1 })');
+  });
+
+  it('shows a relative age line on every card, replacing the absolute timestamp', () => {
+    mockListings = [APPLIED, NEW_NO_IMAGE];
+    const html = renderHome();
+    expect(html.match(/class="home__card-age"/g)?.length).toBe(2);
+    expect(homeSource).toContain('relativeListingAge(listing.created_at)');
+    // The absolute timestamp fallback the card used to show is gone.
+    expect(homeSource).not.toContain('formatTime');
   });
 });
 

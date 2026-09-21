@@ -227,26 +227,14 @@ function SavedSearchRow({ job, locale, t, onRun, onEdit, onRepair, onClone, onSt
             {lastRunFor(job, locale, t)} ·{' '}
             {t('jobs.index.listingsFound', { count: String(job.numberOfFoundListings || 0) })}
           </small>
-          <span className="savedSearches__repairNote">
-            {health.kind === 'review' ? t('jobs.index.runHealthReviewNote') : t('jobs.index.repairPromise')}
-          </span>
-        </div>
-
-        <div className="savedSearches__state">
-          <div className="savedSearches__stateControl">
-            <span
-              className={`savedSearches__stateChip savedSearches__stateChip--${stateTone}`}
-              data-testid="savedSearches-state"
-            >
-              <span className="savedSearches__stateDot" aria-hidden="true" />
-              {statusLabel}
+          {/* The unknown-outcome warning survives for safety: a search whose inquiries never resolved
+              must still say so. The idempotency "repair promise" note that used to sit here for every
+              other state is removed — it repeated on every card and earned no space. */}
+          {health.kind === 'review' && (
+            <span className="savedSearches__repairNote savedSearches__repairNote--review">
+              {t('jobs.index.runHealthReviewNote')}
             </span>
-            {readOnly && (
-              <span className="savedSearches__shared" title={t('jobs.cardSharedReadOnly')}>
-                <IconAlertTriangle aria-hidden="true" /> {t('jobs.index.sharedReadOnly')}
-              </span>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -256,7 +244,21 @@ function SavedSearchRow({ job, locale, t, onRun, onEdit, onRepair, onClone, onSt
             {t('jobs.index.editHint')} →
           </span>
         )}
+        {/* Req 8: the Active/Paused/Running badge sits on the same row as Run & repair and the
+            overflow, so status and the controls that change it read as one action/status cluster. */}
         <div className="savedSearches__actionRow">
+          <span
+            className={`savedSearches__stateChip savedSearches__stateChip--${stateTone}`}
+            data-testid="savedSearches-state"
+          >
+            <span className="savedSearches__stateDot" aria-hidden="true" />
+            {statusLabel}
+          </span>
+          {readOnly && (
+            <span className="savedSearches__shared" title={t('jobs.cardSharedReadOnly')}>
+              <IconAlertTriangle aria-hidden="true" /> {t('jobs.index.sharedReadOnly')}
+            </span>
+          )}
           <Button
             type="primary"
             theme="solid"

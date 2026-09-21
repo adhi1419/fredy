@@ -77,13 +77,14 @@ describe('guidedSearchForm', () => {
     ]);
   });
 
-  it('keeps the mobile progress ribbon sticky and the footer clear of fixed navigation', () => {
+  it('keeps the mobile progress ribbon sticky and carries the persistent step actions', () => {
     expect(guidedStyles).toMatch(/guidedJobForm__mobileProgress\s*{[^}]*position:\s*sticky/s);
-    expect(guidedStyles).toMatch(/guidedJobForm__footer\s*{[^}]*position:\s*static/s);
-    expect(guidedStyles).toMatch(
-      /guidedJobForm__footer\s*{[^}]*margin:\s*@space-4 0 calc\(80px \+ env\(safe-area-inset-bottom\)\)/s,
-    );
+    // Req 12: the redundant bottom footer is hidden on mobile; the sticky ribbon owns the controls.
+    expect(guidedStyles).toMatch(/@media \(max-width: 850px\)[\s\S]*guidedJobForm__footer\s*{[^}]*display:\s*none/s);
+    expect(guidedStyles).not.toMatch(/guidedJobForm__footer\s*{[^}]*position:\s*static/s);
     expect(guidedStyles).not.toMatch(/guidedJobForm__footer\s*{[^}]*bottom:\s*calc\(64px/s);
+    // The persistent actions cluster stays a 44px-tappable target inside the ribbon.
+    expect(guidedStyles).toMatch(/guidedJobForm__mobileActions\s*{[^}]*min-height:\s*44px/s);
     expect(guidedStyles).toMatch(/guidedJobForm__panel\s*{[^}]*scroll-margin-top:/s);
     expect(guidedStyles).toMatch(/jobMutation__notificationActions\s*{[^}]*grid-template-columns:\s*1fr/s);
   });

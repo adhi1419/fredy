@@ -5,26 +5,11 @@
   flex-direction: column;
   flex: 1;
 
-  &__tabbar {
-    margin-bottom: 0;
-  }
-
-  // The Administration tabs used to wrap into several rows on a narrow content column. Keep them on
-  // one line and let the row scroll horizontally instead, so the tab bar stays a single rail with a
-  // clean scroll affordance on both desktop and mobile.
-  &__tabbar.semi-tabs-bar {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch;
-
-    .semi-tabs-content,
-    .semi-tabs-tab {
-      flex: 0 0 auto;
-      white-space: nowrap;
-    }
+  // The navigation rail is the shared SettingsRouteTabs component (see its stylesheet). The old
+  // Semi Tabs bar and its horizontal-scroll overrides are gone: Administration and Account
+  // Preferences now share one rail, so the scroll behaviour lives once in the component.
+  &__nav {
+    margin-top: @space-2;
   }
 
   &__content {
@@ -116,26 +101,6 @@
   border: 1px solid @color-border-bright !important;
   border-radius: @radius-input !important;
   color: @color-text !important;
-}
-
-// Tabs styling
-.semi-tabs-bar-line .semi-tabs-tab {
-  color: @color-faint;
-  font-size: @text-base;
-  transition: color @transition-fast;
-
-  &:hover {
-    color: @color-muted;
-  }
-
-  &.semi-tabs-tab-active {
-    color: @color-text !important;
-  }
-}
-
-.semi-tabs-bar-line .semi-tabs-ink-bar {
-  background-color: @color-accent-fill !important;
-  height: 2px;
 }
 
 /* Sits next to an inline control - the departure pickers under an address - and has to read as a

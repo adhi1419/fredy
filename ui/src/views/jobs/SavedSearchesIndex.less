@@ -102,13 +102,16 @@
   }
 
   // The quiet affordance that a whole card opens Edit. Sage, small, and only shown on hover/focus of
-  // an editable card so it never competes with the search name.
+  // an editable card so it never competes with the search name. Req 7: pinned to the far right of
+  // the action area, above the action/status row.
   &__editCue {
+    align-self: flex-end;
     color: @color-accent;
     font-size: @text-xs;
     font-weight: 650;
-    opacity: 0;
-    transition: opacity @transition-fast;
+    text-align: right;
+    opacity: 1;
+    transition: color @transition-fast;
   }
 
   &__row--editable:hover &__editCue,
@@ -136,20 +139,12 @@
     min-width: 0;
   }
 
-  &__state,
   &__lastRun {
     display: grid;
     align-content: center;
     min-width: 0;
     color: @color-muted;
     font-size: @text-sm;
-  }
-
-  &__stateControl {
-    display: flex;
-    align-items: center;
-    gap: @space-2;
-    min-height: 44px;
   }
 
   // Compact, self-describing state pill (Ready/Paused/Running/Shared). Icon+text, never colour-only.
@@ -209,7 +204,6 @@
     display: inline-flex;
     align-items: center;
     gap: @space-1;
-    margin-top: @space-2;
     color: @color-warning;
     font-size: @text-xs;
     font-weight: 650;
@@ -257,12 +251,19 @@
     color: @color-warning;
   }
 
-  // The idempotency promise from Direction A: every run reconciles incomplete listing work.
+  // Retained only for the review (unknown-outcome) warning line. The generic idempotency
+  // "repair promise" that used to render on every card is gone — it added a line to every row
+  // and earned no space. The warning stays because a search whose inquiries never resolved must
+  // still say so.
   &__repairNote {
     margin-top: @space-1;
     color: @color-faint;
     font-size: @text-xs;
     line-height: 1.4;
+  }
+
+  &__repairNote--review {
+    color: @color-warning;
   }
 
   &__rowActions {
@@ -271,14 +272,20 @@
     align-items: flex-end;
     justify-content: center;
     gap: @space-2;
-    min-width: 160px;
+    min-width: 220px;
   }
 
+  // Req 8: status badge + Run & repair + overflow live on one row. The chip is pushed left of the
+  // controls with an auto margin so status reads first and the buttons stay right-aligned.
   &__actionRow {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: @space-2;
+  }
+
+  &__actionRow .savedSearches__stateChip {
+    margin-right: auto;
   }
 
   // Rounded to the pill radius so Run & repair and the overflow trigger match the Direction A
@@ -361,7 +368,7 @@
 
   .savedSearches__rowActions {
     grid-column: 3;
-    grid-row: 1 / span 2;
+    grid-row: 1;
   }
 }
 
@@ -415,15 +422,25 @@
 
   .savedSearches__rowActions {
     grid-column: 2;
-    grid-row: 2 / span 2;
+    grid-row: 2;
     align-self: stretch;
     flex-direction: column;
     align-items: stretch;
     min-width: 96px;
   }
 
+  // Mobile stacking (req 8): the badge and the controls stay in the same cluster but stack, so a
+  // narrow column never crushes the chip against Run & repair. The chip's desktop auto-margin is
+  // reset so it hugs the top of the stack.
   .savedSearches__actionRow {
+    flex-direction: column;
+    align-items: stretch;
     width: 100%;
+  }
+
+  .savedSearches__actionRow .savedSearches__stateChip {
+    align-self: flex-start;
+    margin-right: 0;
   }
 
   .savedSearches__directAction {

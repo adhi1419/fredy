@@ -114,6 +114,12 @@
         color: @color-on-accent;
       }
     }
+
+    // The map glyph reads as the smaller of the two view icons at 1em, so it is enlarged here to sit
+    // visibly larger than the list glyph and clearly signal the richer List + map view.
+    .home__view-icon--map {
+      font-size: 1.5em;
+    }
   }
 
   &__controls {
@@ -166,51 +172,76 @@
     font-size: @text-base;
   }
 
-  // Compact provider + sort pills, matching the pill language of the activity filters.
+  // Compact provider + sort tools. The provider picker takes the wider share of the row (~70%) and
+  // the icon sort control the rest (~30%), matching the pill language of the activity filters.
   &__tools {
     display: flex;
     align-items: center;
     gap: @space-2;
-    flex-wrap: wrap;
+    flex: 0 1 clamp(320px, 42%, 520px);
+    min-width: 0;
   }
 
+  // Icon-based sort control: one bordered icon button per criterion, the active one filled and
+  // carrying a direction arrow. No visible text label - meaning is the glyph plus its aria/tooltip.
   &__sort {
     display: inline-flex;
     align-items: center;
-    gap: @space-2;
+    gap: @space-1;
+    flex: 0 0 auto;
 
-    .home__sort-label {
-      color: @color-muted;
-      font-size: @text-sm;
-    }
-
-    select {
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      min-width: 44px;
       min-height: 44px;
-      max-width: 200px;
-      padding: @space-2 @space-4;
+      padding: @space-2 @space-2;
       border: 1px solid @color-border;
       border-radius: @radius-pill;
       background: @color-surface;
-      color: @color-text;
+      color: @color-accent;
       font: inherit;
-      font-size: @text-base;
-      font-weight: 700;
       cursor: pointer;
+
+      &:hover,
+      &:focus-visible {
+        border-color: @color-accent;
+        outline: none;
+      }
+
+      &.is-selected {
+        border-color: @color-accent-fill;
+        background: @color-accent-fill;
+        color: @color-on-accent;
+      }
     }
+  }
+
+  &__sort-symbol {
+    font-size: @text-base;
+  }
+
+  &__sort-direction {
+    font-size: @text-sm;
   }
 
   &__providers {
     display: flex;
     align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   &__provider-picker {
     position: relative;
+    width: 100%;
 
     .home__provider-trigger {
       display: inline-flex;
       align-items: center;
       gap: @space-2;
+      width: 100%;
       min-height: 44px;
       padding: @space-2 @space-4;
       border: 1px solid @color-border;
@@ -587,6 +618,21 @@
     font-weight: 400;
   }
 
+  // The relative-age line ("35 mins ago", "Yesterday", "Last week"), shown on every card. Muted so
+  // it sits below the travel fact and the price rather than competing with them.
+  &__card-age {
+    display: inline-flex;
+    align-items: center;
+    gap: @space-1;
+    margin-top: 2px;
+    color: @color-muted;
+    font-size: @text-sm;
+
+    svg {
+      font-size: @text-base;
+    }
+  }
+
   // List + map. The companion list reuses stay cards in a compact single column beside the map.
   &__split {
     display: grid;
@@ -833,17 +879,34 @@
       gap: @space-5;
     }
 
+    // The search bar and the icon-only view switch share one row: the switch sits directly beside
+    // the search field rather than dropping onto a line of its own.
     &__query-row {
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
 
     &__search {
-      flex: 1 1 100%;
+      flex: 1 1 auto;
+      min-width: 0;
       min-height: 48px;
     }
 
     &__view-switch {
-      justify-content: flex-start;
+      flex-shrink: 0;
+      gap: 0;
+      padding: 2px;
+      border: 1px solid @color-border;
+      border-radius: @radius-pill;
+      background: @color-surface;
+
+      button {
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        min-height: 44px;
+        border: 0;
+        border-radius: @radius-pill;
+      }
     }
 
     &__controls {
@@ -863,25 +926,41 @@
       }
     }
 
+    // Tools stay on one row at the requested 70/30 split. The sort criteria remain icon-only and
+    // scroll within their 30% lane, so the provider picker never collapses to a narrow sliver.
     &__tools {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      align-items: stretch;
+      flex: 1 1 auto;
+      align-items: center;
       gap: @space-2;
     }
 
-    &__providers,
+    &__providers {
+      flex: 7 1 0;
+      width: auto;
+      min-width: 0;
+      max-width: none;
+    }
+
     &__provider-picker,
-    &__provider-picker .home__provider-trigger,
-    &__sort,
-    &__sort select {
+    &__provider-picker .home__provider-trigger {
       width: 100%;
       min-width: 0;
       max-width: none;
     }
 
-    &__provider-picker .home__provider-trigger,
-    &__sort select {
+    &__sort {
+      flex: 3 1 0;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+
+      button {
+        flex: 0 0 44px;
+      }
+    }
+
+    &__provider-picker .home__provider-trigger {
       box-sizing: border-box;
       justify-content: space-between;
     }
@@ -900,29 +979,28 @@
   }
 }
 
-// iPhone-13 width (390px) and narrower: show every lifecycle scope without a partially clipped
-// trailing pill, and keep both tools plus the open provider menu inside the page gutters.
+// iPhone-13 width (390px) and narrower: keep every lifecycle scope in ONE horizontally scrollable
+// row (the preferred layout) rather than a wrapped grid, with each pill reachable and no listing
+// clipped at the page's right gutter. The tools keep the open provider menu inside the gutters.
 @media (max-width: 430px) {
   .home {
     &__activities {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      display: flex;
+      flex-wrap: nowrap;
       gap: @space-2;
       margin: 0;
-      padding: 0;
-      overflow: visible;
+      // Let the row scroll to the page edge instead of being cut off by the page gutter, so the
+      // trailing pill is fully swipeable rather than half-clipped.
+      padding-bottom: @space-1;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
 
       button {
-        justify-content: center;
-        width: 100%;
+        flex: 0 0 auto;
         min-width: 0;
-        padding-right: @space-2;
-        padding-left: @space-2;
+        padding-right: @space-3;
+        padding-left: @space-3;
       }
-    }
-
-    &__tools {
-      grid-template-columns: 1fr;
     }
 
     &__provider-picker .home__provider-trigger {
