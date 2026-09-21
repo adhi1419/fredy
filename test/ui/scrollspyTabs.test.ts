@@ -109,6 +109,10 @@ describe('Listing Detail shared scrollspy integration', () => {
     );
     expect(listingSource).toContain('scrollRoot={scrollRoot}');
     expect(listingSource).toContain('className="listing-detail__scrollspy"');
+    expect(listingSource).toContain('className="listing-detail__fit scrollspyTabs-section"');
+    expect(listingSource).toContain('className="listing-detail__activity scrollspyTabs-section"');
+    expect(listingSource).toContain('className="listing-detail__evidence scrollspyTabs-section"');
+    expect(listingSource).toContain('className="listing-detail__map-wrapper scrollspyTabs-section"');
     expect(listingSource).not.toContain('function useScrollspy(');
     expect(listingSource).not.toContain('function ScrollspyTabs(');
   });

@@ -109,6 +109,9 @@ export default function Navigation({
     return (
       <button type="button" className={className} onClick={() => goTo('/jobs')} aria-label={label}>
         <IconAlertCircle aria-hidden="true" />
+        <span className="fredy-shell-nav__health-count" aria-hidden="true">
+          {attentionCount}
+        </span>
         <span className="fredy-shell-nav__health-label">{label}</span>
       </button>
     );

@@ -66,7 +66,7 @@ export interface ListingPosition {
   longitude: number;
 }
 
-export type ListingLifecycleAction = 'applied' | 'viewing' | 'archive';
+export type ListingLifecycleAction = 'applied' | 'viewing' | 'archive' | 'restore';
 
 export interface ListingsEffects {
   getListingsData(params: ListingsDataQuery): Promise<void>;

@@ -22,6 +22,7 @@ const savedSearchesStyles = read('ui/src/views/jobs/SavedSearchesIndex.less');
 const settingsLayoutStyles = read('ui/src/views/settings/SettingsLayout.less');
 const settingsShellStyles = read('ui/src/components/settingsShell/SettingsShell.less');
 const jobsSource = read('ui/src/views/jobs/Jobs.tsx');
+const jobMutationSource = read('ui/src/views/jobs/mutation/JobMutation.tsx');
 
 describe('final responsive slice', () => {
   it('does not leak a fixed select popup width from the job mutation stylesheet', () => {
@@ -94,12 +95,11 @@ describe('final responsive slice', () => {
     expect(savedSearchesStyles).toMatch(/\.savedSearches__sortDirection\s*{[\s\S]*?width:\s*44px;/);
   });
 
-  it('preserves SSE, run, pause, delete, filters, and pagination behavior in the deep feature module', () => {
+  it('preserves SSE, run, pause, filters, and pagination behavior in the deep feature module', () => {
     for (const marker of [
       'createAuthenticatedEventStream',
       'xhrPost(`/api/jobs/${jobId}/run`, {})',
       'xhrPut(`/api/jobs/${jobId}/status`',
-      "xhrDelete('/api/jobs'",
       'FilterDrawer',
       'Pagination',
       'setJobRunning',
@@ -246,16 +246,24 @@ describe('lane B: saved searches merged card, review health, and pill actions', 
     expect(savedSearchesStyles).toMatch(/&__overflowButton\s*{[\s\S]*?border-radius:\s*@radius-pill;/);
   });
 
-  it('removes both destructive delete items from the overflow menu but keeps the plumbing', () => {
+  it('moves destructive actions from card overflow into the Edit Search danger zone', () => {
     expect(savedSearchesSource).not.toContain("action(t('jobs.index.deleteListings')");
     expect(savedSearchesSource).not.toContain("action(t('jobs.index.delete')");
     // Pause, Run & repair and Duplicate remain the only overflow items.
     expect(savedSearchesSource).toContain("action(t('jobs.index.pause')");
     expect(savedSearchesSource).toContain("action(t('jobs.index.runAndRepair')");
     expect(savedSearchesSource).toContain("action(t('jobs.index.clone')");
-    // The deletion capability (modal + request) is retained for the future Edit Search danger zone.
-    expect(savedSearchesSource).toContain("xhrDelete('/api/jobs'");
-    expect(savedSearchesSource).toContain('ListingDeletionModal');
+    // Saved Searches owns no permanently hidden deletion modal; Edit Search owns both operations.
+    expect(savedSearchesSource).not.toContain('ListingDeletionModal');
+    expect(savedSearchesSource).not.toContain("xhrDelete('/api/jobs'");
+    expect(jobMutationSource).toContain(
+      "import ListingDeletionModal from '../../../components/ListingDeletionModal.jsx'",
+    );
+    expect(jobMutationSource).toContain("xhrDelete('/api/jobs'");
+    expect(jobMutationSource).toContain("xhrDelete('/api/listings/job'");
+    expect(jobMutationSource).toContain("onClearListings={() => requestDeletion('listings')}");
+    expect(jobMutationSource).toContain("onDeleteSearch={() => requestDeletion('job')}");
+    expect(guidedFormSource).toContain('id="guided-section-danger"');
   });
 
   it('renders provider URLs host-only in the Edit Search view while keeping the full URL', () => {

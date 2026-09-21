@@ -285,6 +285,23 @@
   font-size: @text-xs;
 }
 
+.guidedJobForm__dangerNote {
+  margin: 0;
+  color: @color-muted;
+  font-size: @text-sm;
+}
+
+.guidedJobForm__dangerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: @space-2;
+  margin-top: @space-3;
+
+  .semi-button {
+    min-height: 44px;
+  }
+}
+
 @media (max-width: 850px) {
   .guidedJobForm__steps {
     display: none;
@@ -340,6 +357,15 @@
 
     button {
       flex: 1;
+    }
+  }
+
+  .guidedJobForm__dangerActions {
+    display: grid;
+    grid-template-columns: 1fr;
+
+    .semi-button {
+      width: 100%;
     }
   }
 

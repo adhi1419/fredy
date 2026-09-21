@@ -7,6 +7,8 @@ import { useEffect, useRef, type ComponentProps, type RefObject } from 'react';
 import { Button, Input, Select, Switch, TagInput } from '@douyinfe/semi-ui-19';
 import {
   IconBell,
+  IconAlertTriangle,
+  IconDelete,
   IconBriefcase,
   IconFilter,
   IconHome,
@@ -83,6 +85,9 @@ interface GuidedJobFormProps {
   setEnabled: StateSetter<boolean>;
   reviewSummary: readonly string[];
   canSave: boolean;
+  isEditing: boolean;
+  onClearListings: () => void;
+  onDeleteSearch: () => void;
 }
 
 const STEP_ICONS = [IconBriefcase, IconHome, IconFilter, IconBell];
@@ -133,6 +138,9 @@ export default function GuidedJobForm({
   setEnabled,
   reviewSummary,
   canSave,
+  isEditing,
+  onClearListings,
+  onDeleteSearch,
 }: GuidedJobFormProps) {
   const t = useTranslation();
   const localPanelRef = useRef<HTMLElement | null>(null);
@@ -180,6 +188,7 @@ export default function GuidedJobForm({
       { id: 'guided-section-notifications', label: t('jobs.mutation.sectionNotifications') },
       { id: 'guided-section-sharing', label: t('jobs.mutation.sectionSharing') },
       { id: 'guided-section-activation', label: t('jobs.mutation.sectionActivation') },
+      ...(isEditing ? [{ id: 'guided-section-danger', label: t('jobs.mutation.dangerZoneTitle') }] : []),
     ],
   ];
   const currentSections = stepSections[currentStep] ?? [];
@@ -447,6 +456,26 @@ export default function GuidedJobForm({
           <li>{t('jobs.mutation.guidedReviewPolicies', { count: providerData.length })}</li>
         </ul>
       </section>
+      {isEditing && (
+        <div id="guided-section-danger" className="scrollspyTabs-section">
+          <SegmentPart
+            Icon={IconAlertTriangle}
+            name={t('jobs.mutation.dangerZoneTitle')}
+            helpText={t('jobs.mutation.dangerZoneHelp')}
+            helpMode="popover"
+          >
+            <p className="guidedJobForm__dangerNote">{t('jobs.mutation.dangerZoneNote')}</p>
+            <div className="guidedJobForm__dangerActions">
+              <Button type="danger" icon={<IconDelete />} onClick={onClearListings}>
+                {t('jobs.mutation.clearListings')}
+              </Button>
+              <Button type="danger" theme="solid" icon={<IconDelete />} onClick={onDeleteSearch}>
+                {t('jobs.mutation.deleteSearch')}
+              </Button>
+            </div>
+          </SegmentPart>
+        </div>
+      )}
     </div>
   );
 

@@ -172,6 +172,17 @@ const CARD_LIFECYCLE_ACTIONS: readonly {
   { activity: 'archived', action: 'archive', labelKey: 'home.markArchived' },
 ]);
 
+function moveMenuFocus(event: globalThis.KeyboardEvent, currentIndex: number, items: Array<HTMLButtonElement | null>) {
+  let nextIndex: number | null = null;
+  if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
+  if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
+  if (event.key === 'Home') nextIndex = 0;
+  if (event.key === 'End') nextIndex = items.length - 1;
+  if (nextIndex == null || items.length === 0) return;
+  event.preventDefault();
+  items[nextIndex]?.focus();
+}
+
 interface HomeStoreState {
   listingsData: ListingsDataState;
   provider: readonly HomeProviderMetadata[];
@@ -246,7 +257,7 @@ function HomeStayCard({ listing, variant, onNavigate, onLifecycleAction }: HomeS
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const firstItemRef = useRef<HTMLButtonElement | null>(null);
+  const menuItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const availableActions = CARD_LIFECYCLE_ACTIONS.filter((entry) => entry.activity !== lifecycle);
 
   const closeMenu = useCallback((restoreFocus: boolean) => {
@@ -255,7 +266,7 @@ function HomeStayCard({ listing, variant, onNavigate, onLifecycleAction }: HomeS
   }, []);
 
   useEffect(() => {
-    if (menuOpen) firstItemRef.current?.focus();
+    if (menuOpen) menuItemRefs.current[0]?.focus();
   }, [menuOpen]);
 
   useEffect(() => {
@@ -355,11 +366,14 @@ function HomeStayCard({ listing, variant, onNavigate, onLifecycleAction }: HomeS
               {availableActions.map((entry, index) => (
                 <button
                   key={entry.action}
-                  ref={index === 0 ? firstItemRef : undefined}
+                  ref={(element) => {
+                    menuItemRefs.current[index] = element;
+                  }}
                   type="button"
                   role="menuitem"
                   className="home__card-menu-item"
                   onClick={() => runAction(entry.action)}
+                  onKeyDown={(event) => moveMenuFocus(event.nativeEvent, index, menuItemRefs.current)}
                 >
                   {t(entry.labelKey)}
                 </button>
@@ -626,6 +640,7 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   const [providerMenuOpen, setProviderMenuOpen] = useState(false);
   const providerMenuRef = useRef<HTMLDivElement | null>(null);
   const providerTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const providerOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const providerSelectedCount = values.providerIds.length;
   const providerSummary =
     providerSelectedCount === 0
@@ -636,6 +651,10 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
     setProviderMenuOpen(false);
     if (restoreFocus) providerTriggerRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (providerMenuOpen) providerOptionRefs.current[0]?.focus();
+  }, [providerMenuOpen]);
 
   useEffect(() => {
     if (!providerMenuOpen) return undefined;
@@ -759,11 +778,15 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
               {providerMenuOpen && (
                 <div className="home__provider-options" role="menu" aria-label={t('home.providerLabel')}>
                   <button
+                    ref={(element) => {
+                      providerOptionRefs.current[0] = element;
+                    }}
                     type="button"
                     role="menuitemradio"
                     aria-checked={providerSelectedCount === 0}
                     className={`home__provider-all${providerSelectedCount === 0 ? ' is-selected' : ''}`}
                     onClick={selectAllProviders}
+                    onKeyDown={(event) => moveMenuFocus(event.nativeEvent, 0, providerOptionRefs.current)}
                   >
                     <span className="home__provider-check" aria-hidden="true">
                       {providerSelectedCount === 0 && <IconTickCircle />}
@@ -773,17 +796,21 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
                   {providerOptions.length === 0 && (
                     <span className="home__provider-empty">{t('home.providersEmpty')}</span>
                   )}
-                  {providerOptions.map((provider) => {
+                  {providerOptions.map((provider, index) => {
                     const selected = selectedProviders.has(provider.id);
                     const stale = selected && !(listingsData.availableProviders ?? []).includes(provider.id);
                     return (
                       <button
+                        ref={(element) => {
+                          providerOptionRefs.current[index + 1] = element;
+                        }}
                         key={provider.id}
                         type="button"
                         role="menuitemcheckbox"
                         aria-checked={selected}
                         className={selected ? 'is-selected' : ''}
                         onClick={() => toggleProvider(provider.id)}
+                        onKeyDown={(event) => moveMenuFocus(event.nativeEvent, index + 1, providerOptionRefs.current)}
                       >
                         <span className="home__provider-check" aria-hidden="true">
                           {selected && <IconTickCircle />}

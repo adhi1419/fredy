@@ -17,6 +17,8 @@ const read = (relativePath: string) => fs.readFileSync(path.join(root, relativeP
 const homeSource = read('ui/src/views/home/Home.tsx');
 const homeStyles = read('ui/src/views/home/Home.less');
 const appSource = read('ui/src/App.tsx');
+const navigationSource = read('ui/src/components/navigation/Navigation.tsx');
+const navigationStyles = read('ui/src/components/navigation/Navigate.less');
 
 // A minimal listing shaped like the API result the Home table returns.
 interface MockListing {
@@ -264,6 +266,25 @@ describe('iPhone 13 Home containment', () => {
     const narrow = homeStyles.slice(homeStyles.indexOf('@media (max-width: 430px)'));
     expect(narrow).toMatch(
       /&__provider-options\s*{[\s\S]*?right:\s*0;[\s\S]*?left:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?max-width:\s*none;/,
+    );
+  });
+});
+
+describe('Home keyboard and mobile health accessibility', () => {
+  it('supports arrow, Home, and End navigation in both Home menus', () => {
+    expect(homeSource).toContain('function moveMenuFocus(');
+    expect(homeSource).toContain("event.key === 'ArrowDown'");
+    expect(homeSource).toContain("event.key === 'ArrowUp'");
+    expect(homeSource).toContain("event.key === 'Home'");
+    expect(homeSource).toContain("event.key === 'End'");
+    expect(homeSource.match(/moveMenuFocus\(event\.nativeEvent/g)?.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps the attention count visible on mobile while retaining the full aria label', () => {
+    expect(navigationSource).toContain('className="fredy-shell-nav__health-count"');
+    expect(navigationSource).toContain('{attentionCount}');
+    expect(navigationStyles).toMatch(
+      /@media \(max-width: 768px\)[\s\S]*?\.fredy-shell-nav__health-count\s*{[\s\S]*?display:\s*inline-block;/,
     );
   });
 });

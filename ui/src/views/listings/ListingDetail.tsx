@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useSelector, useActions } from '../../services/state/store.js';
+import type { ListingLifecycleAction } from '../../services/state/listingsState';
 import {
   Typography,
   Button,
@@ -170,10 +171,7 @@ interface ListingStoreState {
 interface ListingActions {
   listingsData: {
     getListing: (listingId: string) => Promise<unknown>;
-    setListingLifecycleAction: (
-      listingId: string,
-      action: 'applied' | 'viewing' | 'archive' | 'restore',
-    ) => Promise<void>;
+    setListingLifecycleAction: (listingId: string, action: ListingLifecycleAction) => Promise<void>;
     setListingNotes: (listingId: string, notes: string) => Promise<void>;
     setListingAddress: (
       listingId: string,
@@ -558,7 +556,7 @@ export default function ListingDetail(): ReactNode {
     }
   };
 
-  const handleLifecycleAction = async (action: 'applied' | 'viewing' | 'archive' | 'restore', successKey: string) => {
+  const handleLifecycleAction = async (action: ListingLifecycleAction, successKey: string) => {
     try {
       await actions.listingsData.setListingLifecycleAction(listing.id, action);
       await actions.listingsData.getListing(listingId);
@@ -928,7 +926,11 @@ export default function ListingDetail(): ReactNode {
 
       <section className="listing-detail__composition" aria-label={t('listing.detail.compositionLabel')}>
         <main className="listing-detail__main">
-          <section className="listing-detail__fit" id="listing-fit" aria-labelledby="listing-fit-heading">
+          <section
+            className="listing-detail__fit scrollspyTabs-section"
+            id="listing-fit"
+            aria-labelledby="listing-fit-heading"
+          >
             <div
               className={`listing-detail__image-container${!listing.image_url ? ' listing-detail__image-container--placeholder' : ''}`}
             >
@@ -1058,7 +1060,7 @@ export default function ListingDetail(): ReactNode {
           </section>
 
           <section
-            className="listing-detail__activity"
+            className="listing-detail__activity scrollspyTabs-section"
             id="listing-activity"
             aria-labelledby="listing-activity-heading"
           >
@@ -1142,7 +1144,7 @@ export default function ListingDetail(): ReactNode {
           </section>
 
           <section
-            className="listing-detail__evidence"
+            className="listing-detail__evidence scrollspyTabs-section"
             id="listing-evidence"
             aria-labelledby="listing-evidence-heading"
           >
@@ -1160,7 +1162,7 @@ export default function ListingDetail(): ReactNode {
                 {/* The map used to run the full width under the card, which pushed it a screen
                 below the figures. In this column it sits beside the details and the costing,
                 so the whole listing fits on one screen. */}
-                <div className="listing-detail__map-wrapper" id="listing-map">
+                <div className="listing-detail__map-wrapper scrollspyTabs-section" id="listing-map">
                   <Title heading={4} className="listing-detail__map-title">
                     {t('listing.detail.locationTitle')}
                   </Title>
