@@ -93,16 +93,24 @@
 @color-map-panel-strong: var(--f-map-panel-strong);
 
 // Typography
-@font-ui: 'Outfit', system-ui, sans-serif;
-@font-display: Georgia, 'Times New Roman', serif;
+// Measured from the awwwards e-commerce set (Halcyon, Woodwrights, Lujo, Coutumes, Tilly Sveaas,
+// Heirest, ACME): a grotesk at 400-500 for everything including headlines, negative tracking on
+// display sizes, and a monospace for uppercase labels and prices. No display serif.
+@font-ui: 'Inter Tight', system-ui, sans-serif;
+@font-display: @font-ui;
 @font-mono: 'JetBrains Mono', monospace;
 
 @text-xs: 11px;
 @text-sm: 12px;
-@text-base: 14px;
+@text-base: 15px;
 @text-md: 16px;
-@text-lg: 20px;
-@text-xl: 24px;
+@text-lg: 22px;
+@text-xl: 28px;
+
+// Display headlines and labels. Headlines pull in; labels push out and go uppercase.
+@tracking-display: -0.035em;
+@tracking-tight: -0.015em;
+@tracking-label: 0.04em;
 
 // Spacing
 @space-1: 4px;
@@ -115,15 +123,17 @@
 @space-12: 48px;
 
 // Radius
-// Tightened from 10px. Generously rounded corners are most of what made this read as playful; at
-// 6px the same layout reads as a tool without becoming a spreadsheet.
-@radius-input: 6px;
-@radius-card: 8px;
-@radius-btn: 4px;
-@radius-pill: 9999px;
-@radius-chip: 3px;
+// Zero. Six of the seven reference sites round nothing; the other two use 3px on buttons only.
+// Round shapes (avatars, map pins) use 50% directly and are unaffected.
+@radius-input: 0;
+@radius-card: 0;
+@radius-btn: 0;
+@radius-pill: 0;
+@radius-chip: 0;
 
 // Transitions
 @transition-fast: 0.15s ease-in-out;
 @transition-card: 0.18s ease-in-out;
 @transition-sidebar: width 0.25s ease-in-out;
+// Photo zoom on hover, the one piece of motion every reference site shares.
+@transition-photo: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);

@@ -7,21 +7,84 @@ html {
   height: 100%;
   width: 100%;
   font-family: @font-ui;
+  font-size: @text-base;
+  line-height: 1.3;
+  letter-spacing: @tracking-tight;
+  -webkit-font-smoothing: antialiased;
+  // Flat paper. The reference set paints nothing behind the page; photography is the only colour.
   background-color: @color-base;
-  background-image: radial-gradient(ellipse at 60% 0%, @color-accent-glow 0%, transparent 55%);
-  background-attachment: fixed;
   color-scheme: dark;
+}
+
+// Display type: grotesk at medium weight with tight tracking, never a heavy sans. Component
+// stylesheets set their own sizes; the weight and tracking come from here so a headline added
+// anywhere reads as part of the same family.
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 500;
+  letter-spacing: @tracking-display;
+  line-height: 1.05;
+}
+
+// Semi UI controls follow the measured button grammar: square, hairline, small uppercase label.
+.semi-button {
+  border-radius: @radius-btn !important;
+  font-size: @text-sm;
+  font-weight: 500;
+  letter-spacing: @tracking-label;
+  text-transform: uppercase;
+}
+.semi-button-tertiary,
+.semi-button-secondary,
+.semi-button-borderless {
+  border: 1px solid @color-border-bright !important;
+  background: transparent !important;
+  color: @color-text !important;
+}
+.semi-button-borderless {
+  border-color: transparent !important;
+}
+.semi-input-wrapper,
+.semi-select,
+.semi-tag,
+.semi-banner,
+.semi-modal-content,
+.semi-popover-content,
+.semi-dropdown,
+.semi-card,
+.semi-switch,
+.semi-autocomplete,
+.semi-tabs-bar-line .semi-tabs-tab {
+  border-radius: @radius-input !important;
+}
+// Banners are hairline notices on the paper, not Semi's tinted info/warning slabs. The semantic
+// colour stays on the icon and the left rule so the state still reads.
+.semi-banner {
+  border: 1px solid @color-border !important;
+  border-left: 2px solid var(--semi-color-info) !important;
+  background: @color-surface !important;
+  color: @color-text !important;
+}
+.semi-banner-warning {
+  border-left-color: var(--semi-color-warning) !important;
+}
+.semi-banner-danger {
+  border-left-color: var(--semi-color-danger) !important;
+}
+.semi-banner-success {
+  border-left-color: var(--semi-color-success) !important;
+}
+.semi-tag {
+  font-family: @font-mono;
+  font-size: @text-xs;
+  letter-spacing: @tracking-label;
+  text-transform: uppercase;
 }
 
 body[theme-mode='light'] {
   color-scheme: light;
-}
-
-@media (max-width: 768px) {
-  body,
-  html {
-    background-attachment: scroll;
-  }
 }
 
 // Semi UI theme overrides
