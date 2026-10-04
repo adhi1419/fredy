@@ -72,7 +72,6 @@ export interface ListingsEffects {
   getListingsData(params: ListingsDataQuery): Promise<void>;
   getListing(listingId: string): Promise<unknown>;
   getListingsForMap(params?: ListingsMapQuery): Promise<void>;
-  setListingStatus(listingId: string, status: unknown): Promise<void>;
   setListingLifecycleAction(listingId: string, action: ListingLifecycleAction): Promise<void>;
   setListingNotes(listingId: string, notes: unknown): Promise<void>;
   setListingAddress(listingId: string, position: ListingPosition): Promise<void>;
@@ -167,15 +166,6 @@ export function createListingsEffects(
         }));
       } catch (exception) {
         console.error('Error while trying to get resource for api/listings/map. Error:', exception);
-      }
-    },
-
-    async setListingStatus(listingId, status) {
-      try {
-        await transport.post(`/api/listings/${listingId}/status`, { status });
-      } catch (exception) {
-        console.error(`Error while trying to set status for listing ${listingId}. Error:`, exception);
-        throw exception;
       }
     },
 

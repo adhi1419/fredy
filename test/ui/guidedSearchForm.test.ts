@@ -178,20 +178,19 @@ describe('guidedSearchForm', () => {
     });
   });
 
-  it('migrates legacy draft intent only onto capable sources without overriding explicit policies', () => {
+  it('disables restored draft sources without a policy and keeps explicit policies', () => {
     expect(
       migrateLegacyDraftProviderPolicies(
         [
           source('supported'),
           source('unsupported'),
-          source('listing-scoped'),
+          source('supported', { automatic: 'enabled' }),
           source('supported', { automatic: 'disabled' }),
         ],
-        true,
         metadata,
       ).map((provider) => provider.applicationPolicy),
     ).toEqual([
-      { automatic: 'enabled' },
+      { automatic: 'disabled' },
       { automatic: 'disabled' },
       { automatic: 'enabled' },
       { automatic: 'disabled' },
@@ -223,7 +222,6 @@ describe('guidedSearchForm', () => {
       ...complete,
       providerData: [source('supported', { automatic: 'enabled' }), source('listing-scoped')],
       selectedChannels: [{ id: 'channel-1' }],
-      autoSendInquiry: true,
     });
 
     expect(payload.provider).toEqual([

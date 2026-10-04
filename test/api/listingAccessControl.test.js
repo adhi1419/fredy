@@ -178,7 +178,7 @@ describe('listing access control', () => {
     it('rejects a status change on a foreign listing', async () => {
       const reply = makeReply();
       await routes['POST /:listingId/status'](
-        requestFor('alice', { status: 'rejected' }, { listingId: 'someone-elses' }),
+        requestFor('alice', { action: 'archive' }, { listingId: 'someone-elses' }),
         reply,
       );
       expect(reply.statusCode).toBe(403);

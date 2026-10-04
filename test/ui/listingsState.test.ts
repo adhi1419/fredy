@@ -107,7 +107,6 @@ describe('listings state domain', () => {
     const { post, effects } = setup();
     post.mockResolvedValue({ status: 200, json: {} });
 
-    await effects.setListingStatus('listing-1', 'applied');
     await effects.setListingLifecycleAction('listing-1', 'applied');
     await effects.setListingLifecycleAction('listing-1', 'viewing');
     await effects.setListingLifecycleAction('listing-1', 'archive');
@@ -122,7 +121,6 @@ describe('listings state domain', () => {
     await effects.reactivateListings(['listing-2']);
 
     expect(post.mock.calls).toEqual([
-      ['/api/listings/listing-1/status', { status: 'applied' }],
       ['/api/listings/listing-1/status', { action: 'applied' }],
       ['/api/listings/listing-1/status', { action: 'viewing' }],
       ['/api/listings/listing-1/status', { action: 'archive' }],
@@ -139,6 +137,6 @@ describe('listings state domain', () => {
     const failure = new Error('unauthorized');
     post.mockRejectedValue(failure);
 
-    await expect(effects.setListingStatus('listing-1', 'available')).rejects.toBe(failure);
+    await expect(effects.setListingLifecycleAction('listing-1', 'applied')).rejects.toBe(failure);
   });
 });

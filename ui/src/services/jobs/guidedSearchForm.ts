@@ -77,8 +77,6 @@ export interface GuidedJobPayloadInput {
   dealType?: 'rent' | 'buy' | null;
   enabled?: boolean;
   jobId?: string | null;
-  /** Legacy draft compatibility; deliberately omitted from the payload. */
-  autoSendInquiry?: boolean;
 }
 
 export interface GuidedJobPayload {
@@ -269,12 +267,11 @@ export function setSourceAutomaticPolicy(
 }
 
 /**
- * Migrate a pre-policy local draft without allowing its job-wide flag to override sources that
- * already carry an explicit choice. Unsupported and connection-required sources remain disabled.
+ * Normalise the sources of a restored local draft: a source without an explicit policy is
+ * disabled. Unsupported and connection-required sources remain disabled.
  */
 export function migrateLegacyDraftProviderPolicies(
   sources: readonly GuidedProviderSource[] | null | undefined,
-  legacyAutoSendInquiry: boolean,
   providerMetadata: readonly ProviderMetadata[] = [],
 ): GuidedProviderSource[] {
   return (Array.isArray(sources) ? sources : []).map((source) => {
@@ -283,13 +280,7 @@ export function migrateLegacyDraftProviderPolicies(
       return resolveProviderSource(source, providerMetadata).source;
     }
     const resolved = resolveProviderSource(source, providerMetadata);
-    const control = sourcePolicyControl(resolved.source, providerMetadata);
-    return {
-      ...resolved.source,
-      applicationPolicy: {
-        automatic: legacyAutoSendInquiry === true && control.canEnable ? POLICY_STATES.ENABLED : POLICY_STATES.DISABLED,
-      },
-    };
+    return { ...resolved.source, applicationPolicy: { automatic: POLICY_STATES.DISABLED } };
   });
 }
 
@@ -331,9 +322,7 @@ export function canonicalGuidedProviderSource(
 }
 
 /**
- * Build the guided save payload. `autoSendInquiry` is intentionally absent: independent source
- * policies must not be overridden by a legacy job-wide value. The server still accepts and reads
- * that field for old clients and persisted jobs.
+ * Build the guided save payload. Automatic applications are controlled per source policy only.
  */
 export function buildGuidedJobPayload({
   providerData = [],

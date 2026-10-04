@@ -106,11 +106,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/views/finance/components/ResultSummary.tsx',
       'ui/src/views/finance/components/ScenarioForm.tsx',
       'ui/src/views/finance/components/VerdictBanner.tsx',
-      'ui/src/components/listings/AffordabilityChip.tsx',
-      'ui/src/components/listings/ExternalListingLink.tsx',
-      'ui/src/components/listings/FilterSelect.tsx',
-      'ui/src/components/listings/PriceChangeBadge.tsx',
-      'ui/src/components/listings/StatusControl.tsx',
       'ui/src/components/map/Map.tsx',
       'ui/src/components/map/MapControls.tsx',
       'ui/src/components/map/MapDrawingExtension.ts',
@@ -155,11 +150,8 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/components/filters/FilterButton.tsx',
       'ui/src/components/filters/FilterDrawer.tsx',
       'ui/src/components/footer/FredyFooter.tsx',
-      'ui/src/components/grid/listings/ListingsGrid.tsx',
       'ui/src/components/headline/Headline.tsx',
       'ui/src/components/icons/IconEuro.tsx',
-      'ui/src/components/listings/ListingsFilterPanel.tsx',
-      'ui/src/components/listings/ListingsOverview.tsx',
       'ui/src/components/logo/Logo.tsx',
       'ui/src/components/logout/Logout.tsx',
       'ui/src/components/permission/InsufficientPermission.tsx',
@@ -167,7 +159,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/components/placeholder/Placeholder.tsx',
       'ui/src/components/segment/SegmentPart.tsx',
       'ui/src/components/settingsShell/SettingsShell.tsx',
-      'ui/src/components/table/ListingsTable.tsx',
       'ui/src/components/table/NotificationChannelTable.tsx',
       'ui/src/services/i18n/i18n.tsx',
       'ui/src/services/notifications/browserAdapter.ts',
@@ -185,7 +176,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/views/admin/pages/SystemPage.tsx',
       'ui/src/views/admin/useAdminSettings.ts',
       'ui/src/views/dashboard/Dashboard.tsx',
-      'ui/src/views/listings/Listings.tsx',
       'ui/src/views/listings/Map.tsx',
       'ui/src/views/listings/components/AddressEditor.tsx',
       'ui/src/views/listings/components/ListingFinanceCard.tsx',
@@ -305,11 +295,6 @@ describe('Bun and TypeScript foundation', () => {
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
     }
     const waveTwoMigrations = [
-      ['ui/src/components/listings/AffordabilityChip.tsx', 'ui/src/components/listings/AffordabilityChip.jsx'],
-      ['ui/src/components/listings/ExternalListingLink.tsx', 'ui/src/components/listings/ExternalListingLink.jsx'],
-      ['ui/src/components/listings/FilterSelect.tsx', 'ui/src/components/listings/FilterSelect.jsx'],
-      ['ui/src/components/listings/PriceChangeBadge.tsx', 'ui/src/components/listings/PriceChangeBadge.jsx'],
-      ['ui/src/components/listings/StatusControl.tsx', 'ui/src/components/listings/StatusControl.jsx'],
       ['ui/src/components/map/Map.tsx', 'ui/src/components/map/Map.jsx'],
       ['ui/src/components/map/MapControls.tsx', 'ui/src/components/map/MapControls.jsx'],
       ['ui/src/components/map/MapDrawingExtension.ts', 'ui/src/components/map/MapDrawingExtension.js'],
@@ -387,11 +372,8 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/components/filters/FilterButton.tsx', 'ui/src/components/filters/FilterButton.jsx'],
       ['ui/src/components/filters/FilterDrawer.tsx', 'ui/src/components/filters/FilterDrawer.jsx'],
       ['ui/src/components/footer/FredyFooter.tsx', 'ui/src/components/footer/FredyFooter.jsx'],
-      ['ui/src/components/grid/listings/ListingsGrid.tsx', 'ui/src/components/grid/listings/ListingsGrid.jsx'],
       ['ui/src/components/headline/Headline.tsx', 'ui/src/components/headline/Headline.jsx'],
       ['ui/src/components/icons/IconEuro.tsx', 'ui/src/components/icons/IconEuro.jsx'],
-      ['ui/src/components/listings/ListingsFilterPanel.tsx', 'ui/src/components/listings/ListingsFilterPanel.jsx'],
-      ['ui/src/components/listings/ListingsOverview.tsx', 'ui/src/components/listings/ListingsOverview.jsx'],
       ['ui/src/components/logo/Logo.tsx', 'ui/src/components/logo/Logo.jsx'],
       ['ui/src/components/logout/Logout.tsx', 'ui/src/components/logout/Logout.jsx'],
       [
@@ -405,7 +387,6 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/components/placeholder/Placeholder.tsx', 'ui/src/components/placeholder/Placeholder.jsx'],
       ['ui/src/components/segment/SegmentPart.tsx', 'ui/src/components/segment/SegmentPart.jsx'],
       ['ui/src/components/settingsShell/SettingsShell.tsx', 'ui/src/components/settingsShell/SettingsShell.jsx'],
-      ['ui/src/components/table/ListingsTable.tsx', 'ui/src/components/table/ListingsTable.jsx'],
       ['ui/src/components/table/NotificationChannelTable.tsx', 'ui/src/components/table/NotificationChannelTable.jsx'],
       ['ui/src/services/i18n/i18n.tsx', 'ui/src/services/i18n/i18n.jsx'],
       ['ui/src/services/notifications/browserAdapter.ts', 'ui/src/services/notifications/browserAdapter.js'],
@@ -447,7 +428,6 @@ describe('Bun and TypeScript foundation', () => {
         'ui/src/views/jobs/mutation/components/provider/ProviderMutator.tsx',
         'ui/src/views/jobs/mutation/components/provider/ProviderMutator.jsx',
       ],
-      ['ui/src/views/listings/Listings.tsx', 'ui/src/views/listings/Listings.jsx'],
       ['ui/src/views/listings/Map.tsx', 'ui/src/views/listings/Map.jsx'],
       ['ui/src/views/listings/components/AddressEditor.tsx', 'ui/src/views/listings/components/AddressEditor.jsx'],
       [
@@ -471,7 +451,7 @@ describe('Bun and TypeScript foundation', () => {
       ['test/ui/homeViewState.test.ts', 'test/ui/homeViewState.test.js'],
       ['test/ui/noWhatsNewSurface.test.ts', 'test/ui/noWhatsNewSurface.test.js'],
     ];
-    expect(finalMigrations).toHaveLength(59);
+    expect(finalMigrations).toHaveLength(54);
     for (const [typedPath, legacyPath] of finalMigrations) {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);

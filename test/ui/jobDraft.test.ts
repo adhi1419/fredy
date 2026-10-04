@@ -85,7 +85,6 @@ describe('jobDraft', () => {
       ['a deal type', { dealType: 'buy' }],
       ['a drawn area', { spatialFilter: { type: 'Polygon' } }],
       ['a travel time limit', { commuteFilter: { action: 'notify', limits: { Work: 35 } } }],
-      ['automatic inquiries', { autoSendInquiry: true }],
     ])('counts %s', (_what: string, draft: Record<string, unknown>) => {
       expect(hasContent(draft)).toBe(true);
     });

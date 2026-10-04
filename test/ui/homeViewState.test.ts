@@ -176,8 +176,6 @@ describe('homeViewState', () => {
 
   it('uses canonical lifecycle and compatibility evidence without reviving retired states', () => {
     expect(homeLifecycleState({ lifecycle: { state: 'archived' }, inquiry_send_status: 'sent' })).toBe('archived');
-    expect(homeLifecycleState({ status: { status: 'accepted' } })).toBe('archived');
-    expect(homeLifecycleState({ status: { status: 'rejected' } })).toBe('archived');
     expect(homeLifecycleState({ inquiry_send_status: 'sent' })).toBe('applied');
     expect(homeLifecycleState({ lifecycle: { state: 'unexpected' } })).toBe('new');
     expect(homeLifecycleState({})).toBe('new');
