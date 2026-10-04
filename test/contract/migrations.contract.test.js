@@ -98,4 +98,22 @@ describe('Firestore migrations', () => {
     expect(data.activeCheckFailures).toBe(0);
     expect(data.travelTimeFailures).toBe(0);
   });
+
+  it('renames create_date and deletes retired settings in 006', async () => {
+    await db.collection('settings').doc('keep').set({ name: 'theme', value: '"dark"', userId: 'u', create_date: 7 });
+    await db
+      .collection('settings')
+      .doc('secret')
+      .set({ name: 'session_secret', value: '"x"', userId: null, create_date: 1 });
+    await db.collection('settings').doc('news').set({ name: 'news_last_seen_version', value: '"1"', userId: 'u' });
+    await apply('006-settings-shape', await dryRun('006-settings-shape'));
+    expect((await db.collection('settings').doc('keep').get()).data()).toEqual({
+      name: 'theme',
+      value: '"dark"',
+      userId: 'u',
+      createdAt: 7,
+    });
+    expect((await db.collection('settings').doc('secret').get()).exists).toBe(false);
+    expect((await db.collection('settings').doc('news').get()).exists).toBe(false);
+  });
 });
