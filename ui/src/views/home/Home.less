@@ -567,19 +567,26 @@
 
   &__card-title-row {
     display: flex;
-    align-items: baseline;
+    align-items: flex-start;
     justify-content: space-between;
     gap: @space-3;
+    min-width: 0;
   }
 
+  // Portal titles run long; wrap onto two lines and clamp, never spill into the next card.
   &__card-title {
+    display: -webkit-box;
+    flex: 1 1 auto;
+    min-width: 0;
     overflow: hidden;
     color: @color-text;
     font-family: @font-ui;
     font-size: @text-md;
     font-weight: 500;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   &__card-price {
