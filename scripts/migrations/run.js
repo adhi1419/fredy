@@ -239,6 +239,25 @@ async function plan004(db) {
   return operations;
 }
 
+/** Settings that no code reads any more; `session_secret` was the old cookie-session secret. */
+const RETIRED_SETTINGS = Object.freeze(['session_secret', 'news_last_seen_version']);
+
+async function plan006(db) {
+  const operations = [];
+  for (const doc of await allDocs(db, 'settings')) {
+    const data = doc.data();
+    if (RETIRED_SETTINGS.includes(data.name)) {
+      operations.push(deletion('settings', doc.id));
+      continue;
+    }
+    if (hasOwn(data, 'create_date')) {
+      const fields = hasOwn(data, 'createdAt') ? {} : { createdAt: data.create_date };
+      operations.push(operation('settings', doc.id, fields, ['create_date']));
+    }
+  }
+  return operations;
+}
+
 async function plan005(db) {
   const operations = [];
   for (const doc of await allDocs(db, 'listings')) {
@@ -272,6 +291,11 @@ export const MIGRATIONS = Object.freeze([
   },
   { id: '004-dead-data', description: 'Delete sessions and obsolete user credentials.', plan: plan004 },
   { id: '005-explicit-nulls', description: 'Backfill missing optional listing fields and counters.', plan: plan005 },
+  {
+    id: '006-settings-shape',
+    description: 'Rename settings create_date to createdAt and delete retired settings.',
+    plan: plan006,
+  },
 ]);
 
 function summarize(id, operations) {
