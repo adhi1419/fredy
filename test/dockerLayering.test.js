@@ -26,4 +26,21 @@ describe('backend image layering', () => {
     const appCopy = dockerfile.indexOf('COPY --link lib ./lib');
     expect(dockerfile.indexOf('\nRUN ', appCopy)).toBe(-1);
   });
+
+  it('cleans the yarn cache in the same layer that fills it', () => {
+    // A later RUN cannot shrink an earlier layer; cleaning one step late shipped ~1.5 GB of
+    // tarballs in every image.
+    const install = dockerfile
+      .split('\nRUN ')
+      .find((step) => step.startsWith('yarn ') && step.includes('yarn install'));
+    expect(install).toContain('yarn cache clean');
+  });
+
+  it('trims unused Chromium locales and chromedriver in the download layer', () => {
+    const download = dockerfile
+      .split('\nRUN ')
+      .find((step) => step.startsWith('node ') && step.includes('ensureBinary'));
+    expect(download).toContain("-type f ! -name 'de.pak' ! -name 'en-US.pak' -delete");
+    expect(download).toContain('-name chromedriver');
+  });
 });

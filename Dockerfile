@@ -30,13 +30,25 @@ COPY package.json yarn.lock ./
 
 # Install only backend runtime dependencies. The frontend is built and deployed by
 # GitHub Pages, so this image must not copy UI sources or install frontend tooling.
+#
+# The yarn cache is cleaned in the SAME layer. Yarn 1 downloads every package in the lockfile,
+# devDependencies included, even with --production, and a layer is never shrunk by a later
+# RUN: cleaning it one step later left ~1.5 GB of tarballs (most of the image) in this layer.
 RUN yarn config set network-timeout 600000 \
-  && yarn install --frozen-lockfile --production=true --ignore-scripts
+  && yarn install --frozen-lockfile --production=true --ignore-scripts \
+  && yarn cache clean
 
 # Pre-download the CloakBrowser stealth Chromium binary (supports x86_64 and arm64).
 # CloakBrowser remains part of the API runtime for browser-based providers.
+#
+# Then drop what the runtime never loads, in the same layer: every file in `locales/` except the
+# UI locale Fredy launches with (`--lang=de-DE` -> de.pak) and Chromium's own fallback
+# (en-US.pak) - the `.pak.info` siblings are build metadata - and chromedriver (Fredy drives Chromium over CDP via puppeteer). ensureBinary() only checks that
+# the chrome executable exists, so the trimmed install is not re-downloaded at start-up.
 RUN node --input-type=module -e "import { ensureBinary } from 'cloakbrowser'; await ensureBinary();" \
-  && yarn cache clean
+  && find /root/.cloakbrowser -path '*/locales/*' -type f ! -name 'de.pak' ! -name 'en-US.pak' -delete \
+  && find /root/.cloakbrowser -maxdepth 2 -name chromedriver -type f -delete \
+  && rm -rf /tmp/* /root/.npm
 
 # --link keeps application code in independent layers. BuildKit can attach changed
 # code to the cached browser/runtime manifest without downloading and extracting
