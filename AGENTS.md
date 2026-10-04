@@ -75,6 +75,7 @@ scheduler (every N minutes) or manual trigger via POST /api/jobs/:id/run
 ### Plugin systems
 
 **Providers** (`lib/provider/*.js`) - each module exports:
+
 - `metaInformation` - `{ id, name, baseUrl }`, plus an optional `countries` (ISO 3166-1 alpha-2,
   lowercase). Absent means `['de']`, which is why no shipped provider declares it and why adding the
   field changed no existing installation. Resolved in `lib/services/providers/`: `countries.js` is
@@ -94,30 +95,32 @@ wrong job. The same rule is why the Cheerio parser builds its document inside `p
 keeping a module-level `$`.
 
 **Notification adapters** (`lib/notification/adapter/*.js`) - each exports:
+
 - `config` - `{ id, name, description, fields }` (drives the UI form)
 - `send({ serviceName, newListings, notificationConfig, jobKey, baseUrl })`
 - Loaded dynamically at startup via `fs.readdirSync`
 
 Field definitions carry two optional flags that the UI and the API read declaratively, so neither
 needs per-adapter code:
+
 - `secret: true` - a credential. Never serialised to anyone who may not edit the channel, and
   masked in the form. Every token, password, API key and webhook URL must carry it.
 - `target: true` - the one field naming the destination. Drives the "Destination" column.
 
-An adapter *configuration* is separate from the adapter itself: it is a row in `configured_adapter`
+An adapter _configuration_ is separate from the adapter itself: it is a row in `configured_adapter`
 ("a notification channel" in the UI) that many jobs can reference.
 
 ### Key services
 
-| Service | Location | Notes |
-|---|---|---|
-| Event bus | `lib/services/events/event-bus.js` | Plain `EventEmitter`; events: `jobs:runAll`, `jobs:runOne`, `jobs:status` |
-| SSE broker | `lib/services/sse/sse-broker.js` | Per-userId `Set<ServerResponse>`; heartbeat every 25s; pushes job status to UI |
-| Similarity cache | `lib/services/similarity-check/` | Per-job dedup, refreshed hourly. Two tiers: an exact SHA-256 over `jobId\|title\|price\|address`, then `listingFingerprint.js`, which matches the same flat across *different* providers on living space, rooms and location. Portals never agree on the headline, the address format, or what "price" means, so the hash tier alone never fired across providers |
-| Notification channels | `lib/services/storage/configuredAdapterStorage.js` | Saved adapter configurations (`configured_adapter`). Jobs store `[{configuredAdapterId}]`; `jobStorage` hydrates those back into `{id, name, fields}` on every read, so the pipeline never sees the indirection. Who may use vs. edit a channel: `lib/services/security/channelAccess.js` |
-| Known-listing index | `lib/services/storage/firestore/knownListingIndex.js` | In-memory set of every stored listing doc id (tombstones included), loaded by the similarity cache's first full read. `findKnownHashes` trusts its hits and queries Firestore only for misses; `storeListings` adds to it and every hard delete evicts from it |
-| FirestoreConnection | `lib/services/storage/firestore/FirestoreConnection.js` | Singleton Firestore client; emulator support for local tests and ADC for production |
-| Extractor | `lib/services/extractor/` | Orchestrates Puppeteer + Cheerio; shared browser instance per job |
+| Service               | Location                                                | Notes                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Event bus             | `lib/services/events/event-bus.js`                      | Plain `EventEmitter`; events: `jobs:runAll`, `jobs:runOne`, `jobs:status`                                                                                                                                                                                                                                                                                         |
+| SSE broker            | `lib/services/sse/sse-broker.js`                        | Per-userId `Set<ServerResponse>`; heartbeat every 25s; pushes job status to UI                                                                                                                                                                                                                                                                                    |
+| Similarity cache      | `lib/services/similarity-check/`                        | Per-job dedup, refreshed hourly. Two tiers: an exact SHA-256 over `jobId\|title\|price\|address`, then `listingFingerprint.js`, which matches the same flat across _different_ providers on living space, rooms and location. Portals never agree on the headline, the address format, or what "price" means, so the hash tier alone never fired across providers |
+| Notification channels | `lib/services/storage/configuredAdapterStorage.js`      | Saved adapter configurations (`configured_adapter`). Jobs store `[{configuredAdapterId}]`; `jobStorage` hydrates those back into `{id, name, fields}` on every read, so the pipeline never sees the indirection. Who may use vs. edit a channel: `lib/services/security/channelAccess.js`                                                                         |
+| Known-listing index   | `lib/services/storage/firestore/knownListingIndex.js`   | In-memory set of every stored listing doc id (tombstones included), loaded by the similarity cache's first full read. `findKnownHashes` trusts its hits and queries Firestore only for misses; `storeListings` adds to it and every hard delete evicts from it                                                                                                    |
+| FirestoreConnection   | `lib/services/storage/firestore/FirestoreConnection.js` | Singleton Firestore client; emulator support for local tests and ADC for production                                                                                                                                                                                                                                                                               |
+| Extractor             | `lib/services/extractor/`                               | Orchestrates Puppeteer + Cheerio; shared browser instance per job                                                                                                                                                                                                                                                                                                 |
 
 ### Authentication and local testing
 
@@ -173,8 +176,9 @@ anything else at runtime. Two consequences when adding to it:
   emits CSS from there is emitted forty times. `themes.less` is imported once, from `Index.less`.
 
 **Where the choice comes from.** The `settings` table, and nowhere else. `theme.js` caches nothing
+
 - no localStorage, no cookie - and `test/ui/theme.test.js` fails if one is reintroduced. A user
-setting has one home, and a second copy is a second answer waiting to disagree with it.
+  setting has one home, and a second copy is a second answer waiting to disagree with it.
 
 1. `index.html` ships `<body theme-mode="dark">`, which is `DEFAULT_THEME`. That covers the login
    screen and the moment a cold load spends fetching settings; the app renders nothing until they
@@ -188,20 +192,23 @@ setting has one home, and a second copy is a second answer waiting to disagree w
 
 **Things CSS cannot switch, and how they are handled.** Two kinds:
 
-- *Canvas.* Charts are painted onto a canvas and keep whatever they were last painted with, so
+- _Canvas._ Charts are painted onto a canvas and keep whatever they were last painted with, so
   `chartTheme.js` reads its colours from the custom properties through getters, and `<Layout>` in
   `App.jsx` is keyed on the theme so everything below it remounts on a switch. Browser rendering
   reads custom properties only. Its non-DOM fallbacks exist for unit tests and server-side rendering;
   they MUST mirror the dark token values and must never become an independently designed palette.
-- *Assets.* The wordmark has a light and a dark cut, and no custom property can swap a PNG. Those
+- _Assets._ The wordmark has a light and a dark cut, and no custom property can swap a PNG. Those
   call sites read `currentTheme()` directly. Everything expressible as a colour should use the
   tokens and let CSS do the work.
 
 **Colours that are legitimately literal**: scrims and hairlines drawn over listing photography,
 which stays photography in both themes; `#000` used as a mask stencil; white on the dedicated
-forest control fill, which is dark enough for AA in both themes. The map basemap is the light OpenFreeMap style in both themes, so map
-overlays follow the page rather than inverting.
-
+forest control fill, which is dark enough for AA in both themes. The map basemap follows the theme too -
+OpenFreeMap's near-greyscale `positron` in light and `dark` in dark (`resolveMapStyle` in
+`ui/src/components/map/Map.tsx`), read once at construction because `<Layout>` remounts the map on a
+switch. Both share the `bright` style's tiles, glyphs and sprite, so the overlays in
+`overlayLayers.ts` work unchanged; they have no POI layers, so the stop de-duplication there is a
+no-op on them by design.
 
 Contrast is not a matter of taste here: accent text and solid-control fill are separate semantic
 roles. Dark mode uses readable sage text (`--f-accent`) but a deeper forest fill
@@ -219,6 +226,7 @@ ratios and token symmetry.
 - **`conf/config.json`** is the only runtime config file; created with defaults if missing
 
 ## Coding
+
 - After building the task, run the linter
 - After building the task, run the tests
 - New features must be tested
@@ -226,6 +234,7 @@ ratios and token symmetry.
 - You do **not** commit any changes, you do **not** create a new branch unless I told you so
 
 <!-- graft:start -->
+
 ## Graft — repo context graph
 
 This repo is indexed in `graft/`: small linked markdown nodes that explain each

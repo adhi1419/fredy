@@ -13,7 +13,6 @@ import type {
   MapMouseEvent,
   MapLayerMouseEvent,
   MapGeoJSONFeature,
-  StyleSpecification,
 } from 'maplibre-gl';
 import type { FeatureCollection, Geometry } from 'geojson';
 import maplibregl from './maplibre.js';
@@ -22,17 +21,13 @@ import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { fixMapboxDrawCompatibility, addDrawingControl, setupAreaFilterEventListeners } from './MapDrawingExtension.js';
 import type MapboxDraw from '@mapbox/mapbox-gl-draw';
 import { getBoundsFromCoords } from '../../views/listings/mapUtils.js';
-import {
-  applyBuildingsLayer,
-  applyTransitLayers,
-  OPENFREEMAP_GLYPHS_URL,
-  TRANSIT_STOPS_LAYER_ID,
-} from './overlayLayers.js';
+import { applyBuildingsLayer, applyTransitLayers, TRANSIT_STOPS_LAYER_ID } from './overlayLayers.js';
 import { ensureTransitIcons } from './transitIcons.js';
 import { boundsForCountries, DEFAULT_COUNTRIES } from './countryBounds.js';
 import { keepPopupInView, mountPopupNode } from './popupContent.jsx';
 import DeparturesBoard from '../transit/DeparturesBoard.jsx';
 import { useControllableState } from '../../hooks/useControllableState.js';
+import { resolveMapStyle } from './mapStyles.js';
 import { useSelector } from '../../services/state/store.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import MapControls, { type MapControlsPatch, type MapStyleName } from './MapControls.jsx';
@@ -57,49 +52,6 @@ const PICK_MARKER_COLOR = '#f5a623';
  * @type {string}
  */
 export const HOME_MARKER_COLOR = 'red';
-
-export const STYLES: Record<MapStyleName, string | StyleSpecification> = {
-  STANDARD: 'https://tiles.openfreemap.org/styles/bright',
-  SATELLITE: {
-    version: 8,
-    // Raster tiles need no glyphs, but the transit overlay labels its stops with them - the
-    // satellite imagery carries no names of its own.
-    glyphs: OPENFREEMAP_GLYPHS_URL,
-    sources: {
-      'satellite-tiles': {
-        type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-        tileSize: 256,
-        attribution:
-          'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      },
-      'satellite-labels': {
-        type: 'raster',
-        tiles: [
-          'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-        ],
-        tileSize: 256,
-        attribution: '© Esri',
-      },
-    },
-    layers: [
-      {
-        id: 'satellite-tiles',
-        type: 'raster',
-        source: 'satellite-tiles',
-        minzoom: 0,
-        maxzoom: 19,
-      },
-      {
-        id: 'satellite-labels',
-        type: 'raster',
-        source: 'satellite-labels',
-        minzoom: 0,
-        maxzoom: 19,
-      },
-    ],
-  },
-};
 
 /** Center of Germany, the fallback view when a consumer has nothing better to show. */
 const GERMANY_CENTER: [number, number] = [10.4515, 51.1657];
@@ -271,7 +223,7 @@ export default function Map({
 
     mapRef.current = new maplibregl.Map({
       container,
-      style: STYLES[styleValue],
+      style: resolveMapStyle(styleValue),
       center: initialCenter,
       zoom: initialZoom,
       maxBounds: constrainToCountries ? boundsForCountries(countries) : undefined,
@@ -371,7 +323,7 @@ export default function Map({
       return;
     }
 
-    mapRef.current.setStyle(STYLES[styleValue]);
+    mapRef.current.setStyle(resolveMapStyle(styleValue));
   }, [styleValue]);
 
   // Handle 3D buildings layer
