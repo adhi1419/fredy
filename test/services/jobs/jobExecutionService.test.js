@@ -28,6 +28,7 @@ describe('services/jobs/jobExecutionService', () => {
     const notifyPath = root + '/lib/notification/notify.js';
     const pipelinePath = root + '/lib/FredyPipelineExecutioner.js';
     const puppeteerPath = root + '/lib/services/extractor/puppeteerExtractor.js';
+    const listingsStoragePath = root + '/lib/services/storage/listingsStorage.js';
 
     vi.resetModules();
     vi.doMock(busPath, () => ({ bus }));
@@ -54,9 +55,12 @@ describe('services/jobs/jobExecutionService', () => {
       getPackageVersion: async () => '0.0.0-test',
     }));
     vi.doMock(loggerPath, () => {
-      const m = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+      const m = { debug: () => {}, info: (...args) => calls.logs.push(args), warn: () => {}, error: () => {} };
       return { default: m };
     });
+    vi.doMock(listingsStoragePath, () => ({
+      archiveStaleListingsForJob: async () => ({ archived: 0 }),
+    }));
     vi.doMock(notifyPath, () => ({ send: async () => [] }));
     vi.doMock(puppeteerPath, () => ({
       launchBrowser: async (...args) => {
@@ -69,14 +73,16 @@ describe('services/jobs/jobExecutionService', () => {
     }));
     vi.doMock(pipelinePath, () => ({
       default: class {
-        constructor(config, job, providerId, similarityCache, browser) {
-          this.record = { config, job, providerId, similarityCache, browser };
+        constructor(config, job, providerId, similarityCache, browser, options = {}) {
+          this.record = { config, job, providerId, similarityCache, browser, options };
           calls.pipeline.push(this.record);
         }
 
         async execute() {
           if (pipelineHook) await pipelineHook(this.record);
         }
+
+        async reconcile() {}
       },
     }));
     vi.doMock(root + '/lib/services/demo/demoService.js', () => ({
@@ -108,6 +114,7 @@ describe('services/jobs/jobExecutionService', () => {
       launchBrowser: [],
       closeBrowser: [],
       pipeline: [],
+      logs: [],
     };
     state = {
       jobsById: {},
@@ -245,6 +252,38 @@ describe('services/jobs/jobExecutionService', () => {
 
     expect(calls.launchBrowser).toEqual([['https://one.example/', {}]]);
     expect(calls.closeBrowser).toEqual([state.browser]);
+  });
+
+  it('emits one correlated timing summary for the complete job run', async () => {
+    state.providers = [
+      {
+        metaInformation: { id: 'provider-1' },
+        createConfig: vi.fn(() => ({ url: 'https://provider.example/', getListings: vi.fn() })),
+      },
+    ];
+    state.jobsById.j1 = { id: 'j1', enabled: true, userId: 'u1', provider: [{ id: 'provider-1' }] };
+
+    await initService();
+    bus.emit('jobs:runOne', { jobId: 'j1' });
+    await vi.waitFor(() => expect(calls.markFinished).toEqual(['j1']));
+
+    const line = calls.logs.map(([message]) => message).find((message) => message.startsWith('PIPELINE_RUN '));
+    const event = JSON.parse(line.slice('PIPELINE_RUN '.length));
+    expect(event).toMatchObject({
+      event: 'pipeline_run',
+      schemaVersion: 1,
+      jobId: 'j1',
+      providerId: '*',
+      runType: 'job',
+      outcome: 'completed',
+    });
+    expect(event.stages.map(({ name }) => name)).toEqual([
+      'persist-last-run',
+      'provider-1:scrape',
+      'provider-1:repair',
+      'archive-stale-listings',
+    ]);
+    expect(calls.pipeline[0].options.executionId).toBe(event.executionId);
   });
 
   describe('demo mode', () => {
