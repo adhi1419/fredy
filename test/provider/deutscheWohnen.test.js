@@ -201,6 +201,35 @@ describe('#deutscheWohnen provider testsuite()', () => {
     });
   });
 
+  describe('local search criteria', () => {
+    const searchUrl = provider.convertWebToApi(
+      'https://www.deutsche-wohnen.com/mieten/mietangebote?sizeMin=55&sizeMax=80&priceMin=700&priceMax=1000&minRooms=2&maxRooms=3',
+    );
+
+    it('keeps a listing within every saved bound', () => {
+      expect(provider.matchesSearchCriteria({ size: 60, price: 900, rooms: 2 }, searchUrl)).toBe(true);
+    });
+
+    it.each([
+      ['minimum size', { size: 47.81, price: 900, rooms: 2 }],
+      ['maximum size', { size: 81, price: 900, rooms: 2 }],
+      ['minimum price', { size: 60, price: 699, rooms: 2 }],
+      ['maximum price', { size: 60, price: 1001, rooms: 2 }],
+      ['minimum rooms', { size: 60, price: 900, rooms: 1.5 }],
+      ['maximum rooms', { size: 60, price: 900, rooms: 4 }],
+      ['missing measured value', { size: null, price: 900, rooms: 2 }],
+    ])('rejects a provider row outside the saved %s', (_case, listing) => {
+      expect(provider.matchesSearchCriteria(listing, searchUrl)).toBe(false);
+    });
+
+    it('treats Beliebig as no numeric room bound', () => {
+      const url = provider.convertWebToApi(
+        'https://www.deutsche-wohnen.com/mieten/mietangebote?sizeMin=55&minRooms=Beliebig',
+      );
+      expect(provider.matchesSearchCriteria({ size: 60, price: 900, rooms: 1 }, url)).toBe(true);
+    });
+  });
+
   describe('with provider_details enabled', () => {
     it(
       'should enrich listings with details',

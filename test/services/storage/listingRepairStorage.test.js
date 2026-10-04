@@ -19,6 +19,14 @@ describe('listing repair storage seams', () => {
   const healthy = {
     provider: 'provider-1',
     manuallyDeleted: false,
+    isActive: true,
+    title: 'Active home',
+    price: 900,
+    size: 60,
+    rooms: 2,
+    description: 'Provider details',
+    address: 'Somewhere 1, Berlin',
+    link: 'https://www.deutsche-wohnen.com/mieten/mietangebote/home-89-1471120007',
     notificationComplete: true,
     inquirySendStatus: 'sent',
     inquiryMessage: 'Hello',
@@ -56,6 +64,13 @@ describe('listing repair storage seams', () => {
       hash: 'h9',
       latitude: null,
     });
+    firestore.seed('listings', 'inactive', {
+      ...healthy,
+      jobId: 'job-1',
+      hash: 'h-inactive',
+      isActive: false,
+      inquirySendStatus: null,
+    });
     firestore.seed('listings', 'deleted', {
       ...healthy,
       jobId: 'job-1',
@@ -74,7 +89,14 @@ describe('listing repair storage seams', () => {
       'not-found',
     ]);
     expect(rows.find((row) => row.id === 'failed')).toEqual(
-      expect.objectContaining({ jobId: 'job-1', inquirySendStatus: 'failed', notificationComplete: true }),
+      expect.objectContaining({
+        jobId: 'job-1',
+        inquirySendStatus: 'failed',
+        notificationComplete: true,
+        isActive: true,
+        title: 'Active home',
+        link: 'https://www.deutsche-wohnen.com/mieten/mietangebote/home-89-1471120007',
+      }),
     );
 
     // Without an automatic source or a message generator, those categories are not even queried.

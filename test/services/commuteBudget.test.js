@@ -8,6 +8,7 @@ import {
   DEFAULT_COMMUTE_ACTION,
   ESTIMATE_TOLERANCE,
   addressesWithBudget,
+  automaticInquiryCommuteDecision,
   exceedsCommuteBudget,
   normalizeCommuteBudget,
   normalizeCommuteFilter,
@@ -108,6 +109,37 @@ describe('commuteBudget', () => {
     it('has nothing to enforce without a filter', () => {
       expect(addressesWithBudget([WORK], null)).toEqual([]);
       expect(addressesWithBudget(null, normalizeCommuteFilter({ limits: { Work: 35 } }))).toEqual([]);
+    });
+  });
+
+  describe('automaticInquiryCommuteDecision', () => {
+    it('allows only a measured commute within budget', () => {
+      expect(
+        automaticInquiryCommuteDecision([transitEntry(20)], [WORK], { action: 'exclude', limits: { Work: 25 } }),
+      ).toEqual({ allowed: true, reason: null });
+      expect(
+        automaticInquiryCommuteDecision([transitEntry(40)], [WORK], { action: 'exclude', limits: { Work: 25 } }),
+      ).toEqual({ allowed: false, reason: 'over-budget' });
+    });
+
+    it('fails closed for renamed addresses and missing journeys', () => {
+      expect(
+        automaticInquiryCommuteDecision([transitEntry(20)], [WORK], {
+          action: 'exclude',
+          limits: { 'Old office': 25 },
+        }),
+      ).toEqual({ allowed: false, reason: 'unmatched-address-limit' });
+      expect(automaticInquiryCommuteDecision([], [WORK], { action: 'exclude', limits: { Work: 25 } })).toEqual({
+        allowed: false,
+        reason: 'missing-travel-time',
+      });
+    });
+
+    it('does not gate applications for a display-only mark', () => {
+      expect(automaticInquiryCommuteDecision([], [WORK], { action: 'mark', limits: { Work: 25 } })).toEqual({
+        allowed: true,
+        reason: null,
+      });
     });
   });
 
