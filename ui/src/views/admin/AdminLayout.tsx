@@ -55,7 +55,15 @@ export default function AdminLayout(): ReactElement {
     },
   ];
 
-  return <SettingsShell title={t('admin.title')} tabs={tabs} banner={<ScopeBanner />} context={admin} />;
+  return (
+    <SettingsShell
+      eyebrow={t('settings.title')}
+      title={t('nav.adminPanel')}
+      tabs={tabs}
+      banner={<ScopeBanner />}
+      context={admin}
+    />
+  );
 }
 
 AdminLayout.displayName = 'AdminLayout';
