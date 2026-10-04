@@ -50,11 +50,11 @@ export default function SettingsLayout(): ReactNode {
   return (
     <div className="settingsLayout">
       <header className="settingsLayout__heading">
-        <span>{t('settings.accountEyebrow')}</span>
-        <h1 id="my-account-title">{t('settings.title')}</h1>
+        <span>{t('settings.title')}</span>
+        <h1 id="my-account-title">{t('nav.myAccount')}</h1>
         <p>{t('settings.accountDescription')}</p>
       </header>
-      <SettingsRouteTabs tabs={tabs} ariaLabel={t('settings.title')} className="settingsLayout__nav" />
+      <SettingsRouteTabs tabs={tabs} ariaLabel={t('nav.myAccount')} className="settingsLayout__nav" />
       <section className="settingsLayout__content" aria-live="polite" key={location.pathname}>
         <Outlet />
       </section>

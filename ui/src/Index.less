@@ -36,6 +36,11 @@ h4 {
   letter-spacing: @tracking-label;
   text-transform: uppercase;
 }
+// Semi paints primary-button text with its own white; the accent fill is the ink, so the text on it
+// has to be the paper, which is what --f-on-accent holds in both themes.
+.semi-button-primary:not(.semi-button-light):not(.semi-button-borderless) {
+  color: @color-on-accent !important;
+}
 .semi-button-tertiary,
 .semi-button-secondary,
 .semi-button-borderless {

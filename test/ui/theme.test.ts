@@ -165,7 +165,7 @@ describe('themes.less', () => {
     ['muted text on surface', '--f-muted', '--f-surface', 4.5],
     ['accent text on base', '--f-accent', '--f-base', 4.5],
     ['accent text on surface', '--f-accent', '--f-surface', 4.5],
-    ['primary button foreground on accent fill', '#ffffff', '--f-accent-fill', 4.5],
+    ['primary button foreground on accent fill', '--f-on-accent', '--f-accent-fill', 4.5],
     ['selected activity pill foreground on accent fill', '--f-on-accent', '--f-accent-fill', 4.5],
     ['success text on base', '--f-success', '--f-base', 4.5],
     ['error text on base', '--f-error', '--f-base', 4.5],

@@ -101,7 +101,7 @@ export const VERDICT_COLORS = {
  */
 export const CHART_COLORS = {
   get ACCENT() {
-    return token('--f-accent', '#93c4a5');
+    return token('--f-accent', '#f3f0ea');
   },
   get GRID() {
     return token('--f-border', '#2a2b29');

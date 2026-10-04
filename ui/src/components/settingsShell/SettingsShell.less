@@ -4,6 +4,50 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  // Same centred column as the personal settings area, so Administration and My account sit in
+  // the same place on the page instead of one stretching to the viewport edge.
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: @space-6;
+  box-sizing: border-box;
+
+  // Heading mirrors .settingsLayout__heading: an uppercase label for the area, the page title as
+  // it reads in the account menu, and one line of description.
+  &__heading {
+    display: grid;
+    gap: @space-1;
+    margin-bottom: @space-5;
+
+    > span {
+      color: @color-muted;
+      font-family: @font-mono;
+      font-size: @text-xs;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      color: @color-text;
+      font-family: @font-display;
+      font-size: clamp(@text-xl, 4vw, 30px);
+      line-height: 1.15;
+    }
+
+    p {
+      max-width: 680px;
+      color: @color-muted;
+      font-family: @font-ui;
+      font-size: @text-sm;
+      line-height: 1.5;
+    }
+  }
 
   // The navigation rail is the shared SettingsRouteTabs component (see its stylesheet). The old
   // Semi Tabs bar and its horizontal-scroll overrides are gone: Administration and Account

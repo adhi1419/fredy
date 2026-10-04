@@ -6,7 +6,6 @@
 import { Outlet } from 'react-router';
 import type { ReactNode } from 'react';
 
-import Headline from '../headline/Headline.jsx';
 import SettingsRouteTabs, { type SettingsRouteTab } from '../settingsRouteTabs/SettingsRouteTabs.jsx';
 
 import './SettingsShell.less';
@@ -29,8 +28,12 @@ export interface SettingsShellTab {
 }
 
 export interface SettingsShellProps {
-  /** Page heading. */
+  /** Page heading. Reads the same as the entry that opened this area in the account menu. */
   title: string;
+  /** Small uppercase label above the heading, naming the area the page belongs to. */
+  eyebrow?: string;
+  /** One line under the heading saying what the area holds. */
+  description?: string;
   /** Sub-pages, in order. */
   tabs: SettingsShellTab[];
   /**
@@ -42,14 +45,25 @@ export interface SettingsShellProps {
   context?: unknown;
 }
 
-export default function SettingsShell({ title, tabs, banner = null, context = undefined }: SettingsShellProps) {
+export default function SettingsShell({
+  title,
+  eyebrow,
+  description,
+  tabs,
+  banner = null,
+  context = undefined,
+}: SettingsShellProps) {
   // SettingsShellTab and SettingsRouteTab are the same shape; the alias keeps each area's public
   // type stable while both feed the one shared rail.
   const routeTabs: SettingsRouteTab[] = tabs.map((tab) => ({ path: tab.path, label: tab.label, icon: tab.icon }));
 
   return (
     <div className="settingsShell">
-      <Headline text={title} />
+      <header className="settingsShell__heading">
+        {eyebrow ? <span>{eyebrow}</span> : null}
+        <h1>{title}</h1>
+        {description ? <p>{description}</p> : null}
+      </header>
       {banner}
       <SettingsRouteTabs tabs={routeTabs} ariaLabel={title} className="settingsShell__nav" />
       <div className="settingsShell__content">
