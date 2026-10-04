@@ -58,6 +58,7 @@ export function createFirestoreMemory() {
           if (operator === '==') return value?.[field] === expected;
           if (operator === 'in') return Array.isArray(expected) && expected.includes(value?.[field]);
           if (operator === '<') return value?.[field] != null && value[field] < expected;
+          if (operator === '>') return value?.[field] != null && value[field] > expected;
           throw new Error(`Unsupported test query operator: ${operator}`);
         });
       })
