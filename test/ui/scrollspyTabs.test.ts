@@ -100,20 +100,15 @@ describe('ScrollspyTabs accessible sticky rail', () => {
   });
 });
 
-describe('Listing Detail shared scrollspy integration', () => {
+describe('Listing Detail no longer mounts the scrollspy rail', () => {
   const listingSource = fs.readFileSync(path.join(root, 'ui/src/views/listings/ListingDetail.tsx'), 'utf8');
 
-  it('reuses the shared component instead of maintaining a second scroll listener', () => {
-    expect(listingSource).toContain(
-      "import ScrollspyTabs, { type ScrollspySection } from '../../components/scrollspy/ScrollspyTabs';",
-    );
-    expect(listingSource).toContain('scrollRoot={scrollRoot}');
-    expect(listingSource).toContain('className="listing-detail__scrollspy"');
-    expect(listingSource).toContain('className="listing-detail__fit scrollspyTabs-section"');
-    expect(listingSource).toContain('className="listing-detail__activity scrollspyTabs-section"');
-    expect(listingSource).toContain('className="listing-detail__evidence scrollspyTabs-section"');
-    expect(listingSource).toContain('className="listing-detail__map-wrapper scrollspyTabs-section"');
+  it('reads as one product page with hairline folds instead of a tab rail', () => {
+    // The detail page is a sticky media column beside a scrolling facts column; the long tail of
+    // evidence sits in <details> folds, so there is no second navigation to keep in sync.
+    expect(listingSource).not.toContain('ScrollspyTabs');
+    expect(listingSource).not.toContain('scrollspyTabs-section');
+    expect(listingSource).toContain('className="listing-detail__fold"');
     expect(listingSource).not.toContain('function useScrollspy(');
-    expect(listingSource).not.toContain('function ScrollspyTabs(');
   });
 });

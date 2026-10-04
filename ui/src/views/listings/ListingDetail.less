@@ -1,65 +1,81 @@
 @import '../../tokens.less';
 
+/*
+ * Listing detail: the product-page shape. A sticky media column (photo, map) on the left, one
+ * scrolling facts column on the right (title, spec strip, buy box, lifecycle, folds). On a phone
+ * both columns dissolve into one ordered flow and the fixed dock carries Apply.
+ */
 .listing-detail {
-  padding-bottom: 2rem;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 @space-6 @space-12;
 
   &__mobile-action-dock,
   &__applied-popover {
     display: none;
   }
 
-  &__heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: @space-4;
-    margin-bottom: @space-4;
+  &__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 
-  &__heading-copy,
-  &__fit-summary,
-  &__rail-heading {
-    min-width: 0;
+  // Breadcrumb row. Eyebrow left, lifecycle pill and Back right; the title lives in the facts column.
+  &__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: @space-3;
+    min-height: 52px;
+    padding: @space-2 0;
   }
 
   &__heading-copy {
-    display: grid;
-    gap: @space-1;
-  }
-
-  &__heading-copy .semi-typography {
-    margin: 0;
+    min-width: 0;
   }
 
   &__heading-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    flex-wrap: wrap;
     gap: @space-2;
+    flex-shrink: 0;
   }
 
   &__eyebrow {
-    color: @color-accent;
+    display: block;
+    color: @color-muted;
+    font-family: @font-mono;
     font-size: @text-xs;
     font-weight: 500;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
+  // Lifecycle pill (header) and the badge on the photo share one contract: ink label on paper,
+  // inverted once the listing has moved on from "new".
   &__lifecycle,
   &__fit-status {
     display: inline-flex;
     align-items: center;
-    min-height: 28px;
-    padding: 3px @space-2;
+    gap: @space-1;
+    padding: @space-1 @space-2;
     border: 1px solid @color-border;
     border-radius: @radius-pill;
-    background: @color-fill-subtle;
-    color: @color-muted;
+    background: @color-surface;
+    color: @color-accent;
+    font-family: @font-mono;
     font-size: @text-xs;
     font-weight: 500;
-    white-space: nowrap;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   &__lifecycle--selected,
@@ -69,280 +85,43 @@
     color: @color-on-accent;
   }
 
-  /* The lifecycle badge floating over the photo. Sits above the image with a legible scrim-backed
-     pill so it reads in both themes without inverting the photography. */
   &__image-badge {
     position: absolute;
     top: @space-3;
     left: @space-3;
     z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    max-width: calc(100% - (2 * @space-3));
-    box-shadow: @shadow-md;
-
-    .semi-icon {
-      font-size: @text-base;
-    }
   }
 
-  /* The scrollspy rail: one horizontally scrollable row of section links, sticky under the page
-     header so it stays reachable while reading. */
-  &__scrollspy {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    margin-bottom: @space-4;
-    background: @color-surface;
-  }
-
+  // Two columns. The media column pins to the viewport while the facts scroll past it.
   &__composition {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(270px, 320px);
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: @space-12;
     align-items: start;
-    gap: @space-4;
   }
 
-  &__main {
-    display: grid;
-    min-width: 0;
-    gap: @space-4;
-  }
-
-  &__fit,
-  &__activity,
-  &__evidence,
-  &__action-rail {
-    min-width: 0;
-    border: 1px solid @color-border;
-    border-radius: @radius-card;
-    background: @color-surface;
-  }
-
-  &__fit {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-    overflow: hidden;
-  }
-
-  &__fit .listing-detail__image-container {
-    height: 320px;
-    min-height: 320px;
-    align-self: start;
-    border-radius: 0;
-  }
-
-  &__fit-summary {
-    display: grid;
-    align-content: start;
-    gap: @space-4;
-    padding: @space-5;
-  }
-
-  &__section-heading,
-  &__rail-heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: @space-3;
-  }
-
-  &__section-heading .semi-typography,
-  &__rail-heading .semi-typography {
-    margin: @space-1 0 0;
-  }
-
-  /* The Fit card's title. On desktop the page header H1 already names the listing, so this is
-     hidden to avoid repeating it; on mobile the header is photo-first and hides its H1, so this
-     block carries the title and district below the photo instead. */
-  &__fit-title {
-    display: none;
-
-    .semi-typography {
-      margin: @space-1 0 0;
-    }
-  }
-
-  &__fit-address {
-    padding: @space-3 0;
-    border-top: 1px solid @color-border;
-    border-bottom: 1px solid @color-border;
-  }
-
-  &__fit-address .semi-space {
-    max-width: 100%;
-  }
-
-  &__fit-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: @space-3;
-  }
-
-  &__fit-metric {
-    display: grid;
-    gap: @space-1;
-    min-width: 0;
-    padding-left: @space-2;
-    border-left: 2px solid @color-border;
-
-    span {
-      color: @color-muted;
-      font-size: @text-xs;
-      text-transform: uppercase;
-    }
-
-    strong {
-      overflow: hidden;
-      color: @color-text;
-      font-size: @text-base;
-      text-overflow: ellipsis;
-    }
-  }
-
-  &__fit-metric-value--accent {
-    color: @color-accent !important;
-  }
-
-  &__activity,
-  &__evidence {
-    padding: @space-5;
-  }
-
-  &__section-heading {
-    margin-bottom: @space-4;
-
-    > :last-child {
-      max-width: 40ch;
-      color: @color-muted;
-      font-size: @text-sm;
-      text-align: right;
-    }
-  }
-
-  &__activity-content {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(190px, 0.55fr);
-    gap: @space-4;
-  }
-
-  &__activity .listing-detail__notes {
-    padding: 0;
-    border-top: 0;
-  }
-
-  &__activity .listing-detail__lifecycle-actions {
-    align-content: start;
-    margin: 0;
-    padding: @space-2;
-  }
-
-  &__evidence .listing-detail__deep-grid {
-    margin-top: @space-2;
-  }
-
-  &__deep-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-    gap: @space-5;
-  }
-
-  &__deep-column {
-    min-width: 0;
-  }
-
-  &__action-rail {
+  &__media {
     position: sticky;
     top: @space-4;
     display: grid;
-    gap: @space-4;
-    padding: @space-4;
-  }
-
-  &__rail-heading {
-    display: grid;
-    gap: @space-1;
-
-    > .semi-typography {
-      color: @color-muted;
-      font-size: @text-sm;
-    }
-  }
-
-  &__action-rail-body {
-    display: grid;
     gap: @space-3;
   }
 
-  &__rail-primary-action {
-    .semi-button {
-      width: 100%;
-      min-height: 44px;
-    }
-  }
-
-  &__guard {
+  &__facts {
     display: grid;
-    gap: @space-1;
-    padding: @space-3;
-    border: 1px solid @color-warning;
-    border-radius: @radius-btn;
-    background: @color-fill-subtle;
-
-    strong {
-      color: @color-text;
-      font-size: @text-sm;
-    }
-
-    .semi-typography {
-      color: @color-muted;
-      font-size: @text-xs;
-    }
+    gap: 0;
+    min-width: 0;
   }
 
-  &__rail-actions {
-    display: grid;
-    gap: @space-2;
-
-    .semi-space-item,
-    .semi-button,
-    .listing-detail__open-btn {
-      min-height: 44px;
-    }
-  }
-
-  &__lifecycle-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: @space-2;
-    margin-bottom: @space-4;
-    padding: @space-3;
-    border: 1px solid @color-border;
-    border-radius: @radius-card;
-    background: @color-fill-subtle;
-
-    .semi-button {
-      min-height: 44px;
-    }
-  }
-
-  /* No backdrop-filter here on purpose: it would make the card a containing block for fixed
-     positioning, and the map inside it goes fullscreen by becoming `position: fixed`. Over the flat
-     app background the blur bought nothing anyway. */
   &__image-container {
-    width: 100%;
-    height: 400px;
     position: relative;
-    background-color: var(--semi-color-fill-0);
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 4 / 3;
     overflow: hidden;
-
-    @media (max-width: 768px) {
-      height: 250px;
-    }
+    background-color: @color-solid;
 
     img {
       width: 100%;
@@ -366,114 +145,14 @@
     }
   }
 
-  &__address-link {
-    color: @color-muted;
-    text-decoration: none;
-    font-size: @text-base;
-    transition: color @transition-fast;
-    &:hover {
-      color: @color-text;
-      text-decoration: underline;
-    }
+  &__map-wrapper {
+    min-width: 0;
   }
 
-  &__notes {
-    padding: 1.5rem;
-    border-top: 1px solid var(--semi-color-border);
-  }
-
-  &__affordability {
-    display: inline-block;
-    padding: 1px @space-2;
-    border: 1px solid;
-    border-radius: @radius-chip;
-    font-size: @text-xs;
-    white-space: nowrap;
-  }
-
-  &__notes-title {
-    margin-bottom: 1rem !important;
-  }
-
-  &__notes-actions {
-    margin-top: 0.75rem;
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  &__notes-textarea {
-    background: @color-input-bg !important;
-    border: 1px solid @color-border-bright !important;
-    border-radius: @radius-input !important;
-    box-shadow: none !important;
-    outline: none !important;
-    transition:
-      border-color @transition-fast,
-      background @transition-fast !important;
-
-    textarea {
-      background: transparent !important;
-      border: 0 !important;
-      box-shadow: none !important;
-      outline: none !important;
-      color: @color-text !important;
-      font-family: @font-ui !important;
-      font-size: @text-base !important;
-    }
-
-    &.semi-input-textarea-focus,
-    &:focus,
-    &:focus-within {
-      border-color: @color-accent !important;
-      box-shadow: none !important;
-      outline: none !important;
-      background: @color-hover !important;
-    }
-  }
-
-  &__open-btn {
-    display: inline-flex;
-    align-items: center;
-    height: 32px;
-    padding: 0 12px;
-    border: 1px solid @color-border-bright;
-    border-radius: @radius-btn;
-    color: @color-muted;
-    font-size: @text-base;
-    font-family: @font-ui;
-    font-weight: 500;
-    text-decoration: none;
-    transition:
-      color @transition-fast,
-      border-color @transition-fast,
-      background @transition-fast;
-    &:hover {
-      color: @color-text;
-      border-color: @color-border-bright;
-      background: @color-fill-1;
-    }
-  }
-
-  &__info-section {
-    padding: 1.5rem;
-  }
-
-  &__details-item {
-    cursor: help;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  // Only sizes the map now. The border and the rounding belong to the shared `.map-container`
-  // inside it; having both would draw two.
   &__map-container {
-    height: 400px;
     width: 100%;
-
-    @media (max-width: 768px) {
-      height: 300px;
-    }
+    height: 260px;
+    border: 1px solid @color-border;
   }
 
   // The instructions and the save button while the listing is being placed by hand. Inside the map
@@ -489,8 +168,8 @@
     gap: 12px;
     max-width: calc(100% - 24px);
     padding: 10px 14px;
-    border: 1px solid var(--semi-color-border);
-    border-radius: var(--semi-border-radius-medium);
+    border: 1px solid @color-border-bright;
+    border-radius: @radius-card;
     background: @color-elevated;
   }
 
@@ -507,18 +186,8 @@
     }
   }
 
-  // Shares the notes' gutter, since it now sits in the same column right below them.
-  &__map-wrapper {
-    padding: 0 1.5rem 1.5rem;
-  }
-
-  &__map-title {
-    margin-bottom: 1rem !important;
-  }
-
   /* The "not looked up yet" banner carries a retry next to its sentence. Wrapping rather than
-     shrinking the text, so the button keeps its label on a narrow screen instead of the two of
-     them squeezing each other. */
+     shrinking the text, so the button keeps its label on a narrow screen. */
   &__noGeo {
     display: flex;
     align-items: center;
@@ -527,9 +196,293 @@
     flex-wrap: wrap;
   }
 
-  // Same gutter as the map above it, which it belongs to.
-  &__transit {
-    padding: 0 1.5rem 1.5rem;
+  // Title block: provider · search · added as the eyebrow, the listing title as the one H1, the
+  // address under it with its editor.
+  &__fit {
+    display: grid;
+    gap: @space-3;
+    padding-bottom: @space-5;
+  }
+
+  &__fit-title {
+    display: grid;
+    gap: @space-2;
+  }
+
+  &__heading-title {
+    margin: 0 !important;
+    font-family: @font-display !important;
+    font-size: clamp(28px, 3vw, 40px) !important;
+    font-weight: 500 !important;
+    letter-spacing: @tracking-display !important;
+    line-height: 1.02 !important;
+  }
+
+  &__fit-address {
+    color: @color-muted;
+
+    .semi-space {
+      flex-wrap: wrap;
+    }
+  }
+
+  &__address-link {
+    color: @color-muted;
+    text-decoration: none;
+    border-bottom: 1px solid @color-border-bright;
+
+    &:hover {
+      color: @color-text;
+    }
+  }
+
+  // The spec strip: four cells, hairline-ruled, mono labels, tabular figures.
+  &__fit-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: @space-2;
+    border-top: 1px solid @color-border-bright;
+    border-bottom: 1px solid @color-border;
+  }
+
+  &__fit-metric {
+    display: grid;
+    gap: @space-2;
+    min-width: 0;
+    padding: @space-4 0;
+
+    span {
+      color: @color-muted;
+      font-family: @font-mono;
+      font-size: @text-xs;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    strong {
+      overflow: hidden;
+      color: @color-text;
+      font-family: @font-mono;
+      font-size: @text-lg;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    & + & {
+      padding-left: @space-4;
+      border-left: 1px solid @color-border;
+    }
+  }
+
+  &__fit-metric--travel strong {
+    font-family: @font-ui;
+    font-size: @text-base;
+    letter-spacing: @tracking-tight;
+    white-space: normal;
+  }
+
+  &__fit-metric-value--accent {
+    color: @color-accent;
+  }
+
+  &__price {
+    font-weight: 500;
+  }
+
+  // The buy box: one primary action, the two ways to get there, and the guard under them.
+  &__action-rail {
+    padding: @space-5 0;
+    border-bottom: 1px solid @color-border;
+  }
+
+  &__action-rail-body {
+    display: grid;
+    gap: @space-3;
+  }
+
+  &__rail-primary-action .semi-button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  &__rail-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: @space-2;
+
+    .semi-button {
+      width: 100%;
+      min-height: 44px;
+    }
+  }
+
+  &__open-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 @space-4;
+    border: 1px solid @color-border-bright;
+    border-radius: @radius-btn;
+    color: @color-text;
+    font-size: @text-sm;
+    font-weight: 500;
+    letter-spacing: @tracking-label;
+    text-decoration: none;
+    text-transform: uppercase;
+
+    &:hover,
+    &:focus-visible {
+      background: @color-fill-1;
+    }
+
+    &[aria-disabled='true'] {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+  }
+
+  &__guard {
+    display: grid;
+    gap: 2px;
+    padding-left: @space-3;
+    border-left: 2px solid @color-warning;
+    color: @color-muted;
+    font-size: @text-sm;
+    line-height: 1.45;
+
+    strong {
+      color: @color-text;
+      font-weight: 500;
+    }
+  }
+
+  &__draft {
+    max-width: 600px;
+  }
+
+  // Lifecycle chips, one row, labelled.
+  &__activity {
+    border-bottom: 1px solid @color-border;
+  }
+
+  &__lifecycle-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: @space-2;
+    padding: @space-4 0;
+
+    .semi-button {
+      min-height: 44px;
+    }
+  }
+
+  &__lifecycle-actions-label {
+    margin-right: @space-2;
+    color: @color-muted;
+    font-family: @font-mono;
+    font-size: @text-xs;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  // Folds. Hairline-separated <details>, the summary as the row, a plain + / – at the right.
+  &__fold {
+    border-bottom: 1px solid @color-border;
+
+    > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: @space-3;
+      min-height: 56px;
+      padding: @space-3 0;
+      color: @color-text;
+      font-size: @text-md;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      list-style: none;
+      cursor: pointer;
+
+      &::-webkit-details-marker {
+        display: none;
+      }
+
+      &::after {
+        color: @color-muted;
+        font-size: 22px;
+        font-weight: 400;
+        line-height: 1;
+        content: '+';
+      }
+
+      &:focus-visible {
+        outline: 2px solid @color-accent;
+        outline-offset: 2px;
+      }
+    }
+
+    &[open] > summary::after {
+      content: '–';
+    }
+  }
+
+  &__fold-body {
+    display: grid;
+    gap: @space-3;
+    padding: 0 0 @space-5;
+    color: @color-muted;
+    font-size: @text-sm;
+    line-height: 1.5;
+  }
+
+  &__fold-sub {
+    display: grid;
+    gap: @space-2;
+    padding-top: @space-3;
+    border-top: 1px solid @color-border;
+  }
+
+  // Details as a definition list: mono label left, value right.
+  &__kv {
+    display: grid;
+    gap: @space-2;
+    margin: 0;
+  }
+
+  &__details-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: @space-4;
+
+    dt {
+      color: @color-muted;
+      font-family: @font-mono;
+      font-size: @text-xs;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    dd {
+      margin: 0;
+      color: @color-text;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+  }
+
+  &__notes-textarea {
+    width: 100%;
+  }
+
+  &__notes-actions {
+    display: flex;
+    justify-content: flex-end;
   }
 
   .info-tag {
@@ -537,108 +490,83 @@
     padding: 0.2rem 0.6rem;
   }
 
-  &__price {
-    font-variant-numeric: tabular-nums;
-  }
+  // Phone: both columns dissolve into one flow. The order is the product page read top to bottom:
+  // photo, title and figures, map, actions, activity, evidence. The fixed dock carries Apply.
   @media (max-width: 768px) {
+    padding: 0 @space-4 calc(10rem + env(safe-area-inset-bottom));
+
     &__heading {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: @space-3;
-      margin-bottom: @space-3;
     }
 
-    &__heading-description {
-      display: none;
-    }
-
-    /* Photo-first on mobile: the page header keeps only the breadcrumb eyebrow and Back/actions;
-       the listing title moves below the photo (see &__fit-title). The header's lifecycle pill is
-       dropped here because the badge floating over the photo already carries the state. */
-    &__heading .listing-detail__heading-title {
-      display: none;
-    }
-
-    &__heading .listing-detail__lifecycle {
-      display: none;
-    }
-
-    /* Back moves to the TOP RIGHT on a phone: the header is a single row with the eyebrow on the
-       left and the actions (just Back, once the lifecycle pill is hidden) pinned to the right. */
     &__heading-actions {
-      flex: 0 0 auto;
       justify-content: flex-end;
-      margin-top: 0;
     }
 
-    &__heading-copy {
-      min-width: 0;
+    &__composition {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: @space-4;
     }
 
-    &__composition,
-    &__fit,
-    &__deep-grid,
-    &__activity-content {
-      grid-template-columns: minmax(0, 1fr);
+    &__media,
+    &__facts {
+      display: contents;
     }
 
-    &__fit .listing-detail__image-container {
-      height: 180px;
-      min-height: 180px;
+    &__image-container {
+      order: 1;
+      margin: 0 -@space-4;
+      width: auto;
+      aspect-ratio: 4 / 3;
     }
 
-    &__fit-title {
-      display: grid;
-      gap: @space-1;
+    &__fit {
+      order: 2;
+      padding-bottom: 0;
     }
 
-    &__fit-summary {
-      gap: @space-3;
-      padding: @space-3 @space-4 @space-4;
+    &__map-wrapper {
+      order: 3;
+      width: 100%;
     }
 
-    &__fit-metrics {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: @space-2;
-    }
-
-    &__fit-metric--travel {
-      padding-bottom: @space-2;
-      border-left-color: @color-accent;
-    }
-
-    &__activity,
-    &__evidence {
-      padding: @space-4;
-    }
-
-    &__section-heading {
-      display: grid;
-
-      > :last-child {
-        max-width: none;
-        text-align: left;
-      }
+    &__map-container {
+      height: 220px;
     }
 
     &__action-rail {
-      position: static;
-      order: 2;
+      order: 4;
+      padding-top: 0;
     }
 
+    &__activity {
+      order: 5;
+    }
+
+    &__evidence {
+      order: 6;
+    }
+
+    // The dock is the canonical Apply on a phone; the buy box keeps Draft inquiry and Open listing.
     &__rail-primary-action {
       display: none;
     }
 
-    &__rail-actions {
+    &__fit-metrics {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    &__rail-actions .listing-detail__open-btn {
-      justify-content: center;
+    &__fit-metric:nth-child(3) {
+      padding-left: 0;
+      border-left: 0;
     }
-    padding-bottom: calc(10rem + env(safe-area-inset-bottom));
+
+    &__fit-metric:nth-child(n + 3) {
+      border-top: 1px solid @color-border;
+    }
 
     &__mobile-action-dock {
       position: fixed;
@@ -650,9 +578,8 @@
       grid-template-columns: minmax(0, 1fr) 52px 52px;
       gap: @space-2;
       padding: @space-2 @space-3;
-      border-top: 1px solid @color-border;
-      background: @color-surface;
-      box-shadow: @shadow-md;
+      border-top: 1px solid @color-border-bright;
+      background: @color-base;
 
       > span {
         display: contents;
@@ -734,12 +661,14 @@
     &__lifecycle-actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      margin-bottom: @space-3;
-      padding: @space-2;
 
       .semi-button {
         min-height: 44px;
       }
+    }
+
+    &__lifecycle-actions-label {
+      grid-column: 1 / -1;
     }
   }
 }
@@ -760,5 +689,4 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
 }

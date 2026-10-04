@@ -125,20 +125,23 @@ describe('accessibility action contracts', () => {
     expect(listingDetailSource).toMatch(/listing-detail__fit-status[\s\S]{0,160}\{lifecycleLabel\}/);
     // The old Applied/New-only ternary must not come back for the fit status.
     expect(listingDetailSource).not.toContain("{listingApplied ? t('home.activityApplied') : t('home.activityNew')}");
-    // Travel stays the first fit metric and reads in the accent role; affordability is not primary.
+    // Travel reads in the accent role inside the spec strip; affordability is not primary.
     expect(styles).toContain('&__fit-metric-value--accent');
     expect(listingDetailSource).toContain('listing-detail__fit-metric-value--accent');
     expect(listingDetailSource).toContain('listing-detail__fit-metric--travel');
-    expect(listingDetailSource).toContain('listing-detail__heading-description');
+    // The product-page shape carries the title in the facts column; the header is a breadcrumb row.
+    expect(listingDetailSource).toContain('listing-detail__heading-title');
     expect(styles).toContain('&__fit-status--selected');
     expect(styles).toContain('color: @color-on-accent;');
     expect(styles).toContain('&__fit-metric--travel');
+    // One spec strip, once: price leads (as on every product page), travel is the last cell of the
+    // same strip, and lifecycle mutation controls live in Your Activity, not in the strip.
+    const strip = listingDetailSource.indexOf('listing-detail__fit-metrics');
     const travel = listingDetailSource.indexOf('listing-detail__fit-metric--travel');
-    const facts = listingDetailSource.indexOf('listing-detail__fit-metrics', travel + 1);
-    // Lifecycle mutation controls no longer live in the Fit card (they belong once, in Your
-    // Activity), so the Fit card runs travel -> facts with nothing between.
+    const lifecycle = listingDetailSource.indexOf('className="listing-detail__lifecycle-actions"');
     expect(listingDetailSource).not.toContain('listing-detail__fit-lifecycle');
-    expect(travel).toBeGreaterThan(0);
-    expect(facts).toBeGreaterThan(travel);
+    expect(strip).toBeGreaterThan(0);
+    expect(travel).toBeGreaterThan(strip);
+    expect(lifecycle).toBeGreaterThan(travel);
   });
 });

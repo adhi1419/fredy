@@ -146,7 +146,7 @@ describe('Listing Detail Slice 5', () => {
     expect(styles).not.toContain('&__fit-lifecycle');
     expect(source).toContain('className="listing-detail__lifecycle-actions"');
     // The activity lifecycle group is the single home of the state-aware icons and Unarchive.
-    const activityBlock = source.slice(source.indexOf('listing-detail__activity scrollspyTabs-section'));
+    const activityBlock = source.slice(source.indexOf('className="listing-detail__activity"'));
     expect(activityBlock).toContain('listing-detail__lifecycle-actions');
     expect(activityBlock).toContain('handleUnarchive');
     // The fixed Apply/Maps/provider dock is untouched.

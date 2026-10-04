@@ -13,14 +13,11 @@ import {
   Space,
   Image,
   Tag,
-  Divider,
-  Descriptions,
   Banner,
   Popconfirm,
   Spin,
   Toast,
   TextArea,
-  Tooltip,
   Select,
 } from '@douyinfe/semi-ui-19';
 import {
@@ -63,7 +60,6 @@ import NearbyStops from '../../components/transit/NearbyStops.jsx';
 import ConnectivityCard from '../../components/connectivity/ConnectivityCard.jsx';
 import TravelTimes from '../../components/transit/TravelTimes.jsx';
 import AddressEditor from './components/AddressEditor.jsx';
-import ScrollspyTabs, { type ScrollspySection } from '../../components/scrollspy/ScrollspyTabs';
 import './ListingDetail.less';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
 import { useFinanceProfile } from '../../hooks/useFinanceProfile.js';
@@ -772,28 +768,55 @@ export default function ListingDetail(): ReactNode {
   }
 
   const isRental = listing.dealType === 'rent';
-  const scrollRoot = typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('.app__content');
+  const financePrice = typeof listing.price === 'number' ? listing.price : Number(listing.price);
+  const hasFinancePrice = Number.isFinite(financePrice);
+  const travelSummary = primaryTravel
+    ? primaryTravel.distance
+      ? t('listing.detail.travelSummary', {
+          duration: primaryTravel.duration,
+          distance: primaryTravel.distance,
+          label: primaryTravel.label,
+        })
+      : [primaryTravel.duration, primaryTravel.label].filter(Boolean).join(' · ')
+    : t('common.na');
 
-  // The four reading anchors for the scrollspy rail. Order matches the page's top-to-bottom flow so
-  // the rail reads as a table of contents. Ids are set on the matching <section> elements below.
-  const scrollspySections: readonly ScrollspySection[] = [
-    { id: 'listing-fit', label: t('listing.detail.tabFit'), icon: <IconBriefcase aria-hidden="true" /> },
-    { id: 'listing-activity', label: t('listing.detail.tabActivity'), icon: <IconActivity aria-hidden="true" /> },
-    { id: 'listing-map', label: t('listing.detail.tabMap'), icon: <IconMapPin aria-hidden="true" /> },
-    { id: 'listing-evidence', label: t('listing.detail.tabEvidence'), icon: <IconClock aria-hidden="true" /> },
-  ];
+  // The desktop buy box's Apply. The mobile dock renders its own copy below (the dock is the
+  // canonical control on a phone and carries APPLIED_TRIGGER_ID); the eligibility logic is shared.
+  const applyButton = listingApplied ? (
+    <Button type="primary" theme="solid" disabled>
+      {t('listing.detail.mobile.applied')}
+    </Button>
+  ) : (
+    <Button
+      type="primary"
+      theme="solid"
+      loading={inquirySending || draftLoading}
+      disabled={!inquiryEligibility.providerSupported || !inquiryEligibility.statusAllowsSend}
+      onClick={applyNeedsConfirmation ? undefined : handleMobileApply}
+    >
+      {t('listing.detail.mobile.apply')}
+    </Button>
+  );
+  const applyControl =
+    !listingApplied && applyNeedsConfirmation ? (
+      <Popconfirm
+        title={t('listing.detail.inquirySend.confirmTitle')}
+        content={t('listing.detail.inquirySend.confirmBody')}
+        onConfirm={handleSendInquiry}
+      >
+        {applyButton}
+      </Popconfirm>
+    ) : (
+      applyButton
+    );
 
   return (
     <div className="listing-detail">
+      {/* Breadcrumb row: where you are on the left, state and the way back on the right. The title
+      itself lives in the facts column next to the photo, where the product-page shape puts it. */}
       <header className="listing-detail__heading">
         <div className="listing-detail__heading-copy">
           <span className="listing-detail__eyebrow">{t('listing.detail.eyebrow')}</span>
-          <Title heading={1} className="listing-detail__heading-title">
-            {listing?.title || t('listing.detail.defaultTitle')}
-          </Title>
-          <Text className="listing-detail__heading-description" type="tertiary">
-            {t('listing.detail.headingDescription')}
-          </Text>
         </div>
         <div className="listing-detail__heading-actions">
           <span
@@ -811,17 +834,10 @@ export default function ListingDetail(): ReactNode {
         </div>
       </header>
 
-      <ScrollspyTabs
-        sections={scrollspySections}
-        ariaLabel={t('listing.detail.sectionNav')}
-        scrollRoot={scrollRoot}
-        className="listing-detail__scrollspy"
-      />
-
       <div className="listing-detail__mobile-action-dock" data-testid="listing-mobile-actions">
         {MOBILE_LISTING_ACTION_ORDER.map((action: 'apply' | 'maps' | 'provider') => {
           if (action === 'apply') {
-            const applyButton = (
+            const dockApply = (
               <Button
                 type="primary"
                 theme="solid"
@@ -844,10 +860,10 @@ export default function ListingDetail(): ReactNode {
                 content={t('listing.detail.inquirySend.confirmBody')}
                 onConfirm={handleSendInquiry}
               >
-                {applyButton}
+                {dockApply}
               </Popconfirm>
             ) : (
-              <span key={action}>{applyButton}</span>
+              <span key={action}>{dockApply}</span>
             );
           }
 
@@ -924,617 +940,519 @@ export default function ListingDetail(): ReactNode {
         </div>
       )}
 
+      {/* Product-page composition: a sticky media column (photo, map) on the left and one scrolling
+      facts column on the right. On a phone both columns dissolve (display: contents) into a single
+      ordered flow: photo, title and figures, map, actions, activity, evidence. */}
       <section className="listing-detail__composition" aria-label={t('listing.detail.compositionLabel')}>
-        <main className="listing-detail__main">
-          <section
-            className="listing-detail__fit scrollspyTabs-section"
-            id="listing-fit"
-            aria-labelledby="listing-fit-heading"
+        <aside className="listing-detail__media">
+          <div
+            className={`listing-detail__image-container${!listing.image_url ? ' listing-detail__image-container--placeholder' : ''}`}
           >
-            <div
-              className={`listing-detail__image-container${!listing.image_url ? ' listing-detail__image-container--placeholder' : ''}`}
+            <Image
+              src={listing.image_url ?? no_image}
+              fallback={<img src={no_image} alt={t('listing.detail.noImageAlt')} />}
+              style={{ width: '100%', height: '100%' }}
+              preview={!!listing.image_url}
+            />
+            {/* The lifecycle badge floats over the photo so the state reads at a glance. It carries
+            the shared fit-status contract - one lifecycle view, never a second boolean - and pairs
+            an icon with the label so state is never colour-only. */}
+            <span
+              className={`listing-detail__image-badge listing-detail__fit-status${lifecycle !== 'new' ? ' listing-detail__fit-status--selected' : ''}`}
             >
-              <Image
-                src={listing.image_url ?? no_image}
-                fallback={<img src={no_image} alt={t('listing.detail.noImageAlt')} />}
-                style={{ width: '100%', height: '100%' }}
-                preview={!!listing.image_url}
+              {lifecycleIcon}
+              {lifecycleLabel}
+            </span>
+          </div>
+
+          <div className="listing-detail__map-wrapper" id="listing-map">
+            {/* A listing with no coordinates normally gets a note instead of a map - but those are
+            exactly the ones somebody wants to place by hand, so pin dropping brings the map out. */}
+            {!hasGeo && !pinDrop ? (
+              <Banner
+                type="warning"
+                bordered
+                description={
+                  <div className="listing-detail__noGeo">
+                    <span>{geoUnresolved ? t('listing.detail.noGeoWarning') : t('listing.detail.noGeoPending')}</span>
+                    {/* Only for the temporary case. Offering "try again" for an address the geocoder
+                    has already rejected would be offering the same answer twice. */}
+                    {!geoUnresolved && (
+                      <Button size="small" loading={geocodeRetrying} onClick={retryGeocoding}>
+                        {t('listing.detail.geoRetry')}
+                      </Button>
+                    )}
+                  </div>
+                }
               />
-              {/* Photo-first hierarchy: the lifecycle badge floats over the image (mobile-first, per
-              the frozen Direction A wireframe) so the state reads at a glance without a heading
-              above the photo. It carries the shared fit-status contract - one lifecycle view, never
-              a second boolean - and pairs an icon with the label so state is never colour-only. */}
-              <span
-                className={`listing-detail__image-badge listing-detail__fit-status${lifecycle !== 'new' ? ' listing-detail__fit-status--selected' : ''}`}
-              >
-                {lifecycleIcon}
-                {lifecycleLabel}
+            ) : (
+              <div className="listing-detail__map-container">
+                {/* Public transport on by default: the first question about any flat is how to get
+                out of it, and the answer should already be on screen. */}
+                <MapCanvas
+                  countries={countries}
+                  initialCenter={mapCenter}
+                  initialZoom={hasGeo ? 14 : 10}
+                  defaultShowTransit
+                  cooperativeGestures
+                  expanded={mapExpanded}
+                  onExpandedChange={setMapExpanded}
+                  pickMode={pinDrop != null}
+                  onPick={setPickedCoords}
+                  onMapReady={handleMapReady}
+                >
+                  {pinDrop != null && (
+                    <div className="listing-detail__pin-bar">
+                      <div className="listing-detail__pin-bar-text">
+                        <Text>
+                          {pickedCoords ? t('listing.detail.pinDropPicked') : t('listing.detail.pinDropHint')}
+                        </Text>
+                        <Text type="tertiary" size="small">
+                          {pinDrop.address}
+                        </Text>
+                      </div>
+                      <Button
+                        theme="solid"
+                        type="primary"
+                        size="small"
+                        disabled={!pickedCoords}
+                        loading={pinSaving}
+                        onClick={savePinnedAddress}
+                      >
+                        {t('listing.detail.pinDropSave')}
+                      </Button>
+                      <Button size="small" theme="borderless" onClick={cancelPinDrop}>
+                        {t('common.cancel')}
+                      </Button>
+                    </div>
+                  )}
+                </MapCanvas>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <div className="listing-detail__facts">
+          <section className="listing-detail__fit" aria-labelledby="listing-fit-heading">
+            <div className="listing-detail__fit-title">
+              <span className="listing-detail__eyebrow">
+                {[
+                  listing.provider ? listing.provider.charAt(0).toUpperCase() + listing.provider.slice(1) : null,
+                  listing.job_name,
+                  timeService.format(listing.created_at, true, locale),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </span>
+              <Title heading={1} id="listing-fit-heading" className="listing-detail__heading-title">
+                {listing?.title || t('listing.detail.defaultTitle')}
+              </Title>
+            </div>
+            <div className="listing-detail__fit-address">
+              <Space align="center">
+                <IconMapPin aria-hidden="true" />
+                {listing.address ? (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="listing-detail__address-link"
+                  >
+                    {listing.address}
+                  </a>
+                ) : (
+                  <Text type="secondary">{t('listing.detail.noAddress')}</Text>
+                )}
+                <AddressEditor
+                  isManual={listing.address_is_manual === 1}
+                  onSave={saveAddress}
+                  onPickOnMap={startPinDrop}
+                />
+              </Space>
             </div>
 
-            <div className="listing-detail__fit-summary">
-              {/* The title lives in the desktop header H1; on mobile the header is photo-first and
-              hides it, so this block carries the title and district below the photo instead. It is
-              hidden on desktop to avoid repeating the H1 in the Fit card. */}
-              <div className="listing-detail__fit-title">
-                <span className="listing-detail__eyebrow">{t('listing.detail.fitEyebrow')}</span>
-                <Title heading={2} id="listing-fit-heading">
-                  {listing?.title || t('listing.detail.defaultTitle')}
-                </Title>
+            {/* One spec strip, once. Price, size, rooms and the travel figure Home already shows. */}
+            <div className="listing-detail__fit-metrics">
+              <div className="listing-detail__fit-metric">
+                <span>{t('listing.detail.fieldPrice')}</span>
+                <strong className="listing-detail__price">
+                  {listing.price ? formatEuroPrice(listing.price, locale) : t('common.na')}
+                </strong>
               </div>
-              <div className="listing-detail__fit-address">
-                {' '}
-                <Space align="center">
-                  <IconMapPin style={{ fontSize: '18px', color: 'var(--semi-color-primary)' }} />
-                  {listing.address ? (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.address)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="listing-detail__address-link"
-                    >
-                      {listing.address}
-                    </a>
-                  ) : (
-                    <Text type="secondary">{t('listing.detail.noAddress')}</Text>
-                  )}
-                  <AddressEditor
-                    isManual={listing.address_is_manual === 1}
-                    onSave={saveAddress}
-                    onPickOnMap={startPinDrop}
-                  />
-                </Space>
+              <div className="listing-detail__fit-metric">
+                <span>{t('listing.detail.fieldSize')}</span>
+                <strong>{listing.size ? `${listing.size} m²` : t('common.na')}</strong>
+              </div>
+              <div className="listing-detail__fit-metric">
+                <span>{t('listing.detail.fieldRooms')}</span>
+                <strong>
+                  {listing.rooms ? t('listing.detail.fieldRoomsValue', { count: listing.rooms }) : t('common.na')}
+                </strong>
               </div>
               <div className="listing-detail__fit-metric listing-detail__fit-metric--travel">
                 <span>{t('listing.detail.travelLabel')}</span>
-                <strong className="listing-detail__fit-metric-value--accent">
-                  {primaryTravel
-                    ? primaryTravel.distance
-                      ? t('listing.detail.travelSummary', {
-                          duration: primaryTravel.duration,
-                          distance: primaryTravel.distance,
-                          label: primaryTravel.label,
-                        })
-                      : [primaryTravel.duration, primaryTravel.label].filter(Boolean).join(' · ')
-                    : t('common.na')}
-                </strong>
-              </div>
-
-              {/* Lifecycle mutation controls deliberately do NOT live in the Fit card. They belong
-              once, below the main details, inside "Your Activity" (see listing-detail__activity),
-              so the Fit card stays a read-only snapshot and the fixed mobile action dock carries
-              the primary Apply/Maps/provider actions. */}
-
-              <div className="listing-detail__fit-metrics">
-                <div className="listing-detail__fit-metric">
-                  <span>{t('listing.detail.fieldPrice')}</span>
-                  <strong>{listing.price ? formatEuroPrice(listing.price, locale) : t('common.na')}</strong>
-                </div>
-                <div className="listing-detail__fit-metric">
-                  <span>{t('listing.detail.fieldSize')}</span>
-                  <strong>{listing.size ? `${listing.size} m²` : t('common.na')}</strong>
-                </div>
-                <div className="listing-detail__fit-metric">
-                  <span>{t('listing.detail.fieldRooms')}</span>
-                  <strong>
-                    {listing.rooms ? t('listing.detail.fieldRoomsValue', { count: listing.rooms }) : t('common.na')}
-                  </strong>
-                </div>
+                <strong className="listing-detail__fit-metric-value--accent">{travelSummary}</strong>
               </div>
             </div>
           </section>
 
-          <section
-            className="listing-detail__activity scrollspyTabs-section"
-            id="listing-activity"
-            aria-labelledby="listing-activity-heading"
-          >
-            <div className="listing-detail__section-heading">
-              <div>
-                <span className="listing-detail__eyebrow">{t('listing.detail.activityEyebrow')}</span>
-                <Title heading={3} id="listing-activity-heading">
-                  {t('listing.detail.activityTitle')}
-                </Title>
+          {/* The buy box. Apply is the one primary action; the rest are the ways to get there. */}
+          <section className="listing-detail__action-rail" aria-labelledby="listing-action-heading">
+            <h2 id="listing-action-heading" className="listing-detail__sr-only">
+              {t('listing.detail.actionTitle')}
+            </h2>
+            <div className="listing-detail__action-rail-body">
+              <div className="listing-detail__rail-primary-action">{applyControl}</div>
+              <div className="listing-detail__rail-actions">
+                <Button
+                  icon={draftMessage ? <IconRefresh /> : <IconEdit />}
+                  onClick={handleDraftMessage}
+                  theme="light"
+                  type="tertiary"
+                  loading={draftLoading}
+                >
+                  {draftLoading
+                    ? t('listing.detail.draftMessage.generating')
+                    : draftMessage
+                      ? t('listing.detail.draftMessage.regenerate')
+                      : t('listing.detail.draftMessage.button')}
+                </Button>
+                <a
+                  href={providerListingUrl ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="listing-detail__open-btn"
+                  aria-disabled={!providerListingUrl}
+                  onClick={(event) => {
+                    if (!providerListingUrl) event.preventDefault();
+                  }}
+                >
+                  <IconExternalOpen style={{ marginRight: 6 }} />
+                  {t('listing.detail.openListing')}
+                </a>
+                {/* Sits next to "open listing" on purpose: the user clicks that first, sees the ad is
+                very much alive, and the correction is the next button along. */}
+                {listing.is_active === 0 && (
+                  <Button icon={<IconRefresh />} onClick={handleReactivate} theme="light" type="secondary">
+                    {t('listing.detail.reactivate')}
+                  </Button>
+                )}
               </div>
-              <Text type="tertiary">{t('listing.detail.activityDescription')}</Text>
+              <div className="listing-detail__guard" role="note">
+                <strong>{t('listing.detail.actionGuardTitle')}</strong>
+                <Text type="tertiary">{t('listing.detail.actionGuardDescription')}</Text>
+              </div>
+
+              {/* Draft inquiry message result */}
+              {(draftMessage || draftError || canApplyWithoutMessage || listing.inquiry_send_status) && (
+                <div className="listing-detail__draft">
+                  {draftError && (
+                    <Banner type="warning" description={draftError} closeIcon={null} style={{ marginBottom: 8 }} />
+                  )}
+                  {(draftMessage || canApplyWithoutMessage || listing.inquiry_send_status) && (
+                    <div>
+                      {draftMessage && (
+                        <TextArea
+                          value={draftMessage}
+                          onChange={(value) => setDraftMessage(value)}
+                          disabled={listing.inquiry_send_status === 'sending'}
+                          autosize={{ minRows: 4, maxRows: 12 }}
+                          style={{ marginBottom: 8 }}
+                        />
+                      )}
+                      <Space wrap>
+                        {draftMessage && (
+                          <Button icon={<IconCopy />} onClick={handleCopyDraft} size="small" theme="light">
+                            {draftCopied
+                              ? t('listing.detail.draftMessage.copied')
+                              : t('listing.detail.draftMessage.copy')}
+                          </Button>
+                        )}
+                        {inquiryEligibility.providerSupported &&
+                          inquiryEligibility.statusAllowsSend &&
+                          (inquiryEligibility.canSend ? (
+                            <Popconfirm
+                              title={t('listing.detail.inquirySend.confirmTitle')}
+                              content={t('listing.detail.inquirySend.confirmBody')}
+                              onConfirm={handleSendInquiry}
+                            >
+                              <Button icon={<IconSend />} size="small" theme="solid" loading={inquirySending}>
+                                {t('listing.detail.inquirySend.button', { provider: inquiryProviderName })}
+                              </Button>
+                            </Popconfirm>
+                          ) : !inquiryEligibility.profileReady ? (
+                            <Button
+                              icon={<IconEdit />}
+                              size="small"
+                              theme="light"
+                              onClick={() => navigate('/settings/inquiry-profile')}
+                            >
+                              {t('listing.detail.inquirySend.completeProfile')}
+                            </Button>
+                          ) : null)}
+                        {listing.inquiry_send_status && (
+                          <Tag
+                            color={
+                              listing.inquiry_send_status === 'sent'
+                                ? 'green'
+                                : listing.inquiry_send_status === 'sending'
+                                  ? 'blue'
+                                  : 'orange'
+                            }
+                          >
+                            {t(`listing.detail.inquirySend.status.${listing.inquiry_send_status}`)}
+                          </Tag>
+                        )}
+                      </Space>
+                      {listing.inquiry_send_status === 'failed' && (
+                        <Banner
+                          type="warning"
+                          description={t('listing.detail.inquirySend.failedWarning')}
+                          closeIcon={null}
+                          style={{ marginTop: 8 }}
+                        />
+                      )}
+                      {listing.inquiry_send_status === 'unknown' && (
+                        <Banner
+                          type="warning"
+                          description={t('listing.detail.inquirySend.unknownWarning')}
+                          closeIcon={null}
+                          style={{ marginTop: 8 }}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="listing-detail__activity-content">
-              <div className="listing-detail__notes" ref={notesSectionRef}>
-                <Title heading={4} className="listing-detail__notes-title">
-                  {t('listing.detail.notesTitle')}
-                </Title>
+          </section>
+
+          {/* Your activity: the lifecycle chips. Lifecycle mutation lives here only, so the spec
+          strip above stays a read-only snapshot. Notes are the last fold under evidence. */}
+          <section className="listing-detail__activity" aria-labelledby="listing-activity-heading">
+            <h2 id="listing-activity-heading" className="listing-detail__sr-only">
+              {t('listing.detail.activityTitle')}
+            </h2>
+            <div
+              className="listing-detail__lifecycle-actions"
+              role="group"
+              aria-label={t('listing.detail.mobile.lifecycleActions')}
+            >
+              <span className="listing-detail__lifecycle-actions-label">{t('listing.detail.activityEyebrow')}</span>
+              {listingArchived ? (
+                <>
+                  <Button icon={<IconUndo />} theme="solid" type="primary" onClick={handleUnarchive}>
+                    {t('listing.detail.mobile.unarchive')}
+                  </Button>
+                  {/* Archived is a resting state: the forward lifecycle actions are unavailable until
+                  the listing is restored, so they render disabled rather than vanishing. */}
+                  <Button icon={<IconTickCircle />} disabled>
+                    {t('listing.detail.mobile.appliedSelf')}
+                  </Button>
+                  <Button icon={<IconEyeOpened />} disabled>
+                    {t('listing.detail.mobile.viewing')}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {!listingApplied && (
+                    <Button icon={<IconTickCircle />} onClick={handleManualApply}>
+                      {t('listing.detail.mobile.appliedSelf')}
+                    </Button>
+                  )}
+                  {!listingViewed && (
+                    <Button icon={<IconEyeOpened />} onClick={handleViewing}>
+                      {t('listing.detail.mobile.viewing')}
+                    </Button>
+                  )}
+                  <Button icon={<IconArchive />} onClick={handleArchive}>
+                    {t('listing.detail.mobile.archive')}
+                  </Button>
+                </>
+              )}
+              <Button aria-label={t('listing.detail.mobile.addNotes')} onClick={focusNotes}>
+                {t('listing.detail.mobile.addNotes')}
+              </Button>
+            </div>
+          </section>
+
+          {/* Evidence: everything the portal and Fredy know, as hairline folds. The ones a decision
+          needs are open; the long tail is a tap away. */}
+          <section className="listing-detail__evidence" aria-labelledby="listing-evidence-heading">
+            <h2 id="listing-evidence-heading" className="listing-detail__sr-only">
+              {t('listing.detail.evidenceTitle')}
+            </h2>
+
+            <details className="listing-detail__fold" open>
+              <summary>{t('listing.detail.detailsTitle')}</summary>
+              <div className="listing-detail__fold-body">
+                <dl className="listing-detail__kv">
+                  {data.map((item) => (
+                    <div key={item.key} className="listing-detail__details-item" title={item.helpText}>
+                      <dt>{item.key}</dt>
+                      <dd>{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {/* The chart hides itself below two readings, so a listing whose price has never
+                moved shows nothing at all rather than an empty frame. */}
+                {priceHistory.length >= 2 && (
+                  <div className="listing-detail__fold-sub">
+                    <Text strong>{t('listing.detail.priceHistory')}</Text>
+                    <PriceHistoryChart data={priceHistory} locale={locale} />
+                  </div>
+                )}
+              </div>
+            </details>
+
+            {hasGeo && (
+              <details className="listing-detail__fold listing-detail__transit" open>
+                <summary>{t('transit.nearbyTitle')}</summary>
+                <div className="listing-detail__fold-body">
+                  <NearbyStops lat={listing.latitude!} lng={listing.longitude!} limit={3} expandFirst />
+                </div>
+              </details>
+            )}
+
+            {listing.latitude != null && listing.longitude != null && (
+              <details className="listing-detail__fold">
+                <summary>{t('travelTime.title')}</summary>
+                <div className="listing-detail__fold-body">
+                  {/* It loads on its own: a listing found minutes ago has not been routed yet, and
+                  this is where somebody would look. */}
+                  <TravelTimes
+                    listingId={listing.id}
+                    travelTimes={listing.travelTimes}
+                    refine
+                    onLoaded={(entries) => setRouteTimes(entries)}
+                  />
+                  {/* The same question the numbers answer, only drawn on the map. A mode with no
+                  route stored falls back to the straight line, and says so. */}
+                  <div className="listingDetail__routePicker">
+                    <Text size="small" type="tertiary">
+                      {t('listing.detail.routeLabel')}
+                    </Text>
+                    <Select
+                      size="small"
+                      style={{ width: 170 }}
+                      value={routeMode}
+                      onChange={(value) => {
+                        if (
+                          typeof value === 'string' &&
+                          ['straight', 'transit', 'car', 'bike', 'walk'].includes(value)
+                        ) {
+                          setRouteMode(value as RouteMode);
+                        }
+                      }}
+                    >
+                      <Select.Option value="straight">{t('listing.detail.routeStraight')}</Select.Option>
+                      {TRAVEL_MODES.map((mode: { key: string; icon: string; labelKey: string }) => (
+                        <Select.Option key={mode.key} value={mode.key}>
+                          {mode.icon} {t(mode.labelKey)}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                    {routeMode !== 'straight' && !hasRouteFor(routeTimes, routeMode) && (
+                      <Text size="small" type="tertiary">
+                        {t('listing.detail.routeMissing')}
+                      </Text>
+                    )}
+                  </div>
+                  {Array.isArray(listing.distances) && listing.distances.length > 0 && (
+                    <div className="listing-detail__fold-sub">
+                      <Space align="center" wrap>
+                        <IconActivity aria-hidden="true" />
+                        <Text strong>{t('listing.detail.distanceToHome')}</Text>
+                        {listing.distances.map((d) => (
+                          <Tag key={d.label}>
+                            {d.label}: {d.meters} m
+                          </Tag>
+                        ))}
+                      </Space>
+                    </div>
+                  )}
+                  {/* Only shown once the operator has the enrichment on - with it off nothing is ever
+                  stored, and an empty block would read as a fault rather than a setting. */}
+                  {hasGeo && connectivityEnabled && (
+                    <div className="listing-detail__fold-sub">
+                      <Text strong>{t('connectivity.title')}</Text>
+                      <ConnectivityCard connectivity={listing.connectivity} />
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
+
+            {listing.price != null && (
+              <details className="listing-detail__fold" open={isRental ? rentComplete : buyComplete}>
+                <summary>{t(isRental ? 'listing.detail.rentSetupHint' : 'listing.detail.financeSetupHint')}</summary>
+                <div className="listing-detail__fold-body">
+                  {/* The finance card only computes with a numeric price; a null/absent price makes it
+                  render nothing anyway, so match that by not mounting it. */}
+                  {hasFinancePrice && (
+                    <ListingFinanceCard listing={{ id: listing.id, price: financePrice, dealType: listing.dealType }} />
+                  )}
+                  {/* Without the matching half of the profile there is nothing to compute, so offer the
+                  way to create it instead of hiding the feature completely. */}
+                  {!(isRental ? rentComplete : buyComplete) && (
+                    <Space align="center" wrap>
+                      <IconEuro aria-hidden="true" />
+                      <Button
+                        theme="borderless"
+                        size="small"
+                        onClick={() =>
+                          navigate(
+                            isRental
+                              ? '/finance'
+                              : `/finance?dealType=buy&price=${listing.price}&listingId=${listing.id}`,
+                          )
+                        }
+                      >
+                        {t(isRental ? 'listing.detail.rentSetup' : 'listing.detail.financeCalculate')}
+                      </Button>
+                    </Space>
+                  )}
+                </div>
+              </details>
+            )}
+
+            <details className="listing-detail__fold" open={!!listing.description}>
+              <summary>{t('listing.detail.descriptionTitle')}</summary>
+              <div className="listing-detail__fold-body">
+                <Text type="secondary" style={{ whiteSpace: 'pre-wrap' }}>
+                  {listing.description || t('listing.detail.noDescription')}
+                </Text>
+              </div>
+            </details>
+
+            <details className="listing-detail__fold listing-detail__notes" open>
+              <summary>{t('listing.detail.notesTitle')}</summary>
+              <div className="listing-detail__fold-body" ref={notesSectionRef}>
                 <TextArea
                   ref={notesInputRef}
                   value={notesDraft}
                   onChange={(val) => setNotesDraft(val)}
                   placeholder={t('listing.detail.notesPlaceholder')}
-                  rows={5}
-                  autosize={{ minRows: 4, maxRows: 12 }}
+                  rows={4}
+                  autosize={{ minRows: 3, maxRows: 12 }}
                   className="listing-detail__notes-textarea"
                   showClear
                 />
-                <Space className="listing-detail__notes-actions">
+                <div className="listing-detail__notes-actions">
                   <Button
-                    theme="solid"
-                    type="primary"
+                    theme="light"
+                    type="tertiary"
                     loading={notesSaving}
                     disabled={notesSaving || (notesDraft ?? '') === (listing.notes ?? '')}
                     onClick={handleSaveNotes}
                   >
                     {t('listing.detail.storeNotes')}
                   </Button>
-                </Space>
-              </div>
-              <div
-                className="listing-detail__lifecycle-actions"
-                role="group"
-                aria-label={t('listing.detail.mobile.lifecycleActions')}
-              >
-                {listingArchived ? (
-                  <>
-                    <Button icon={<IconUndo />} theme="solid" type="primary" onClick={handleUnarchive}>
-                      {t('listing.detail.mobile.unarchive')}
-                    </Button>
-                    {/* Archived is a resting state: the forward lifecycle actions are unavailable
-                    until the listing is restored, so they render disabled rather than vanishing. */}
-                    <Button icon={<IconTickCircle />} disabled>
-                      {t('listing.detail.mobile.appliedSelf')}
-                    </Button>
-                    <Button icon={<IconEyeOpened />} disabled>
-                      {t('listing.detail.mobile.viewing')}
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    {!listingApplied && (
-                      <Button icon={<IconTickCircle />} onClick={handleManualApply}>
-                        {t('listing.detail.mobile.appliedSelf')}
-                      </Button>
-                    )}
-                    {!listingViewed && (
-                      <Button icon={<IconEyeOpened />} onClick={handleViewing}>
-                        {t('listing.detail.mobile.viewing')}
-                      </Button>
-                    )}
-                    <Button icon={<IconArchive />} onClick={handleArchive}>
-                      {t('listing.detail.mobile.archive')}
-                    </Button>
-                  </>
-                )}
-                <Button aria-label={t('listing.detail.mobile.addNotes')} onClick={focusNotes}>
-                  {t('listing.detail.mobile.addNotes')}
-                </Button>
-              </div>
-            </div>
-          </section>
-
-          <section
-            className="listing-detail__evidence scrollspyTabs-section"
-            id="listing-evidence"
-            aria-labelledby="listing-evidence-heading"
-          >
-            <div className="listing-detail__section-heading">
-              <div>
-                <span className="listing-detail__eyebrow">{t('listing.detail.evidenceEyebrow')}</span>
-                <Title heading={3} id="listing-evidence-heading">
-                  {t('listing.detail.evidenceTitle')}
-                </Title>
-              </div>
-              <Text type="tertiary">{t('listing.detail.evidenceDescription')}</Text>
-            </div>
-            <div className="listing-detail__deep-grid">
-              <section className="listing-detail__deep-column">
-                {/* The map used to run the full width under the card, which pushed it a screen
-                below the figures. In this column it sits beside the details and the costing,
-                so the whole listing fits on one screen. */}
-                <div className="listing-detail__map-wrapper scrollspyTabs-section" id="listing-map">
-                  <Title heading={4} className="listing-detail__map-title">
-                    {t('listing.detail.locationTitle')}
-                  </Title>
-                  {/* A listing with no coordinates normally gets a warning instead of a map - but those
-                  are exactly the ones somebody wants to place by hand, so pin dropping brings the
-                  map out anyway. */}
-                  {!hasGeo && !pinDrop ? (
-                    <Banner
-                      type="warning"
-                      bordered
-                      description={
-                        <div className="listing-detail__noGeo">
-                          <span>
-                            {geoUnresolved ? t('listing.detail.noGeoWarning') : t('listing.detail.noGeoPending')}
-                          </span>
-                          {/* Only for the temporary case. Offering "try again" for an address the
-                          geocoder has already rejected would be offering the same answer twice. */}
-                          {!geoUnresolved && (
-                            <Button size="small" loading={geocodeRetrying} onClick={retryGeocoding}>
-                              {t('listing.detail.geoRetry')}
-                            </Button>
-                          )}
-                        </div>
-                      }
-                    />
-                  ) : (
-                    <div className="listing-detail__map-container">
-                      {/* Public transport on by default: the first question about any flat is how to
-                      get out of it, and the answer should already be on screen. */}
-                      <MapCanvas
-                        countries={countries}
-                        initialCenter={mapCenter}
-                        initialZoom={hasGeo ? 14 : 10}
-                        defaultShowTransit
-                        cooperativeGestures
-                        expanded={mapExpanded}
-                        onExpandedChange={setMapExpanded}
-                        pickMode={pinDrop != null}
-                        onPick={setPickedCoords}
-                        onMapReady={handleMapReady}
-                      >
-                        {pinDrop != null && (
-                          <div className="listing-detail__pin-bar">
-                            <div className="listing-detail__pin-bar-text">
-                              <Text>
-                                {pickedCoords ? t('listing.detail.pinDropPicked') : t('listing.detail.pinDropHint')}
-                              </Text>
-                              <Text type="tertiary" size="small">
-                                {pinDrop.address}
-                              </Text>
-                            </div>
-                            <Button
-                              theme="solid"
-                              type="primary"
-                              size="small"
-                              disabled={!pickedCoords}
-                              loading={pinSaving}
-                              onClick={savePinnedAddress}
-                            >
-                              {t('listing.detail.pinDropSave')}
-                            </Button>
-                            <Button size="small" theme="borderless" onClick={cancelPinDrop}>
-                              {t('common.cancel')}
-                            </Button>
-                          </div>
-                        )}
-                      </MapCanvas>
-                    </div>
-                  )}
                 </div>
-
-                {/* "How do I get out of here?" belongs right next to the map, and only makes sense
-                once the listing has coordinates to look up. */}
-                {hasGeo && (
-                  <div className="listing-detail__transit">
-                    <Title heading={4} className="listing-detail__map-title">
-                      {t('transit.nearbyTitle')}
-                    </Title>
-                    <NearbyStops lat={listing.latitude!} lng={listing.longitude!} limit={3} expandFirst />
-                  </div>
-                )}
-              </section>
-              <section className="listing-detail__deep-column">
-                <div className="listing-detail__info-section">
-                  <Title heading={4} style={{ marginBottom: '1rem' }}>
-                    {t('listing.detail.detailsTitle')}
-                  </Title>
-                  <Descriptions column={1}>
-                    {data.map((item, index) => (
-                      <Descriptions.Item key={index}>
-                        <Tooltip content={item.helpText} position="left">
-                          <span className="listing-detail__details-item">
-                            {item.Icon}
-                            {item.value}
-                          </span>
-                        </Tooltip>
-                      </Descriptions.Item>
-                    ))}
-                  </Descriptions>
-
-                  {/* Directly under the figures it explains. The chart hides itself below two
-                  readings, so a listing whose price has never moved shows nothing at all rather
-                  than an empty frame. */}
-                  {priceHistory.length >= 2 && (
-                    <>
-                      <Divider margin="1.5rem" />
-                      <Title heading={6} style={{ marginBottom: '0.75rem' }}>
-                        {t('listing.detail.priceHistory')}
-                      </Title>
-                      <PriceHistoryChart data={priceHistory} locale={locale} />
-                    </>
-                  )}
-
-                  {/* The costing answers "can I have this?", which is the question asked right
-                  after the price - so it comes before the sales copy, not after it. */}
-                  {(() => {
-                    // The finance card only computes with a numeric price; a null/absent price
-                    // makes it render nothing anyway, so match that by not mounting it.
-                    const financePrice = typeof listing.price === 'number' ? listing.price : Number(listing.price);
-                    return Number.isFinite(financePrice) ? (
-                      <ListingFinanceCard
-                        listing={{ id: listing.id, price: financePrice, dealType: listing.dealType }}
-                      />
-                    ) : null;
-                  })()}
-
-                  {/* Without the matching half of the profile there is nothing to compute, so offer
-                  the way to create it instead of hiding the feature completely. */}
-                  {!(isRental ? rentComplete : buyComplete) && listing.price != null && (
-                    <>
-                      <Divider margin="1.5rem" />
-                      <Space align="center" wrap>
-                        <IconEuro style={{ fontSize: '18px', color: 'var(--semi-color-primary)' }} />
-                        <Text type="secondary">
-                          {t(isRental ? 'listing.detail.rentSetupHint' : 'listing.detail.financeSetupHint')}
-                        </Text>
-                        <Button
-                          theme="borderless"
-                          size="small"
-                          onClick={() =>
-                            navigate(
-                              isRental
-                                ? '/finance'
-                                : `/finance?dealType=buy&price=${listing.price}&listingId=${listing.id}`,
-                            )
-                          }
-                        >
-                          {t(isRental ? 'listing.detail.rentSetup' : 'listing.detail.financeCalculate')}
-                        </Button>
-                      </Space>
-                    </>
-                  )}
-
-                  <Divider margin="1.5rem" />
-                  <Title heading={4} style={{ marginBottom: '1rem' }}>
-                    {t('listing.detail.descriptionTitle')}
-                  </Title>
-                  <Text type="secondary" style={{ whiteSpace: 'pre-wrap' }}>
-                    {listing.description || t('listing.detail.noDescription')}
-                  </Text>
-
-                  {Array.isArray(listing.distances) && listing.distances.length > 0 && (
-                    <>
-                      <Divider margin="1.5rem" />
-                      <Space align="center" wrap>
-                        <IconActivity style={{ fontSize: '18px', color: 'var(--semi-color-primary)' }} />
-                        <Text strong>{t('listing.detail.distanceToHome')}</Text>
-                        {listing.distances.map((d) => (
-                          <Tag color="blue" key={d.label}>
-                            {d.label}: {d.meters} m
-                          </Tag>
-                        ))}
-                      </Space>
-                    </>
-                  )}
-
-                  {/* Right below the straight-line distances, because the two answer the same question
-                  and the second one is the honest answer. It loads on its own: a listing found
-                  minutes ago has not been routed yet, and this is where somebody would look. */}
-                  {listing.latitude != null && listing.longitude != null && (
-                    <>
-                      <Divider margin="1.5rem" />
-                      <Text strong style={{ display: 'block', marginBottom: '0.5rem' }}>
-                        {t('travelTime.title')}
-                      </Text>
-                      <TravelTimes
-                        listingId={listing.id}
-                        travelTimes={listing.travelTimes}
-                        refine
-                        onLoaded={(entries) => setRouteTimes(entries)}
-                      />
-
-                      {/* Sits under the times rather than on the map: it is the same question the
-                      numbers above answer, only drawn. A mode with no route stored falls back to
-                      the straight line, and says so. */}
-                      <div className="listingDetail__routePicker">
-                        <Text size="small" type="tertiary">
-                          {t('listing.detail.routeLabel')}
-                        </Text>
-                        <Select
-                          size="small"
-                          style={{ width: 170 }}
-                          value={routeMode}
-                          onChange={(value) => {
-                            if (
-                              typeof value === 'string' &&
-                              ['straight', 'transit', 'car', 'bike', 'walk'].includes(value)
-                            ) {
-                              setRouteMode(value as RouteMode);
-                            }
-                          }}
-                        >
-                          <Select.Option value="straight">{t('listing.detail.routeStraight')}</Select.Option>
-                          {TRAVEL_MODES.map((mode: { key: string; icon: string; labelKey: string }) => (
-                            <Select.Option key={mode.key} value={mode.key}>
-                              {mode.icon} {t(mode.labelKey)}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                        {routeMode !== 'straight' && !hasRouteFor(routeTimes, routeMode) && (
-                          <Text size="small" type="tertiary">
-                            {t('listing.detail.routeMissing')}
-                          </Text>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Under the travel times because it belongs to the same half of the page: both are
-                  things Fredy worked out about the address rather than things the portal said about
-                  the flat, and somebody weighing up a place reads them together. Only shown once
-                  the operator has the enrichment on - with it off nothing is ever stored, and an
-                  empty card would read as a fault rather than a setting. */}
-                  {hasGeo && connectivityEnabled && (
-                    <>
-                      <Divider margin="1.5rem" />
-                      <Text strong style={{ display: 'block', marginBottom: '0.5rem' }}>
-                        {t('connectivity.title')}
-                      </Text>
-                      <ConnectivityCard connectivity={listing.connectivity} />
-                    </>
-                  )}
-                </div>
-              </section>
-            </div>
-          </section>
-        </main>
-
-        <aside className="listing-detail__action-rail" aria-labelledby="listing-action-heading">
-          <div className="listing-detail__rail-heading">
-            <span className="listing-detail__eyebrow">{t('listing.detail.actionEyebrow')}</span>
-            <Title heading={3} id="listing-action-heading">
-              {t('listing.detail.actionTitle')}
-            </Title>
-            <Text type="tertiary">{t('listing.detail.actionDescription')}</Text>
-          </div>
-          <div className="listing-detail__action-rail-body">
-            <div className="listing-detail__rail-primary-action">
-              {listingApplied ? (
-                <Button type="primary" theme="solid" disabled>
-                  {t('listing.detail.mobile.applied')}
-                </Button>
-              ) : applyNeedsConfirmation ? (
-                <Popconfirm
-                  title={t('listing.detail.inquirySend.confirmTitle')}
-                  content={t('listing.detail.inquirySend.confirmBody')}
-                  onConfirm={handleSendInquiry}
-                >
-                  <Button type="primary" theme="solid" loading={inquirySending}>
-                    {t('listing.detail.mobile.apply')}
-                  </Button>
-                </Popconfirm>
-              ) : (
-                <Button
-                  type="primary"
-                  theme="solid"
-                  loading={inquirySending || draftLoading}
-                  disabled={!inquiryEligibility.providerSupported || !inquiryEligibility.statusAllowsSend}
-                  onClick={handleMobileApply}
-                >
-                  {t('listing.detail.mobile.apply')}
-                </Button>
-              )}
-            </div>
-            <div className="listing-detail__guard" role="note">
-              <strong>{t('listing.detail.actionGuardTitle')}</strong>
-              <Text type="tertiary">{t('listing.detail.actionGuardDescription')}</Text>
-            </div>
-            <Space wrap className="listing-detail__rail-actions">
-              <Button
-                icon={draftMessage ? <IconRefresh /> : <IconEdit />}
-                onClick={handleDraftMessage}
-                theme="light"
-                type="tertiary"
-                loading={draftLoading}
-              >
-                {draftLoading
-                  ? t('listing.detail.draftMessage.generating')
-                  : draftMessage
-                    ? t('listing.detail.draftMessage.regenerate')
-                    : t('listing.detail.draftMessage.button')}
-              </Button>
-              <a
-                href={providerListingUrl ?? undefined}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="listing-detail__open-btn"
-                aria-disabled={!providerListingUrl}
-                onClick={(event) => {
-                  if (!providerListingUrl) event.preventDefault();
-                }}
-              >
-                <IconExternalOpen style={{ marginRight: 6 }} />
-                {t('listing.detail.openListing')}
-              </a>
-              {/* Sits next to "open listing" on purpose: the user clicks that first, sees the ad is
-                very much alive, and the correction is the next button along. */}
-              {listing.is_active === 0 && (
-                <Button icon={<IconRefresh />} onClick={handleReactivate} theme="light" type="secondary">
-                  {t('listing.detail.reactivate')}
-                </Button>
-              )}
-            </Space>
-
-            {/* Draft inquiry message result */}
-            {(draftMessage || draftError || canApplyWithoutMessage || listing.inquiry_send_status) && (
-              <div style={{ marginTop: 12, maxWidth: 600 }}>
-                {draftError && (
-                  <Banner type="warning" description={draftError} closeIcon={null} style={{ marginBottom: 8 }} />
-                )}
-                {(draftMessage || canApplyWithoutMessage || listing.inquiry_send_status) && (
-                  <div>
-                    {draftMessage && (
-                      <TextArea
-                        value={draftMessage}
-                        onChange={(value) => setDraftMessage(value)}
-                        disabled={listing.inquiry_send_status === 'sending'}
-                        autosize={{ minRows: 4, maxRows: 12 }}
-                        style={{ marginBottom: 8 }}
-                      />
-                    )}
-                    <Space wrap>
-                      {draftMessage && (
-                        <Button icon={<IconCopy />} onClick={handleCopyDraft} size="small" theme="light">
-                          {draftCopied
-                            ? t('listing.detail.draftMessage.copied')
-                            : t('listing.detail.draftMessage.copy')}
-                        </Button>
-                      )}
-                      {inquiryEligibility.providerSupported &&
-                        inquiryEligibility.statusAllowsSend &&
-                        (inquiryEligibility.canSend ? (
-                          <Popconfirm
-                            title={t('listing.detail.inquirySend.confirmTitle')}
-                            content={t('listing.detail.inquirySend.confirmBody')}
-                            onConfirm={handleSendInquiry}
-                          >
-                            <Button icon={<IconSend />} size="small" theme="solid" loading={inquirySending}>
-                              {t('listing.detail.inquirySend.button', { provider: inquiryProviderName })}
-                            </Button>
-                          </Popconfirm>
-                        ) : !inquiryEligibility.profileReady ? (
-                          <Button
-                            icon={<IconEdit />}
-                            size="small"
-                            theme="light"
-                            onClick={() => navigate('/settings/inquiry-profile')}
-                          >
-                            {t('listing.detail.inquirySend.completeProfile')}
-                          </Button>
-                        ) : null)}
-                      {listing.inquiry_send_status && (
-                        <Tag
-                          color={
-                            listing.inquiry_send_status === 'sent'
-                              ? 'green'
-                              : listing.inquiry_send_status === 'sending'
-                                ? 'blue'
-                                : 'orange'
-                          }
-                        >
-                          {t(`listing.detail.inquirySend.status.${listing.inquiry_send_status}`)}
-                        </Tag>
-                      )}
-                    </Space>
-                    {listing.inquiry_send_status === 'failed' && (
-                      <Banner
-                        type="warning"
-                        description={t('listing.detail.inquirySend.failedWarning')}
-                        closeIcon={null}
-                        style={{ marginTop: 8 }}
-                      />
-                    )}
-                    {listing.inquiry_send_status === 'unknown' && (
-                      <Banner
-                        type="warning"
-                        description={t('listing.detail.inquirySend.unknownWarning')}
-                        closeIcon={null}
-                        style={{ marginTop: 8 }}
-                      />
-                    )}
-                  </div>
-                )}
               </div>
-            )}
-          </div>
-        </aside>
+            </details>
+          </section>
+        </div>
       </section>
     </div>
   );
