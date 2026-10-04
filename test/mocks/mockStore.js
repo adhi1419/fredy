@@ -12,6 +12,10 @@ export const storeListings = (jobKey, providerId, listings) => {
 export const getKnownListingHashesForJobAndProvider = (jobKey, providerId) => {
   return db[providerId] || [];
 };
+export const findKnownHashes = (jobKey, providerId, hashes) => {
+  const known = new Set(db[providerId] || []);
+  return (hashes || []).filter((hash) => known.has(hash));
+};
 
 export const getGeocoordinatesByAddress = (any) => {
   return null;
@@ -90,7 +94,7 @@ let knownListingsForRepair = [];
 export function setKnownListingsForRepair(rows) {
   knownListingsForRepair = Array.isArray(rows) ? rows : [];
 }
-export const getKnownListingsForRepair = async (jobId, providerId) => knownListingsForRepair;
+export const getListingsNeedingRepair = async (jobId, providerId) => knownListingsForRepair;
 
 /** Notification-complete write-once flag. The pipeline swallows the result; a number is enough. */
 export const markNotificationComplete = async (id, notifiedAt) => 1;

@@ -26,11 +26,11 @@ function brokenRow(overrides = {}) {
     address: 'Somewhere 1, Berlin',
     latitude: null,
     longitude: null,
-    inquiry_message: null,
-    inquiry_send_status: null,
-    notification_complete: 0,
-    created_at: NOW - SETTLE - 1,
-    notified_at: NOW - 1,
+    inquiryMessage: null,
+    inquirySendStatus: null,
+    notificationComplete: 0,
+    createdAt: NOW - SETTLE - 1,
+    notifiedAt: NOW - 1,
     ...overrides,
   };
 }
@@ -40,9 +40,9 @@ function repairedRow(overrides = {}) {
   return brokenRow({
     latitude: 52.5,
     longitude: 13.4,
-    inquiry_message: 'Dear landlord, …',
-    notification_complete: 1,
-    inquiry_send_status: 'sent',
+    inquiryMessage: 'Dear landlord, …',
+    notificationComplete: 1,
+    inquirySendStatus: 'sent',
     ...overrides,
   });
 }
@@ -62,16 +62,16 @@ describe('coordinate repair eligibility', () => {
 
 describe('inquiry-text repair respects submitted evidence', () => {
   it('fills a missing draft that was never submitted', () => {
-    expect(needsInquiryTextRepair({ inquiry_message: null, inquiry_send_status: null })).toBe(true);
+    expect(needsInquiryTextRepair({ inquiryMessage: null, inquirySendStatus: null })).toBe(true);
   });
   it('never overwrites a draft behind submitted evidence', () => {
-    expect(hasSubmittedInquiryEvidence({ inquiry_send_status: 'sent' })).toBe(true);
-    expect(hasSubmittedInquiryEvidence({ inquiry_send_status: 'sending' })).toBe(true);
-    expect(hasSubmittedInquiryEvidence({ inquiry_send_status: 'unknown' })).toBe(true);
-    expect(needsInquiryTextRepair({ inquiry_message: null, inquiry_send_status: 'sent' })).toBe(false);
+    expect(hasSubmittedInquiryEvidence({ inquirySendStatus: 'sent' })).toBe(true);
+    expect(hasSubmittedInquiryEvidence({ inquirySendStatus: 'sending' })).toBe(true);
+    expect(hasSubmittedInquiryEvidence({ inquirySendStatus: 'unknown' })).toBe(true);
+    expect(needsInquiryTextRepair({ inquiryMessage: null, inquirySendStatus: 'sent' })).toBe(false);
   });
   it('leaves an existing draft alone', () => {
-    expect(needsInquiryTextRepair({ inquiry_message: 'hello', inquiry_send_status: null })).toBe(false);
+    expect(needsInquiryTextRepair({ inquiryMessage: 'hello', inquirySendStatus: null })).toBe(false);
   });
 });
 
@@ -80,22 +80,22 @@ describe('notification-complete repair from durable evidence', () => {
     expect(needsNotificationCompleteRepair(brokenRow())).toBe(true);
   });
   it('never flips a row that is already flagged', () => {
-    expect(needsNotificationCompleteRepair({ notification_complete: 1, notified_at: NOW })).toBe(false);
+    expect(needsNotificationCompleteRepair({ notificationComplete: 1, notifiedAt: NOW })).toBe(false);
   });
   it('never treats row age as notification evidence', () => {
-    expect(needsNotificationCompleteRepair(brokenRow({ notified_at: null, created_at: 0 }))).toBe(false);
+    expect(needsNotificationCompleteRepair(brokenRow({ notifiedAt: null, createdAt: 0 }))).toBe(false);
   });
 });
 
 describe('missed external action eligibility', () => {
   it('is missed only when never attempted or explicitly failed', () => {
-    expect(isInquiryActionMissed({ inquiry_send_status: null })).toBe(true);
-    expect(isInquiryActionMissed({ inquiry_send_status: 'failed' })).toBe(true);
+    expect(isInquiryActionMissed({ inquirySendStatus: null })).toBe(true);
+    expect(isInquiryActionMissed({ inquirySendStatus: 'failed' })).toBe(true);
   });
   it('is not missed for sent / sending / unknown', () => {
-    expect(isInquiryActionMissed({ inquiry_send_status: 'sent' })).toBe(false);
-    expect(isInquiryActionMissed({ inquiry_send_status: 'sending' })).toBe(false);
-    expect(isInquiryActionMissed({ inquiry_send_status: 'unknown' })).toBe(false);
+    expect(isInquiryActionMissed({ inquirySendStatus: 'sent' })).toBe(false);
+    expect(isInquiryActionMissed({ inquirySendStatus: 'sending' })).toBe(false);
+    expect(isInquiryActionMissed({ inquirySendStatus: 'unknown' })).toBe(false);
   });
 });
 
@@ -115,7 +115,7 @@ describe('planListingRepair', () => {
   });
 
   it('routes an unknown inquiry outcome to manual review and never resends it', () => {
-    const plan = planListingRepair(brokenRow({ inquiry_send_status: 'unknown' }), {
+    const plan = planListingRepair(brokenRow({ inquirySendStatus: 'unknown' }), {
       now: NOW,
       settleMs: SETTLE,
       autoActEligible: true,
@@ -152,7 +152,7 @@ describe('planReconcile idempotency — the core guarantee', () => {
     const rows = [
       brokenRow({ id: 'a' }), // never attempted → one missed action
       repairedRow({ id: 'b' }), // fully healthy → nothing
-      brokenRow({ id: 'c', inquiry_send_status: 'unknown' }), // unknown → manual review, no send
+      brokenRow({ id: 'c', inquirySendStatus: 'unknown' }), // unknown → manual review, no send
     ];
     const { summary } = planReconcile(rows, { now: NOW, settleMs: SETTLE, autoActEligible: true });
     expect(summary.missedActions).toBe(1);
@@ -162,7 +162,7 @@ describe('planReconcile idempotency — the core guarantee', () => {
 
 describe('describeReconcileSummary', () => {
   it('is plain language and mentions manual review when present', () => {
-    const { summary } = planReconcile([brokenRow(), brokenRow({ id: 'x', inquiry_send_status: 'unknown' })], {
+    const { summary } = planReconcile([brokenRow(), brokenRow({ id: 'x', inquirySendStatus: 'unknown' })], {
       now: NOW,
       settleMs: SETTLE,
       autoActEligible: true,

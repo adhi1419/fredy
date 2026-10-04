@@ -6,6 +6,9 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { EventEmitter } from 'node:events';
 
+/** Optional per-test behaviour for the mocked pipeline's execute(). */
+let pipelineHook = null;
+
 describe('services/jobs/jobExecutionService', () => {
   /** @type {EventEmitter} */
   let bus;
@@ -67,10 +70,13 @@ describe('services/jobs/jobExecutionService', () => {
     vi.doMock(pipelinePath, () => ({
       default: class {
         constructor(config, job, providerId, similarityCache, browser) {
-          calls.pipeline.push({ config, job, providerId, similarityCache, browser });
+          this.record = { config, job, providerId, similarityCache, browser };
+          calls.pipeline.push(this.record);
         }
 
-        async execute() {}
+        async execute() {
+          if (pipelineHook) await pipelineHook(this.record);
+        }
       },
     }));
     vi.doMock(root + '/lib/services/demo/demoService.js', () => ({
@@ -92,6 +98,7 @@ describe('services/jobs/jobExecutionService', () => {
   }
 
   beforeEach(() => {
+    pipelineHook = null;
     bus = new EventEmitter();
     calls = {
       sent: [],
@@ -209,8 +216,34 @@ describe('services/jobs/jobExecutionService', () => {
     bus.emit('jobs:runOne', { jobId: 'j1' });
     await vi.waitFor(() => expect(calls.markFinished).toEqual(['j1']));
 
-    expect(calls.launchBrowser).toEqual([['https://api.example/', {}]]);
-    expect(calls.pipeline.map(({ browser }) => browser)).toEqual([state.browser, state.browser, state.browser]);
+    // Nothing in this run asked for a page, so no browser was launched.
+    expect(calls.launchBrowser).toEqual([]);
+    expect(calls.closeBrowser).toEqual([]);
+    // Every provider got the same lazy getter.
+    const getters = calls.pipeline.map(({ browser }) => browser);
+    expect(getters).toHaveLength(3);
+    expect(typeof getters[0]).toBe('function');
+    expect(new Set(getters).size).toBe(1);
+  });
+
+  it('launches the shared browser once, on first use, and closes it after the run', async () => {
+    state.providers = [
+      {
+        metaInformation: { id: 'p1' },
+        createConfig: vi.fn(() => ({ url: 'https://one.example/', getListings: vi.fn() })),
+      },
+    ];
+    state.jobsById.j1 = { id: 'j1', enabled: true, userId: 'u1', provider: [{ id: 'p1' }] };
+    pipelineHook = async ({ browser }) => {
+      expect(await browser('https://one.example/')).toBe(state.browser);
+      expect(await browser('https://two.example/')).toBe(state.browser);
+    };
+
+    await initService();
+    bus.emit('jobs:runOne', { jobId: 'j1' });
+    await vi.waitFor(() => expect(calls.markFinished).toEqual(['j1']));
+
+    expect(calls.launchBrowser).toEqual([['https://one.example/', {}]]);
     expect(calls.closeBrowser).toEqual([state.browser]);
   });
 

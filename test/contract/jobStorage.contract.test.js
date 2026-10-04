@@ -111,16 +111,6 @@ describe('jobStorage contract', () => {
       expect((await jobStorage.getJob('j-buy')).dealType).toBe('buy');
     });
 
-    it('defaults automatic inquiry sending to off', async () => {
-      await jobStorage.upsertJob(makeJob({ jobId: 'j-auto-default' }));
-      expect((await jobStorage.getJob('j-auto-default')).autoSendInquiry).toBe(false);
-    });
-
-    it('persists explicit automatic inquiry sending', async () => {
-      await jobStorage.upsertJob(makeJob({ jobId: 'j-auto', autoSendInquiry: true }));
-      expect((await jobStorage.getJob('j-auto')).autoSendInquiry).toBe(true);
-    });
-
     it('adds a disabled source policy when no policy or legacy flag is provided', async () => {
       await jobStorage.upsertJob(
         makeJob({ jobId: 'j-policy-default', provider: [{ id: 'immoscout', url: 'https://immoscout.de/mieten' }] }),
@@ -214,50 +204,7 @@ describe('jobStorage contract', () => {
       expect(await jobStorage.getJob('j-policy-unsupported')).toBeNull();
     });
 
-    it('uses persisted source policy before the legacy job flag on reads', async () => {
-      await jobStorage.upsertJob(
-        makeJob({
-          jobId: 'j-policy-precedence',
-          autoSendInquiry: null,
-          provider: [
-            { id: 'immoscout', url: 'https://immoscout.de/mieten', applicationPolicy: { automatic: 'disabled' } },
-          ],
-        }),
-      );
-      expect((await jobStorage.getJob('j-policy-precedence')).provider[0].applicationPolicy).toEqual({
-        automatic: 'disabled',
-      });
-    });
-
-    it('lets an explicit legacy flag override source state during the compatibility window', async () => {
-      await jobStorage.upsertJob(
-        makeJob({
-          jobId: 'j-policy-legacy-override',
-          autoSendInquiry: true,
-          provider: [
-            { id: 'immoscout', url: 'https://immoscout.de/mieten', applicationPolicy: { automatic: 'disabled' } },
-          ],
-        }),
-      );
-      expect((await jobStorage.getJob('j-policy-legacy-override')).provider[0].applicationPolicy).toEqual({
-        automatic: 'enabled',
-      });
-    });
-
-    it('uses the legacy flag when source policy is omitted', async () => {
-      await jobStorage.upsertJob(
-        makeJob({
-          jobId: 'j-policy-legacy-fallback',
-          autoSendInquiry: true,
-          provider: [{ id: 'immoscout', url: 'https://immoscout.de/mieten' }],
-        }),
-      );
-      expect((await jobStorage.getJob('j-policy-legacy-fallback')).provider[0].applicationPolicy).toEqual({
-        automatic: 'enabled',
-      });
-    });
-
-    it('reads a legacy row without source policy without rewriting it', async () => {
+    it('reads a row without source policy as disabled without rewriting it', async () => {
       const { default: FirestoreConnection } =
         await import('../../lib/services/storage/firestore/FirestoreConnection.js');
       await FirestoreConnection.collection('jobs')
@@ -268,13 +215,12 @@ describe('jobStorage contract', () => {
           provider: [{ id: 'immoscout', url: 'https://immoscout.de/mieten', enabled: true }],
           notificationAdapter: [],
           enabled: true,
-          autoSendInquiry: true,
           dealType: 'rent',
           lastRunAt: null,
         });
 
       const job = await jobStorage.getJob('j-legacy-row');
-      expect(job.provider[0].applicationPolicy).toEqual({ automatic: 'enabled' });
+      expect(job.provider[0].applicationPolicy).toEqual({ automatic: 'disabled' });
       expect((await FirestoreConnection.collection('jobs').doc('j-legacy-row').get()).data().provider[0]).toEqual({
         id: 'immoscout',
         url: 'https://immoscout.de/mieten',
@@ -370,12 +316,9 @@ describe('jobStorage contract', () => {
       expect((await jobStorage.getJob('j1')).dealType).toBe('buy');
     });
 
-    it('preserves auto-send when an update omits it and applies an explicit false', async () => {
+    it('never stores the retired job-level autoSendInquiry flag', async () => {
       await jobStorage.upsertJob(makeJob({ jobId: 'j1', autoSendInquiry: true }));
-      await jobStorage.upsertJob(makeJob({ jobId: 'j1' }));
-      expect((await jobStorage.getJob('j1')).autoSendInquiry).toBe(true);
-      await jobStorage.upsertJob(makeJob({ jobId: 'j1', autoSendInquiry: false }));
-      expect((await jobStorage.getJob('j1')).autoSendInquiry).toBe(false);
+      expect(await jobStorage.getJob('j1')).not.toHaveProperty('autoSendInquiry');
     });
 
     it('updates all mutable fields', async () => {

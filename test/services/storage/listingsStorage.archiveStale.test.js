@@ -82,8 +82,8 @@ describe('archiveStaleListingsForJob', () => {
 
     const row = firestore.read('listings', 'stale');
     expect(row.lifecycle).toMatchObject({ state: 'archived', source: 'auto-archive', changedAt: NOW });
-    // Legacy status projection follows the canonical lifecycle for compatibility-window clients.
-    expect(row.status).toBeNull();
+    // The legacy status projection is gone; lifecycle is the only state.
+    expect(row).not.toHaveProperty('status');
   });
 
   it('is a no-op without a job id', async () => {

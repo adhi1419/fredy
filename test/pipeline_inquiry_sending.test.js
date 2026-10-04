@@ -34,8 +34,11 @@ const job = (overrides = {}) => ({
   id: 'job-1',
   notificationAdapter: [],
   dealType: 'rent',
-  autoSendInquiry: true,
-  provider: [{ id: 'immoscout' }, { id: 'deutscheWohnen' }, { id: 'inberlinwohnen' }],
+  provider: [
+    { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } },
+    { id: 'deutscheWohnen', applicationPolicy: { automatic: 'enabled' } },
+    { id: 'inberlinwohnen', applicationPolicy: { automatic: 'enabled' } },
+  ],
   ...overrides,
 });
 
@@ -129,7 +132,6 @@ describe('pipeline automatic inquiry sending', () => {
   it('sends only sources enabled and eligible in a mixed-provider job', async () => {
     const Fredy = await mockFredy();
     const mixedJob = job({
-      autoSendInquiry: false,
       provider: [
         { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } },
         { id: 'deutscheWohnen', applicationPolicy: { automatic: 'disabled' } },
@@ -161,7 +163,7 @@ describe('pipeline automatic inquiry sending', () => {
       { id: 'immoscout', url: 'https://example.com/search/disabled', applicationPolicy: { automatic: 'disabled' } },
       { id: 'immoscout', url: 'https://example.com/search/enabled', applicationPolicy: { automatic: 'enabled' } },
     ];
-    const multiSourceJob = job({ autoSendInquiry: true, provider: sources });
+    const multiSourceJob = job({ provider: sources });
 
     await pipeline(Fredy, multiSourceJob, 'immoscout', null, sources[0])._sendInquiryMessages([listing()]);
     await pipeline(Fredy, multiSourceJob, 'immoscout', null, sources[1])._sendInquiryMessages([listing()]);
@@ -169,19 +171,9 @@ describe('pipeline automatic inquiry sending', () => {
     expect(inquiryDeliveries).toHaveLength(1);
   });
 
-  it('keeps a legacy job flag as the fallback for a source without policy', async () => {
-    const Fredy = await mockFredy();
-    const legacyJob = job({ autoSendInquiry: true, provider: [{ id: 'immoscout' }] });
-
-    await pipeline(Fredy, legacyJob, 'immoscout')._sendInquiryMessages([listing()]);
-
-    expect(inquiryDeliveries).toHaveLength(1);
-  });
-
   it('does not send for an unsupported capability or an ineligible listing', async () => {
     const Fredy = await mockFredy();
     const enabledJob = job({
-      autoSendInquiry: false,
       provider: [{ id: 'immoscout', applicationPolicy: { automatic: 'enabled' } }],
     });
     await pipeline(Fredy, enabledJob, 'immoscout', applicationCapabilities.unsupported)._sendInquiryMessages([
@@ -189,7 +181,6 @@ describe('pipeline automatic inquiry sending', () => {
     ]);
 
     const listingScopedJob = job({
-      autoSendInquiry: false,
       provider: [{ id: 'inberlinwohnen', applicationPolicy: { automatic: 'enabled' } }],
     });
     await pipeline(Fredy, listingScopedJob, 'inberlinwohnen')._sendInquiryMessages([
@@ -245,7 +236,11 @@ describe('pipeline automatic inquiry sending', () => {
 
   it('does nothing when the job did not explicitly enable auto-send', async () => {
     const Fredy = await mockFredy();
-    const instance = pipeline(Fredy, job({ autoSendInquiry: false }), 'immoscout');
+    const instance = pipeline(
+      Fredy,
+      job({ provider: [{ id: 'immoscout', applicationPolicy: { automatic: 'disabled' } }] }),
+      'immoscout',
+    );
     await instance._sendInquiryMessages([listing()]);
     expect(inquiryDeliveries).toEqual([]);
   });

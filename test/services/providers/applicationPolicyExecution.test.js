@@ -8,30 +8,20 @@ import { resolveAutomaticInquiryPolicy } from '../../../lib/services/providers/a
 
 const providerCapability = (eligibility = 'provider', automatic = true) => ({ automatic, eligibility });
 const listing = (link = 'https://www.immobilienscout24.de/expose/1') => ({ link });
-
-const resolve = (
-  source,
-  { legacyAutoSendInquiry = false, providerId = source?.id, capability = providerCapability(), item = listing() } = {},
-) =>
-  resolveAutomaticInquiryPolicy({
-    source,
-    legacyAutoSendInquiry,
-    providerId,
-    capability,
-    listing: item,
-  });
+const resolve = (source, { providerId = source?.id, capability = providerCapability(), item = listing() } = {}) =>
+  resolveAutomaticInquiryPolicy({ source, providerId, capability, listing: item });
 
 describe('automatic inquiry policy execution resolver', () => {
   it.each([
-    [{ automatic: 'enabled' }, false, true],
-    [{ automatic: 'disabled' }, true, false],
-  ])('gives explicit source policy precedence over legacy %s', (applicationPolicy, legacy, expected) => {
-    expect(resolve({ id: 'immoscout', applicationPolicy }, { legacyAutoSendInquiry: legacy })).toBe(expected);
+    [{ automatic: 'enabled' }, true],
+    [{ automatic: 'disabled' }, false],
+  ])('uses the exact source policy %s', (applicationPolicy, expected) => {
+    expect(resolve({ id: 'immoscout', applicationPolicy })).toBe(expected);
   });
 
-  it('uses the legacy flag only when the exact source policy is absent', () => {
-    expect(resolve({ id: 'immoscout' }, { legacyAutoSendInquiry: true })).toBe(true);
-    expect(resolve({ id: 'immoscout', applicationPolicy: {} }, { legacyAutoSendInquiry: true })).toBe(false);
+  it('defaults to disabled when the source policy is absent or empty', () => {
+    expect(resolve({ id: 'immoscout' })).toBe(false);
+    expect(resolve({ id: 'immoscout', applicationPolicy: {} })).toBe(false);
   });
 
   it('keeps independent policies for multiple URLs of the same provider', () => {
@@ -45,9 +35,8 @@ describe('automatic inquiry policy execution resolver', () => {
       url: 'https://example.com/search/enabled',
       applicationPolicy: { automatic: 'enabled' },
     };
-
-    expect(resolve(disabled, { legacyAutoSendInquiry: true })).toBe(false);
-    expect(resolve(enabled, { legacyAutoSendInquiry: false })).toBe(true);
+    expect(resolve(disabled)).toBe(false);
+    expect(resolve(enabled)).toBe(true);
   });
 
   it('requires the exact source to belong to the provider being executed', () => {
@@ -65,19 +54,8 @@ describe('automatic inquiry policy execution resolver', () => {
   it('requires the existing sender predicate for listing-scoped capability', () => {
     const source = { id: 'inberlinwohnen', applicationPolicy: { automatic: 'enabled' } };
     const capability = providerCapability('listing');
-
-    expect(
-      resolve(source, {
-        capability,
-        item: listing('https://www.howoge.de/immobiliensuche/detail/1'),
-      }),
-    ).toBe(true);
-    expect(
-      resolve(source, {
-        capability,
-        item: listing('https://www.degewo.de/immobilien/1'),
-      }),
-    ).toBe(false);
+    expect(resolve(source, { capability, item: listing('https://www.howoge.de/immobiliensuche/detail/1') })).toBe(true);
+    expect(resolve(source, { capability, item: listing('https://www.degewo.de/immobilien/1') })).toBe(false);
   });
 
   it('defaults conservatively for unknown, malformed, or incomplete input', () => {

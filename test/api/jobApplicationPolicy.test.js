@@ -125,28 +125,21 @@ describe('job provider application policy API', () => {
     expect(firestore.list('jobs')[0].provider[0].applicationPolicy).toEqual({ automatic: 'enabled' });
   });
 
-  it('lets a supplied legacy autoSendInquiry override source state during compatibility window', async () => {
+  it('ignores a supplied legacy autoSendInquiry; the source policy is authoritative', async () => {
     const response = await post({
       autoSendInquiry: true,
       provider: [provider('immoscout', { automatic: 'disabled' })],
     });
 
     expect(response.statusCode).toBe(200);
-    expect(firestore.list('jobs')[0].provider[0].applicationPolicy).toEqual({ automatic: 'enabled' });
-    expect(firestore.list('jobs')[0].autoSendInquiry).toBe(true);
+    expect(firestore.list('jobs')[0].provider[0].applicationPolicy).toEqual({ automatic: 'disabled' });
+    expect(firestore.list('jobs')[0]).not.toHaveProperty('autoSendInquiry');
   });
 
   it('uses source state when a future policy-only write omits legacy autoSendInquiry', async () => {
     const response = await post({
       provider: [provider('immoscout', { automatic: 'enabled' })],
     });
-
-    expect(response.statusCode).toBe(200);
-    expect(firestore.list('jobs')[0].provider[0].applicationPolicy).toEqual({ automatic: 'enabled' });
-  });
-
-  it('uses legacy autoSendInquiry when source policy is omitted', async () => {
-    const response = await post({ autoSendInquiry: true, provider: [provider('immoscout')] });
 
     expect(response.statusCode).toBe(200);
     expect(firestore.list('jobs')[0].provider[0].applicationPolicy).toEqual({ automatic: 'enabled' });

@@ -10,3 +10,4 @@ tools/release/config.json
 .agents
 graft/
 firebase-web-config.json
+scripts/migrations/.state/
