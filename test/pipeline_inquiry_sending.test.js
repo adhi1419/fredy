@@ -3,9 +3,16 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { inquiryDeliveries, mockFredy, setInquiryDeliveryError } from './utils.js';
 import { setKnownListingsForRepair, setUserSettings } from './mocks/mockStore.js';
+import { setDebugLogSink } from '../lib/services/logger.js';
+
+const decisionEvents = [];
+const parsedDecisionEvents = () =>
+  decisionEvents
+    .filter((entry) => entry.message.startsWith('LISTING_DECISION '))
+    .map((entry) => JSON.parse(entry.message.slice('LISTING_DECISION '.length)));
 
 const providerConfig = {
   url: 'https://example.com',
@@ -62,9 +69,15 @@ const settings = (overrides = {}) => ({ inquiry_profile: INQUIRY_PROFILE, ...ove
 describe('pipeline automatic inquiry sending', () => {
   beforeEach(() => {
     inquiryDeliveries.length = 0;
+    decisionEvents.length = 0;
+    setDebugLogSink((entry) => decisionEvents.push(entry));
     setInquiryDeliveryError(null);
     setKnownListingsForRepair([]);
     setUserSettings(settings());
+  });
+
+  afterEach(() => {
+    setDebugLogSink(null);
   });
 
   it('delivers a generated draft for an enabled ImmoScout rental job', async () => {
@@ -98,6 +111,17 @@ describe('pipeline automatic inquiry sending', () => {
       providerId: 'deutscheWohnen',
       accountEmail: 'user1@example.com',
       message: item.inquiryMessage,
+    });
+    expect(parsedDecisionEvents()).toContainEqual({
+      event: 'listing_decision',
+      schemaVersion: 1,
+      jobId: 'job-1',
+      providerId: 'deutscheWohnen',
+      listingId: 'listing-1',
+      flow: 'new',
+      decision: 'sent',
+      reason: 'provider-accepted',
+      status: 'sent',
     });
   });
 
@@ -141,6 +165,16 @@ describe('pipeline automatic inquiry sending', () => {
     ]);
 
     expect(inquiryDeliveries).toEqual([]);
+    expect(parsedDecisionEvents()).toContainEqual({
+      event: 'listing_decision',
+      schemaVersion: 1,
+      jobId: 'job-1',
+      providerId: 'deutscheWohnen',
+      listingId: 'listing-1',
+      flow: 'new',
+      decision: 'skipped',
+      reason: 'commute-unmatched-address-limit',
+    });
   });
 
   it.each([
@@ -276,6 +310,17 @@ describe('pipeline automatic inquiry sending', () => {
     await instance.reconcile();
 
     expect(inquiryDeliveries).toHaveLength(1);
+    expect(parsedDecisionEvents()).toContainEqual({
+      event: 'listing_decision',
+      schemaVersion: 1,
+      jobId: 'job-1',
+      providerId: 'immoscout',
+      listingId: 'listing-1',
+      flow: 'repair',
+      decision: 'sent',
+      reason: 'provider-accepted',
+      status: 'sent',
+    });
   });
 
   it('never auto-applies to an inactive listing during repair', async () => {
