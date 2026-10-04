@@ -15,15 +15,16 @@
  */
 
 :root {
-  // Deep forest/charcoal surfaces.
-  --f-base: #090b09;
-  --f-surface: #111411;
-  --f-surface-rgb: 17 20 17;
-  --f-elevated: #171b17;
-  --f-hover: #1b211c;
-  --f-solid: #243126;
-  --f-border: #2b322c;
-  --f-border-bright: #465047;
+  // Near-black ink, the inverse of the light paper. Neutral rather than forest-tinted so the
+  // photography carries the colour; the accent stays the one green.
+  --f-base: #0f100f;
+  --f-surface: #161716;
+  --f-surface-rgb: 22 23 22;
+  --f-elevated: #1c1d1c;
+  --f-hover: #222322;
+  --f-solid: #2a2b2a;
+  --f-border: #2a2b29;
+  --f-border-bright: #e3e2e2;
 
   // Sage accent text plus a darker fill for Semi's fixed white button foreground.
   --f-accent: #93c4a5;
@@ -36,9 +37,9 @@
   --f-on-accent: #ffffff;
 
   // Text
-  --f-text: #eee8da;
-  --f-muted: #a5aaa1;
-  --f-faint: #70776f;
+  --f-text: #f3f0ea;
+  --f-muted: #a3a29e;
+  --f-faint: #737373;
 
   // Semantic states retain distinct error, warning, info, and success hues.
   --f-success: #9bcfae;
@@ -95,18 +96,17 @@
 }
 
 body[theme-mode='light'] {
-  // Direction A neutral paper: a near-white canvas under pure-white surfaces, restrained forest
-  // green. The neutral ramp (base/surface/elevated/hover/solid/border) mirrors the frozen
-  // Direction A palette (canvas #f7f7f7, surface #ffffff, surface-2 #f2f2f2, line #ddd) so a white
-  // card never sits on a warm-paper elevation or hairline.
-  --f-base: #f7f7f7;
-  --f-surface: #ffffff;
-  --f-surface-rgb: 255 255 255;
-  --f-elevated: #f2f2f2;
-  --f-hover: #ebebeb;
-  --f-solid: #e4e4e4;
-  --f-border: #dddddd;
-  --f-border-bright: #c2c2c2;
+  // Warm paper, measured from the awwwards e-commerce reference set: Lujo #fbf7ef, Heirest
+  // #fefdfc, Woodwrights #fbfbf9, Tilly Sveaas #f5f4f0. Near-black text (#10100f / #262525),
+  // grey #6b6965 / #949494 secondaries, and a near-black hairline where a rule carries structure.
+  --f-base: #faf7f0;
+  --f-surface: #fefdfa;
+  --f-surface-rgb: 254 253 250;
+  --f-elevated: #f5f2ea;
+  --f-hover: #efebe2;
+  --f-solid: #e6e2d8;
+  --f-border: #e1ddd3;
+  --f-border-bright: #10100f;
 
   --f-accent: #1f624c;
   --f-accent-rgb: 31 98 76;
@@ -116,9 +116,9 @@ body[theme-mode='light'] {
   --f-on-accent: #ffffff;
 
   // Text
-  --f-text: #1e2922;
-  --f-muted: #5f665e;
-  --f-faint: #858b83;
+  --f-text: #10100f;
+  --f-muted: #6b6965;
+  --f-faint: #949494;
 
   // Semantic states retain distinct error, warning, info, and success hues. Success is the
   // Direction A pure-green "good" family and warning its amber "warn" family; both are darkened

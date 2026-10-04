@@ -104,19 +104,19 @@ export const CHART_COLORS = {
     return token('--f-accent', '#93c4a5');
   },
   get GRID() {
-    return token('--f-border', '#2b322c');
+    return token('--f-border', '#2a2b29');
   },
   get GRID_BRIGHT() {
-    return token('--f-border-bright', '#465047');
+    return token('--f-border-bright', '#e3e2e2');
   },
   get MUTED() {
-    return token('--f-muted', '#a5aaa1');
+    return token('--f-muted', '#a3a29e');
   },
   get TEXT() {
-    return token('--f-text', '#eee8da');
+    return token('--f-text', '#f3f0ea');
   },
   get ELEVATED() {
-    return token('--f-elevated', '#171b17');
+    return token('--f-elevated', '#1c1d1c');
   },
   get BLUE() {
     return token('--f-blue-text', '#9cc7df');

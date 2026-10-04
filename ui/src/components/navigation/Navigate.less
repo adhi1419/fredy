@@ -32,8 +32,8 @@
   min-height: 58px;
   padding: 0 @space-6;
   flex-shrink: 0;
-  background: @color-surface;
-  border-bottom: 1px solid @color-border;
+  background: @color-base;
+  border-bottom: 1px solid @color-border-bright;
 }
 
 .fredy-shell-nav__brand,
@@ -50,10 +50,10 @@
 .fredy-shell-nav__brand {
   justify-self: start;
   padding: @space-2 0;
-  color: @color-accent;
+  color: @color-text;
   font-size: @text-lg;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-weight: 500;
+  letter-spacing: -0.04em;
 }
 
 .fredy-shell-nav__brand:focus-visible,
@@ -84,7 +84,7 @@
   color: @color-surface;
   font-family: @font-ui;
   font-size: @text-md;
-  font-weight: 900;
+  font-weight: 500;
   line-height: 1;
   letter-spacing: 0.02em;
 }
@@ -113,8 +113,11 @@ body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
   justify-content: center;
   gap: @space-2;
   padding: @space-2 @space-3;
+  font-family: @font-mono;
   font-size: @text-sm;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: @tracking-label;
+  text-transform: uppercase;
   transition:
     color @transition-fast,
     background @transition-fast;
@@ -132,9 +135,8 @@ body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
       right: @space-3;
       bottom: -1px;
       left: @space-3;
-      height: 3px;
-      border-radius: @radius-pill @radius-pill 0 0;
-      background: @color-accent;
+      height: 1px;
+      background: @color-text;
       content: '';
     }
   }
@@ -162,7 +164,7 @@ body[theme-mode='dark'] .fredy-shell-nav__account-avatar {
   background: transparent;
   font-family: @font-ui;
   font-size: @text-sm;
-  font-weight: 700;
+  font-weight: 500;
 
   svg {
     font-size: @text-base;

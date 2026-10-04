@@ -240,19 +240,21 @@ describe('Home production surface contract', () => {
     expect(homeSource).not.toMatch(/\p{Extended_Pictographic}/u);
   });
 
-  it('paints the marketplace pills and cards with forest/sage semantic roles and sans type', () => {
+  it('paints the marketplace pills and cards with ink/paper roles and grotesk type', () => {
     // Title type is the sans UI face, not the serif display face this surface used to lead with.
     expect(homeStyles).toMatch(/&__card-title\s*{[^}]*font-family:\s*@font-ui/s);
     expect(homeStyles).toMatch(/&__heading h1\s*{[^}]*font-family:\s*@font-ui/s);
     expect(homeStyles).not.toContain('@font-display');
-    // Inactive activity pill reads in sage accent; selected pill is deep forest fill + on-accent.
+    // Inactive activity pill is a hairline ink label; the selected pill inverts to ink fill with
+    // paper text. The accent is reserved for state (lifecycle, travel), never for control chrome.
     const activityScope = homeStyles.slice(
       homeStyles.indexOf('&__activities {'),
       homeStyles.indexOf('&__activity-symbol'),
     );
-    expect(activityScope).toMatch(/button\s*{[^}]*color:\s*@color-accent;/s);
-    expect(activityScope).toMatch(/&\.is-selected\s*{[^}]*background:\s*@color-accent-fill;/s);
-    expect(activityScope).toMatch(/&\.is-selected\s*{[^}]*color:\s*@color-on-accent;/s);
+    expect(activityScope).toMatch(/button\s*{[^}]*color:\s*@color-text;/s);
+    expect(activityScope).toMatch(/button\s*{[^}]*font-family:\s*@font-mono;/s);
+    expect(activityScope).toMatch(/&\.is-selected\s*{[^}]*background:\s*@color-text;/s);
+    expect(activityScope).toMatch(/&\.is-selected\s*{[^}]*color:\s*@color-base;/s);
     // Reachable targets and the photo-led grid.
     expect(homeStyles).toMatch(/min-height:\s*44px/);
     expect(homeStyles).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');

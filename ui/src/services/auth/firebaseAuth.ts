@@ -6,6 +6,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import {
   browserLocalPersistence,
+  connectAuthEmulator,
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -79,6 +80,12 @@ async function createAuthClient(): Promise<FirebaseAuthClient | { enabled: false
 
   const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
   const auth = getAuth(app);
+
+  // Local development against the Firebase Auth emulator. The backend only reports a host when
+  // FIREBASE_AUTH_EMULATOR_HOST is set in its own environment, which production refuses.
+  if (typeof config?.authEmulatorHost === 'string' && config.authEmulatorHost.length > 0) {
+    connectAuthEmulator(auth, `http://${config.authEmulatorHost}`, { disableWarnings: true });
+  }
 
   // This must complete before the login button can call signInWithPopup. Without it, a reload can
   // lose the Firebase session, especially when the app and Firebase authDomain are cross-origin.
