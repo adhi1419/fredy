@@ -577,10 +577,12 @@ describe('listingsStorage lifecycle contract', () => {
       await seedJob();
       const id = await seedListing('job-1');
 
+      // accepted/rejected are input aliases for archived; the derived wire status is applied-only.
+      const expected = { applied: 'applied', rejected: null, accepted: null };
       for (const status of ['applied', 'rejected', 'accepted']) {
         await listingsStorage.setListingStatus(id, status);
         const listing = await listingsStorage.getListingById(id, 'u1', true);
-        expect(listing.status.status).toBe(status);
+        expect(listing.status?.status ?? null).toBe(expected[status]);
       }
     });
 
@@ -612,7 +614,7 @@ describe('listingsStorage lifecycle contract', () => {
       expect(listing.lifecycle.state).toBe('new');
     });
 
-    it('maps legacy accepted and rejected statuses to archived without dropping them', async () => {
+    it('maps accepted and rejected inputs to archived', async () => {
       await seedUser();
       await seedJob();
       const id = await seedListing('job-1');
@@ -621,7 +623,7 @@ describe('listingsStorage lifecycle contract', () => {
         await listingsStorage.setListingStatus(id, legacy);
         const listing = await listingsStorage.getListingById(id, 'u1', true);
         expect(listing.lifecycle.state).toBe('archived');
-        expect(listing.status.status).toBe(legacy);
+        expect(listing.status).toBeNull();
       }
     });
   });

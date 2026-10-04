@@ -55,17 +55,23 @@ export function createFirestoreMemory() {
       .filter((id) => {
         const value = values.get(id);
         return filters.every(({ field, operator, expected }) => {
-          if (operator !== '==') throw new Error(`Unsupported test query operator: ${operator}`);
-          return value?.[field] === expected;
+          if (operator === '==') return value?.[field] === expected;
+          if (operator === 'in') return Array.isArray(expected) && expected.includes(value?.[field]);
+          if (operator === '<') return value?.[field] != null && value[field] < expected;
+          throw new Error(`Unsupported test query operator: ${operator}`);
         });
       })
       .map((id) => snapshotFor(path, id));
   };
 
-  const queryRef = (path, filters = []) => ({
-    where: (field, operator, expected) => queryRef(path, [...filters, { field, operator, expected }]),
-    orderBy: () => queryRef(path, filters),
-    get: async () => ({ docs: matchingDocs(path, filters), size: matchingDocs(path, filters).length }),
+  const queryRef = (path, filters = [], maxResults = null) => ({
+    where: (field, operator, expected) => queryRef(path, [...filters, { field, operator, expected }], maxResults),
+    orderBy: () => queryRef(path, filters, maxResults),
+    limit: (value) => queryRef(path, filters, value),
+    get: async () => {
+      const docs = matchingDocs(path, filters).slice(0, maxResults ?? undefined);
+      return { docs, size: docs.length };
+    },
     count: () => ({ get: async () => ({ data: () => ({ count: matchingDocs(path, filters).length }) }) }),
   });
 

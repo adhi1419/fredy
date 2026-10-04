@@ -62,7 +62,9 @@ describe('Issue reproduction: listings filtered by similarity or area should be 
   it('should pass the shared browser to a custom getListings implementation', async () => {
     const Fredy = await mockFredy();
     const browser = { connected: true };
-    const getListings = vi.fn().mockResolvedValue([]);
+    // Two parameters: the pipeline only launches a browser for getListings(url, browser).
+    // eslint-disable-next-line no-unused-vars -- the arity is what matters here
+    const getListings = vi.fn(async (url, browser) => []);
     const providerConfig = {
       url: 'http://example.com',
       getListings,
