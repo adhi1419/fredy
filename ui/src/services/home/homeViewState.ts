@@ -91,7 +91,6 @@ export interface HomeListing {
   latitude?: number | string | null;
   longitude?: number | string | null;
   lifecycle?: { state?: string | null } | null;
-  status?: { status?: string | null } | null;
   inquiry_send_status?: string | null;
   travelTimes?: readonly HomeTravelTimeEntry[] | null;
   [key: string]: unknown;
@@ -435,10 +434,6 @@ export function homeMapListing(listing: HomeListing | null | undefined): HomeMap
 export function homeLifecycleState(listing: HomeListing | null | undefined): HomeActivity {
   const lifecycle = listing?.lifecycle?.state;
   if (isHomeActivity(lifecycle)) return lifecycle;
-  const legacy = listing?.status?.status;
-  if (typeof legacy === 'string' && LEGACY_STATUS_TO_ACTIVITY[legacy]) {
-    return LEGACY_STATUS_TO_ACTIVITY[legacy];
-  }
   if (listing?.inquiry_send_status === 'sent') return 'applied';
   return 'new';
 }

@@ -58,7 +58,17 @@ export function describeJobRefinements(job: unknown, { t, formatPrice }: JobSumm
   if (commuteLimits > 0) {
     parts.push(t('jobs.mutation.summaryCommute', { count: commuteLimits }));
   }
-  if (record?.autoSendInquiry === true) {
+  const sources = Array.isArray(record?.provider)
+    ? record.provider
+    : Array.isArray(record?.providerData)
+      ? record.providerData
+      : [];
+  if (
+    sources.some(
+      (source: { applicationPolicy?: { automatic?: unknown } } | null) =>
+        source?.applicationPolicy?.automatic === 'enabled',
+    )
+  ) {
     parts.push(t('jobs.mutation.summaryAutoSendInquiry'));
   }
   if (Array.isArray(record?.shareWithUsers) && record.shareWithUsers.length > 0) {

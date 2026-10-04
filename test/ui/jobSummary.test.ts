@@ -40,7 +40,11 @@ describe('jobSummary', () => {
     ['a room count', { specFilter: { minRooms: 3 } }, 'jobs.mutation.summaryMinRooms'],
     ['blocked words', { blacklist: ['Tausch'] }, 'jobs.mutation.summaryBlacklist'],
     ['a drawn area', { spatialFilter: { type: 'Polygon' } }, 'jobs.mutation.summaryArea'],
-    ['automatic inquiries', { autoSendInquiry: true }, 'jobs.mutation.summaryAutoSendInquiry'],
+    [
+      'automatic inquiries',
+      { provider: [{ id: 'immoscout', applicationPolicy: { automatic: 'enabled' } }] },
+      'jobs.mutation.summaryAutoSendInquiry',
+    ],
     ['sharing', { shareWithUsers: ['user-1'] }, 'jobs.mutation.summaryShared'],
     ['being switched off', { enabled: false }, 'jobs.mutation.summaryPaused'],
   ];
@@ -68,7 +72,7 @@ describe('jobSummary', () => {
       specFilter: { maxPrice: 1200, minSize: 60, minRooms: 3 },
       blacklist: ['Tausch', 'WG'],
       spatialFilter: { type: 'Polygon' },
-      autoSendInquiry: true,
+      provider: [{ id: 'immoscout', applicationPolicy: { automatic: 'enabled' } }],
       shareWithUsers: ['user-1'],
       enabled: false,
     };

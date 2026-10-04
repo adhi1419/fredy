@@ -42,7 +42,6 @@ export interface JobDraft {
   spatialFilter?: unknown | null;
   specFilter?: unknown | null;
   commuteFilter?: DraftCommuteFilter | null;
-  autoSendInquiry?: boolean;
   [key: string]: unknown;
 }
 
@@ -69,7 +68,6 @@ export const DRAFT_FIELDS = [
   'spatialFilter',
   'specFilter',
   'commuteFilter',
-  'autoSendInquiry',
 ] as const;
 
 export type DraftField = (typeof DRAFT_FIELDS)[number];
@@ -101,8 +99,7 @@ export function hasContent(draft: unknown): draft is JobDraft {
     draft.dealType != null ||
     draft.spatialFilter != null ||
     draft.specFilter != null ||
-    draft.commuteFilter != null ||
-    draft.autoSendInquiry === true
+    draft.commuteFilter != null
   );
 }
 

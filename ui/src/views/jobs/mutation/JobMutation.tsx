@@ -77,7 +77,6 @@ interface JobDraft {
   spatialFilter?: unknown | null;
   specFilter?: Record<string, unknown> | null;
   commuteFilter?: unknown | null;
-  autoSendInquiry?: boolean;
 }
 
 export default function JobMutator() {
@@ -128,7 +127,6 @@ export default function JobMutator() {
   const defaultSpatialFilter = sourceJob?.spatialFilter || null;
   const defaultSpecFilter = (sourceJob?.specFilter as Record<string, unknown> | null | undefined) || null;
   const defaultCommuteFilter = sourceJob?.commuteFilter || null;
-  const defaultAutoSendInquiry = sourceJob?.autoSendInquiry ?? false;
   // Deliberately not defaulted for a new job: the user has to say what they are looking for,
   // because it decides which half of their finance profile applies to everything this job finds.
   const defaultDealType = sourceJob?.dealType || null;
@@ -148,7 +146,6 @@ export default function JobMutator() {
   const [commuteFilter, setCommuteFilter] = useState<unknown | null>(defaultCommuteFilter);
   // Retained only so legacy drafts can still round-trip; guided saves never send this field and no
   // visible job-wide control is rendered.
-  const [autoSendInquiry, setAutoSendInquiry] = useState<boolean>(defaultAutoSendInquiry);
   const [dealType, setDealType] = useState<'rent' | 'buy' | null>(defaultDealType);
   /** Whether the value in the deal type field was guessed rather than chosen. */
   const [dealTypeWasInferred, setDealTypeWasInferred] = useState(false);
@@ -208,9 +205,7 @@ export default function JobMutator() {
     if (draft.name !== undefined) setName(draft.name);
     if (draft.dealType !== undefined) setDealType(draft.dealType);
     if (draft.providerData !== undefined) {
-      setProviderData(
-        migrateLegacyDraftProviderPolicies(draft.providerData, draft.autoSendInquiry === true, providerMetadata),
-      );
+      setProviderData(migrateLegacyDraftProviderPolicies(draft.providerData, providerMetadata));
     }
     if (draft.selectedChannelIds !== undefined) setSelectedChannelIds(draft.selectedChannelIds);
     if (draft.blacklist !== undefined) setBlacklist(draft.blacklist);
@@ -219,7 +214,6 @@ export default function JobMutator() {
     if (draft.spatialFilter !== undefined) setSpatialFilter(draft.spatialFilter);
     if (draft.specFilter !== undefined) setSpecFilter(draft.specFilter);
     if (draft.commuteFilter !== undefined) setCommuteFilter(draft.commuteFilter);
-    if (draft.autoSendInquiry !== undefined) setAutoSendInquiry(draft.autoSendInquiry);
     setDraftRestored(true);
   }, [draftId]);
 
@@ -243,7 +237,6 @@ export default function JobMutator() {
       spatialFilter,
       specFilter,
       commuteFilter,
-      autoSendInquiry,
     });
   }, [
     draftId,
@@ -257,7 +250,6 @@ export default function JobMutator() {
     spatialFilter,
     specFilter,
     commuteFilter,
-    autoSendInquiry,
   ]);
 
   // The deal type decides which half of the finance profile applies to everything this job finds,
@@ -293,7 +285,6 @@ export default function JobMutator() {
     setSpatialFilter(defaultSpatialFilter);
     setSpecFilter(defaultSpecFilter);
     setCommuteFilter(defaultCommuteFilter);
-    setAutoSendInquiry(defaultAutoSendInquiry);
   };
 
   const leaveForm = () => {

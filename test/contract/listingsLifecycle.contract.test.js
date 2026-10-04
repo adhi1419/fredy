@@ -548,8 +548,9 @@ describe('listingsStorage lifecycle contract', () => {
       await listingsStorage.setListingStatus(id, 'applied');
 
       const listing = await listingsStorage.getListingById(id, 'u1', true);
-      expect(listing.status).toMatchObject({ status: 'applied' });
-      expect(listing.status.setAt).toBeGreaterThan(0);
+      expect(listing.lifecycle.state).toBe('applied');
+      expect(listing.lifecycle.appliedAt).toBeGreaterThan(0);
+      expect(listing).not.toHaveProperty('status');
     });
 
     it('clears a status when set to null', async () => {
@@ -557,11 +558,11 @@ describe('listingsStorage lifecycle contract', () => {
       await seedJob();
       const id = await seedListing('job-1');
 
-      await listingsStorage.setListingStatus(id, 'rejected');
+      await listingsStorage.setListingStatus(id, 'archived');
       await listingsStorage.setListingStatus(id, null);
 
       const listing = await listingsStorage.getListingById(id, 'u1', true);
-      expect(listing.status).toBeNull();
+      expect(listing.lifecycle.state).toBe('new');
     });
 
     it('throws on invalid status values', async () => {
@@ -577,12 +578,12 @@ describe('listingsStorage lifecycle contract', () => {
       await seedJob();
       const id = await seedListing('job-1');
 
-      // accepted/rejected are input aliases for archived; the derived wire status is applied-only.
-      const expected = { applied: 'applied', rejected: null, accepted: null };
+      // accepted/rejected are input aliases for archived.
+      const expected = { applied: 'applied', rejected: 'archived', accepted: 'archived' };
       for (const status of ['applied', 'rejected', 'accepted']) {
         await listingsStorage.setListingStatus(id, status);
         const listing = await listingsStorage.getListingById(id, 'u1', true);
-        expect(listing.status?.status ?? null).toBe(expected[status]);
+        expect(listing.lifecycle.state).toBe(expected[status]);
       }
     });
 
@@ -597,17 +598,14 @@ describe('listingsStorage lifecycle contract', () => {
       await listingsStorage.setListingStatus(id, 'applied', 'u1');
       listing = await listingsStorage.getListingById(id, 'u1', true);
       expect(listing.lifecycle).toMatchObject({ state: 'applied', source: 'manual', changedBy: 'u1' });
-      expect(listing.status).toMatchObject({ status: 'applied' });
 
       await listingsStorage.setListingStatus(id, 'viewed', 'u1');
       listing = await listingsStorage.getListingById(id, 'u1', true);
       expect(listing.lifecycle.state).toBe('viewed');
-      expect(listing.status.status).toBe('applied');
 
       await listingsStorage.setListingStatus(id, 'archived', 'u1');
       listing = await listingsStorage.getListingById(id, 'u1', true);
       expect(listing.lifecycle.state).toBe('archived');
-      expect(listing.status).toBeNull();
 
       await listingsStorage.setListingStatus(id, 'reset', 'u1');
       listing = await listingsStorage.getListingById(id, 'u1', true);
@@ -623,7 +621,6 @@ describe('listingsStorage lifecycle contract', () => {
         await listingsStorage.setListingStatus(id, legacy);
         const listing = await listingsStorage.getListingById(id, 'u1', true);
         expect(listing.lifecycle.state).toBe('archived');
-        expect(listing.status).toBeNull();
       }
     });
   });

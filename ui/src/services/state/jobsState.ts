@@ -24,7 +24,6 @@ export interface Job {
   specFilter?: unknown | null;
   commuteFilter?: unknown | null;
   dealType?: 'rent' | 'buy' | null;
-  autoSendInquiry?: boolean;
   numberOfFoundListings?: number;
   lastRunAt?: number | null;
   /**
