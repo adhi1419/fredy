@@ -28,7 +28,20 @@ describe('listing repair storage seams', () => {
 
   it('returns only broken rows of this job and provider, in camelCase', async () => {
     firestore.seed('listings', 'healthy', { ...healthy, jobId: 'job-1', hash: 'h0' });
-    firestore.seed('listings', 'no-notify', { ...healthy, jobId: 'job-1', hash: 'h1', notificationComplete: false });
+    firestore.seed('listings', 'no-notify', {
+      ...healthy,
+      jobId: 'job-1',
+      hash: 'h1',
+      notificationComplete: false,
+      notifiedAt: 1,
+    });
+    firestore.seed('listings', 'never-notified', {
+      ...healthy,
+      jobId: 'job-1',
+      hash: 'h11',
+      notificationComplete: false,
+      notifiedAt: null,
+    });
     firestore.seed('listings', 'failed', { ...healthy, jobId: 'job-1', hash: 'h2', inquirySendStatus: 'failed' });
     firestore.seed('listings', 'never-sent', { ...healthy, jobId: 'job-1', hash: 'h3', inquirySendStatus: null });
     firestore.seed('listings', 'no-draft', { ...healthy, jobId: 'job-1', hash: 'h4', inquiryMessage: null });
@@ -51,7 +64,7 @@ describe('listing repair storage seams', () => {
       latitude: null,
     });
 
-    const rows = await storage.getListingsNeedingRepair('job-1', 'provider-1');
+    const rows = await storage.getListingsNeedingRepair('job-1', 'provider-1', { inquiries: true, drafts: true });
     expect(rows.map((row) => row.id).sort()).toEqual([
       'failed',
       'never-sent',
@@ -63,6 +76,10 @@ describe('listing repair storage seams', () => {
     expect(rows.find((row) => row.id === 'failed')).toEqual(
       expect.objectContaining({ jobId: 'job-1', inquirySendStatus: 'failed', notificationComplete: true }),
     );
+
+    // Without an automatic source or a message generator, those categories are not even queried.
+    const localOnly = await storage.getListingsNeedingRepair('job-1', 'provider-1');
+    expect(localOnly.map((row) => row.id).sort()).toEqual(['no-coords', 'no-notify', 'not-found']);
   });
 
   it('reads no healthy rows', async () => {
