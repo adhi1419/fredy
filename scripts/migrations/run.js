@@ -273,6 +273,23 @@ async function plan005(db) {
   return operations;
 }
 
+/**
+ * Give every live listing the geocoder could not place one more try. The geocoder now retries an
+ * address without the portal's trailing district label, which is what kept these listings at the
+ * "found nothing" marker; reconcile geocodes null coordinates once and treats a fresh -1 as final.
+ */
+async function plan007(db) {
+  const operations = [];
+  for (const doc of await allDocs(db, 'listings')) {
+    const data = doc.data();
+    if (data.manuallyDeleted === true) continue;
+    if (data.latitude === -1 && data.longitude === -1) {
+      operations.push(operation('listings', doc.id, { latitude: null, longitude: null }));
+    }
+  }
+  return operations;
+}
+
 export const MIGRATIONS = Object.freeze([
   {
     id: '001-inquiry-rejected',
@@ -295,6 +312,11 @@ export const MIGRATIONS = Object.freeze([
     id: '006-settings-shape',
     description: 'Rename settings create_date to createdAt and delete retired settings.',
     plan: plan006,
+  },
+  {
+    id: '007-retry-unlocated',
+    description: 'Reset unlocated live listings to null so the improved geocoder tries them once.',
+    plan: plan007,
   },
 ]);
 

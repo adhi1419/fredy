@@ -103,3 +103,34 @@ describe('geocodeAddress retrying without a trailing parenthesis', () => {
     expect(asked()[1]).toBe('Musterstr. 1 (Hinterhaus), 12345 Berlin');
   });
 });
+
+/**
+ * Retrying without the portal's trailing district label. ImmoScout writes
+ * `Turmstraße 70, 10551 Berlin, Tiergarten`; Nominatim finds nothing for that and finds the address
+ * at once without `, Tiergarten`.
+ */
+describe('geocodeAddress retrying without a trailing district', () => {
+  it('retries an address it could not find, without the district after the postcode and city', async () => {
+    geocodeMock.mockResolvedValueOnce(NOT_FOUND).mockResolvedValueOnce({ lat: 52.5269, lng: 13.3437 });
+
+    await expect(geocodeAddress('Turmstraße 70, 10551 Berlin, Tiergarten', ['de'])).resolves.toEqual({
+      lat: 52.5269,
+      lng: 13.3437,
+    });
+    expect(asked()).toEqual(['Turmstraße 70, 10551 Berlin, Tiergarten', 'Turmstraße 70, 10551 Berlin']);
+  });
+
+  it('never drops a segment that is not after a postcode', async () => {
+    geocodeMock.mockResolvedValue(NOT_FOUND);
+
+    await geocodeAddress('Turmstraße 70, Berlin, Tiergarten', ['de']);
+    expect(asked()).toEqual(['Turmstraße 70, Berlin, Tiergarten']);
+  });
+
+  it('leaves a district address that resolved alone', async () => {
+    geocodeMock.mockResolvedValueOnce({ lat: 52.5, lng: 13.4 });
+
+    await geocodeAddress('Badstraße 67, 13357 Berlin, Wedding', ['de']);
+    expect(asked()).toEqual(['Badstraße 67, 13357 Berlin, Wedding']);
+  });
+});

@@ -55,10 +55,15 @@ export function createFirestoreMemory() {
       .filter((id) => {
         const value = values.get(id);
         return filters.every(({ field, operator, expected }) => {
-          if (operator === '==') return value?.[field] === expected;
-          if (operator === 'in') return Array.isArray(expected) && expected.includes(value?.[field]);
-          if (operator === '<') return value?.[field] != null && value[field] < expected;
-          if (operator === '>') return value?.[field] != null && value[field] > expected;
+          // Dotted paths reach into maps, as Firestore field paths do ('lifecycle.state').
+          const actual = String(field)
+            .split('.')
+            .reduce((node, key) => node?.[key], value);
+          if (operator === '==') return actual === expected;
+          if (operator === 'in') return Array.isArray(expected) && expected.includes(actual);
+          if (operator === '<') return actual != null && actual < expected;
+          if (operator === '<=') return actual != null && actual <= expected;
+          if (operator === '>') return actual != null && actual > expected;
           throw new Error(`Unsupported test query operator: ${operator}`);
         });
       })
