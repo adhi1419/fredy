@@ -876,3 +876,35 @@ describe('listingsStorage contract – connectivity', () => {
     expect(ids).not.toContain(hidden.id);
   });
 });
+
+describe('listingsStorage contract – repair candidates', () => {
+  it('returns full active listing data and excludes inactive listings', async () => {
+    await seedContext();
+    const active = makeListing({
+      title: 'Active home',
+      link: 'https://www.deutsche-wohnen.com/mieten/mietangebote/home-89-1471120007',
+      description: 'Provider details',
+      price: 900,
+      size: 60,
+      rooms: 2,
+    });
+    const inactive = makeListing({ title: 'Withdrawn home' });
+    await listingsStorage.storeListings(JOB.jobId, 'deutscheWohnen', [active, inactive]);
+    await listingsStorage.deactivateListings([inactive.id]);
+
+    const rows = await listingsStorage.getListingsNeedingRepair(JOB.jobId, 'deutscheWohnen', {
+      inquiries: true,
+    });
+
+    expect(rows.map((row) => row.id)).toEqual([active.id]);
+    expect(rows[0]).toMatchObject({
+      title: 'Active home',
+      link: 'https://www.deutsche-wohnen.com/mieten/mietangebote/home-89-1471120007',
+      description: 'Provider details',
+      price: 900,
+      size: 60,
+      rooms: 2,
+      isActive: true,
+    });
+  });
+});

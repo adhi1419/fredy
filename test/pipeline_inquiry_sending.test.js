@@ -42,27 +42,29 @@ const job = (overrides = {}) => ({
   ...overrides,
 });
 
+const INQUIRY_PROFILE = {
+  name: 'Alice Example',
+  email: 'alice@example.com',
+  street: 'Main Street',
+  houseNumber: '1',
+  postcode: '10115',
+  city: 'Berlin',
+  phoneNumber: '+49 30 123456',
+  immoscoutPrivacyAccepted: true,
+  deutscheWohnenIncomeType: '1',
+  deutscheWohnenMonthlyNetIncome: 'M_3',
+  deutscheWohnenPrivacyAccepted: true,
+  howogeApplicationAccepted: true,
+};
+
+const settings = (overrides = {}) => ({ inquiry_profile: INQUIRY_PROFILE, ...overrides });
+
 describe('pipeline automatic inquiry sending', () => {
   beforeEach(() => {
     inquiryDeliveries.length = 0;
     setInquiryDeliveryError(null);
     setKnownListingsForRepair([]);
-    setUserSettings({
-      inquiry_profile: {
-        name: 'Alice Example',
-        email: 'alice@example.com',
-        street: 'Main Street',
-        houseNumber: '1',
-        postcode: '10115',
-        city: 'Berlin',
-        phoneNumber: '+49 30 123456',
-        immoscoutPrivacyAccepted: true,
-        deutscheWohnenIncomeType: '1',
-        deutscheWohnenMonthlyNetIncome: 'M_3',
-        deutscheWohnenPrivacyAccepted: true,
-        howogeApplicationAccepted: true,
-      },
-    });
+    setUserSettings(settings());
   });
 
   it('delivers a generated draft for an enabled ImmoScout rental job', async () => {
@@ -97,6 +99,67 @@ describe('pipeline automatic inquiry sending', () => {
       accountEmail: 'user1@example.com',
       message: item.inquiryMessage,
     });
+  });
+
+  it('delivers when the configured commute is measured and within budget', async () => {
+    setUserSettings(
+      settings({ home_addresses: [{ label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }] }),
+    );
+    const Fredy = await mockFredy();
+    const instance = pipeline(
+      Fredy,
+      job({ commuteFilter: { action: 'exclude', limits: { Work: 25 } } }),
+      'deutscheWohnen',
+    );
+    const item = {
+      ...listing(),
+      link: 'https://www.deutsche-wohnen.com/mieten/mietangebote/test-89-1471120007',
+      travelTimes: [{ label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 20 } }],
+    };
+
+    await instance._sendInquiryMessages([item]);
+
+    expect(inquiryDeliveries).toHaveLength(1);
+  });
+
+  it('fails closed when a saved address was renamed but the job retains its old label', async () => {
+    setUserSettings(
+      settings({ home_addresses: [{ label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }] }),
+    );
+    const Fredy = await mockFredy();
+    const instance = pipeline(
+      Fredy,
+      job({ commuteFilter: { action: 'exclude', limits: { 'Old office': 25 } } }),
+      'deutscheWohnen',
+    );
+
+    await instance._sendInquiryMessages([
+      {
+        ...listing(),
+        travelTimes: [{ label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 20 } }],
+      },
+    ]);
+
+    expect(inquiryDeliveries).toEqual([]);
+  });
+
+  it.each([
+    ['has no travel time', []],
+    ['is over budget', [{ label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 60 } }]],
+  ])('fails closed when a listing %s', async (_case, travelTimes) => {
+    setUserSettings(
+      settings({ home_addresses: [{ label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }] }),
+    );
+    const Fredy = await mockFredy();
+    const instance = pipeline(
+      Fredy,
+      job({ commuteFilter: { action: 'exclude', limits: { Work: 25 } } }),
+      'deutscheWohnen',
+    );
+
+    await instance._sendInquiryMessages([{ ...listing(), travelTimes }]);
+
+    expect(inquiryDeliveries).toEqual([]);
   });
 
   it('applies to a HOWOGE partner listing without requiring a generated message', async () => {
@@ -201,18 +264,64 @@ describe('pipeline automatic inquiry sending', () => {
       address: 'Main Street 1, Berlin',
       latitude: 52.5,
       longitude: 13.4,
-      inquiry_message: 'Sehr geehrte Damen und Herren, ...',
-      inquiry_send_status: null,
-      notification_complete: 1,
+      inquirySendStatus: null,
+      notificationComplete: true,
+      isActive: true,
     };
     setKnownListingsForRepair([row]);
     const source = { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } };
-    const instance = pipeline(Fredy, job({ autoSendInquiry: false, provider: [source] }), 'immoscout', null, source);
+    const instance = pipeline(Fredy, job({ provider: [source] }), 'immoscout', null, source);
 
     await instance.reconcile();
     await instance.reconcile();
 
     expect(inquiryDeliveries).toHaveLength(1);
+  });
+
+  it('never auto-applies to an inactive listing during repair', async () => {
+    const Fredy = await mockFredy();
+    setKnownListingsForRepair([
+      {
+        ...listing(),
+        latitude: 52.5,
+        longitude: 13.4,
+        inquirySendStatus: null,
+        notificationComplete: true,
+        isActive: false,
+      },
+    ]);
+    const source = { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } };
+
+    await pipeline(Fredy, job({ provider: [source] }), 'immoscout', null, source).reconcile();
+
+    expect(inquiryDeliveries).toEqual([]);
+  });
+
+  it('applies the same commute safety gate during repair', async () => {
+    setUserSettings(
+      settings({ home_addresses: [{ label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }] }),
+    );
+    const Fredy = await mockFredy();
+    setKnownListingsForRepair([
+      {
+        ...listing(),
+        latitude: 52.5,
+        longitude: 13.4,
+        inquirySendStatus: null,
+        notificationComplete: true,
+        isActive: true,
+        travelTimes: [{ label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 60 } }],
+      },
+    ]);
+    const source = { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } };
+    const guardedJob = job({
+      provider: [source],
+      commuteFilter: { action: 'exclude', limits: { Work: 25 } },
+    });
+
+    await pipeline(Fredy, guardedJob, 'immoscout', null, source).reconcile();
+
+    expect(inquiryDeliveries).toEqual([]);
   });
 
   it('never repairs an inquiry through a disabled provider source policy', async () => {
@@ -222,14 +331,14 @@ describe('pipeline automatic inquiry sending', () => {
         ...listing(),
         latitude: 52.5,
         longitude: 13.4,
-        inquiry_message: 'Draft',
-        inquiry_send_status: null,
-        notification_complete: 1,
+        inquirySendStatus: null,
+        notificationComplete: true,
+        isActive: true,
       },
     ]);
     const source = { id: 'immoscout', applicationPolicy: { automatic: 'disabled' } };
 
-    await pipeline(Fredy, job({ autoSendInquiry: true, provider: [source] }), 'immoscout', null, source).reconcile();
+    await pipeline(Fredy, job({ provider: [source] }), 'immoscout', null, source).reconcile();
 
     expect(inquiryDeliveries).toEqual([]);
   });
