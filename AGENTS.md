@@ -39,6 +39,13 @@ yarn format && yarn format:check
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract
 ```
 
+**Composite indexes.** Every composite index production needs is listed in `firestore.indexes.json`.
+The emulator and the in-memory test mock do NOT enforce indexes, so a new or changed query shape
+(another filter on an existing query included) passes every test and then fails in production with
+`FAILED_PRECONDITION: The query requires an index`. Add the index to that file, create it in
+production (`gcloud firestore indexes composite create ...`), wait until it is `READY`, and run the
+query shape once against production before the code that issues it is merged.
+
 ## Architecture
 
 ### Core data flow
