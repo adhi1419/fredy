@@ -52,8 +52,8 @@ describe('coordinate repair eligibility', () => {
     expect(needsCoordinateRepair({ latitude: null, longitude: null })).toBe(true);
     expect(needsCoordinateRepair({ latitude: 52.5, longitude: null })).toBe(true);
   });
-  it('needs repair on the -1/-1 "found nothing" marker', () => {
-    expect(needsCoordinateRepair({ latitude: -1, longitude: -1 })).toBe(true);
+  it('treats the -1/-1 "found nothing" marker as a final answer', () => {
+    expect(needsCoordinateRepair({ latitude: -1, longitude: -1 })).toBe(false);
   });
   it('never touches a valid coordinate', () => {
     expect(needsCoordinateRepair({ latitude: 52.5, longitude: 13.4 })).toBe(false);

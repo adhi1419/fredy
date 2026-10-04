@@ -80,14 +80,9 @@ describe('listing repair storage seams', () => {
     });
 
     const rows = await storage.getListingsNeedingRepair('job-1', 'provider-1', { inquiries: true, drafts: true });
-    expect(rows.map((row) => row.id).sort()).toEqual([
-      'failed',
-      'never-sent',
-      'no-coords',
-      'no-draft',
-      'no-notify',
-      'not-found',
-    ]);
+    expect(rows.map((row) => row.id).sort()).toEqual(['failed', 'never-sent', 'no-coords', 'no-draft', 'no-notify']);
+    // The -1 "found nothing" marker is a final geocoder answer, not a repair category.
+    expect(rows.map((row) => row.id)).not.toContain('not-found');
     expect(rows.find((row) => row.id === 'failed')).toEqual(
       expect.objectContaining({
         jobId: 'job-1',
@@ -101,7 +96,7 @@ describe('listing repair storage seams', () => {
 
     // Without an automatic source or a message generator, those categories are not even queried.
     const localOnly = await storage.getListingsNeedingRepair('job-1', 'provider-1');
-    expect(localOnly.map((row) => row.id).sort()).toEqual(['no-coords', 'no-notify', 'not-found']);
+    expect(localOnly.map((row) => row.id).sort()).toEqual(['no-coords', 'no-notify']);
   });
 
   it('reads no healthy rows', async () => {

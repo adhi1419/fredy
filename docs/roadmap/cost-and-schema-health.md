@@ -273,6 +273,21 @@ Status: DONE (schemaGuard contract test, scripts/schema-audit.js)
     to produce the drift table) for future checks.
 - Acceptance: the contract test fails when a legacy key is reintroduced.
 
+## Phase 2b: Remaining read and run-time hot paths
+
+Found from the per-run usage line (1,300 reads per run after PR #94) and Cloud Monitoring.
+
+| Source                                                          | Reads per run before                             | Fix                                                                                                                       |
+| --------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `archiveStaleListingsForJob` read every listing of the job      | 887                                              | Query only live, not-archived rows created before the cutoff (index `jobId, manuallyDeleted, lifecycle.state, createdAt`) |
+| `findKnownHashes`: one read per already-stored scrape result    | ~385                                             | In-memory known-listing index (`knownListingIndex.js`); only misses are queried                                           |
+| Retention purge read every inactive listing on every cold start | every inactive listing, per cold start and daily | Range on `inactiveSince` (index `isActive, inactiveSince`)                                                                |
+
+Run time: 15 live ImmoScout listings stored the -1 "found nothing" marker because the address ends
+in a district label (`..., 10551 Berlin, Tiergarten`) that Nominatim cannot match. Reconcile retried
+them on every run at 1 request/s. The geocoder now retries without the trailing district, -1 is
+final for reconcile, and migration 007 resets the existing -1 rows to null for one more try.
+
 ## Phase 3: Verify
 
 ### T3.1 Post-deploy measurement
