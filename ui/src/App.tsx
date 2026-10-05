@@ -22,7 +22,6 @@ import BackupPage from './views/admin/pages/BackupPage';
 import DebugPage from './views/admin/pages/DebugPage';
 import JobMutation from './views/jobs/mutation/JobMutation';
 import { useActions, useSelector } from './services/state/store.js';
-import { useBrowserNotifications } from './hooks/useBrowserNotifications';
 import { Routes, Route, Navigate, useLocation } from 'react-router';
 import Login from './views/login/Login';
 import Jobs from './views/jobs/Jobs';
@@ -132,8 +131,6 @@ export default function FredyApp() {
    * the default, which is also what index.html ships on the body, so nothing repaints.
    */
   const theme = normalizeTheme(useSelector<FredyState, unknown>((state) => state.userSettings.settings.theme));
-
-  useBrowserNotifications();
 
   useEffect(() => {
     applyTheme(theme);

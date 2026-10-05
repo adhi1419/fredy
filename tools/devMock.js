@@ -191,13 +191,13 @@ const listings = [
 
 const notificationAdapterMetadata = [
   {
-    id: 'browser',
-    name: 'Browser Notifications',
-    description: 'Displays native desktop push notifications directly in your browser.',
+    id: 'telegram',
+    name: 'Telegram',
+    description: 'Sends new listings to a Telegram chat.',
     config: {},
   },
 ];
-const notificationChannels = [{ id: 'channel-1', name: 'Browser notifications', adapterId: 'browser' }];
+const notificationChannels = [{ id: 'channel-1', name: 'Telegram', adapterId: 'telegram' }];
 
 const providerMetadata = [
   {
@@ -295,18 +295,6 @@ export function createDevMockServer({ port = 9998 } = {}) {
     if (req.method === 'OPTIONS') {
       res.writeHead(200);
       res.end();
-      return;
-    }
-
-    if (path === '/api/jobs/events') {
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      });
-      res.write(': connected\n\n');
-      const interval = setInterval(() => res.write(': ping\n\n'), 15000);
-      req.on('close', () => clearInterval(interval));
       return;
     }
 

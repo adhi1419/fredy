@@ -101,18 +101,20 @@ describe('final responsive slice', () => {
     expect(savedSearchesStyles).toMatch(/\.savedSearches__sortDirection\s*{[\s\S]*?width:\s*44px;/);
   });
 
-  it('preserves SSE, run, pause, filters, and pagination behavior in the deep feature module', () => {
+  it('preserves run watching, pause, filters, and pagination behavior in the deep feature module', () => {
     for (const marker of [
-      'createAuthenticatedEventStream',
       'xhrPost(`/api/jobs/${jobId}/run`, {})',
       'xhrPut(`/api/jobs/${jobId}/status`',
       'FilterDrawer',
       'Pagination',
-      'setJobRunning',
-      'pendingJobIdRef',
+      'setPendingJobId(jobId)',
+      'RUN_POLL_INTERVAL_MS',
     ]) {
       expect(savedSearchesSource).toContain(marker);
     }
+    // No push channel: an open tab must never hold a long-lived request to the API.
+    expect(savedSearchesSource).not.toContain('EventStream');
+    expect(savedSearchesSource).not.toContain('/api/jobs/events');
   });
 
   it('keeps the migrated Saved Searches source explicit at legacy boundaries', () => {

@@ -79,7 +79,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/onboarding/applicantProfileOnboarding.ts',
       'ui/src/services/routes/legacyRedirects.ts',
       'ui/src/services/theme/theme.ts',
-      'ui/src/hooks/useBrowserNotifications.ts',
       'ui/src/services/finance/constants.ts',
       'ui/src/services/price/priceService.ts',
       'ui/src/types/finance.ts',
@@ -136,7 +135,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/countryFlags.ts',
       'ui/src/services/developmentMode.ts',
       'ui/src/services/authenticatedFetch.ts',
-      'ui/src/services/notification/browserNotification.ts',
       'ui/src/components/connectivity/connectivityFormat.ts',
       'ui/src/services/transformer/providerTransformer.ts',
       'ui/src/services/debugLoggingClient.ts',
@@ -161,8 +159,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/components/settingsShell/SettingsShell.tsx',
       'ui/src/components/table/NotificationChannelTable.tsx',
       'ui/src/services/i18n/i18n.tsx',
-      'ui/src/services/notifications/browserAdapter.ts',
-      'ui/src/services/sse/authenticatedEventStream.ts',
       'ui/src/services/state/store.ts',
       'ui/src/services/transitClient.ts',
       'ui/src/services/xhr.ts',
@@ -214,8 +210,6 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/navModel.test.ts',
       'test/ui/theme.test.ts',
       'test/ui/firebaseAuth.test.ts',
-      'test/ui/browserNotificationGate.d.ts',
-      'test/ui/browserNotificationGate.test.ts',
       'test/ui/financeMathSingleHome.test.ts',
       'test/ui/financeState.test.ts',
       'test/ui/priceFormat.test.ts',
@@ -242,7 +236,6 @@ describe('Bun and TypeScript foundation', () => {
       'test/ui/authenticatedTransport.test.ts',
       'test/ui/apiUrl.test.ts',
       'test/ui/locales.test.ts',
-      'test/ui/authenticatedEventStream.test.ts',
       'test/ui/globalShadowing.test.ts',
       'test/ui/homeViewState.test.ts',
       'test/ui/noWhatsNewSurface.test.ts',
@@ -337,7 +330,6 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/services/countryFlags.ts', 'ui/src/services/countryFlags.js'],
       ['ui/src/services/developmentMode.ts', 'ui/src/services/developmentMode.js'],
       ['ui/src/services/authenticatedFetch.ts', 'ui/src/services/authenticatedFetch.js'],
-      ['ui/src/services/notification/browserNotification.ts', 'ui/src/services/notification/browserNotification.js'],
       ['ui/src/components/connectivity/connectivityFormat.ts', 'ui/src/components/connectivity/connectivityFormat.js'],
       ['ui/src/services/transformer/providerTransformer.ts', 'ui/src/services/transformer/providerTransformer.js'],
       ['ui/src/services/debugLoggingClient.ts', 'ui/src/services/debugLoggingClient.js'],
@@ -357,7 +349,7 @@ describe('Bun and TypeScript foundation', () => {
       ['test/ui/apiUrl.test.ts', 'test/ui/apiUrl.test.js'],
       ['test/ui/locales.test.ts', 'test/ui/locales.test.js'],
     ];
-    expect(waveThreeMigrations).toHaveLength(30);
+    expect(waveThreeMigrations).toHaveLength(29);
     for (const [typedPath, legacyPath] of waveThreeMigrations) {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
@@ -389,8 +381,6 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/components/settingsShell/SettingsShell.tsx', 'ui/src/components/settingsShell/SettingsShell.jsx'],
       ['ui/src/components/table/NotificationChannelTable.tsx', 'ui/src/components/table/NotificationChannelTable.jsx'],
       ['ui/src/services/i18n/i18n.tsx', 'ui/src/services/i18n/i18n.jsx'],
-      ['ui/src/services/notifications/browserAdapter.ts', 'ui/src/services/notifications/browserAdapter.js'],
-      ['ui/src/services/sse/authenticatedEventStream.ts', 'ui/src/services/sse/authenticatedEventStream.js'],
       ['ui/src/services/state/store.ts', 'ui/src/services/state/store.js'],
       ['ui/src/services/transitClient.ts', 'ui/src/services/transitClient.js'],
       ['ui/src/services/xhr.ts', 'ui/src/services/xhr.js'],
@@ -446,12 +436,11 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/views/settings/pages/InquiryProfilePage.tsx', 'ui/src/views/settings/pages/InquiryProfilePage.jsx'],
       ['ui/src/views/settings/pages/NotificationsPage.tsx', 'ui/src/views/settings/pages/NotificationsPage.jsx'],
       ['ui/src/views/settings/pages/TravelTimePage.tsx', 'ui/src/views/settings/pages/TravelTimePage.jsx'],
-      ['test/ui/authenticatedEventStream.test.ts', 'test/ui/authenticatedEventStream.test.js'],
       ['test/ui/globalShadowing.test.ts', 'test/ui/globalShadowing.test.js'],
       ['test/ui/homeViewState.test.ts', 'test/ui/homeViewState.test.js'],
       ['test/ui/noWhatsNewSurface.test.ts', 'test/ui/noWhatsNewSurface.test.js'],
     ];
-    expect(finalMigrations).toHaveLength(54);
+    expect(finalMigrations).toHaveLength(51);
     for (const [typedPath, legacyPath] of finalMigrations) {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
@@ -542,10 +531,6 @@ describe('Bun and TypeScript foundation', () => {
         'ui/src/services/auth/firebaseAuth.ts',
         ['ui/src/services/auth/firebaseAuth.js', 'ui/src/services/auth/firebaseAuth.d.ts'],
       ],
-      [
-        'ui/src/hooks/useBrowserNotifications.ts',
-        ['ui/src/hooks/useBrowserNotifications.js', 'ui/src/hooks/useBrowserNotifications.d.ts'],
-      ],
     ];
     for (const [typescriptPath, obsoletePaths] of migratedSources) {
       expect(fs.existsSync(path.join(root, typescriptPath)), typescriptPath).toBe(true);
@@ -553,14 +538,10 @@ describe('Bun and TypeScript foundation', () => {
         expect(fs.existsSync(path.join(root, obsoletePath)), obsoletePath).toBe(false);
       }
     }
-    for (const testPath of ['navModel', 'theme', 'firebaseAuth', 'browserNotificationGate']) {
+    for (const testPath of ['navModel', 'theme', 'firebaseAuth']) {
       expect(fs.existsSync(path.join(root, `test/ui/${testPath}.test.ts`)), testPath).toBe(true);
       expect(fs.existsSync(path.join(root, `test/ui/${testPath}.test.js`)), testPath).toBe(false);
     }
-    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.ts'))).toBe(true);
-    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.js'))).toBe(false);
-    expect(fs.existsSync(path.join(root, 'ui/src/services/notifications/browserAdapter.d.ts'))).toBe(false);
-    expect(fs.existsSync(path.join(root, 'test/ui/browserNotificationGate.d.ts'))).toBe(true);
     expect(read('ui/src/views/jobs/savedSearchesLegacy.d.ts')).not.toContain("declare module '*mapUtils.js'");
   });
 

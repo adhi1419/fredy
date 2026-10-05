@@ -63,18 +63,14 @@ describe('Cloud Run runtime contract', () => {
     );
   });
 
-  it('keeps the HTTP wire contract linked to the existing Firebase/CORS/SSE fixture', () => {
+  it('keeps the HTTP wire contract linked to the existing Firebase/CORS fixture', () => {
     const http = readContractFile('http');
-    const sse = readContractFile('sse');
     const security = readContractFile('security');
     const wire = JSON.parse(readContractFile('wire'));
 
     expectAllIncluded(http, ['Access-Control-Allow-Origin', 'Access-Control-Allow-Headers'], 'http.js');
-    expectAllIncluded(sse, ['text/event-stream'], 'jobRouter.js');
     expectAllIncluded(security, ['Authorization', 'Bearer ([^\\s]+)', 'invalid authorization'], 'security.js');
     expect(wire.assumptions).toEqual(fixture.wire.requiredAssumptions);
-    expect(wire.sse.contentType).toBe(fixture.wire.requiredSse.contentType);
-    expect(wire.sse.heartbeatIntervalMs).toBe(fixture.wire.requiredSse.heartbeatIntervalMs);
   });
 
   it('keeps immutable image promotion, cache fallback, and image-only Cloud Run deployment', () => {

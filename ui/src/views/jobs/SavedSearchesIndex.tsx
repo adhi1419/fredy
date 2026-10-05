@@ -28,7 +28,6 @@ import { summariseJobRefinements } from '../../services/jobs/jobSummary.js';
 import { formatEuroPrice } from '../../services/price/priceService.js';
 import { useActions, useSelector } from '../../services/state/store.js';
 import type { Job } from '../../services/state/jobsState';
-import { createAuthenticatedEventStream } from '../../services/sse/authenticatedEventStream.js';
 import { format as formatDate } from '../../services/time/timeService.js';
 import { errorMessage, xhrPost, xhrPut } from '../../services/xhr.js';
 import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
@@ -44,7 +43,6 @@ interface SavedSearchActions {
   jobsData: {
     getJobs: () => Promise<void>;
     getJobsData: (params?: Record<string, unknown>) => Promise<void>;
-    setJobRunning: (jobId: string, running: boolean) => void;
   };
 }
 
@@ -282,6 +280,11 @@ function SavedSearchRow({ job, locale, t, onRun, onEdit, onRepair, onClone, onSt
   );
 }
 
+/** How often the list is re-fetched while a "Run now" is in progress. */
+const RUN_POLL_INTERVAL_MS = 3000;
+/** Stop watching a run after this long; the list still shows its state on the next load. */
+const RUN_WATCH_LIMIT_MS = 10 * 60 * 1000;
+
 export default function SavedSearchesIndex() {
   const t = useTranslation();
   const locale = useLocale();
@@ -308,8 +311,11 @@ export default function SavedSearchesIndex() {
     }
   };
 
-  const pendingJobIdRef = useRef<string | null>(null);
-  const evtSourceRef = useRef<{ start: () => void; close: () => void } | null>(null);
+  // The search started with "Run now", watched until it finishes so the user gets a toast. There is
+  // no push channel: the list is re-fetched on a short interval, and only while such a run is open,
+  // so an idle tab makes no requests and never holds a connection to the server.
+  const [pendingJobId, setPendingJobId] = useState<string | null>(null);
+  const pendingPollsRef = useRef(0);
 
   const loadData = () => {
     actions.jobsData.getJobsData({
@@ -330,35 +336,30 @@ export default function SavedSearchesIndex() {
   }, [page, sortField, sortDir, freeTextFilter, activityFilter]);
 
   useEffect(() => {
-    const stream = createAuthenticatedEventStream('/api/jobs/events', {
-      onEvent: (event: { type: string; data?: string }) => {
-        if (event.type !== 'jobStatus') return;
-        try {
-          const data = JSON.parse(event.data || '{}') as { jobId?: string; running?: boolean };
-          if (data.jobId) {
-            actions.jobsData.setJobRunning(data.jobId, Boolean(data.running));
-            if (data.running === false) {
-              loadDataRef.current();
-              if (pendingJobIdRef.current === data.jobId) {
-                Toast.success(t('jobs.toastFinished'));
-                pendingJobIdRef.current = null;
-              }
-            }
-          }
-        } catch {
-          // Ignore malformed events; the next valid status event will repair the row.
-        }
-      },
-    });
-    evtSourceRef.current = stream;
-    stream.start();
+    if (pendingJobId == null) return undefined;
+    pendingPollsRef.current = 0;
+    const startedAt = Date.now();
+    const timer = setInterval(() => {
+      if (Date.now() - startedAt > RUN_WATCH_LIMIT_MS) {
+        setPendingJobId(null);
+        return;
+      }
+      pendingPollsRef.current += 1;
+      loadDataRef.current();
+    }, RUN_POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [pendingJobId]);
 
-    return () => {
-      stream.close();
-      evtSourceRef.current = null;
-      pendingJobIdRef.current = null;
-    };
-  }, [actions.jobsData, t]);
+  useEffect(() => {
+    // The fetch issued with the run request can land before the run has marked itself running, so
+    // only a poll taken after that is trusted to say the run is over.
+    if (pendingJobId == null || pendingPollsRef.current === 0) return;
+    const job = ((jobsData?.result || []) as readonly Job[]).find((candidate) => candidate.id === pendingJobId);
+    if (job && job.running !== true) {
+      Toast.success(t('jobs.toastFinished'));
+      setPendingJobId(null);
+    }
+  }, [jobsData?.result, pendingJobId, t]);
 
   const handleFilterChange = useMemo(() => debounce((value: string) => setFreeTextFilter(value), 500), []);
 
@@ -387,7 +388,7 @@ export default function SavedSearchesIndex() {
       } else {
         Toast.info(t('jobs.toastRunRequested'));
       }
-      pendingJobIdRef.current = jobId;
+      setPendingJobId(jobId);
       loadData();
     } catch (error) {
       const status = (error as { status?: number })?.status;

@@ -15,7 +15,6 @@ import type {
   NotificationChannelEffects,
 } from '../../../../../services/state/notificationState.js';
 import { errorMessage } from '../../../../../services/xhr';
-import { triggerTestNotification } from '../../../../../services/notification/browserNotification';
 import { useScreenWidth } from '../../../../../hooks/screenWidth.js';
 import { useTranslation } from '../../../../../services/i18n/i18n.jsx';
 import {
@@ -270,10 +269,6 @@ export default function NotificationChannelEditor({
     const problems = validateChannel(draft, adapterConfig, t);
     if (problems.length > 0) {
       setValidationMessage(problems.join('<br/>'));
-      return;
-    }
-    if (draft.adapterId === 'browser') {
-      triggerTestNotification(t, setSuccessMessage, setValidationMessage);
       return;
     }
     try {

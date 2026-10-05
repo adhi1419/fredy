@@ -31,13 +31,13 @@ describe('authenticated request policy', () => {
     expect(options.headers.get('Accept')).toBe('application/json');
   });
 
-  it('forces token refresh on a reconnecting request without touching cookies', async () => {
+  it('forces token refresh on request without touching cookies', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response('{}'));
     const tokenGetter = vi.fn().mockResolvedValueOnce('initial').mockResolvedValueOnce('refreshed');
     const policy = createAuthenticatedRequestPolicy({ fetchImpl, tokenGetter });
 
-    await policy.request('/api/jobs/events', { headers: { Accept: 'text/event-stream' } }, false);
-    await policy.request('/api/jobs/events', { headers: { Accept: 'text/event-stream' } }, true);
+    await policy.request('/api/jobs', {}, false);
+    await policy.request('/api/jobs', {}, true);
 
     expect(tokenGetter).toHaveBeenNthCalledWith(1, false);
     expect(tokenGetter).toHaveBeenNthCalledWith(2, true);
@@ -57,7 +57,7 @@ describe('authenticated request policy', () => {
     expect(options.headers.has('Authorization')).toBe(false);
   });
 
-  it('applies distinct HTTP and SSE unauthorized rules and dispatches the stable event', () => {
+  it('applies the HTTP unauthorized rule and dispatches the stable event', () => {
     const eventTypes: string[] = [];
     const eventTarget = {
       dispatchEvent: vi.fn((event: Event) => {
@@ -65,14 +65,10 @@ describe('authenticated request policy', () => {
         return true;
       }),
     };
-    const policy = createAuthenticatedRequestPolicy({ eventTarget });
-
     expect(dispatchHttpUnauthorized(401, undefined, eventTarget)).toBe(true);
     expect(dispatchHttpUnauthorized(403, 'not allowed', eventTarget)).toBe(true);
     expect(dispatchHttpUnauthorized(403, 'forbidden', eventTarget)).toBe(false);
-    expect(policy.handleSse(403)).toBe(true);
-    expect(policy.handleSse(404)).toBe(false);
-    expect(eventTypes).toEqual(['fredy:unauthorized', 'fredy:unauthorized', 'fredy:unauthorized']);
+    expect(eventTypes).toEqual(['fredy:unauthorized', 'fredy:unauthorized']);
   });
 
   it('does not mutate caller headers when adding the bearer', () => {

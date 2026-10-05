@@ -12,10 +12,10 @@ This guide describes the implementation in this repository. The customer README 
 
 Fredy has two hosted surfaces:
 
-* GitHub Pages serves the hash-routed React SPA at `https://adhi1419.github.io/fredy/`.
-* Cloud Run serves the API at `https://fredy-vh63vbsl2q-ew.a.run.app`. The API exposes `/api/**` and `/health`; it does not serve the SPA or return frontend HTML for unknown paths.
-* Firestore is the only persistent application store. The container's `/conf` path is a Docker configuration volume for self-hosted containers, not the hosted application's data store.
-* Firebase Authentication owns the browser session. The browser sends a refreshed Firebase ID token in `Authorization: Bearer <token>`. Fredy does not use a Fredy cookie or a server-side browser session.
+- GitHub Pages serves the hash-routed React SPA at `https://adhi1419.github.io/fredy/`.
+- Cloud Run serves the API at `https://fredy-vh63vbsl2q-ew.a.run.app`. The API exposes `/api/**` and `/health`; it does not serve the SPA or return frontend HTML for unknown paths.
+- Firestore is the only persistent application store. The container's `/conf` path is a Docker configuration volume for self-hosted containers, not the hosted application's data store.
+- Firebase Authentication owns the browser session. The browser sends a refreshed Firebase ID token in `Authorization: Bearer <token>`. Fredy does not use a Fredy cookie or a server-side browser session.
 
 The hosted API's machine scheduler is separate from browser authentication. When `EXTERNAL_SCHEDULER=true`, Cloud Scheduler calls `POST /api/trigger` with `X-Trigger-Token`. The request stays open until the run finishes so scale-to-zero Cloud Run retains request CPU while the scrape executes.
 
@@ -69,19 +69,19 @@ A verified token that is absent from `allowed_users` receives `403` with `{ "rea
 
 `GET /api/auth/config` is public. It returns the public web configuration from `FIREBASE_WEB_CONFIG`; it does not establish authorization. `GET /api/auth/me` and the user routes require the bearer hook. Backup, debug, and price-tracking administration routes require the bearer hook and the admin hook.
 
-The browser uses `browserLocalPersistence` and waits for `authStateReady()` before login actions. HTTP requests omit cookies and attach a current or refreshed Firebase token. SSE uses authenticated `fetch`, refreshes the token on reconnect, and dispatches an unauthorized event when its response is `401` or `403`.
+The browser uses `browserLocalPersistence` and waits for `authStateReady()` before login actions. HTTP requests omit cookies and attach a current or refreshed Firebase token.
 
 ### Firestore authority
 
 Firestore implementations live under `lib/services/storage/firestore/`. The top-level collections defined by the repository are:
 
-* `settings`
-* `users`
-* `jobs`
-* `configured_adapters`
-* `listings`
-* `watch_list`
-* `allowed_users` for the authentication allowlist
+- `settings`
+- `users`
+- `jobs`
+- `configured_adapters`
+- `listings`
+- `watch_list`
+- `allowed_users` for the authentication allowlist
 
 Firestore operations are asynchronous. Await storage calls, and use the contract suite when changing storage behavior. The emulator is safe for disposable local data. The real project is not.
 
@@ -98,7 +98,7 @@ Max-Age: 86400
 Vary: Origin
 ```
 
-An approved preflight returns `204` with no body. A different origin is rejected without reflecting that origin. An unknown API path returns JSON `404 {"error":"Not found"}`. The SSE route copies the approved CORS headers to its raw response before hijacking the connection.
+An approved preflight returns `204` with no body. A different origin is rejected without reflecting that origin. An unknown API path returns JSON `404 {"error":"Not found"}`.
 
 The wire contract is frozen by [`doc/contracts/first-rust-wire.md`](../doc/contracts/first-rust-wire.md), [`test/wireContracts.json`](../test/wireContracts.json), and the API tests. Preserve the observable contract rather than coupling a future implementation to Fastify internals.
 
@@ -106,11 +106,11 @@ The wire contract is frozen by [`doc/contracts/first-rust-wire.md`](../doc/contr
 
 Install and use:
 
-* Node.js `>=22.22.0`, as required by `package.json` and `.nvmrc`.
-* The Bun version pinned in `.bun-version` for frontend tooling.
-* Docker and Docker Compose for the Firestore emulator and Docker smoke test.
-* Rust toolchain `1.85.1` with `rustfmt` and `clippy` only when changing `rust/health-route`.
-* Google Cloud and Firebase access only for real Firebase tests, bootstrap, or deployment. The repository does not contain a project ID, service account, secret, or Firebase OAuth client value.
+- Node.js `>=22.22.0`, as required by `package.json` and `.nvmrc`.
+- The Bun version pinned in `.bun-version` for frontend tooling.
+- Docker and Docker Compose for the Firestore emulator and Docker smoke test.
+- Rust toolchain `1.85.1` with `rustfmt` and `clippy` only when changing `rust/health-route`.
+- Google Cloud and Firebase access only for real Firebase tests, bootstrap, or deployment. The repository does not contain a project ID, service account, secret, or Firebase OAuth client value.
 
 Check the pinned versions before installing dependencies:
 
@@ -176,11 +176,11 @@ The API health check is available at `http://localhost:9998/health`. Remove the 
 
 The Firestore emulator covers storage behavior. It does not validate:
 
-* Google popup sign-in.
-* Firebase ID-token issuance and refresh.
-* Firebase Authentication Authorized Domains.
-* Cross-origin browser persistence between GitHub Pages and the Firebase auth domain.
-* Production ADC, Cloud Run service identity, or production CORS.
+- Google popup sign-in.
+- Firebase ID-token issuance and refresh.
+- Firebase Authentication Authorized Domains.
+- Cross-origin browser persistence between GitHub Pages and the Firebase auth domain.
+- Production ADC, Cloud Run service identity, or production CORS.
 
 For an end-to-end Firebase check, use a real Firebase web configuration and a real allowlisted Google account in a non-production project. `FIREBASE_AUTH_EMULATOR_HOST` is recognized by the Firebase Admin SDK, but Compose and the repository's standard test workflows start only the Firestore emulator. Do not describe emulator tests as proof of hosted authentication.
 
@@ -190,25 +190,25 @@ For an end-to-end Firebase check, use a real Firebase web configuration and a re
 
 The following variables are read by the current code or deployment workflows. Values marked as placeholders are intentionally not present in this repository.
 
-| Variable | Required when | Meaning and safe handling |
-| --- | --- | --- |
-| `NODE_ENV` | Production runtime | `production` enables strict startup checks. Other values use development behavior. |
-| `PORT` | Cloud Run supplies it | Effective API port is `Number(PORT) || settings.port || 9998`. Cloud Run's value wins. |
-| `FIREBASE_WEB_CONFIG` | Production runtime | Valid JSON containing string `projectId`, `appId`, and `apiKey`. This is public Firebase web-client configuration, not a service-account key. Supply it through the deployment environment, not source control. |
-| `FRONTEND_ORIGIN` | Production runtime | Exact browser origin, currently `https://adhi1419.github.io`, without `/fredy/`. It is the CORS allowlist value. |
-| `FRONTEND_URL` | Hosted notification links | Full Pages URL used when notifications link back to Fredy, currently `https://adhi1419.github.io/fredy/`. |
-| `FIRESTORE_EMULATOR_HOST` | Local emulator only | Emulator host and port, for example `127.0.0.1:8144`. Production startup rejects it. |
-| `FIRESTORE_PROJECT_ID` | Local emulator or explicit Firestore selection | Project label used by the Firestore client. Local tests use a disposable value. It is not a credential. |
-| `FIREBASE_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT` | Firebase Admin project selection | Optional project-selection hints for Firebase Admin. They do not replace ADC. |
-| `FIREBASE_AUTH_EMULATOR_HOST` | Optional local Firebase Auth emulator | Native Firebase Admin emulator endpoint. The standard Compose and CI paths do not start this emulator. |
-| `EXTERNAL_SCHEDULER` | Hosted scheduler mode | Set to the exact string `true` to disable the internal timer and scrape-on-boot. |
-| `TRIGGER_TOKEN` | Hosted scheduler mode | Secret shared with Cloud Scheduler through `X-Trigger-Token`. Never put it in a repository variable, source file, provider source, or job document. |
-| `GEMINI_API_KEY` | Optional inquiry-message drafting | Secret. The current Cloud Run bootstrap attaches it from Secret Manager only when that secret exists. Without it, the feature stays disabled. |
-| `GEMINI_MODEL` | Optional message-generator override | Model name override. The source default is `gemini-3.5-flash-lite`. |
-| `GEMINI_TIMEOUT_MS` | Optional message-generator override | Timeout in milliseconds. The source default is `120000`. |
-| `VITE_API_BASE_URL` | Pages frontend build | Build-time API origin. The deploy workflow passes `CLOUD_RUN_API_ORIGIN`; local Vite leaves it empty and uses its `/api` proxy. |
-| `VITE_PAGES` | Pages frontend build | Set to `true` to build with the `/fredy/` base path. |
-| `CLOUD_RUN_API_ORIGIN` | GitHub Actions Pages deployment | Repository variable containing the Cloud Run origin without an API path. The workflow maps it to `VITE_API_BASE_URL`. |
+| Variable                                        | Required when                                  | Meaning and safe handling                                                                                                                                                                                       |
+| ----------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                      | Production runtime                             | `production` enables strict startup checks. Other values use development behavior.                                                                                                                              |
+| `PORT`                                          | Cloud Run supplies it                          | Effective API port is `Number(PORT)                                                                                                                                                                             |     | settings.port |     | 9998`. Cloud Run's value wins. |
+| `FIREBASE_WEB_CONFIG`                           | Production runtime                             | Valid JSON containing string `projectId`, `appId`, and `apiKey`. This is public Firebase web-client configuration, not a service-account key. Supply it through the deployment environment, not source control. |
+| `FRONTEND_ORIGIN`                               | Production runtime                             | Exact browser origin, currently `https://adhi1419.github.io`, without `/fredy/`. It is the CORS allowlist value.                                                                                                |
+| `FRONTEND_URL`                                  | Hosted notification links                      | Full Pages URL used when notifications link back to Fredy, currently `https://adhi1419.github.io/fredy/`.                                                                                                       |
+| `FIRESTORE_EMULATOR_HOST`                       | Local emulator only                            | Emulator host and port, for example `127.0.0.1:8144`. Production startup rejects it.                                                                                                                            |
+| `FIRESTORE_PROJECT_ID`                          | Local emulator or explicit Firestore selection | Project label used by the Firestore client. Local tests use a disposable value. It is not a credential.                                                                                                         |
+| `FIREBASE_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT` | Firebase Admin project selection               | Optional project-selection hints for Firebase Admin. They do not replace ADC.                                                                                                                                   |
+| `FIREBASE_AUTH_EMULATOR_HOST`                   | Optional local Firebase Auth emulator          | Native Firebase Admin emulator endpoint. The standard Compose and CI paths do not start this emulator.                                                                                                          |
+| `EXTERNAL_SCHEDULER`                            | Hosted scheduler mode                          | Set to the exact string `true` to disable the internal timer and scrape-on-boot.                                                                                                                                |
+| `TRIGGER_TOKEN`                                 | Hosted scheduler mode                          | Secret shared with Cloud Scheduler through `X-Trigger-Token`. Never put it in a repository variable, source file, provider source, or job document.                                                             |
+| `GEMINI_API_KEY`                                | Optional inquiry-message drafting              | Secret. The current Cloud Run bootstrap attaches it from Secret Manager only when that secret exists. Without it, the feature stays disabled.                                                                   |
+| `GEMINI_MODEL`                                  | Optional message-generator override            | Model name override. The source default is `gemini-3.5-flash-lite`.                                                                                                                                             |
+| `GEMINI_TIMEOUT_MS`                             | Optional message-generator override            | Timeout in milliseconds. The source default is `120000`.                                                                                                                                                        |
+| `VITE_API_BASE_URL`                             | Pages frontend build                           | Build-time API origin. The deploy workflow passes `CLOUD_RUN_API_ORIGIN`; local Vite leaves it empty and uses its `/api` proxy.                                                                                 |
+| `VITE_PAGES`                                    | Pages frontend build                           | Set to `true` to build with the `/fredy/` base path.                                                                                                                                                            |
+| `CLOUD_RUN_API_ORIGIN`                          | GitHub Actions Pages deployment                | Repository variable containing the Cloud Run origin without an API path. The workflow maps it to `VITE_API_BASE_URL`.                                                                                           |
 
 The stored `settings` collection contains application settings such as `interval`, `port`, `workingHours`, and `demoMode`. Settings are JSON values stored in Firestore. The public settings route removes non-serializable secret settings before returning data to clients. Do not treat a browser-visible settings response as a secret store.
 
@@ -235,16 +235,16 @@ Manage allowlist entries through an operator-controlled Firestore procedure or s
 
 Run the smallest applicable check first, then the full surface checks before review.
 
-| Change | Required checks |
-| --- | --- |
-| Frontend TypeScript or UI behavior | `bun run typecheck:frontend`, `bun run test:frontend`, `bun run format:check`, `bun run lint`, and `bun run build:frontend` |
-| Backend behavior | `TEST_MODE=offline yarn test:offline` or the focused Vitest file, followed by `yarn lint` and `yarn format:check` |
-| Firestore storage contract | Start the emulator, then `FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract` |
-| Dockerfile, Compose, browser binary, or image behavior | `./docker-test.sh` |
-| Deployment workflow or toolchain | `bun run test:foundation` |
-| Rust health route | `cargo fmt --check`, `cargo check --locked`, `cargo test --locked`, and `cargo clippy --locked --all-targets -- -D warnings` in `rust/health-route` |
-| Provider parser | Provider test under `test/provider/`, preferably with `TEST_MODE=offline` |
-| Notification adapter | Adapter test under `test/notification/` and the shipped-adapter contract test |
+| Change                                                 | Required checks                                                                                                                                     |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend TypeScript or UI behavior                     | `bun run typecheck:frontend`, `bun run test:frontend`, `bun run format:check`, `bun run lint`, and `bun run build:frontend`                         |
+| Backend behavior                                       | `TEST_MODE=offline yarn test:offline` or the focused Vitest file, followed by `yarn lint` and `yarn format:check`                                   |
+| Firestore storage contract                             | Start the emulator, then `FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 yarn test:contract`                                                                |
+| Dockerfile, Compose, browser binary, or image behavior | `./docker-test.sh`                                                                                                                                  |
+| Deployment workflow or toolchain                       | `bun run test:foundation`                                                                                                                           |
+| Rust health route                                      | `cargo fmt --check`, `cargo check --locked`, `cargo test --locked`, and `cargo clippy --locked --all-targets -- -D warnings` in `rust/health-route` |
+| Provider parser                                        | Provider test under `test/provider/`, preferably with `TEST_MODE=offline`                                                                           |
+| Notification adapter                                   | Adapter test under `test/notification/` and the shipped-adapter contract test                                                                       |
 
 ### Backend test modes
 
@@ -289,10 +289,10 @@ cargo clippy --locked --all-targets -- -D warnings
 
 `.github/workflows/deploy.yml` is the hosted deployment workflow. A change-detection job starts the applicable surfaces in parallel:
 
-* Backend changes build or promote the Cloud Run API image.
-* Frontend changes build and publish the GitHub Pages artifact.
-* A manual workflow dispatch enables both surfaces.
-* Test-only and documentation-only changes do not match the production deployment filters.
+- Backend changes build or promote the Cloud Run API image.
+- Frontend changes build and publish the GitHub Pages artifact.
+- A manual workflow dispatch enables both surfaces.
+- Test-only and documentation-only changes do not match the production deployment filters.
 
 The pull-request workflow builds the real backend image and, for same-repository pull requests, publishes it to GHCR as `candidate-<backend-context-hash>`. The hash is computed by [`scripts/backend-image-key.sh`](../scripts/backend-image-key.sh) from the Docker inputs. A push to `main` recomputes the hash, promotes the exact matching candidate to the immutable Artifact Registry tag `<github.sha>`, and falls back to a Buildx build using the shared GHCR cache when no exact candidate exists.
 
@@ -332,13 +332,13 @@ It creates or finds the GitHub deployer identity and Workload Identity Federatio
 
 The production image:
 
-* Starts from `node:22-trixie-slim`.
-* Installs the CloakBrowser runtime and `tini`.
-* Installs backend production dependencies from `package.json` and `yarn.lock`.
-* Includes `lib/` and `index.js`, not the SPA source.
-* Listens on `0.0.0.0` and uses Cloud Run's `PORT` when supplied.
-* Runs `node index.js` through `tini`.
-* Exposes `/health` as the health signal.
+- Starts from `node:22-trixie-slim`.
+- Installs the CloakBrowser runtime and `tini`.
+- Installs backend production dependencies from `package.json` and `yarn.lock`.
+- Includes `lib/` and `index.js`, not the SPA source.
+- Listens on `0.0.0.0` and uses Cloud Run's `PORT` when supplied.
+- Runs `node index.js` through `tini`.
+- Exposes `/health` as the health signal.
 
 CloakBrowser remains part of the API runtime because browser-based providers depend on it. A generic Chromium image is not an equivalent replacement.
 
@@ -346,12 +346,12 @@ CloakBrowser remains part of the API runtime because browser-based providers dep
 
 With `EXTERNAL_SCHEDULER=true`:
 
-* Fredy does not start its internal timer.
-* Fredy does not perform the startup scrape.
-* `POST /api/trigger` is the scrape entry point.
-* The trigger requires `X-Trigger-Token` and uses constant-time comparison.
-* Missing configuration returns `404`, a wrong token returns `403`, and a failed run returns `500`.
-* A valid request outside working hours returns success after skipping job execution.
+- Fredy does not start its internal timer.
+- Fredy does not perform the startup scrape.
+- `POST /api/trigger` is the scrape entry point.
+- The trigger requires `X-Trigger-Token` and uses constant-time comparison.
+- Missing configuration returns `404`, a wrong token returns `403`, and a failed run returns `500`.
+- A valid request outside working hours returns success after skipping job execution.
 
 Without external-scheduler mode, the internal scheduler starts when the configured interval is positive and performs an initial run that respects working hours. The interval is read again for later ticks, so an interval change takes effect without a restart.
 
@@ -379,11 +379,11 @@ curl --include "$API_ORIGIN/not-a-route"
 
 Expected checks:
 
-* `/health` returns `200` and `{"status":"ok"}`.
-* The approved Pages origin receives `Access-Control-Allow-Origin: https://adhi1419.github.io` on an origin-bearing request.
-* `/api/auth/config` is public and reports whether the web config is enabled. Its web config is not authorization.
-* `/api/auth/me` without a bearer token returns `401`.
-* An unknown path returns JSON `404`, not the SPA.
+- `/health` returns `200` and `{"status":"ok"}`.
+- The approved Pages origin receives `Access-Control-Allow-Origin: https://adhi1419.github.io` on an origin-bearing request.
+- `/api/auth/config` is public and reports whether the web config is enabled. Its web config is not authorization.
+- `/api/auth/me` without a bearer token returns `401`.
+- An unknown path returns JSON `404`, not the SPA.
 
 For a preflight check:
 
@@ -458,9 +458,9 @@ If the Pages build fails, Cloud Run remains independently deployable because `pa
 
 Add a provider module under `lib/provider/` and a focused test under `test/provider/`. The module must export:
 
-* `metaInformation` with a unique stable `id`, display `name`, and `baseUrl`. The optional `countries` field accepts lowercase ISO alpha-2 values and defaults to `['de']`; set it explicitly for non-German or multi-country providers.
-* A static `config` template with `url: null`, required fields, normalization, and any provider-specific extraction hooks.
-* `createConfig(sourceConfig, blocklist)`, returning a fresh run-scoped configuration with the source URL, enabled state, and blocklist filter.
+- `metaInformation` with a unique stable `id`, display `name`, and `baseUrl`. The optional `countries` field accepts lowercase ISO alpha-2 values and defaults to `['de']`; set it explicitly for non-German or multi-country providers.
+- A static `config` template with `url: null`, required fields, normalization, and any provider-specific extraction hooks.
+- `createConfig(sourceConfig, blocklist)`, returning a fresh run-scoped configuration with the source URL, enabled state, and blocklist filter.
 
 Keep providers stateless. Two jobs can run concurrently, so never keep a job URL, blocklist, parser document, or other run-specific value at module scope. Use the existing provider pattern in [`CONTRIBUTING.md`](../CONTRIBUTING.md) and the contract in [`doc/contracts/plugin-contract.md`](../doc/contracts/plugin-contract.md).
 
@@ -473,7 +473,7 @@ If a new provider country is added, add its map bounding box in `ui/src/componen
 Add the adapter module under `lib/notification/adapter/`, a same-name Markdown usage description, and tests under `test/notification/`. The module must export a declarative `config` and a `send` function with this payload:
 
 ```javascript
-send({ serviceName, newListings, notificationConfig, jobKey, baseUrl })
+send({ serviceName, newListings, notificationConfig, jobKey, baseUrl });
 ```
 
 Export `sendPriceChange` when the adapter has a native price-change representation. The dispatcher falls back to `send` with the price-change text folded into the listing title when the optional function is absent.
@@ -492,10 +492,10 @@ TEST_MODE=offline npx vitest run test/notification
 
 `rust/health-route` is a separately executable parity implementation. It currently covers:
 
-* `GET /health`.
-* API-only JSON `404` behavior for unrelated paths and non-GET health requests.
-* Public `GET /api/auth/config` response parity, including absent and invalid web configuration.
-* Exact-origin CORS behavior for the public auth-config surface.
+- `GET /health`.
+- API-only JSON `404` behavior for unrelated paths and non-GET health requests.
+- Public `GET /api/auth/config` response parity, including absent and invalid web configuration.
+- Exact-origin CORS behavior for the public auth-config surface.
 
 It does not verify Firebase bearer tokens, authorize protected routes, replace provider/browser paths, or become the Cloud Run process. The Rust binary is not copied into the production Docker image, is not started by `index.js`, and is not included in production deployment filters. Node remains production-authoritative until an explicit route cutover is implemented, tested, and deployed.
 
@@ -507,13 +507,13 @@ A future route cutover must preserve Firebase bearer transport, exact-origin COR
 
 Use source and executable tests over older narrative material when they disagree. The primary references for this guide are:
 
-* [`AGENTS.md`](../AGENTS.md) for repository commands and architecture conventions.
-* [`package.json`](../package.json), `.bun-version`, `bunfig.toml`, `bun.lock`, and `yarn.lock` for toolchain and scripts.
-* [`index.js`](../index.js), [`lib/api/api.js`](../lib/api/api.js), and [`lib/services/jobs/jobExecutionService.js`](../lib/services/jobs/jobExecutionService.js) for startup, routing, and execution authority.
-* [`lib/services/security/firebaseIdentity.js`](../lib/services/security/firebaseIdentity.js), [`lib/api/security.js`](../lib/api/security.js), and Firestore storage modules for authentication and persistence.
-* [`Dockerfile`](../Dockerfile), [`docker-compose.yml`](../docker-compose.yml), and [`docker-test.sh`](../docker-test.sh) for container and emulator behavior.
-* [`.github/workflows/pr.yml`](../.github/workflows/pr.yml), [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), and [`scripts/backend-image-key.sh`](../scripts/backend-image-key.sh) for CI and hosted deployment behavior.
-* [`doc/contracts/cloud-run-runtime.md`](../doc/contracts/cloud-run-runtime.md), [`doc/contracts/first-rust-wire.md`](../doc/contracts/first-rust-wire.md), and [`doc/contracts/plugin-contract.md`](../doc/contracts/plugin-contract.md) for frozen runtime and extension boundaries.
+- [`AGENTS.md`](../AGENTS.md) for repository commands and architecture conventions.
+- [`package.json`](../package.json), `.bun-version`, `bunfig.toml`, `bun.lock`, and `yarn.lock` for toolchain and scripts.
+- [`index.js`](../index.js), [`lib/api/api.js`](../lib/api/api.js), and [`lib/services/jobs/jobExecutionService.js`](../lib/services/jobs/jobExecutionService.js) for startup, routing, and execution authority.
+- [`lib/services/security/firebaseIdentity.js`](../lib/services/security/firebaseIdentity.js), [`lib/api/security.js`](../lib/api/security.js), and Firestore storage modules for authentication and persistence.
+- [`Dockerfile`](../Dockerfile), [`docker-compose.yml`](../docker-compose.yml), and [`docker-test.sh`](../docker-test.sh) for container and emulator behavior.
+- [`.github/workflows/pr.yml`](../.github/workflows/pr.yml), [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), and [`scripts/backend-image-key.sh`](../scripts/backend-image-key.sh) for CI and hosted deployment behavior.
+- [`doc/contracts/cloud-run-runtime.md`](../doc/contracts/cloud-run-runtime.md), [`doc/contracts/first-rust-wire.md`](../doc/contracts/first-rust-wire.md), and [`doc/contracts/plugin-contract.md`](../doc/contracts/plugin-contract.md) for frozen runtime and extension boundaries.
 
 The following are intentionally unresolved until an operator verifies live infrastructure:
 

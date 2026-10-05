@@ -756,8 +756,6 @@
   "notification.save": "Kaydet",
   "notification.trySuccess": "Görünüşe göre işe yaradı! Lütfen servisinizi kontrol edin.",
   "notification.tryError": "Bu işe yaramadı :-( Şu hatayı aldım: {{error}}",
-  "notification.browserPermissionDenied": "Tarayıcı bildirimleri engellendi. Bu kanalı kullanmak için lütfen tarayıcınızın site ayarlarından bildirimlere izin verin.",
-  "notification.browserNotSupported": "Tarayıcınız veya mevcut bağlantınız masaüstü bildirimlerini desteklemiyor. Lütfen HTTPS veya localhost üzerinden modern bir tarayıcı kullandığınızdan emin olun.",
   "notification.errorTitle": "Hata",
   "notification.successTitle": "Harika!",
   "notification.validationAllMandatory": "Tüm alanlar zorunludur ve doldurulmalıdır.",
