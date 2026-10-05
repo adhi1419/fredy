@@ -142,6 +142,7 @@
   "home.mapClearArea": "Ausschnitt aufheben",
   "home.mapShowAll": "{{count}} ausgewählt · Alle zeigen",
   "home.mapSelectionEmpty": "Zur Auswahl auf der Karte gibt es hier keine Wohnung.",
+  "home.mapAreaEmpty": "Keine Wohnungen in diesem Kartenausschnitt.",
   "home.showingOf": "{{loaded}} von {{total}} Wohnungen angezeigt",
   "home.loadMore": "Mehr laden",
   "home.loadingMore": "Wird geladen …",

@@ -62,6 +62,7 @@ export interface HomeBbox {
 export type HomeViewStatePatch = Partial<HomeViewState>;
 
 export interface HomeQueryState {
+  view?: HomeView;
   q?: string | null;
   activity?: HomeActivity;
   providerIds?: readonly string[];
@@ -359,7 +360,7 @@ export function readHomeViewState(
     providerIds: normalizeProviderIds(providerValues),
     sort,
     dir: first('dir', 'sortdir') ?? sortOption?.direction ?? DEFAULT_DIRECTION,
-    bbox: parseHomeBbox(first('bbox')),
+    bbox: view === 'map' ? parseHomeBbox(first('bbox')) : null,
   };
 }
 
@@ -408,7 +409,15 @@ export function writeHomeViewState(
     else next.set('dir', state.dir);
     next.delete('sortdir');
   }
-  if ('bbox' in patch) {
+  // The map area is a property of the map view and of one result set: leaving the map, or picking
+  // another activity, search or provider set, drops it. Otherwise the Quiet feed would be silently
+  // geo-filtered by a box the user cannot see.
+  const leavesArea =
+    (('view' in patch || 'activity' in patch || 'q' in patch || 'providerIds' in patch) && !('bbox' in patch)) ||
+    state.view !== 'map';
+  if (leavesArea) {
+    next.delete('bbox');
+  } else if ('bbox' in patch) {
     const serialized = formatHomeBbox(state.bbox);
     if (serialized == null) next.delete('bbox');
     else next.set('bbox', serialized);
@@ -433,7 +442,8 @@ export function homeQueryFromState(state: HomeQueryState, page = 1): HomeQueryPa
     filter: {
       statusFilter: state.activity ?? DEFAULT_ACTIVITY,
       providerFilter: providerParamFromIds(state.providerIds ?? []),
-      bbox: formatHomeBbox(state.bbox),
+      // Only the map view asks for a box; a stale one in a feed URL is ignored, not applied.
+      bbox: state.view === 'map' ? formatHomeBbox(state.bbox) : null,
     },
   };
 }

@@ -29,10 +29,10 @@ const listing = (id: string | undefined, latitude: number | null, longitude: num
 describe('Home list and map convergence', () => {
   it('switches representation without dropping query, activity, provider, sort, or map area state', () => {
     const initial = new URLSearchParams(
-      'q=Kreuzberg&activity=applied&provider=immoscout%2Cimmowelt&sort=price&dir=asc&bbox=13.3,52.4,13.5,52.6&source=legacy',
+      'view=map&q=Kreuzberg&activity=applied&provider=immoscout%2Cimmowelt&sort=price&dir=asc&bbox=13.3,52.4,13.5,52.6&source=legacy',
     );
 
-    const mapParams = writeHomeViewState(initial, { view: 'map' });
+    const mapParams = writeHomeViewState(initial, { sort: 'price' });
     const mapState = readHomeViewState(mapParams);
     expect(mapState).toMatchObject({
       view: 'map',
@@ -46,7 +46,8 @@ describe('Home list and map convergence', () => {
     expect(mapParams.get('source')).toBe('legacy');
 
     const listParams = writeHomeViewState(mapParams, { view: 'feed' });
-    expect(readHomeViewState(listParams)).toMatchObject({ ...mapState, view: 'feed' });
+    // The map area belongs to the map; the feed comes back unfiltered by it.
+    expect(readHomeViewState(listParams)).toMatchObject({ ...mapState, view: 'feed', bbox: null });
     expect(listParams.has('view')).toBe(false);
   });
 

@@ -505,7 +505,8 @@ function HomeMap({
       const label = place.label || place.address;
       element.setAttribute('aria-label', label);
       element.title = label;
-      return new maplibregl.Marker({ element, anchor: 'center' })
+      // A pin points at its place, so it hangs from its tip rather than sitting on its centre.
+      return new maplibregl.Marker({ element, anchor: 'bottom' })
         .setLngLat([place.coords.lng, place.coords.lat])
         .addTo(map);
     });
@@ -749,13 +750,20 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
     return () => observer.disconnect();
   }, [hasMore, loadMore, loading, values.view]);
 
-  // A new query means a new result; whatever pin was picked belongs to the old one.
+  // A new query means a new result; whatever pin was picked belongs to the old one. The view is
+  // in here too: a selection made on the map must not narrow the Quiet feed.
   useEffect(() => {
     setSelectedIds(null);
     setHoveredId(null);
-  }, [query]);
+  }, [query, values.view]);
 
   const onBboxChange = useCallback((bbox: HomeBbox | null) => updateState({ bbox }), [updateState]);
+  // Once the map view has rendered, a refetch must not unmount it: a pan would otherwise tear down
+  // the map it came from and fit a fresh one. Only the list dims while the box's rows load.
+  const mapMountedRef = useRef(false);
+  if (values.view === 'map' && !loading && allListings.length > 0) mapMountedRef.current = true;
+  if (values.view !== 'map') mapMountedRef.current = false;
+  const mapStays = values.view === 'map' && mapMountedRef.current;
 
   // A card overflow action mutates the one lifecycle through the canonical action, then reloads the
   // current query so the moved listing leaves (or joins) the active scope without a second source of
@@ -1020,8 +1028,8 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
         </div>
       </div>
 
-      {loading && <div className="home__state">{t('home.loading')}</div>}
-      {!loading && listings.length === 0 && (
+      {loading && !mapStays && <div className="home__state">{t('home.loading')}</div>}
+      {!loading && listings.length === 0 && !mapStays && (
         <section className="home__empty">
           <h2>{t('home.emptyTitle')}</h2>
           <p>{t('home.emptyDescription')}</p>
@@ -1040,9 +1048,13 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
           ))}
         </section>
       )}
-      {!loading && allListings.length > 0 && values.view === 'map' && (
+      {(mapStays || (!loading && allListings.length > 0)) && values.view === 'map' && (
         <div className="home__split">
-          <section className="home__split-list" aria-label={t('home.feedAria')}>
+          <section
+            className={`home__split-list${loading ? ' home__split-list--refreshing' : ''}`}
+            aria-label={t('home.feedAria')}
+            aria-busy={loading || undefined}
+          >
             {listings.map((listing, index) => {
               const id = homeListingNavigationId(listing);
               return (
@@ -1057,7 +1069,9 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
                 />
               );
             })}
-            {listings.length === 0 && <p className="home__state">{t('home.mapSelectionEmpty')}</p>}
+            {listings.length === 0 && !loading && (
+              <p className="home__state">{t(selectedIds ? 'home.mapSelectionEmpty' : 'home.mapAreaEmpty')}</p>
+            )}
           </section>
           <HomeMap
             listings={allListings}
