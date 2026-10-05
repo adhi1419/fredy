@@ -84,6 +84,7 @@
   "home.mapView": "Map view",
   "home.viewLabel": "Home view",
   "home.activityLabel": "Listing activity",
+  "home.activityWithCount": "{{label}}, {{count}} homes",
   "home.activityNew": "New",
   "home.activityApplied": "Applied",
   "home.activityViewed": "Viewed",

@@ -18,10 +18,19 @@ export interface ListingsDataState {
   availableProviders: string[];
   /** Every coordinate-bearing row matching the Home filters, regardless of pagination. */
   pins: unknown[];
+  /** One tally per lifecycle state over the Home filters minus the activity; null until fetched. */
+  counts: ListingsActivityCounts | null;
   mapListings: unknown[];
   currentListing: unknown | null;
   maxPrice: number;
   [key: string]: unknown;
+}
+
+export interface ListingsActivityCounts {
+  new: number;
+  applied: number;
+  viewed: number;
+  archived: number;
 }
 
 export interface ListingsRootState {
@@ -84,6 +93,12 @@ export interface ListingsEffects {
    * scroll or a re-sort never refetches them. A response for a superseded filter is discarded.
    */
   getListingsPins(params: ListingsDataQuery): Promise<void>;
+  /**
+   * Fetches the four activity counts for a filter set via `counts=true`. The status filter is
+   * dropped from the request (the server ignores it anyway), so switching tabs never refetches the
+   * tallies. A response for a superseded filter is discarded.
+   */
+  getListingsCounts(params: ListingsDataQuery): Promise<void>;
   getListing(listingId: string): Promise<unknown>;
   getListingsForMap(params?: ListingsMapQuery): Promise<void>;
   setListingLifecycleAction(listingId: string, action: ListingLifecycleAction): Promise<void>;
@@ -101,6 +116,7 @@ export function createListingsDataState(): ListingsDataState {
     result: [],
     availableProviders: [],
     pins: [],
+    counts: null,
     mapListings: [],
     currentListing: null,
     maxPrice: 0,
@@ -117,6 +133,7 @@ export function createListingsEffects(
   let currentQueryKey = '';
   let appendInFlight = false;
   let currentPinsKey = '';
+  let currentCountsKey = '';
 
   const queryOf = ({
     page = 1,
@@ -208,6 +225,39 @@ export function createListingsEffects(
         }));
       } catch (exception) {
         console.error('Error while trying to get pins from api/listings. Error:', exception);
+      }
+    },
+
+    async getListingsCounts(params) {
+      const { statusFilter: _ignored, ...filter } = params.filter ?? {};
+      const countsQuery = queryOf({
+        ...params,
+        page: 1,
+        pageSize: 1,
+        sortfield: null,
+        sortdir: 'asc',
+        filter: { ...filter, counts: true },
+      });
+      currentCountsKey = countsQuery;
+      try {
+        const response = await transport.get(`/api/listings/table?${countsQuery}`);
+        if (currentCountsKey !== countsQuery) return;
+        const payload = asRecord(response.json);
+        const raw = asRecord(payload.counts);
+        const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
+        set((state) => ({
+          listingsData: {
+            ...state.listingsData,
+            counts: {
+              new: num(raw.new),
+              applied: num(raw.applied),
+              viewed: num(raw.viewed),
+              archived: num(raw.archived),
+            },
+          },
+        }));
+      } catch (exception) {
+        console.error('Error while trying to get activity counts from api/listings. Error:', exception);
       }
     },
 

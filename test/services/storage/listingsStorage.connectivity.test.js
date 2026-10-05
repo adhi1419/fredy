@@ -210,6 +210,51 @@ describe('queryListings pins mode and ids filter', () => {
     storage = await import('../../../lib/services/storage/listingsStorage.js');
   });
 
+  describe('counts mode', () => {
+    const lifecycle = (state) => ({
+      state,
+      source: null,
+      changedAt: 1,
+      changedBy: null,
+      appliedAt: null,
+      viewedAt: null,
+    });
+
+    it('tallies every lifecycle state, ignoring the status filter but honouring the others', async () => {
+      addFlat('n1');
+      addFlat('n2', { lifecycle: lifecycle('new') });
+      addFlat('a1', { lifecycle: lifecycle('applied') });
+      addFlat('v1', { lifecycle: lifecycle('viewed') });
+      addFlat('x1', { lifecycle: lifecycle('archived') });
+      addFlat('x2', { lifecycle: lifecycle('archived'), provider: 'kleinanzeigen' });
+      addFlat('gone', { lifecycle: lifecycle('archived'), manuallyDeleted: true });
+
+      const all = await storage.queryListings({ userId: 'user-1', counts: true, statusFilter: 'applied' });
+      expect(all).toEqual({ counts: { new: 2, applied: 1, viewed: 1, archived: 2 } });
+
+      const immoscoutOnly = await storage.queryListings({
+        userId: 'user-1',
+        counts: true,
+        providerFilter: 'immoscout',
+      });
+      expect(immoscoutOnly.counts).toEqual({ new: 2, applied: 1, viewed: 1, archived: 1 });
+    });
+
+    it('composes with the map box and the free-text filter', async () => {
+      addFlat('in', { latitude: 50.95, longitude: 7.0, title: 'Altbau' });
+      addFlat('out', { latitude: 48.1, longitude: 11.5, title: 'Altbau', lifecycle: lifecycle('viewed') });
+      addFlat('in-other-title', { latitude: 50.9, longitude: 7.1, title: 'Neubau' });
+
+      const boxed = await storage.queryListings({
+        userId: 'user-1',
+        counts: true,
+        bbox: { west: 6.5, south: 50.5, east: 7.5, north: 51.5 },
+        freeTextFilter: 'altbau',
+      });
+      expect(boxed.counts).toEqual({ new: 1, applied: 0, viewed: 0, archived: 0 });
+    });
+  });
+
   describe('pins mode', () => {
     it('returns only rows with finite coordinates, projected to the pin shape', async () => {
       addFlat('located', {

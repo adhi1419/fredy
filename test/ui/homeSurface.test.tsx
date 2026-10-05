@@ -68,10 +68,21 @@ let mockListings: MockListing[] = [];
 
 // The store is faked so Home renders against fixed listings without a network or Zustand runtime.
 vi.mock('../../ui/src/services/state/store.js', () => ({
-  useActions: () => ({ listingsData: { getListingsData: vi.fn().mockResolvedValue(undefined) } }),
+  useActions: () => ({
+    listingsData: {
+      getListingsData: vi.fn().mockResolvedValue(undefined),
+      getListingsCounts: vi.fn().mockResolvedValue(undefined),
+      getListingsPins: vi.fn().mockResolvedValue(undefined),
+    },
+  }),
   useSelector: (selector: (state: unknown) => unknown) =>
     selector({
-      listingsData: { result: mockListings, totalNumber: mockListings.length, availableProviders: ['immoscout'] },
+      listingsData: {
+        result: mockListings,
+        totalNumber: mockListings.length,
+        availableProviders: ['immoscout'],
+        counts: { new: 12, applied: 3, viewed: 1, archived: 28 },
+      },
       provider: [{ id: 'immoscout', name: 'ImmoScout24' }],
     }),
 }));
@@ -182,13 +193,17 @@ describe('Direction A stay-card Home surface', () => {
     expect(html).not.toContain('AffordabilityChip');
   });
 
-  it('renders true pill activity filters with the selected one pressed', () => {
+  it('renders the activity tabs as labels with their counts, the selected one pressed', () => {
     mockListings = [APPLIED];
     const html = renderHome('?activity=applied');
     expect(html).toContain('home__activities');
     expect(html).toContain('aria-pressed="true"');
-    // Applied/Viewed filter pills reuse the same icon language as the badges.
-    expect(html).toContain('home__activity-symbol');
+    // Direction A: text tabs on a hairline, no glyphs; each carries its tally from the counts request.
+    expect(html).not.toContain('home__activity-symbol');
+    expect(html.match(/class="home__activity-name"/g)?.length).toBe(4);
+    expect(html.match(/class="home__activity-count"/g)?.length).toBe(4);
+    expect(html).toContain('>12<');
+    expect(html).toContain('home.activityWithCount:home.activityNew,12');
   });
 
   it('renders a rounded search and icon view controls, no giant heading actions', () => {
@@ -264,12 +279,11 @@ describe('Home production surface contract', () => {
 
 describe('iPhone 13 Home containment', () => {
   it('keeps all four lifecycle scopes in one horizontally scrollable row', () => {
-    const narrow = homeStyles.slice(homeStyles.indexOf('@media (max-width: 430px)'));
+    const mobile = homeStyles.slice(homeStyles.indexOf('@media (max-width: 768px)'));
     // The preferred layout: a single non-wrapping, horizontally scrollable row, not a 2-col grid.
-    expect(narrow).toMatch(/&__activities\s*{[\s\S]*?display:\s*flex;/);
-    expect(narrow).toMatch(/&__activities\s*{[\s\S]*?flex-wrap:\s*nowrap;/);
-    expect(narrow).toMatch(/&__activities\s*{[\s\S]*?overflow-x:\s*auto;/);
-    expect(narrow).not.toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
+    expect(mobile).toMatch(/&__activities\s*{[\s\S]*?flex-wrap:\s*nowrap;/);
+    expect(mobile).toMatch(/&__activities\s*{[\s\S]*?overflow-x:\s*auto;/);
+    expect(mobile).not.toContain('grid-template-columns: repeat(2, minmax(0, 1fr));');
   });
 
   it('keeps the open provider menu inside the full-width picker', () => {

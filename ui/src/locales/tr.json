@@ -84,6 +84,7 @@
   "home.mapView": "Harita görünümü",
   "home.viewLabel": "Ana sayfa görünümü",
   "home.activityLabel": "İlan etkinliği",
+  "home.activityWithCount": "{{label}}, {{count}} ev",
   "home.activityNew": "Yeni",
   "home.activityApplied": "Başvuruldu",
   "home.activityViewed": "Görüntülendi",

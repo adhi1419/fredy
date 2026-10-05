@@ -29,6 +29,7 @@ describe('listings state domain', () => {
       result: [],
       availableProviders: [],
       pins: [],
+      counts: null,
       mapListings: [],
       currentListing: null,
       maxPrice: 0,
@@ -141,6 +142,21 @@ describe('listings state domain', () => {
     resolveFirst({ status: 200, json: { totalNumber: 1, pins: [{ id: 'stale' }] } });
     await first;
     expect(state.listingsData.pins).toEqual([{ id: 'current' }]);
+  });
+
+  it('fetches the four activity counts without the status filter and coerces a bad payload to zeros', async () => {
+    const { state, get, stringify, effects } = setup();
+    stringify.mockImplementation((query: Record<string, unknown>) => JSON.stringify(query));
+    get.mockResolvedValueOnce({ status: 200, json: { counts: { new: 4, applied: 1, viewed: 'x', archived: 7 } } });
+    await effects.getListingsCounts({
+      page: 3,
+      sortfield: 'price',
+      filter: { statusFilter: 'applied', providerFilter: 'immoscout', bbox: '1,2,3,4' },
+    });
+    const sent = JSON.parse(String(get.mock.calls[0][0]).replace('/api/listings/table?', ''));
+    expect(sent).toMatchObject({ page: 1, counts: true, providerFilter: 'immoscout', bbox: '1,2,3,4' });
+    expect(sent.statusFilter).toBeUndefined();
+    expect(state.listingsData.counts).toEqual({ new: 4, applied: 1, viewed: 0, archived: 7 });
   });
 
   it('maps map data and keeps the existing empty-value fallbacks', async () => {
