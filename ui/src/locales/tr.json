@@ -663,7 +663,7 @@
   "settings.workingHoursTimeZone": "Saat dilimi",
   "settings.workingHoursTimeZonePlaceholder": "Sunucu saat dilimi",
   "settings.proxyUrl": "Proxy URL",
-  "settings.proxyUrlHelp": "İsteğe bağlı. Tarama tarayıcısını bir proxy üzerinden yönlendirir. Sunucu/veri merkezi IP'leri, tarayıcı parmak izinden bağımsız olarak sağlayıcılar (örn. immowelt) tarafından sıkça engellenir; Alman konut proxy'si istekleri normal bir hane gibi gösterdiğinden en etkili çözümdür. Biçim: http://kullanıcı:şifre@host:port veya socks5://kullanıcı:şifre@host:port. Devre dışı bırakmak için boş bırakın.",
+  "settings.proxyUrlHelp": "İsteğe bağlı. Sağlayıcı isteklerini bir proxy üzerinden yönlendirir. Sunucu/veri merkezi IP'leri, istek parmak izinden bağımsız olarak sağlayıcılar tarafından sıkça engellenir; Alman konut proxy'si istekleri normal bir hane gibi gösterdiğinden en etkili çözümdür. Biçim: http://kullanıcı:şifre@host:port veya socks5://kullanıcı:şifre@host:port. Devre dışı bırakmak için boş bırakın.",
   "settings.proxyUrlPlaceholder": "http://kullanıcı:şifre@host:port",
   "settings.homeAddresses": "Adresler",
   "settings.homeAddressesHelp": "Her adres ile her ilan arasındaki uzaklığı hesaplamak için kullanılır. Bunları güncellemek, tüm aktif ilanlar için uzaklıkları yeniden hesaplar.",

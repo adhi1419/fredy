@@ -678,7 +678,7 @@
   "settings.workingHoursTimeZone": "Zeitzone",
   "settings.workingHoursTimeZonePlaceholder": "Zeitzone des Servers",
   "settings.proxyUrl": "Proxy-URL",
-  "settings.proxyUrlHelp": "Optional. Leitet den Scraping-Browser durch einen Proxy. Server/Rechenzentrum-IPs werden von Anbietern (z. B. Immowelt) unabhängig vom Browser-Fingerprint häufig blockiert. Ein deutscher Wohnproxy lässt Anfragen wie einen normalen Haushalt erscheinen. Format: http://benutzer:passwort@host:port oder socks5://benutzer:passwort@host:port. Leer lassen zum Deaktivieren.",
+  "settings.proxyUrlHelp": "Optional. Leitet Anbieteranfragen durch einen Proxy. Server/Rechenzentrum-IPs werden von Anbietern unabhängig vom Anfrage-Fingerprint häufig blockiert. Ein deutscher Wohnproxy lässt Anfragen wie einen normalen Haushalt erscheinen. Format: http://benutzer:passwort@host:port oder socks5://benutzer:passwort@host:port. Leer lassen zum Deaktivieren.",
   "settings.proxyUrlPlaceholder": "http://benutzer:passwort@host:port",
   "settings.homeAddresses": "Adressen",
   "settings.homeAddressesHelp": "Wird zur Berechnung der Entfernung zwischen jeder Adresse und jedem Inserat verwendet. Eine Aktualisierung berechnet die Entfernungen für alle aktiven Inserate neu.",

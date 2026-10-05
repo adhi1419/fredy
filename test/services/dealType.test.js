@@ -33,16 +33,7 @@ describe('detectDealTypeFromUrl', () => {
   // The real search URLs Fredy ships in its provider fixtures, with the type each one describes.
   // These are the URLs existing jobs will actually carry when the migration runs.
   const fixtures = {
-    einsAImmobilien: 'buy', // .../wohnung-kaufen.html
-    immobilienDe: 'rent', // search.typ=mieten
-    immowelt: 'buy', // distributionTypes=Buy,...
     immoscout: 'rent', // .../wohnung-mieten
-    immoswp: 'rent', // t=apartment:rental
-    ohneMakler: 'buy', // .../wohnung-kaufen/...
-    neubauKompass: 'buy', // .../eigentumswohnung/
-    regionalimmobilien24: 'buy', // .../kaufen/haus/
-    sparkasse: 'buy', // marketingType=buy
-    schwarzesbrett: 'rent', // .../mietobjekte
     deutscheWohnen: 'rent', // rentType=miete&...
   };
 
@@ -56,17 +47,15 @@ describe('detectDealTypeFromUrl', () => {
     expect(
       detectDealTypeFromUrl('https://www.immobilienscout24.de/Suche/de/nordrhein-westfalen/duesseldorf/wohnung-kaufen'),
     ).toBe('buy');
-    expect(detectDealTypeFromUrl('https://www.immowelt.de/classified-search?distributionTypes=Rent')).toBe('rent');
-    expect(detectDealTypeFromUrl('https://immobilien.sparkasse.de/immobilien/treffer?marketingType=rent')).toBe('rent');
-    expect(detectDealTypeFromUrl('https://immo.swp.de/suchergebnisse?t=apartment%3Apurchase')).toBe('buy');
+    expect(detectDealTypeFromUrl('https://www.deutsche-wohnen.com/kaufen/kaufangebote?city=Berlin')).toBe('buy');
+    expect(detectDealTypeFromUrl('https://example.de/eigentumswohnung/berlin')).toBe('buy');
+    expect(detectDealTypeFromUrl('https://example.de/wohnung-mieten/berlin')).toBe('rent');
   });
 
   it('returns null when the URL genuinely does not say', () => {
-    // Bare kleinanzeigen / wg-gesucht / inberlinwohnen / mcMakler roots carry no rent/buy token.
+    // Bare kleinanzeigen and inberlinwohnen roots carry no rent/buy token.
     expect(detectDealTypeFromUrl(providerConfig.kleinanzeigen.url)).toBeNull();
-    expect(detectDealTypeFromUrl(providerConfig.wgGesucht.url)).toBeNull();
     expect(detectDealTypeFromUrl(providerConfig.inberlinwohnen.url)).toBeNull();
-    expect(detectDealTypeFromUrl(providerConfig.mcMakler.url)).toBeNull();
   });
 
   it('returns null when both families of tokens appear', () => {
@@ -75,7 +64,7 @@ describe('detectDealTypeFromUrl', () => {
 
   it('does not match kauf inside verkauf', () => {
     // A section named only "Verkauf-und-Angebote" is ambiguous, not a purchase.
-    expect(detectDealTypeFromUrl('https://schwarzesbrett.bremen.de/verkauf-und-angebote/')).toBeNull();
+    expect(detectDealTypeFromUrl('https://example.de/verkauf-und-angebote/')).toBeNull();
   });
 
   it('does not match rent inside unrelated words', () => {
@@ -99,7 +88,7 @@ describe('detectDealTypeForJob', () => {
 
   it('returns null when none of the URLs say', () => {
     expect(
-      detectDealTypeForJob([{ url: providerConfig.kleinanzeigen.url }, { url: providerConfig.wgGesucht.url }]),
+      detectDealTypeForJob([{ url: providerConfig.kleinanzeigen.url }, { url: providerConfig.inberlinwohnen.url }]),
     ).toBeNull();
   });
 

@@ -5,7 +5,7 @@ as the single copy so the two cannot drift.
 
 ## Project Overview
 
-Fredy is a self-hosted real estate finder for Germany. It scrapes German real estate portals (ImmoScout24, Immowelt, Immonet, Kleinanzeigen, WG-Gesucht, etc.), deduplicates results across providers, and sends notifications via Slack, Telegram, Email, Discord, ntfy, etc. It includes a React web UI.
+Fredy is a self-hosted real estate finder for Germany. It fetches real estate portals (ImmoScout24, Deutsche Wohnen, InBerlinWohnen, Kleinanzeigen, willhaben, Flatfox) over plain HTTP/JSON APIs, deduplicates results across providers, and sends notifications via Slack, Telegram, Email, Discord, ntfy, etc. It includes a React web UI.
 
 - Node.js >= 22, ESM-only (`"type": "module"`)
 - Default port: 9998
@@ -60,7 +60,7 @@ index.js (startup)
 scheduler (every N minutes) or manual trigger via POST /api/jobs/:id/run
   └── FredyPipelineExecutioner.execute()
       1. queryStringMutator(url)           # inject sort-by-date param
-      2. provider.getListings()            # API or Puppeteer+Cheerio
+      2. provider.getListings()            # HTTP page fetch or JSON API
       3. provider.normalize(listing)       # raw → ParsedListing
       4. provider.filter(listing)          # blacklist + required fields
       5. filter to hashes not yet in DB
@@ -119,7 +119,7 @@ An adapter _configuration_ is separate from the adapter itself: it is a row in `
 | Notification channels | `lib/services/storage/configuredAdapterStorage.js`      | Saved adapter configurations (`configured_adapter`). Jobs store `[{configuredAdapterId}]`; `jobStorage` hydrates those back into `{id, name, fields}` on every read, so the pipeline never sees the indirection. Who may use vs. edit a channel: `lib/services/security/channelAccess.js`                                                                         |
 | Known-listing index   | `lib/services/storage/firestore/knownListingIndex.js`   | In-memory set of every stored listing doc id (tombstones included), loaded by the similarity cache's first full read. `findKnownHashes` trusts its hits and queries Firestore only for misses; `storeListings` adds to it and every hard delete evicts from it                                                                                                    |
 | FirestoreConnection   | `lib/services/storage/firestore/FirestoreConnection.js` | Singleton Firestore client; emulator support for local tests and ADC for production                                                                                                                                                                                                                                                                               |
-| Extractor             | `lib/services/extractor/`                               | Orchestrates Puppeteer + Cheerio; shared browser instance per job                                                                                                                                                                                                                                                                                                 |
+| Extractor             | `lib/services/extractor/`                               | Fetches provider pages over plain HTTP (`httpExtractor.js`) and parses them with Cheerio (`parser/`); no browser is involved                                                                                                                                                                                                                                       |
 
 ### Authentication and local testing
 
@@ -221,7 +221,7 @@ ratios and token symmetry.
 - **JSDoc typedefs** (no TypeScript) in `lib/types/` - `listing.js`, `job.js`, `filter.js`, `providerConfig.js`
 - **Copyright header** required on all `.js` files - enforced by `lint-staged` pre-commit hook via `copyright.js`
 - **`NoNewListingsWarning`** (`lib/errors.js`) is used as control flow to short-circuit the pipeline (not an error)
-- **Test fixtures** in `test/testFixtures/` - HTML/JSON snapshots per provider; `TEST_MODE=offline` mocks `puppeteerExtractor` and global `fetch` via `test/offlineFixtures.js`
+- **Test fixtures** in `test/testFixtures/` - HTML/JSON snapshots per provider; `TEST_MODE=offline` mocks the HTTP loader (`httpExtractor`) and global `fetch` via `test/offlineFixtures.js`
 - **`conf/config.json`** is the only runtime config file; created with defaults if missing
 
 ## Coding

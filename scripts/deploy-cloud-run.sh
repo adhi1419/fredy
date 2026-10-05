@@ -40,8 +40,7 @@ fi
 
 # Cleanup policy: keep only the most recent image version, delete everything
 # older than a day. Without this, every deploy adds a full image version
-# (Fredy's image is large: node + Chromium + fonts) and storage grows
-# unboundedly. With it, storage stays pinned at ~one image.
+# and storage grows unboundedly. With it, storage stays pinned at ~one image.
 CLEANUP=$(mktemp)
 cat > "$CLEANUP" << 'JSON'
 [

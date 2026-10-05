@@ -4,12 +4,8 @@
  */
 
 import { expect, vi } from 'vitest';
-// Import utils.js before puppeteerExtractor so its offline vi.mock (which stubs
-// launchBrowser) is registered first; otherwise offline runs launch a real
-// browser and fail when the CloakBrowser binary isn't cached (e.g. in CI).
 import { mockFredy, providerConfig } from '../utils.js';
 import * as similarityCache from '../../lib/services/similarity-check/similarityCache.js';
-import { closeBrowser, launchBrowser } from '../../lib/services/extractor/puppeteerExtractor.js';
 import { get } from '../mocks/mockNotification.js';
 import * as mockStore from '../mocks/mockStore.js';
 import * as provider from '../../lib/provider/inberlinwohnen.js';
@@ -17,21 +13,12 @@ import * as provider from '../../lib/provider/inberlinwohnen.js';
 /** Run-scoped provider config, built per test via createConfig(). */
 let runConfig;
 
-// The portal renders every result page server side, so a single run walks
-// through all pages of the search. One shared browser keeps that session warm.
+// The portal renders every result page server side over plain HTTP, so a single run walks through
+// all pages of the search with the HTTP loader - no browser is involved.
 const TEST_TIMEOUT = 120_000;
 
 describe('#inberlinwohnen testsuite()', () => {
-  let browser;
   let liveListings;
-
-  beforeAll(async () => {
-    browser = await launchBrowser(providerConfig.inberlinwohnen.url);
-  }, TEST_TIMEOUT);
-
-  afterAll(async () => {
-    await closeBrowser(browser);
-  });
 
   it(
     'should test inberlinwohnen provider',
@@ -45,7 +32,7 @@ describe('#inberlinwohnen testsuite()', () => {
       };
       runConfig = provider.createConfig(providerConfig.inberlinwohnen, []);
 
-      const fredy = new Fredy(runConfig, mockedJob, provider.metaInformation.id, similarityCache, browser);
+      const fredy = new Fredy(runConfig, mockedJob, provider.metaInformation.id, similarityCache);
 
       liveListings = await fredy.execute();
 
@@ -100,7 +87,7 @@ describe('#inberlinwohnen testsuite()', () => {
       async () => {
         if (!liveListings?.length) throw new Error('No listings from first test to enrich');
 
-        const enriched = await runConfig.fetchDetails(liveListings[0], browser);
+        const enriched = await runConfig.fetchDetails(liveListings[0]);
 
         expect(enriched).toBeTruthy();
         expect(enriched.link).toBe(liveListings[0].link);

@@ -13,20 +13,6 @@
       "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
     },
     {
-      "id": "einsAImmobilien",
-      "name": "1a Immobilien",
-      "baseUrl": "https://www.1a-immobilienmarkt.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "engelVoelkers",
-      "name": "Engel & Völkers",
-      "baseUrl": "https://www.engelvoelkers.com/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
       "id": "flatfox",
       "name": "Flatfox",
       "baseUrl": "https://flatfox.ch/",
@@ -34,37 +20,9 @@
       "requiredFieldNames": ["id", "title", "link", "price", "size", "rooms", "address"]
     },
     {
-      "id": "imaxx",
-      "name": "IMAXX",
-      "baseUrl": "https://www.imaxx.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "immobilienDe",
-      "name": "Immobilien.de",
-      "baseUrl": "https://www.immobilien.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
       "id": "immoscout",
       "name": "Immoscout",
       "baseUrl": "https://www.immobilienscout24.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "immoswp",
-      "name": "Immo Südwest Presse",
-      "baseUrl": "https://immo.swp.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "immowelt",
-      "name": "Immowelt",
-      "baseUrl": "https://www.immowelt.de/",
       "countries": ["de"],
       "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
     },
@@ -79,55 +37,6 @@
       "id": "kleinanzeigen",
       "name": "Kleinanzeigen",
       "baseUrl": "https://www.kleinanzeigen.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "mcMakler",
-      "name": "McMakler",
-      "baseUrl": "https://www.mcmakler.de/immobilien/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "neubauKompass",
-      "name": "Neubau Kompass",
-      "baseUrl": "https://www.neubaukompass.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "ohneMakler",
-      "name": "OhneMakler",
-      "baseUrl": "https://www.ohne-makler.net",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "regionalimmobilien24",
-      "name": "Regionalimmobilien24",
-      "baseUrl": "https://www.regionalimmobilien24.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "schwarzesbrett",
-      "name": "Schwarzes Brett Bremen",
-      "baseUrl": "https://schwarzesbrett.bremen.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "sparkasse",
-      "name": "Sparkasse Immobilien",
-      "baseUrl": "https://immobilien.sparkasse.de/",
-      "countries": ["de"],
-      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
-    },
-    {
-      "id": "wgGesucht",
-      "name": "Wg gesucht",
-      "baseUrl": "https://www.wg-gesucht.de/",
       "countries": ["de"],
       "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
     },

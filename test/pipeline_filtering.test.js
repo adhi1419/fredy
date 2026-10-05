@@ -59,12 +59,9 @@ describe('Issue reproduction: listings filtered by similarity or area should be 
     });
   });
 
-  it('should pass the shared browser to a custom getListings implementation', async () => {
+  it('calls a custom getListings with the prepared url, bound to the pipeline', async () => {
     const Fredy = await mockFredy();
-    const browser = { connected: true };
-    // Two parameters: the pipeline only launches a browser for getListings(url, browser).
-    // eslint-disable-next-line no-unused-vars -- the arity is what matters here
-    const getListings = vi.fn(async (url, browser) => []);
+    const getListings = vi.fn(async () => []);
     const providerConfig = {
       url: 'http://example.com',
       getListings,
@@ -74,16 +71,17 @@ describe('Issue reproduction: listings filtered by similarity or area should be 
       requiredFieldNames: [],
     };
     const mockedJob = {
-      id: 'custom-get-listings-browser',
+      id: 'custom-get-listings',
       notificationAdapter: null,
       specFilter: null,
       spatialFilter: null,
     };
 
-    const fredy = new Fredy(providerConfig, mockedJob, 'custom-provider', {}, browser);
+    const fredy = new Fredy(providerConfig, mockedJob, 'custom-provider', {}, undefined);
     await fredy.execute();
 
-    expect(getListings).toHaveBeenCalledWith('http://example.com', browser);
+    // The pipeline fetches over plain HTTP now, so getListings receives only the url - no browser.
+    expect(getListings).toHaveBeenCalledWith('http://example.com');
     expect(getListings.mock.contexts[0]).toBe(fredy);
   });
 

@@ -4,56 +4,62 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { extractFirstDetailUrl } from '../../tools/testFixtures/extractDetailUrl.js';
 
-/** Run-scoped provider config, built per test via createConfig(). */
-let runConfig;
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FIXTURES_DIR = path.join(__dirname, '..', 'testFixtures');
-const TEST_PROVIDER_PATH = path.join(__dirname, '..', 'provider', 'testProvider.json');
-
-const testProviderConfig = JSON.parse(readFileSync(TEST_PROVIDER_PATH, 'utf-8'));
-
 /**
- * Providers whose list page fixture is html based and whose detail page fixture is derived from it.
- * These are exactly the selector shapes that used to break the fixture downloader:
- *  - immobilienDe: attribute on the crawl container itself (`@href`)
- *  - kleinanzeigen: attribute containing a dash (`.aditem@data-href`)
- *  - wgGesucht: selector that only resolves correctly when scoped to the crawl container (`a@href`)
+ * The three selector shapes that used to break the fixture downloader, exercised directly with
+ * synthetic configs rather than through a shipped provider:
+ *  - an attribute on the crawl container itself (`@href`)
+ *  - an attribute whose name contains a dash (`.aditem@data-href`)
+ *  - a selector that only resolves correctly when scoped to the crawl container (`a@href`)
  *
- * Kleinanzeigen used to be here for its dashed attribute (`.aditem@data-href`). It reads its results
- * with its own parser now, and the downloader asks its `getListings` for the detail url instead.
- *
- * Immowelt used to be here as a third selector shape. It reads its listings from immowelt's search
- * BFF now, so it has no crawl container to extract anything from and its fixtures are downloaded
- * by a dedicated path in `downloadFixtures.js`.
+ * No shipped provider uses an HTML crawl container with a selector-derived detail link anymore
+ * (the kept providers read JSON APIs, a Livewire snapshot, or their own parser), so this covers the
+ * extractor logic the downloader relies on without importing a provider module.
  */
-const providersWithDetailPages = ['immobilienDe', 'wgGesucht', 'sparkasse'];
+const LIST_URL = 'https://example.com/search';
+const makeConfig = (overrides) => ({
+  url: LIST_URL,
+  normalize: (parsed) => ({ link: parsed.id }),
+  ...overrides,
+});
+
+const cases = [
+  {
+    name: 'an attribute on the crawl container itself (@href)',
+    html: '<a class="result" href="/listing/1">One</a><a class="result" href="/listing/2">Two</a>',
+    config: makeConfig({ crawlContainer: 'a.result', crawlFields: { id: '@href' } }),
+    expected: 'https://example.com/listing/1',
+  },
+  {
+    name: 'a dashed attribute (.aditem@data-href)',
+    html: '<li class="ad-listitem"><article class="aditem" data-href="/listing/42">Ad</article></li>',
+    config: makeConfig({ crawlContainer: '.ad-listitem', crawlFields: { id: '.aditem@data-href' } }),
+    expected: 'https://example.com/listing/42',
+  },
+  {
+    name: 'a selector scoped to the crawl container (a@href)',
+    html: '<li class="hit"><a href="/listing/7">Seven</a></li>',
+    config: makeConfig({ crawlContainer: '.hit', crawlFields: { id: 'a@href' } }),
+    expected: 'https://example.com/listing/7',
+  },
+];
 
 describe('extractFirstDetailUrl', () => {
-  for (const providerName of providersWithDetailPages) {
-    it(`finds the detail url in the ${providerName} list fixture`, async () => {
-      const provider = await import(`../../lib/provider/${providerName}.js`);
-      runConfig = provider.createConfig(testProviderConfig[providerName], [], []);
+  for (const { name, html, config, expected } of cases) {
+    it(`finds the detail url via ${name}`, () => {
+      const detailUrl = extractFirstDetailUrl(html, config);
 
-      const html = readFileSync(path.join(FIXTURES_DIR, `${providerName}.html`), 'utf-8');
-      const detailUrl = extractFirstDetailUrl(html, runConfig);
-
-      expect(detailUrl).toBeTruthy();
+      expect(detailUrl).toBe(expected);
       expect(detailUrl).toMatch(/^https?:\/\//);
-      expect(detailUrl).not.toBe(runConfig.url);
+      expect(detailUrl).not.toBe(config.url);
     });
   }
 
-  it('returns null when the crawl container matches nothing', async () => {
-    const provider = await import('../../lib/provider/kleinanzeigen.js');
-    runConfig = provider.createConfig(testProviderConfig.kleinanzeigen, [], []);
+  it('returns null when the crawl container matches nothing', () => {
+    const config = makeConfig({ crawlContainer: '.aditem', crawlFields: { id: '.aditem@data-href' } });
 
-    expect(extractFirstDetailUrl('<html><body>nothing here</body></html>', runConfig)).toBeNull();
+    expect(extractFirstDetailUrl('<html><body>nothing here</body></html>', config)).toBeNull();
   });
 
   it('returns null for an incomplete provider config', () => {

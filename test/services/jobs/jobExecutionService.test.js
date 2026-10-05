@@ -26,7 +26,6 @@ describe('services/jobs/jobExecutionService', () => {
     const loggerPath = root + '/lib/services/logger.js';
     const notifyPath = root + '/lib/notification/notify.js';
     const pipelinePath = root + '/lib/FredyPipelineExecutioner.js';
-    const puppeteerPath = root + '/lib/services/extractor/puppeteerExtractor.js';
     const listingsStoragePath = root + '/lib/services/storage/listingsStorage.js';
 
     vi.resetModules();
@@ -58,19 +57,10 @@ describe('services/jobs/jobExecutionService', () => {
       archiveStaleListingsForJob: async () => ({ archived: 0 }),
     }));
     vi.doMock(notifyPath, () => ({ send: async () => [] }));
-    vi.doMock(puppeteerPath, () => ({
-      launchBrowser: async (...args) => {
-        calls.launchBrowser.push(args);
-        return state.browser;
-      },
-      closeBrowser: async (browser) => {
-        calls.closeBrowser.push(browser);
-      },
-    }));
     vi.doMock(pipelinePath, () => ({
       default: class {
-        constructor(config, job, providerId, similarityCache, browser, options = {}) {
-          this.record = { config, job, providerId, similarityCache, browser, options };
+        constructor(config, job, providerId, similarityCache, options = {}) {
+          this.record = { config, job, providerId, similarityCache, options };
           calls.pipeline.push(this.record);
         }
 
@@ -106,8 +96,6 @@ describe('services/jobs/jobExecutionService', () => {
       markRunning: [],
       markFinished: [],
       lastRunUpdates: [],
-      launchBrowser: [],
-      closeBrowser: [],
       pipeline: [],
       logs: [],
     };
@@ -116,7 +104,6 @@ describe('services/jobs/jobExecutionService', () => {
       jobsList: [],
       users: [],
       providers: [],
-      browser: { connected: true },
     };
   });
 
@@ -165,7 +152,7 @@ describe('services/jobs/jobExecutionService', () => {
     expect(update.timestamp).toBeLessThanOrEqual(after);
   });
 
-  it('launches and reuses a single shared browser across all providers in a job', async () => {
+  it('runs every provider in a job without ever constructing a browser', async () => {
     // Providers hand out a fresh config per run instead of mutating a shared one, so the double
     // mirrors that: createConfig() returns a new object every time it is called.
     const provider = (id, config) => ({
@@ -173,15 +160,9 @@ describe('services/jobs/jobExecutionService', () => {
       createConfig: vi.fn((sourceConfig, blacklist) => ({ ...config, blacklist })),
     });
     state.providers = [
-      provider('api-provider', { url: 'https://api.example/', getListings: vi.fn() }),
-      provider('browser-provider', {
-        url: 'https://browser.example/',
-        getListings: vi.fn(),
-      }),
-      provider('browser-provider-2', {
-        url: 'https://browser-2.example/',
-        getListings: vi.fn(),
-      }),
+      provider('provider-a', { url: 'https://a.example/', getListings: vi.fn() }),
+      provider('provider-b', { url: 'https://b.example/', getListings: vi.fn() }),
+      provider('provider-c', { url: 'https://c.example/', getListings: vi.fn() }),
     ];
     state.jobsById.j1 = {
       id: 'j1',
@@ -194,35 +175,12 @@ describe('services/jobs/jobExecutionService', () => {
     bus.emit('jobs:runOne', { jobId: 'j1' });
     await vi.waitFor(() => expect(calls.markFinished).toEqual(['j1']));
 
-    // Nothing in this run asked for a page, so no browser was launched.
-    expect(calls.launchBrowser).toEqual([]);
-    expect(calls.closeBrowser).toEqual([]);
-    // Every provider got the same lazy getter.
-    const getters = calls.pipeline.map(({ browser }) => browser);
-    expect(getters).toHaveLength(3);
-    expect(typeof getters[0]).toBe('function');
-    expect(new Set(getters).size).toBe(1);
-  });
-
-  it('launches the shared browser once, on first use, and closes it after the run', async () => {
-    state.providers = [
-      {
-        metaInformation: { id: 'p1' },
-        createConfig: vi.fn(() => ({ url: 'https://one.example/', getListings: vi.fn() })),
-      },
-    ];
-    state.jobsById.j1 = { id: 'j1', enabled: true, userId: 'u1', provider: [{ id: 'p1' }] };
-    pipelineHook = async ({ browser }) => {
-      expect(await browser('https://one.example/')).toBe(state.browser);
-      expect(await browser('https://two.example/')).toBe(state.browser);
-    };
-
-    await initService();
-    bus.emit('jobs:runOne', { jobId: 'j1' });
-    await vi.waitFor(() => expect(calls.markFinished).toEqual(['j1']));
-
-    expect(calls.launchBrowser).toEqual([['https://one.example/', {}]]);
-    expect(calls.closeBrowser).toEqual([state.browser]);
+    // One pipeline per provider, each handed an options object as its 5th argument - no browser.
+    expect(calls.pipeline).toHaveLength(3);
+    for (const record of calls.pipeline) {
+      expect(record).not.toHaveProperty('browser');
+      expect(typeof record.options).toBe('object');
+    }
   });
 
   it('emits one correlated timing summary for the complete job run', async () => {

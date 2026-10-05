@@ -11,9 +11,9 @@ import { fileURLToPath } from 'url';
 const dockerfile = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../Dockerfile'), 'utf-8');
 
 /**
- * Without an init as pid 1 nobody reaps the Chromium helper processes that get reparented when a
- * browser dies, and the container slowly fills up with `<defunct>` entries. Node cannot do the
- * reaping itself (libuv only waits for the pids it spawned), so this has to stay in the image.
+ * Running node directly as pid 1 means no init reaps orphaned children and signals are not
+ * forwarded cleanly. tini stays in the image as the container's init so shutdown and child
+ * reaping keep working.
  */
 describe('Dockerfile init process', () => {
   it('installs tini', () => {

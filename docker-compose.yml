@@ -36,7 +36,7 @@ services:
     ports:
       - "9998:9998"
     restart: unless-stopped
-    # Resource limits to prevent runaway memory usage from Chromium
+    # Resource limit to keep the container's memory footprint bounded
     deploy:
       resources:
         limits:

@@ -678,7 +678,7 @@
   "settings.workingHoursTimeZone": "Time zone",
   "settings.workingHoursTimeZonePlaceholder": "Server time zone",
   "settings.proxyUrl": "Proxy URL",
-  "settings.proxyUrlHelp": "Optional. Routes the scraping browser through a proxy. Server/datacenter IPs are frequently blocked by providers (e.g. immowelt) regardless of browser fingerprint, a German residential proxy makes requests look like a normal household and is the most effective fix. Format: http://user:pass@host:port or socks5://user:pass@host:port. Leave empty to disable.",
+  "settings.proxyUrlHelp": "Optional. Routes provider requests through a proxy. Server/datacenter IPs are frequently blocked by providers regardless of request fingerprint; a German residential proxy makes requests look like a normal household and is the most effective fix. Format: http://user:pass@host:port or socks5://user:pass@host:port. Leave empty to disable.",
   "settings.proxyUrlPlaceholder": "http://user:pass@host:port",
   "settings.homeAddresses": "Addresses",
   "settings.homeAddressesHelp": "Used to calculate the distance between each address and every listing. Updating these recalculates distances for all active listings.",

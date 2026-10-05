@@ -8,27 +8,16 @@ import { get } from '../mocks/mockNotification.js';
 import { mockFredy, providerConfig } from '../utils.js';
 import { expect } from 'vitest';
 import * as provider from '../../lib/provider/kleinanzeigen.js';
-import { launchBrowser, closeBrowser } from '../../lib/services/extractor/puppeteerExtractor.js';
 
 /** Run-scoped provider config, built per test via createConfig(). */
 let runConfig;
 
-// One browser shared across the whole suite so both requests (search + detail)
-// come from the same warm session. Kleinanzeigen rate-limits cold browser
-// sessions; a shared warm browser prevents the second request from being blocked.
+// Kleinanzeigen serves both the search page and each detail page over plain HTTP, so a run makes
+// its two requests (search + detail) with the HTTP loader - no browser is involved.
 const TEST_TIMEOUT = 180_000;
 
 describe('#kleinanzeigen testsuite()', () => {
-  let browser;
   let liveListings;
-
-  beforeAll(async () => {
-    browser = await launchBrowser(providerConfig.kleinanzeigen.url);
-  }, TEST_TIMEOUT);
-
-  afterAll(async () => {
-    await closeBrowser(browser);
-  });
 
   it(
     'should test kleinanzeigen provider',
@@ -42,7 +31,7 @@ describe('#kleinanzeigen testsuite()', () => {
       };
       runConfig = provider.createConfig(providerConfig.kleinanzeigen, [], []);
       return await new Promise((resolve, reject) => {
-        const fredy = new Fredy(runConfig, mockedJob, provider.metaInformation.id, similarityCache, browser);
+        const fredy = new Fredy(runConfig, mockedJob, provider.metaInformation.id, similarityCache);
 
         fredy.execute().then((listing) => {
           if (listing == null || listing.length === 0) {
@@ -79,9 +68,9 @@ describe('#kleinanzeigen testsuite()', () => {
       async () => {
         if (!liveListings?.length) throw new Error('No listings from first test to enrich');
 
-        // Call fetchDetails directly on the first live listing - no need to
-        // re-scrape the search page. The shared browser keeps the session warm.
-        const enriched = await runConfig.fetchDetails(liveListings[0], browser);
+        // Call fetchDetails directly on the first live listing - no need to re-scrape the search
+        // page. The detail page is read over plain HTTP.
+        const enriched = await runConfig.fetchDetails(liveListings[0]);
 
         expect(enriched).toBeTruthy();
         expect(enriched.link).toContain('https://www.kleinanzeigen.de');

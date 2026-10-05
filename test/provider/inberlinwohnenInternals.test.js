@@ -15,7 +15,6 @@ let runConfig;
 // attributes instead of markup. Every test here drives the provider with an
 // injected page extractor, which means no browser and no network is involved.
 const SEARCH_URL = providerConfig.inberlinwohnen.url;
-const browser = { id: 'test-browser' };
 
 const listingSnapshot = (item, tuple = true) => JSON.stringify({ data: { item: tuple ? [item, { s: 'arr' }] : item } });
 
@@ -204,7 +203,7 @@ describe('#inberlinwohnen internals()', () => {
       const extractDetails = vi.fn().mockResolvedValue(html);
       const listing = { id: 'listing-1', link: `https://${hostname}/listing/1`, description: 'Gesamtmiete: 600 €' };
 
-      const enriched = await runConfig.fetchDetails(listing, browser, extractDetails);
+      const enriched = await runConfig.fetchDetails(listing, extractDetails);
 
       expect(enriched.description).toContain('Gesamtmiete: 600 €');
       expect(enriched.description).not.toBe(listing.description);
@@ -213,15 +212,15 @@ describe('#inberlinwohnen internals()', () => {
 
     it('should preserve listings when detail enrichment is unsupported or unavailable', async () => {
       const unsupported = { id: '1', link: 'https://example.com/listing/1', description: 'Original' };
-      expect(await runConfig.fetchDetails(unsupported, browser)).toBe(unsupported);
+      expect(await runConfig.fetchDetails(unsupported)).toBe(unsupported);
 
       const supported = { ...unsupported, link: 'https://www.degewo.de/listing/1' };
       const extractDetails = vi.fn().mockResolvedValue(null);
-      expect(await runConfig.fetchDetails(supported, browser, extractDetails)).toBe(supported);
+      expect(await runConfig.fetchDetails(supported, extractDetails)).toBe(supported);
 
       // stadtundland renders its exposes client side, so no selector is known
       const stadtUndLand = { ...unsupported, link: 'https://stadtundland.de/wohnungssuche/1' };
-      expect(await runConfig.fetchDetails(stadtUndLand, browser, extractDetails)).toBe(stadtUndLand);
+      expect(await runConfig.fetchDetails(stadtUndLand, extractDetails)).toBe(stadtUndLand);
     });
   });
 
