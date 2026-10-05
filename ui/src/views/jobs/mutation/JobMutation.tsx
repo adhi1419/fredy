@@ -9,7 +9,6 @@ import NotificationChannelPicker from './components/notificationAdapter/Notifica
 import NotificationChannelEditor from './components/notificationAdapter/NotificationChannelEditor.jsx';
 import ProviderMutator from './components/provider/ProviderMutator.jsx';
 import GuidedJobForm from './GuidedJobForm';
-import Headline from '../../../components/headline/Headline.jsx';
 import ListingDeletionModal from '../../../components/ListingDeletionModal.jsx';
 import { useActions, useSelector } from '../../../services/state/store.js';
 import { xhrDelete, xhrPost, errorMessage } from '../../../services/xhr.js';
@@ -497,108 +496,112 @@ export default function JobMutator() {
         />
       )}
 
-      <Headline
-        text={jobToBeEdit ? t('jobs.mutation.editTitle') : t('jobs.mutation.createTitle')}
-        actions={
-          <Button icon={<IconArrowLeft />} onClick={leaveForm} theme="borderless" style={{ color: 'var(--f-muted)' }}>
+      <div className="jobMutation__page">
+        {/* The same heading block as My account and the Admin panel: eyebrow, title, one line. */}
+        <header className="jobMutation__heading">
+          <div>
+            <span>{t('jobs.title')}</span>
+            <h1>{jobToBeEdit ? t('jobs.mutation.editTitle') : t('jobs.mutation.createTitle')}</h1>
+          </div>
+          <Button icon={<IconArrowLeft />} onClick={leaveForm} theme="borderless" className="jobMutation__back">
             {t('jobs.mutation.back')}
           </Button>
-        }
-      />
-      {draftRestored && (
-        <Banner
-          type="info"
-          fullMode={false}
-          closeIcon={null}
-          style={{ marginBottom: '1rem' }}
-          description={
-            <div className="jobMutation__draftBanner">
-              <span>{t('jobs.mutation.draftRestored')}</span>
-              <Button size="small" theme="borderless" onClick={discardDraft}>
-                {t('jobs.mutation.draftDiscard')}
-              </Button>
-            </div>
+        </header>
+        {draftRestored && (
+          <Banner
+            type="info"
+            fullMode={false}
+            closeIcon={null}
+            style={{ marginBottom: '1rem' }}
+            description={
+              <div className="jobMutation__draftBanner">
+                <span>{t('jobs.mutation.draftRestored')}</span>
+                <Button size="small" theme="borderless" onClick={discardDraft}>
+                  {t('jobs.mutation.draftDiscard')}
+                </Button>
+              </div>
+            }
+          />
+        )}
+        <GuidedJobForm
+          currentStep={currentStep}
+          onStepSelect={handleStepSelect}
+          onBack={handleBack}
+          onContinue={handleContinue}
+          onSave={mutateJob}
+          validationError={validationError}
+          panelRef={guidedPanelRef}
+          name={name}
+          setName={(value) => {
+            setName(value);
+            setValidationError(null);
+          }}
+          providerData={providerData}
+          providerMetadata={providerMetadata}
+          policyProfileReady={policyProfileReady}
+          onProviderPolicyChange={handleProviderPolicyChange}
+          onProviderAdd={() => {
+            setProviderToEdit(null);
+            setProviderCreationVisibility(true);
+          }}
+          onProviderRemove={(providerUrl) =>
+            setProviderData((current) => current.filter((provider) => provider.url !== providerUrl))
           }
+          onProviderEdit={(provider) => {
+            setProviderCreationVisibility(true);
+            setProviderToEdit(provider);
+          }}
+          onCompleteInquiryProfile={() => leaveWithReturnPath('/settings/inquiry-profile')}
+          dealType={dealType}
+          setDealType={(value) => {
+            setDealType(value);
+            setDealTypeWasInferred(false);
+            setValidationError(null);
+          }}
+          dealTypeWasInferred={dealTypeWasInferred}
+          specFilters={SPEC_FILTERS}
+          specFilter={specFilter}
+          onSpecFilterChange={handleSpecFilterChange}
+          blacklist={blacklist}
+          setBlacklist={(value) => {
+            setBlacklist(value);
+            setValidationError(null);
+          }}
+          spatialFilter={spatialFilter}
+          onSpatialFilterChange={handleSpatialFilterChange}
+          areaExpanded={areaExpanded}
+          setAreaExpanded={setAreaExpanded}
+          commuteFilter={commuteFilter}
+          setCommuteFilter={setCommuteFilter}
+          selectedChannels={selectedChannels}
+          onAddNotification={() => setPickerVisible(true)}
+          onManageNotifications={() => leaveWithReturnPath('/settings/notifications')}
+          onTestChannel={handleTestChannel}
+          onEditChannel={(channel) => setChannelEditor({ mode: 'edit', channelId: channel.id })}
+          onCloneChannel={(channel) => setChannelEditor({ mode: 'clone', channelId: channel.id })}
+          onDetachChannel={(channel) => setSelectedChannelIds((current) => current.filter((id) => id !== channel.id))}
+          shareableUserList={shareableUserList}
+          shareWithUsers={shareWithUsers}
+          setShareWithUsers={setShareWithUsers}
+          enabled={enabled}
+          setEnabled={setEnabled}
+          reviewSummary={reviewSummary}
+          canSave={missing.length === 0}
+          isEditing={jobToBeEdit != null}
+          onClearListings={() => requestDeletion('listings')}
+          onDeleteSearch={() => requestDeletion('job')}
         />
-      )}
-      <GuidedJobForm
-        currentStep={currentStep}
-        onStepSelect={handleStepSelect}
-        onBack={handleBack}
-        onContinue={handleContinue}
-        onSave={mutateJob}
-        validationError={validationError}
-        panelRef={guidedPanelRef}
-        name={name}
-        setName={(value) => {
-          setName(value);
-          setValidationError(null);
-        }}
-        providerData={providerData}
-        providerMetadata={providerMetadata}
-        policyProfileReady={policyProfileReady}
-        onProviderPolicyChange={handleProviderPolicyChange}
-        onProviderAdd={() => {
-          setProviderToEdit(null);
-          setProviderCreationVisibility(true);
-        }}
-        onProviderRemove={(providerUrl) =>
-          setProviderData((current) => current.filter((provider) => provider.url !== providerUrl))
-        }
-        onProviderEdit={(provider) => {
-          setProviderCreationVisibility(true);
-          setProviderToEdit(provider);
-        }}
-        onCompleteInquiryProfile={() => leaveWithReturnPath('/settings/inquiry-profile')}
-        dealType={dealType}
-        setDealType={(value) => {
-          setDealType(value);
-          setDealTypeWasInferred(false);
-          setValidationError(null);
-        }}
-        dealTypeWasInferred={dealTypeWasInferred}
-        specFilters={SPEC_FILTERS}
-        specFilter={specFilter}
-        onSpecFilterChange={handleSpecFilterChange}
-        blacklist={blacklist}
-        setBlacklist={(value) => {
-          setBlacklist(value);
-          setValidationError(null);
-        }}
-        spatialFilter={spatialFilter}
-        onSpatialFilterChange={handleSpatialFilterChange}
-        areaExpanded={areaExpanded}
-        setAreaExpanded={setAreaExpanded}
-        commuteFilter={commuteFilter}
-        setCommuteFilter={setCommuteFilter}
-        selectedChannels={selectedChannels}
-        onAddNotification={() => setPickerVisible(true)}
-        onManageNotifications={() => leaveWithReturnPath('/settings/notifications')}
-        onTestChannel={handleTestChannel}
-        onEditChannel={(channel) => setChannelEditor({ mode: 'edit', channelId: channel.id })}
-        onCloneChannel={(channel) => setChannelEditor({ mode: 'clone', channelId: channel.id })}
-        onDetachChannel={(channel) => setSelectedChannelIds((current) => current.filter((id) => id !== channel.id))}
-        shareableUserList={shareableUserList}
-        shareWithUsers={shareWithUsers}
-        setShareWithUsers={setShareWithUsers}
-        enabled={enabled}
-        setEnabled={setEnabled}
-        reviewSummary={reviewSummary}
-        canSave={missing.length === 0}
-        isEditing={jobToBeEdit != null}
-        onClearListings={() => requestDeletion('listings')}
-        onDeleteSearch={() => requestDeletion('job')}
-      />
 
-      <ListingDeletionModal
-        visible={pendingDeletion != null}
-        title={pendingDeletion === 'job' ? t('jobs.deletion.title') : t('listing.deletion.title')}
-        showOptions={pendingDeletion === 'listings'}
-        defaultDeleteType={listingDeletionPreference?.hardDelete ? 'hard' : 'soft'}
-        message={pendingDeletion === 'job' ? t('jobs.deletion.message') : t('listing.deletion.message')}
-        onConfirm={confirmDeletion}
-        onCancel={() => setPendingDeletion(null)}
-      />
+        <ListingDeletionModal
+          visible={pendingDeletion != null}
+          title={pendingDeletion === 'job' ? t('jobs.deletion.title') : t('listing.deletion.title')}
+          showOptions={pendingDeletion === 'listings'}
+          defaultDeleteType={listingDeletionPreference?.hardDelete ? 'hard' : 'soft'}
+          message={pendingDeletion === 'job' ? t('jobs.deletion.message') : t('listing.deletion.message')}
+          onConfirm={confirmDeletion}
+          onCancel={() => setPendingDeletion(null)}
+        />
+      </div>
     </Fragment>
   );
 }

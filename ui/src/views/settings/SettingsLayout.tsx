@@ -3,8 +3,7 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { IconBell, IconEdit, IconHome, IconListView, IconMapPin } from '@douyinfe/semi-icons';
-import type { ElementType, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Outlet, useLocation } from 'react-router';
 
 import SettingsRouteTabs, { type SettingsRouteTab } from '../../components/settingsRouteTabs/SettingsRouteTabs.jsx';
@@ -15,15 +14,14 @@ import './SettingsLayout.less';
 interface PersonalSettingsSection {
   path: string;
   labelKey: string;
-  Icon: ElementType;
 }
 
 export const PERSONAL_SETTINGS_SECTIONS: readonly PersonalSettingsSection[] = [
-  { path: '/settings/preferences', labelKey: 'settings.tabPreferences', Icon: IconHome },
-  { path: '/settings/travel-time', labelKey: 'settings.tabTravelTime', Icon: IconMapPin },
-  { path: '/settings/listings', labelKey: 'settings.tabListingDetails', Icon: IconListView },
-  { path: '/settings/notifications', labelKey: 'settings.tabNotifications', Icon: IconBell },
-  { path: '/settings/inquiry-profile', labelKey: 'settings.tabInquiryProfile', Icon: IconEdit },
+  { path: '/settings/preferences', labelKey: 'settings.tabPreferences' },
+  { path: '/settings/travel-time', labelKey: 'settings.tabTravelTime' },
+  { path: '/settings/listings', labelKey: 'settings.tabListingDetails' },
+  { path: '/settings/notifications', labelKey: 'settings.tabNotifications' },
+  { path: '/settings/inquiry-profile', labelKey: 'settings.tabInquiryProfile' },
 ];
 
 export function personalSettingsSectionFor(pathname: string): string {
@@ -41,10 +39,10 @@ export default function SettingsLayout(): ReactNode {
   // The bespoke vertical rail is gone: Account Preferences and Administration now navigate through
   // the one shared SettingsRouteTabs rail (URL-driven, horizontally scrollable, keyboard-navigable),
   // so the two areas look and behave identically with different tab lists.
-  const tabs: readonly SettingsRouteTab[] = PERSONAL_SETTINGS_SECTIONS.map(({ path, labelKey, Icon }) => ({
+  // Text-only tabs: the labels are short and the rail is a hairline, so a glyph per tab is noise.
+  const tabs: readonly SettingsRouteTab[] = PERSONAL_SETTINGS_SECTIONS.map(({ path, labelKey }) => ({
     path,
     label: t(labelKey),
-    icon: <Icon size="small" aria-hidden="true" />,
   }));
 
   return (

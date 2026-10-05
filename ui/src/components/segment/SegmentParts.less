@@ -1,40 +1,43 @@
 @import '../../tokens.less';
 
+// A hairline section: heading, help, controls, rule. No card. Stacked sections share their rules,
+// so the page reads as one column of ruled blocks rather than a pile of boxes.
 .segmentParts {
-  background: @color-fill-subtle !important;
-  border: 1px solid @color-border !important;
-  border-radius: @radius-card !important;
-  margin-bottom: @space-4;
+  padding: @space-6 0;
+  border-bottom: 1px solid @color-border;
 
-  // Semi Card header
-  .semi-card-header {
-    border-bottom: 1px solid @color-border !important;
-    padding: 16px 20px !important;
+  &:first-child {
+    padding-top: @space-4;
   }
 
-  .semi-card-header-wrapper {
-    padding: 0 !important;
+  &__header {
+    display: grid;
+    gap: @space-1;
+    margin-bottom: @space-4;
   }
 
-  .semi-card-meta-title {
-    font-weight: 500 !important;
-    color: @color-text !important;
-    font-size: @text-base !important;
-  }
-
-  .semi-card-meta-description {
-    color: @color-muted !important;
-    font-size: @text-sm !important;
-    margin-top: 2px;
-  }
-
-  // helpMode="popover": the explanation sits behind a mark beside the title instead of under it.
   &__title {
     display: inline-flex;
     align-items: center;
     gap: @space-2;
+    margin: 0;
+    color: @color-text;
+    font-family: @font-display;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
   }
 
+  &__description {
+    margin: 0;
+    max-width: 60ch;
+    color: @color-muted;
+    font-size: @text-sm;
+    line-height: 1.45;
+  }
+
+  // helpMode="popover": the explanation sits behind a mark beside the title instead of under it.
   &__helpMark {
     display: inline-flex;
     align-items: center;
@@ -63,41 +66,41 @@
     line-height: 1.6;
   }
 
-  .semi-card-body {
-    padding: 16px 20px !important;
-  }
-
-  // Semi input focus - subtle, not accent
-  .semi-input-wrapper:focus-within,
-  .semi-select:focus-within {
-    border-color: @color-border-bright !important;
-    box-shadow: none !important;
-  }
-
-  // Icon in card header
-  .semi-card-meta-avatar {
-    color: @color-accent !important;
+  &__body {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: @space-3;
+    min-width: 0;
+
+    // A lone action (Add provider, Add address) is a button, not a bar: it keeps its own width.
+    > .semi-button {
+      align-self: flex-start;
+    }
   }
 
-  // Inputs inside segment cards
+  // Fields: square hairline, surface fill.
   .semi-input,
   .semi-input-number-wrapper {
-    background: @color-input-bg !important;
-    border: 1px solid @color-input-border !important;
-    border-radius: @radius-input !important;
+    background: @color-surface !important;
+    border: 1px solid @color-border-bright !important;
+    border-radius: 0 !important;
+  }
+
+  .semi-input-wrapper:focus-within,
+  .semi-select:focus-within {
+    border-color: @color-text !important;
+    box-shadow: none !important;
   }
 
   // TagInput
   .semi-tagInput-wrapper {
     background: transparent !important;
-    border: 1px solid @color-input-border !important;
-    border-radius: @radius-input !important;
-    min-height: 38px;
+    border: 1px solid @color-border-bright !important;
+    border-radius: 0 !important;
+    min-height: 44px;
     outline: none !important;
     &:focus-within {
-      border-color: @color-border-bright !important;
+      border-color: @color-text !important;
       box-shadow: none !important;
     }
   }
@@ -106,11 +109,12 @@
   }
   // Tag chips inside TagInput
   .semi-tag {
-    background: @color-elevated !important;
+    background: @color-surface !important;
     border: 1px solid @color-border-bright !important;
     color: @color-text !important;
-    border-radius: @radius-chip !important;
-    font-size: @text-sm !important;
+    border-radius: 0 !important;
+    font-family: @font-mono;
+    font-size: @text-xs !important;
     height: 24px !important;
     line-height: 22px !important;
   }

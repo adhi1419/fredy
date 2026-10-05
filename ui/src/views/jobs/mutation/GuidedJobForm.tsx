@@ -20,7 +20,6 @@ import {
 } from '@douyinfe/semi-icons';
 import { SegmentPart } from '../../../components/segment/SegmentPart.jsx';
 import ProviderChoiceCards from './components/provider/ProviderChoiceCards';
-import ScrollspyTabs, { type ScrollspySection } from '../../../components/scrollspy/ScrollspyTabs';
 import NotificationChannelTable from '../../../components/table/NotificationChannelTable.jsx';
 import AreaFilter from './components/areaFilter/AreaFilter.jsx';
 import CommuteFilter from './components/CommuteFilter.jsx';
@@ -89,8 +88,6 @@ interface GuidedJobFormProps {
   onClearListings: () => void;
   onDeleteSearch: () => void;
 }
-
-const STEP_ICONS = [IconBriefcase, IconHome, IconFilter, IconBell];
 
 export default function GuidedJobForm({
   currentStep,
@@ -169,30 +166,6 @@ export default function GuidedJobForm({
     t('jobs.mutation.guidedStepDeliveryReviewHelp'),
   ];
 
-  // Sections within the current step, one per SegmentPart, driving the sticky scrollspy rail. The
-  // ids double as scroll anchors: each SegmentPart is wrapped in a `.scrollspyTabs-section` div
-  // carrying the matching id so a tab click can jump to it and the observer can track it.
-  const stepSections: ScrollspySection[][] = [
-    [
-      { id: 'guided-section-name', label: t('jobs.mutation.sectionName') },
-      { id: 'guided-section-providers', label: t('jobs.mutation.sectionProviders') },
-    ],
-    [
-      { id: 'guided-section-dealType', label: t('jobs.mutation.sectionDealType') },
-      { id: 'guided-section-criteria', label: t('jobs.mutation.sectionCriteriaFilter') },
-      { id: 'guided-section-blacklist', label: t('jobs.mutation.sectionBlacklist') },
-      { id: 'guided-section-area', label: t('jobs.mutation.sectionAreaFilter') },
-    ],
-    [{ id: 'guided-section-commute', label: t('jobs.mutation.sectionCommuteFilter') }],
-    [
-      { id: 'guided-section-notifications', label: t('jobs.mutation.sectionNotifications') },
-      { id: 'guided-section-sharing', label: t('jobs.mutation.sectionSharing') },
-      { id: 'guided-section-activation', label: t('jobs.mutation.sectionActivation') },
-      ...(isEditing ? [{ id: 'guided-section-danger', label: t('jobs.mutation.dangerZoneTitle') }] : []),
-    ],
-  ];
-  const currentSections = stepSections[currentStep] ?? [];
-
   const panel = panelRef ?? localPanelRef;
   const isLastStep = currentStep >= GUIDED_STEPS.length - 1;
   // The continue/save primary action, shared by the desktop footer and the mobile sticky header so
@@ -225,8 +198,8 @@ export default function GuidedJobForm({
     <>
       <ol className="guidedJobForm__steps" role="tablist" aria-label={t('jobs.mutation.guidedStepsLabel')}>
         {GUIDED_STEPS.map((step, index) => {
-          const StepIcon = STEP_ICONS[index];
           const active = currentStep === index;
+          const done = index < currentStep;
           return (
             <li key={step.id}>
               <button
@@ -236,15 +209,14 @@ export default function GuidedJobForm({
                 aria-controls={`guided-panel-${index}`}
                 aria-selected={active}
                 aria-current={active ? 'step' : undefined}
-                className={`guidedJobForm__step${active ? ' guidedJobForm__step--active' : ''}`}
+                aria-label={`${stepLabels[index]}. ${stepHelp[index]}`}
+                className={`guidedJobForm__step${active ? ' guidedJobForm__step--active' : ''}${done ? ' guidedJobForm__step--done' : ''}`}
                 onClick={() => onStepSelect(index)}
               >
-                <span className="guidedJobForm__stepNumber">{index + 1}</span>
-                <span>
-                  <strong>{stepLabels[index]}</strong>
-                  <small>{stepHelp[index]}</small>
+                <span className="guidedJobForm__stepNumber" aria-hidden="true">
+                  0{index + 1}
                 </span>
-                <StepIcon aria-hidden="true" />
+                <strong>{stepLabels[index]}</strong>
               </button>
             </li>
           );
@@ -546,13 +518,6 @@ export default function GuidedJobForm({
         tabIndex={-1}
         ref={panel}
       >
-        {currentSections.length > 1 && (
-          <ScrollspyTabs
-            sections={currentSections}
-            ariaLabel={t('jobs.mutation.sectionsNavLabel')}
-            className="guidedJobForm__sectionNav"
-          />
-        )}
         {renderCurrentStep()}
       </section>
       <div className="guidedJobForm__footer">

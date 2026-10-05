@@ -4,7 +4,6 @@
  */
 
 import type { ReactElement } from 'react';
-import { IconSignal, IconRefresh, IconGlobe } from '@douyinfe/semi-icons';
 
 import SettingsShell from '../../components/settingsShell/SettingsShell.jsx';
 import type { SettingsShellTab } from '../../components/settingsShell/SettingsShell.jsx';
@@ -37,9 +36,9 @@ export default function AdminLayout(): ReactElement {
   const admin = useAdminSettings(settings);
 
   const tabs: SettingsShellTab[] = [
-    { path: '/admin/system', label: t('admin.tabSystem'), icon: <IconSignal size="small" /> },
-    { path: '/admin/execution', label: t('admin.tabExecution'), icon: <IconRefresh size="small" /> },
-    { path: '/admin/connectivity', label: t('admin.tabConnectivity'), icon: <IconGlobe size="small" /> },
+    { path: '/admin/system', label: t('admin.tabSystem') },
+    { path: '/admin/execution', label: t('admin.tabExecution') },
+    { path: '/admin/connectivity', label: t('admin.tabConnectivity') },
   ];
 
   return (

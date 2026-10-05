@@ -5,66 +5,75 @@
 
 @import '../../tokens.less';
 
-// The shared settings navigation rail. A single horizontally-scrollable row of pill tabs, the same
-// visual language as ScrollspyTabs, used by both Account Preferences and Administration so the two
-// areas navigate identically. Kept generic: it styles the rail and the tabs and nothing about any
-// one host.
+// The shared settings navigation rail: mono labels on a hairline, the active one underlined in ink
+// on that same rule - the tab grammar Home's activity tabs use, so every tabbed page in the app reads
+// the same. One horizontally-scrollable row, used by both Account Preferences and Administration.
+// Kept generic: it styles the rail and the tabs and nothing about any one host.
 .settingsRouteTabs {
   display: flex;
-  gap: @space-2;
+  gap: @space-6;
   margin: 0 0 @space-4;
-  padding-bottom: @space-1;
-  // Contain the rail within its column and let it scroll itself, so a phone gets a normal
-  // horizontal scroll with a thin bar instead of the rail widening the page (the old lopsided rail).
+  border-bottom: 1px solid @color-border-bright;
+  // Contain the rail within its column and let it scroll itself, so a phone gets a horizontal
+  // swipe instead of the rail widening the page.
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
 
   &__tab {
+    position: relative;
     display: inline-flex;
     flex: 0 0 auto;
     align-items: center;
     gap: @space-2;
     min-height: 44px;
-    padding: @space-2 @space-4;
-    border: 1px solid @color-border;
-    border-radius: @radius-pill;
-    background: @color-surface;
+    padding: @space-3 0;
+    border: 0;
+    background: transparent;
     color: @color-muted;
-    font-family: @font-ui;
+    font-family: @font-mono;
     font-size: @text-sm;
     font-weight: 500;
+    letter-spacing: @tracking-label;
+    text-transform: uppercase;
     white-space: nowrap;
     text-decoration: none;
     scroll-snap-align: start;
     cursor: pointer;
-    transition:
-      border-color @transition-fast,
-      background @transition-fast,
-      color @transition-fast;
+    transition: color @transition-fast;
+
+    // The underline sits on the rail's rule, so active and inactive tabs share one baseline.
+    &::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 1px;
+      background: transparent;
+    }
 
     &:hover {
-      border-color: @color-border-bright;
       color: @color-text;
     }
 
     &:focus-visible {
-      outline: 2px solid @color-accent;
+      outline: 1px solid @color-text;
       outline-offset: 2px;
     }
   }
 
-  // Active tab in the forest accent role. aria-current carries the same state for AT, so this is
-  // reinforcement, never the only signal. Scrolled into view so the active tab is always visible
-  // even when the rail has overflowed on a narrow screen.
+  // aria-current carries the same state for AT, so this is reinforcement, never the only signal.
   &__tab--active {
-    border-color: @color-accent;
-    background: @color-accent-dim;
-    color: @color-accent;
+    color: @color-text;
     scroll-snap-align: center;
+
+    &::after {
+      background: @color-text;
+    }
   }
 
   &__icon {

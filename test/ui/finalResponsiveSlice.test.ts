@@ -308,14 +308,15 @@ describe('lane B: saved searches merged card, review health, and pill actions', 
     expect(actionRow).toBeGreaterThan(editCue);
     expect(savedSearchesSource.match(/className="savedSearches__editCue"/g)).toHaveLength(1);
   });
-  it('wires the shared ScrollspyTabs rail into Edit Search with per-section anchors', () => {
-    expect(guidedFormSource).toContain(
-      "import ScrollspyTabs, { type ScrollspySection } from '../../../components/scrollspy/ScrollspyTabs';",
-    );
-    expect(guidedFormSource).toContain('<ScrollspyTabs');
-    expect(guidedFormSource).toContain("ariaLabel={t('jobs.mutation.sectionsNavLabel')}");
-    expect(guidedFormSource).toContain('className="scrollspyTabs-section"');
+  it('stacks hairline sections per step without a second in-step tab rail', () => {
+    // The step panel is one column of ruled SegmentParts; the scrollspy sub-tabs duplicated the
+    // sections right beneath them and are gone. The anchors stay so a validation jump still lands.
+    expect(guidedFormSource).not.toContain('<ScrollspyTabs');
     expect(guidedFormSource).toContain('id="guided-section-providers"');
+    expect(guidedStyles).toMatch(/\.guidedJobForm__steps\s*{[\s\S]*?border-top:\s*1px solid @color-border-bright;/);
+    expect(guidedStyles).toMatch(
+      /\.guidedJobForm__step\s*{[\s\S]*?&\[aria-selected='true'\]\s*{[\s\S]*?background:\s*@color-text;/,
+    );
   });
 
   it('hides the redundant bottom footer on mobile and carries persistent actions in the ribbon', () => {

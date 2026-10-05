@@ -3,14 +3,16 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { Card, Popover } from '@douyinfe/semi-ui-19';
+import { Popover } from '@douyinfe/semi-ui-19';
 import { IconHelpCircle } from '@douyinfe/semi-icons';
 import type { ElementType, ReactNode } from 'react';
 
 import './SegmentParts.less';
 
 /**
- * A titled card holding one group of controls.
+ * One titled group of controls: a heading, its explanation, the controls, and a hairline beneath.
+ * Several of these stacked make a settings page or a wizard step; there is no box around any of
+ * them, the rules between them are the structure.
  *
  * `helpMode` decides what happens to the explanation:
  *
@@ -19,6 +21,8 @@ import './SegmentParts.less';
  * - `popover` puts it behind a mark next to the title. Right for the job form, where nine of these
  *   stack up and their help text alone came to some 280 words of permanently visible prose - which
  *   is read once, on the first job, and is in the way on every job after that.
+ *
+ * `Icon` is accepted for compatibility and no longer rendered: the heading carries the meaning.
  */
 export interface SegmentPartProps {
   name: string;
@@ -31,42 +35,29 @@ export interface SegmentPartProps {
 
 export const SegmentPart = ({
   name,
-  Icon = undefined,
   children,
   helpText = null,
   helpMode = 'inline',
   className = '',
 }: SegmentPartProps) => {
-  const { Meta } = Card;
   const asPopover = helpMode === 'popover' && helpText != null;
 
-  const title = asPopover ? (
-    <span className="segmentParts__title">
-      {name}
-      <Popover content={<div className="segmentParts__help">{helpText}</div>} position="right" showArrow>
-        <button type="button" className="segmentParts__helpMark" aria-label={helpText}>
-          <IconHelpCircle size="small" />
-        </button>
-      </Popover>
-    </span>
-  ) : (
-    name
-  );
-
   return (
-    <Card
-      className={`segmentParts ${className}`}
-      title={
-        (helpText || name) && (
-          <Meta
-            title={title}
-            description={asPopover ? null : helpText}
-            avatar={Icon == null ? null : <Icon size="extra-extra-small" />}
-          />
-        )
-      }
-    >
-      {children}
-    </Card>
+    <section className={`segmentParts ${className}`}>
+      <header className="segmentParts__header">
+        <h2 className="segmentParts__title">
+          {name}
+          {asPopover && (
+            <Popover content={<div className="segmentParts__help">{helpText}</div>} position="right" showArrow>
+              <button type="button" className="segmentParts__helpMark" aria-label={helpText}>
+                <IconHelpCircle size="small" />
+              </button>
+            </Popover>
+          )}
+        </h2>
+        {!asPopover && helpText && <p className="segmentParts__description">{helpText}</p>}
+      </header>
+      <div className="segmentParts__body">{children}</div>
+    </section>
   );
 };
