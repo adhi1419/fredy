@@ -132,3 +132,32 @@ export function validateProviderUrl(
   return { ok: true, problem: null, expectedHost };
 }
 /* Copyright (c) 2026 by Christian Kellner. */
+
+/** The longest URL label the card shows before it is middle-truncated. */
+const URL_LABEL_MAX = 64;
+
+/**
+ * A scannable label for a provider search URL: the host, path and query without the scheme or a
+ * `www.` prefix, middle-truncated so the search parameters stay recognisable. The full URL stays in
+ * the link's title and aria-label, so nothing is lost to the user or to assistive technology.
+ *
+ * @param url - The provider search URL as entered.
+ * @returns The label, or null when there is no URL.
+ */
+export function providerUrlLabel(url: string | null | undefined): string | null {
+  if (url == null || String(url).trim().length === 0) return null;
+  const raw = String(url).trim();
+  let label = raw;
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.host.replace(/^www\./, '');
+    const path = parsed.pathname === '/' ? '' : parsed.pathname;
+    label = `${host}${path}${parsed.search}`;
+  } catch {
+    label = raw.replace(/^[a-z]+:\/\/(www\.)?/i, '');
+  }
+  if (label.length <= URL_LABEL_MAX) return label;
+  const head = Math.ceil((URL_LABEL_MAX - 1) * 0.65);
+  const tail = URL_LABEL_MAX - 1 - head;
+  return `${label.slice(0, head)}…${label.slice(-tail)}`;
+}

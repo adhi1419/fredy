@@ -289,14 +289,13 @@ describe('lane B: saved searches merged card, review health, and pill actions', 
     expect(guidedFormSource).toContain('id="guided-section-danger"');
   });
 
-  it('renders provider URLs host-only in the Edit Search view while keeping the full URL', () => {
+  it('renders provider URLs truncated in the Edit Search view while keeping the full URL', () => {
     expect(cardsSource).toContain('providerUrlLabel(displaySource.url)');
-    expect(cardsSource).toContain('normalizeHost');
     // Full URL preserved in title/aria; never used as the visible link text or as the href fallback.
     expect(cardsSource).toContain('title={displaySource.url ?? undefined}');
     expect(cardsSource).toContain("t('jobs.mutation.viewUrlOpenAria'");
     expect(cardsSource).not.toContain('>{displaySource.url}<');
-    expect(guidedStyles).toMatch(/providerChoiceCards__urlLink[\s\S]*?text-overflow:\s*ellipsis;/);
+    expect(guidedStyles).toMatch(/providerChoiceCards__urlText[\s\S]*?text-overflow:\s*ellipsis;/);
   });
 
   it('places the edit cue in the actions column above Run & repair', () => {

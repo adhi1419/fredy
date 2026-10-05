@@ -15,7 +15,7 @@ import {
   type GuidedProviderSource,
   type ProviderMetadata,
 } from '../../ui/src/services/jobs/guidedSearchForm.js';
-import { getSafeProviderUrl, validateProviderUrl } from '../../ui/src/services/jobs/providerUrl.js';
+import { getSafeProviderUrl, providerUrlLabel, validateProviderUrl } from '../../ui/src/services/jobs/providerUrl.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
@@ -60,16 +60,19 @@ describe('provider choice cards', () => {
     expect(formSource).toContain('onStepSelect');
   });
 
-  it('renders source identity, entered URL, capability, readiness, and source-local policy controls', () => {
+  it('renders the provider name, the entered URL, one inquiry status line, and the consent switch', () => {
     for (const marker of [
       'labelWithFlags',
       'mergeProviderCapability',
       'displaySource.url',
-      'providerChoiceCards__countryCode',
-      'policy.capability.automatic',
-      'policy.capability.connectionRequired',
-      "policy.reason === 'unsupported'",
+      "policy.reason !== 'unsupported'",
       'policyUnsupportedStatus',
+      'policyConnectionStatus',
+      'policyProfileStatus',
+      'policyAvailableStatus',
+      'IconTickCircle',
+      'IconAlertTriangle',
+      'IconExternalOpen',
       'policyProfileReady',
       'onPolicyChange',
       'onEdit',
@@ -82,12 +85,10 @@ describe('provider choice cards', () => {
     }
   });
 
-  it('renders only validated provider hrefs and localized country labels', () => {
+  it('renders only validated provider hrefs', () => {
     expect(cardsSource).toContain('getSafeProviderUrl(displaySource.url, provider)');
     expect(cardsSource).toContain('href={safeProviderUrl}');
     expect(cardsSource).not.toContain('href={displaySource.url}');
-    expect(cardsSource).toContain("t('jobs.mutation.providerCountries'");
-    expect(cardsSource).not.toContain('aria-label={`Countries: ${countryCodes}`}');
     expect(getSafeProviderUrl('javascript://www.immobilienscout24.de/Suche/de/berlin', metadata[0])).toBeNull();
     expect(getSafeProviderUrl('https://www.immobilienscout24.de.evil.example/Suche/de/berlin', metadata[0])).toBeNull();
   });
@@ -162,6 +163,8 @@ describe('provider choice cards', () => {
     expect(cardsSource).toContain("t('common.delete')");
     expect(styles).toMatch(/providerChoiceCards__actions[\s\S]*min-height: 44px;/);
     expect(styles).toMatch(/providerChoiceCards__policyControl[\s\S]*min-height: 44px;/);
-    expect(styles).toMatch(/@media \(max-width: 850px\)[\s\S]*providerChoiceCards__details/);
+    // The consent box is the click target, and the switch inside it keeps its fixed width.
+    expect(cardsSource).toContain('<label className="providerChoiceCards__policyControl">');
+    expect(styles).toMatch(/providerChoiceCards__policyControl \{[\s\S]*?\.semi-switch \{\s*flex: 0 0 auto;/);
   });
 });
