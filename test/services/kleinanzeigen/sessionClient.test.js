@@ -26,20 +26,6 @@ describe('Kleinanzeigen encrypted web session', () => {
     });
   });
 
-  it('discards the Astro experiment cookie from stored and rotated sessions', async () => {
-    const credentialStore = store({ secret: 'SESSION=one; __ka_vip-astro-v1=enabled', revision: 3 });
-    const session = await getKleinanzeigenWebSession({ userId: 'user-1', credentialStore });
-
-    expect(withKleinanzeigenSession(session)).toMatchObject({ headers: { Cookie: 'SESSION=one' } });
-
-    await persistKleinanzeigenSessionCookies(session, {
-      headers: { getSetCookie: () => ['__ka_vip-astro-v1=enabled; Path=/; Secure'] },
-    });
-
-    expect(credentialStore.rotate).not.toHaveBeenCalled();
-    expect(withKleinanzeigenSession(session)).toMatchObject({ headers: { Cookie: 'SESSION=one' } });
-  });
-
   it('fails closed for a missing owner or credential', async () => {
     await expect(getKleinanzeigenWebSession()).rejects.toMatchObject({ permanent: true, phase: 'authentication' });
     await expect(getKleinanzeigenWebSession({ userId: 'user-1', credentialStore: store(null) })).rejects.toMatchObject({

@@ -27,7 +27,7 @@ async function loadInquiryProfileHandler() {
   vi.doMock(root + '/lib/services/geocoding/geoCodingService.js', () => ({ geocodeAddress: vi.fn() }));
   vi.doMock(root + '/lib/services/geocoding/autocompleteService.js', () => ({ autocompleteAddress: vi.fn() }));
   vi.doMock(root + '/lib/services/geocoding/distanceService.js', () => ({ updateDistancesForAddressChange: vi.fn() }));
-  vi.doMock(root + '/lib/services/crons/geocoding-cron.js', () => ({ runGeoCordTask: vi.fn() }));
+  vi.doMock(root + '/lib/services/maintenance/maintenanceSweeps.js', () => ({ runGeoCordTask: vi.fn() }));
 
   const plugin = (await import(root + '/lib/api/routes/userSettingsRoute.js')).default;
   const routes = {};

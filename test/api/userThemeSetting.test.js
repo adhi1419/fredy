@@ -30,7 +30,7 @@ async function loadThemeHandler(stored = {}) {
   vi.doMock(root + '/lib/services/geocoding/distanceService.js', () => ({
     updateDistancesForAddressChange: vi.fn(),
   }));
-  vi.doMock(root + '/lib/services/crons/geocoding-cron.js', () => ({ runGeoCordTask: vi.fn() }));
+  vi.doMock(root + '/lib/services/maintenance/maintenanceSweeps.js', () => ({ runGeoCordTask: vi.fn() }));
 
   const plugin = (await import(root + '/lib/api/routes/userSettingsRoute.js')).default;
   const routes = {};

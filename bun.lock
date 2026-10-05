@@ -12,7 +12,6 @@
         "fastify": "^5.12.1",
         "firebase-admin": "^14.3.0",
         "nanoid": "6.0.1",
-        "node-cron": "^4.6.0",
         "node-fetch": "3.3.2",
         "p-throttle": "^8.1.0",
         "package-up": "^5.0.0",
@@ -1245,7 +1244,6 @@
 
     "needle": ["needle@3.5.0", "", { "dependencies": { "iconv-lite": "^0.6.3", "sax": "^1.2.4" }, "bin": { "needle": "bin/needle" } }, "sha512-jaQyPKKk2YokHrEg+vFDYxXIHTCBgiZwSHOoVx/8V3GIBS8/VN6NdVRmg8q1ERtPkMvmOvebsgga4sAj5hls/w=="],
 
-    "node-cron": ["node-cron@4.6.0", "", {}, "sha512-Si/bzYiKRHOB8/a99T2+SDGN582ONDMSTlJr5oCkT6GtnqPjZ2s10eoQRYkW9ZHwjVxONL+W8Fb+qR0AHMQsdg=="],
 
     "node-domexception": ["node-domexception@1.0.0", "", {}, "sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ=="],
 

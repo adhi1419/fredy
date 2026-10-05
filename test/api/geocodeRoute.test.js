@@ -14,7 +14,7 @@ vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
 vi.mock('../../lib/services/geocoding/geoCodingService.js', () => ({ geocodeAddress: vi.fn() }));
 vi.mock('../../lib/services/geocoding/autocompleteService.js', () => ({ autocompleteAddress: vi.fn(async () => []) }));
 vi.mock('../../lib/services/geocoding/distanceService.js', () => ({ updateDistancesForAddressChange: vi.fn() }));
-vi.mock('../../lib/services/crons/geocoding-cron.js', () => ({ runGeoCordTask: vi.fn() }));
+vi.mock('../../lib/services/maintenance/maintenanceSweeps.js', () => ({ runGeoCordTask: vi.fn() }));
 vi.mock('../../lib/services/logger.js', () => ({
   default: { error: vi.fn(), info: vi.fn(), debug: vi.fn(), warn: vi.fn() },
 }));

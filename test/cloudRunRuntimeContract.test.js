@@ -42,7 +42,7 @@ describe('Cloud Run runtime contract', () => {
 
     expectAllIncluded(startup, fixture.startup.required, 'index.js');
     expectAllIncluded(api, fixture.startup.apiRequired, 'lib/api/api.js');
-    expect(startup.indexOf('initJobExecutionService({ providers, intervalMs: INTERVAL });')).toBeLessThan(
+    expect(startup.indexOf('initJobExecutionService({ providers });')).toBeLessThan(
       startup.indexOf("await import('./lib/api/api.js');"),
     );
   });

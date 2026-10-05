@@ -34,7 +34,6 @@ describe('settingsStorage contract', () => {
       expect(await settingsStorage.getSettings()).toMatchObject({
         interval: 60,
         port: 9998,
-        workingHours: { from: null, to: null },
       });
     });
 
