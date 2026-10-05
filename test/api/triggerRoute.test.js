@@ -16,12 +16,23 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 
 const runnerCalls = [];
+const order = [];
 let runnerImpl = async () => {};
 
 vi.mock('../../lib/services/jobs/jobExecutionService.js', () => ({
   runAllJobsForTrigger: async (options) => {
     runnerCalls.push(options);
+    order.push('jobs');
     return runnerImpl(options);
+  },
+}));
+
+// The paced sweeps run from the trigger, after the jobs - the trigger is the only clock on
+// scale-to-zero, so their ordering behind the job run is part of this route's contract.
+vi.mock('../../lib/services/maintenance/maintenanceSweeps.js', () => ({
+  runMaintenance: async () => {
+    order.push('maintenance');
+    return ['geocode'];
   },
 }));
 
@@ -38,6 +49,7 @@ describe('POST /api/trigger', () => {
   beforeEach(async () => {
     runnerCalls.length = 0;
     runnerImpl = async () => {};
+    order.length = 0;
     vi.resetModules();
     app = await build();
   });
@@ -89,10 +101,12 @@ describe('POST /api/trigger', () => {
     // Assert the flag, not a millisecond floor: setTimeout(50) can be measured
     // as 49ms via timer rounding, which flakes a `>= 50` check in CI.
     expect(resolved).toBe(true);
-    expect(runnerCalls).toEqual([{ respectWorkingHours: true }]);
+    expect(runnerCalls).toEqual([undefined]);
+    expect(order).toEqual(['jobs', 'maintenance']);
     const body = res.json();
     expect(body.success).toBe(true);
     expect(body.durationMs).toBeGreaterThanOrEqual(0);
+    expect(body.maintenance).toEqual(['geocode']);
   });
 
   it('surfaces a failing run as 500', async () => {

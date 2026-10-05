@@ -6,15 +6,10 @@
 import { checkIfConfigIsAccessible, getProviders, refreshConfig } from './lib/utils.js';
 import * as similarityCache from './lib/services/similarity-check/similarityCache.js';
 import logger from './lib/services/logger.js';
-import { initActiveCheckerCron } from './lib/services/crons/listing-alive-cron.js';
-import { initGeocodingCron } from './lib/services/crons/geocoding-cron.js';
 import { getSettings } from './lib/services/storage/settingsStorage.js';
 import FirestoreConnection from './lib/services/storage/firestore/FirestoreConnection.js';
 import { initJobExecutionService } from './lib/services/jobs/jobExecutionService.js';
 import { removeObsoleteProviders } from './lib/services/providers/providerCleanup.js';
-import { initListingRetentionCron } from './lib/services/crons/listing-retention-cron.js';
-import { initTravelTimeCron } from './lib/services/crons/travel-time-cron.js';
-import { initConnectivityCron } from './lib/services/crons/connectivity-cron.js';
 
 function validateProductionAuthConfiguration() {
   if (process.env.NODE_ENV !== 'production') return;
@@ -82,32 +77,20 @@ removeObsoleteProviders(providers);
 await similarityCache.initSimilarityCache();
 similarityCache.startSimilarityCacheReloader();
 
-//assuming interval is always in minutes
-const INTERVAL = settings.interval * 60 * 1000;
-
 // Wire the Job Execution Service (sets the trigger runner + bus listeners) BEFORE the API starts
 // listening. On scale-to-zero Cloud Run the external scheduler's wake-up request can hit
 // /api/trigger the instant the server accepts connections; when this ran AFTER listen, that request
 // raced the trigger runner and returned 500 "Job execution service not initialized", skipping the
 // scrape for that cycle — which was the majority of cold-start cycles.
-initJobExecutionService({ providers, intervalMs: INTERVAL });
+initJobExecutionService({ providers });
 
 // Initialize API only after migrations completed
 await import('./lib/api/api.js');
 
 logger.info('Authentication: Firebase bearer tokens');
 
-//do not wait for this to finish, let it run in the background
-initActiveCheckerCron();
-initGeocodingCron();
-await initListingRetentionCron();
-// Same reasoning: schedule only. The sweep talks to a community routing service, and hammering it
-// every time an instance restarts is exactly the behaviour their usage policy asks projects to avoid.
-initTravelTimeCron();
-// This one does run on start, unlike the two above: it costs two small JSON requests per address
-// and nothing at all for an address sharing a cell with one already looked up, so a restart is not
-// a moment it needs holding back from.
-initConnectivityCron();
+// No in-process schedulers: every scrape and maintenance sweep is driven by POST /api/trigger
+// (see lib/services/maintenance/maintenanceSweeps.js for why).
 
 // Same resolution chain as api.js — PORT env (Cloud Run) wins, then config, then default.
 logger.info(

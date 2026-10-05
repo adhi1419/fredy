@@ -27,9 +27,10 @@
  * | 48 h ≤ age < 7 days       | home.ageDays        | 2..6  |
  * | age ≥ 7 days              | home.ageLastWeek    | —     |
  *
- * The 7-day ceiling lines up with the backend auto-archive boundary (`> 7*24h`): a listing sitting
- * at exactly a week reads "Last week" here and is archived by the job run once it is strictly older,
- * so the oldest thing a New card ever shows is "Last week".
+ * The 7-day ceiling is a display choice for the card alone: a listing a week or more old reads
+ * "Last week" here. It no longer tracks the backend auto-archive boundary, which now uses
+ * per-lifecycle-state windows (14 days new, 30 applied, 45 viewed) measured from when the listing
+ * entered that state — see `isListingStaleForArchive` in `lib/services/listings/staleArchive.js`.
  */
 
 export const MINUTE_MS = 60 * 1000;

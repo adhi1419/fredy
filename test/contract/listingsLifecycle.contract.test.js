@@ -270,63 +270,6 @@ describe('listingsStorage lifecycle contract', () => {
   // ---------------------------------------------------------------------------
   // Retention purge
   // ---------------------------------------------------------------------------
-  describe('purgeExpiredInactiveListings', () => {
-    const purge = async (retentionDays = 14) =>
-      await listingsStorage.purgeExpiredInactiveListings({ retentionDays, now: NOW });
-
-    it('deletes a listing that has been offline longer than the retention period', async () => {
-      await seedUser();
-      await seedJob();
-      const id = await seedListing('job-1');
-
-      await listingsStorage.deactivateListings([id], NOW - 15 * DAY);
-
-      expect((await purge(14)).changes).toBe(1);
-      expect(await listingsStorage.getListingById(id, 'u1', true)).toBeNull();
-    });
-
-    it('keeps a listing still inside its grace period', async () => {
-      await seedUser();
-      await seedJob();
-      const id = await seedListing('job-1');
-
-      await listingsStorage.deactivateListings([id], NOW - 13 * DAY);
-
-      expect((await purge(14)).changes).toBe(0);
-    });
-
-    it('never touches an active listing', async () => {
-      await seedUser();
-      await seedJob();
-      const id = await seedListing('job-1');
-      // Listing stays active (default), purge should not touch it
-      expect((await purge(14)).changes).toBe(0);
-      expect(await listingsStorage.getListingById(id, 'u1', true)).not.toBeNull();
-    });
-
-    it('never deletes a listing on the watch list', async () => {
-      await seedUser();
-      await seedJob();
-      const id = await seedListing('job-1');
-
-      await listingsStorage.deactivateListings([id], NOW - 400 * DAY);
-
-      // We need to add to watch list. watchListStorage is a separate module.
-      const watchListStorage = await loadStorageModule('watchListStorage');
-      await watchListStorage.createWatch(id, 'u1');
-
-      expect((await purge(14)).changes).toBe(0);
-    });
-
-    it('deletes nothing when retentionDays < 1', async () => {
-      await seedUser();
-      await seedJob();
-      const id = await seedListing('job-1');
-      await listingsStorage.deactivateListings([id], NOW - 400 * DAY);
-
-      expect((await purge(0)).changes).toBe(0);
-    });
-  });
 
   // ---------------------------------------------------------------------------
   // Geocoding candidates

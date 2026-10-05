@@ -46,7 +46,6 @@ describe('services/jobs/jobExecutionService', () => {
       getSettings: async () => settings,
     }));
     vi.doMock(utilsPath, () => ({
-      duringWorkingHoursOrNotSet: () => false,
       getPackageVersion: async () => '0.0.0-test',
     }));
     vi.doMock(loggerPath, () => {
@@ -81,7 +80,7 @@ describe('services/jobs/jobExecutionService', () => {
     }));
 
     const mod = await import(svcPath);
-    mod.initJobExecutionService({ providers: state.providers, intervalMs: 0 });
+    mod.initJobExecutionService({ providers: state.providers });
     return mod;
   }
 

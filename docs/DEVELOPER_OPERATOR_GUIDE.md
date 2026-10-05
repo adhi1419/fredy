@@ -17,7 +17,7 @@ Fredy has two hosted surfaces:
 - Firestore is the only persistent application store. The container's `/conf` path is a Docker configuration volume for self-hosted containers, not the hosted application's data store.
 - Firebase Authentication owns the browser session. The browser sends a refreshed Firebase ID token in `Authorization: Bearer <token>`. Fredy does not use a Fredy cookie or a server-side browser session.
 
-The hosted API's machine scheduler is separate from browser authentication. When `EXTERNAL_SCHEDULER=true`, Cloud Scheduler calls `POST /api/trigger` with `X-Trigger-Token`. The request stays open until the run finishes so scale-to-zero Cloud Run retains request CPU while the scrape executes.
+The hosted API's machine scheduler is separate from browser authentication. Cloud Scheduler calls `POST /api/trigger` with `X-Trigger-Token`; it is the only clock Fredy has. The request stays open until the run finishes so scale-to-zero Cloud Run retains request CPU while the scrape executes.
 
 The repository also contains release-tag workflows and a Compose default that reference the legacy `ghcr.io/orangecoding/fredy` image. Those paths support the project's self-hosted release workflow. They are not evidence that the legacy image is the hosted Cloud Run production image. Hosted production is defined by `.github/workflows/deploy.yml` and the Cloud Run service configuration it preserves.
 
@@ -212,7 +212,6 @@ The following variables are read by the current code or deployment workflows. Va
 | `FIRESTORE_PROJECT_ID`                          | Local emulator or explicit Firestore selection | Project label used by the Firestore client. Local tests use a disposable value. It is not a credential.                                                                                                                                         |
 | `FIREBASE_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT` | Firebase Admin project selection               | Optional project-selection hints for Firebase Admin. They do not replace ADC.                                                                                                                                                                   |
 | `FIREBASE_AUTH_EMULATOR_HOST`                   | Optional local Firebase Auth emulator          | Native Firebase Admin emulator endpoint. The standard Compose and CI paths do not start this emulator.                                                                                                                                          |
-| `EXTERNAL_SCHEDULER`                            | Hosted scheduler mode                          | Set to the exact string `true` to disable the internal timer and scrape-on-boot.                                                                                                                                                                |
 | `TRIGGER_TOKEN`                                 | Hosted scheduler mode                          | Secret shared with Cloud Scheduler through `X-Trigger-Token`. Never put it in a repository variable, source file, provider source, or job document.                                                                                             |
 | `GEMINI_API_KEY`                                | Optional inquiry-message drafting              | Secret. The current Cloud Run bootstrap attaches it from Secret Manager only when that secret exists. Without it, the feature stays disabled.                                                                                                   |
 | `PROVIDER_CREDENTIAL_ENCRYPTION_KEY`            | Connected provider applications                | Secret. Base64-encoded 32-byte AES key mounted from Secret Manager. Provider refresh tokens are encrypted with AES-256-GCM in the owner-scoped `provider_credentials` collection; never rotate it without re-encrypting every credential first. |
@@ -222,7 +221,7 @@ The following variables are read by the current code or deployment workflows. Va
 | `VITE_PAGES`                                    | Pages frontend build                           | Set to `true` to build with the `/fredy/` base path.                                                                                                                                                                                            |
 | `CLOUD_RUN_API_ORIGIN`                          | GitHub Actions Pages deployment                | Repository variable containing the Cloud Run origin without an API path. The workflow maps it to `VITE_API_BASE_URL`.                                                                                                                           |
 
-The stored `settings` collection contains application settings such as `interval`, `port`, and `workingHours`. Settings are JSON values stored in Firestore. The public settings route removes non-serializable secret settings before returning data to clients. Do not treat a browser-visible settings response as a secret store.
+The stored `settings` collection contains application settings such as `port`, plus the `maintenance.lastRunAt` markers the trigger uses to pace its sweeps. Settings are JSON values stored in Firestore. The public settings route removes non-serializable secret settings before returning data to clients. Do not treat a browser-visible settings response as a secret store.
 
 ### Authentication onboarding
 
@@ -354,20 +353,16 @@ The production image:
 
 The API fetches every provider over plain HTTP, so the image ships no browser and none of the browser system libraries or fonts a headless browser would need.
 
-## 8. Scheduler and working-hours behavior
+## 8. Scheduler behavior
 
-With `EXTERNAL_SCHEDULER=true`:
+Fredy has no in-process timers. On scale-to-zero Cloud Run a `node-cron` schedule only fires while a request happens to be in flight, so every scrape and every maintenance sweep is driven by `POST /api/trigger`:
 
-- Fredy does not start its internal timer.
-- Fredy does not perform the startup scrape.
-- `POST /api/trigger` is the scrape entry point.
 - The trigger requires `X-Trigger-Token` and uses constant-time comparison.
 - Missing configuration returns `404`, a wrong token returns `403`, and a failed run returns `500`.
-- A valid request outside working hours returns success after skipping job execution.
+- A run executes every enabled job, then the paced maintenance sweeps in `lib/services/maintenance/maintenanceSweeps.js`: geocoding of listings without coordinates (every trigger), the alive check (at least four hours apart) and the travel-time sweep (at least two hours apart). Last-run markers live in the global `settings` scope as `maintenance.lastRunAt`, so the pace survives a restart.
+- Each job run moves aged listings to Archived: `new` after 14 days since the listing was stored, `applied` after 30 days since it was applied to, `viewed` after 45 days since it was viewed (`lib/services/listings/staleArchive.js`). Nothing deletes listings on a schedule.
 
-Without external-scheduler mode, the internal scheduler starts when the configured interval is positive and performs an initial run that respects working hours. The interval is read again for later ticks, so an interval change takes effect without a restart.
-
-Working hours are stored in global settings as `workingHours.from`, `workingHours.to`, and an optional IANA `timeZone`. Both edges must be set or neither edge is set. The accepted time format is `HH:mm`. Same-day and midnight-crossing windows are supported. The route validates malformed values, while the scheduler's defensive helper treats malformed or incomplete values as no configured window so a typo does not stop every job.
+Locally, trigger a run the same way: `curl -X POST -H "X-Trigger-Token: $TRIGGER_TOKEN" http://127.0.0.1:9998/api/trigger`.
 
 The Scheduler request is held open until the run completes. Do not change the trigger route to fire-and-forget on Cloud Run. Doing so removes the request-time CPU guarantee while scraping continues.
 
@@ -422,7 +417,7 @@ The expected response is `204` with the exact allowed-method and allowed-header 
 
 **The scheduler receives `404` or `403`.** `404` means `TRIGGER_TOKEN` is absent from the API environment. `403` means the `X-Trigger-Token` value does not match. Verify the Cloud Scheduler job's target URL and header without printing the token. The trigger uses machine authentication, not Firebase browser auth.
 
-**The scheduler returns success but no listings appear.** Check the saved `workingHours` window and IANA time zone, whether jobs are enabled, provider logs, and whether `EXTERNAL_SCHEDULER` is set as intended. A valid trigger outside the window deliberately skips execution.
+**The scheduler returns success but no listings appear.** Check whether jobs are enabled, the provider logs, and the `LISTING_DECISION` lines of the run.
 
 **A provider run fails.** Inspect the provider-specific error, and check external portal reachability and bot prevention. The pipeline isolates provider errors so one failing provider does not abort the remaining providers. A German residential proxy can be required by portal IP reputation, but its credentials must remain in the supported operator configuration path and not in provider source documents.
 

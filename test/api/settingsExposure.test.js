@@ -14,7 +14,6 @@ const STORED_SETTINGS = {
   interval: 60,
   port: 9998,
   baseUrl: 'https://fredy.example',
-  workingHours: { from: '08:00', to: '20:00' },
   session_secret: 'super-secret-signing-key',
   proxyAuthSecret: 'shared-with-the-proxy',
 };

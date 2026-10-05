@@ -45,7 +45,7 @@
       "FIREBASE_WEB_CONFIG must contain projectId, appId, and apiKey",
       "FRONTEND_ORIGIN is required in production",
       "FIRESTORE_EMULATOR_HOST is not allowed in production",
-      "initJobExecutionService({ providers, intervalMs: INTERVAL });",
+      "initJobExecutionService({ providers });",
       "await import('./lib/api/api.js');"
     ],
     "apiRequired": [
@@ -54,8 +54,7 @@
       "fastify.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: 'Not found' }));"
     ],
     "schedulerRequired": [
-      "const externalScheduler = process.env.EXTERNAL_SCHEDULER === 'true';",
-      "_triggerRunner = (respectWorkingHours = true) => runAll(respectWorkingHours);"
+      "_triggerRunner = () => runAll();"
     ]
   },
   "adc": {

@@ -11,7 +11,7 @@ const settingsStoragePath = root + '/lib/services/storage/settingsStorage.js';
 const geoCodingPath = root + '/lib/services/geocoding/geoCodingService.js';
 const distanceServicePath = root + '/lib/services/geocoding/distanceService.js';
 const providerCountriesPath = root + '/lib/services/providers/providerCountries.js';
-const geocodingCronPath = root + '/lib/services/crons/geocoding-cron.js';
+const geocodingCronPath = root + '/lib/services/maintenance/maintenanceSweeps.js';
 const jobStoragePath = root + '/lib/services/storage/jobStorage.js';
 
 let stored;
