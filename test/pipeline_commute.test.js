@@ -17,7 +17,7 @@ vi.mock('../lib/services/listings/travelTimeSweeper.js', () => ({
 const HOME = { lat: 52.52, lng: 13.4 };
 
 /** The saved address every test measures from. What is too far is the job's to say. */
-const WORK = { label: 'Work', address: 'office', coords: HOME, mode: 'transit' };
+const WORK = { id: 'Work', label: 'Work', address: 'office', coords: HOME, mode: 'transit' };
 
 /**
  * A listing with a public transport commute already measured, as the sweep would leave it.
@@ -34,7 +34,9 @@ function listing(id, minutes) {
     price: '900',
     link: `http://example.com/${id}`,
     travelTimes:
-      minutes == null ? [] : [{ label: 'Work', mode: 'transit', estimate: true, transit: { minutes, transfers: 1 } }],
+      minutes == null
+        ? []
+        : [{ addressId: 'Work', label: 'Work', mode: 'transit', estimate: true, transit: { minutes, transfers: 1 } }],
   };
 }
 

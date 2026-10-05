@@ -490,7 +490,7 @@ describe('jobStorage contract', () => {
       await watchListStorage.createWatch(items[0].id, 'u1');
       await listingsStorage.saveListingTravelTimes(
         items[0].id,
-        [{ label: 'Home', transitMinutes: 20, isEstimate: true, referenceTime: 1000 }],
+        [{ addressId: 'id-Home', label: 'Home', transitMinutes: 20, isEstimate: true, referenceTime: 1000 }],
         1000,
       );
       await listingsStorage.recordPriceObservation(items[0].id, 800, 1000, 'contract');

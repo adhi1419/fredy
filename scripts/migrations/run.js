@@ -290,6 +290,155 @@ async function plan007(db) {
   return operations;
 }
 
+/**
+ * A whole document written as given, for documents that move to a new id.
+ *
+ * @param {string} collection Collection path; may name a subcollection (`listings/x/travel_times`).
+ * @param {string} id
+ * @param {Object} fields
+ * @returns {Object}
+ */
+function creation(collection, id, fields) {
+  return { collection, id, kind: 'set', fields: stableValue(fields) };
+}
+
+/**
+ * The id migration 008 gives a saved address that has none.
+ *
+ * Deterministic, so a dry run and the apply that follows it plan the same operations and the plan
+ * hash holds. New addresses saved through the API get a random id instead.
+ *
+ * @param {string} userId
+ * @param {number} index Position in the user's address list.
+ * @param {string} address
+ * @returns {string}
+ */
+export function migratedAddressId(userId, index, address) {
+  return `addr_${crypto.createHash('sha256').update(`${userId}\0${index}\0${address}`).digest('base64url').slice(0, 16)}`;
+}
+
+/**
+ * The saved addresses of every user, with the id migration 008 assigns where one is missing.
+ *
+ * @param {any} db
+ * @returns {Promise<Map<string, {docId: string, raw: string, addresses: Array<Object>}>>}
+ */
+async function addressesByUser(db) {
+  const byUser = new Map();
+  for (const doc of await allDocs(db, 'settings')) {
+    const data = doc.data();
+    if (data.name !== 'home_addresses' || typeof data.userId !== 'string') continue;
+    let parsed;
+    try {
+      parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+    } catch {
+      parsed = null;
+    }
+    const addresses = (Array.isArray(parsed) ? parsed : []).map((address, index) =>
+      address != null && typeof address === 'object' && !address.id
+        ? { id: migratedAddressId(data.userId, index, String(address.address ?? '')), ...address }
+        : address,
+    );
+    byUser.set(data.userId, { docId: doc.id, raw: data.value, addresses });
+  }
+  return byUser;
+}
+
+/**
+ * Which saved address an old label-keyed reference meant. Limits and travel times were keyed by the
+ * label, and a label defaults to the address text, so a key left over from before a rename still
+ * names the address it was written for.
+ *
+ * @param {string} key
+ * @param {Array<Object>} addresses
+ * @returns {string|null}
+ */
+function addressIdForKey(key, addresses) {
+  const byId = addresses.find((address) => address?.id === key);
+  if (byId) return byId.id;
+  const byLabel = addresses.find((address) => address?.label === key);
+  if (byLabel) return byLabel.id;
+  const byText = addresses.find((address) => address?.address === key);
+  return byText ? byText.id : null;
+}
+
+/**
+ * Give every saved address a stable id, and point commute limits and travel times at it.
+ *
+ * Limits whose key matches no saved address are dropped: they can never be evaluated. Travel-time
+ * documents move from `travel_times/{label}` to `travel_times/{addressId}`; ones for addresses that
+ * no longer exist are deleted, since the sweep recomputes anything still wanted.
+ */
+async function plan008(db) {
+  const operations = [];
+  const users = await addressesByUser(db);
+
+  for (const [, { docId, raw, addresses }] of users) {
+    const value = JSON.stringify(addresses);
+    if (value !== (typeof raw === 'string' ? raw : JSON.stringify(raw))) {
+      operations.push(operation('settings', docId, { value }));
+    }
+  }
+
+  const ownerByJob = new Map();
+  for (const doc of await allDocs(db, 'jobs')) {
+    const data = doc.data();
+    ownerByJob.set(doc.id, data.userId);
+    const filter = data.commuteFilter;
+    if (filter?.limits == null || typeof filter.limits !== 'object') continue;
+    const addresses = users.get(data.userId)?.addresses ?? [];
+    const limits = {};
+    for (const [key, minutes] of Object.entries(filter.limits)) {
+      const addressId = addressIdForKey(key, addresses);
+      if (addressId != null) limits[addressId] = minutes;
+    }
+    const next = Object.keys(limits).length === 0 ? null : { ...filter, limits };
+    if (JSON.stringify(stableValue(next)) !== JSON.stringify(stableValue(filter))) {
+      operations.push(operation('jobs', doc.id, { commuteFilter: next }));
+    }
+  }
+
+  const listingJob = new Map();
+  for (const doc of await allDocs(db, 'listings')) listingJob.set(doc.id, doc.data().jobId);
+
+  const travelTimes = await db.collectionGroup('travel_times').get();
+  // A listing measured both before and after a rename holds two documents for one address: one
+  // under the old label, one under the new. The newer answer survives.
+  const winners = new Map();
+  for (const doc of travelTimes.docs) {
+    const listingId = doc.ref.parent.parent?.id;
+    if (listingId == null) continue;
+    const collection = `listings/${listingId}/travel_times`;
+    const data = doc.data();
+    const owner = ownerByJob.get(listingJob.get(listingId));
+    const addresses = users.get(owner)?.addresses ?? [];
+    const addressId = addressIdForKey(data.addressId ?? data.label ?? doc.id, addresses);
+    if (addressId == null) {
+      operations.push(deletion(collection, doc.id));
+      continue;
+    }
+    const key = `${collection}/${addressId}`;
+    const current = winners.get(key);
+    if (current == null || (data.computedAt ?? 0) > (current.data.computedAt ?? 0)) {
+      if (current != null) current.losers.push(current.doc.id);
+      winners.set(key, { collection, addressId, addresses, doc, data, losers: current?.losers ?? [] });
+    } else {
+      current.losers.push(doc.id);
+    }
+  }
+  for (const { collection, addressId, addresses, doc, data, losers } of winners.values()) {
+    const label = addresses.find((address) => address.id === addressId)?.label ?? data.label ?? null;
+    if (doc.id !== addressId || data.addressId !== addressId || data.label !== label) {
+      operations.push(creation(collection, addressId, { ...data, addressId, label }));
+    }
+    for (const id of new Set([doc.id, ...losers])) {
+      if (id !== addressId) operations.push(deletion(collection, id));
+    }
+  }
+
+  return operations;
+}
+
 export const MIGRATIONS = Object.freeze([
   {
     id: '001-inquiry-rejected',
@@ -318,15 +467,22 @@ export const MIGRATIONS = Object.freeze([
     description: 'Reset unlocated live listings to null so the improved geocoder tries them once.',
     plan: plan007,
   },
+  {
+    id: '008-address-ids',
+    description: 'Give saved addresses stable ids and key commute limits and travel times by them.',
+    plan: plan008,
+  },
 ]);
 
 function summarize(id, operations) {
   const byCollection = new Map();
   for (const op of operations) {
-    const entry = byCollection.get(op.collection) ?? { count: 0, samples: [] };
+    // Subcollection writes are grouped per subcollection and kind, not per parent document.
+    const key = `${op.collection.replace(/^([^/]+)\/[^/]+\//, '$1/*/')}${op.kind === 'update' ? '' : ` (${op.kind})`}`;
+    const entry = byCollection.get(key) ?? { count: 0, samples: [] };
     entry.count += 1;
     if (entry.samples.length < 5) entry.samples.push(op.id);
-    byCollection.set(op.collection, entry);
+    byCollection.set(key, entry);
   }
   return { id, planHash: planHash(operations), changes: Object.fromEntries(byCollection) };
 }
@@ -353,6 +509,7 @@ async function applyOperations(db, operations) {
     for (const op of operations.slice(offset, offset + BATCH_LIMIT)) {
       const ref = db.collection(op.collection).doc(op.id);
       if (op.kind === 'delete') batch.delete(ref);
+      else if (op.kind === 'set') batch.set(ref, op.fields ?? {});
       else {
         const fields = { ...(op.fields ?? {}) };
         for (const field of op.deleteFields ?? []) fields[field] = FieldValue.delete();

@@ -116,4 +116,53 @@ describe('Firestore migrations', () => {
     expect((await db.collection('settings').doc('secret').get()).exists).toBe(false);
     expect((await db.collection('settings').doc('news').get()).exists).toBe(false);
   });
+
+  it('gives addresses ids and re-keys commute limits and travel times by them in 008', async () => {
+    const addresses = [
+      { label: 'Work', address: 'EDGE East Side Tower, Berlin', coords: { lat: 1, lng: 2 } },
+      { label: 'Gym', address: 'Gym Street 1', coords: { lat: 3, lng: 4 } },
+    ];
+    await db
+      .collection('settings')
+      .doc('u1__home_addresses')
+      .set({ name: 'home_addresses', userId: 'u1', value: JSON.stringify(addresses) });
+    // One key left over from before Work was renamed (the address text), one current, one dead.
+    await db
+      .collection('jobs')
+      .doc('j1')
+      .set({
+        userId: 'u1',
+        commuteFilter: { action: 'exclude', limits: { 'EDGE East Side Tower, Berlin': 25, Gym: 15, Gone: 10 } },
+      });
+    await db.collection('listings').doc('l1').set({ jobId: 'j1' });
+    const tt = db.collection('listings').doc('l1').collection('travel_times');
+    await tt
+      .doc('EDGE East Side Tower, Berlin')
+      .set({ label: 'EDGE East Side Tower, Berlin', transitMinutes: 30, computedAt: 1 });
+    await tt.doc('Work').set({ label: 'Work', transitMinutes: 22, computedAt: 2 });
+    await tt.doc('Gone').set({ label: 'Gone', transitMinutes: 5, computedAt: 3 });
+
+    const hash = await dryRun('008-address-ids');
+    expect((await tt.get()).docs.map((doc) => doc.id).sort()).toEqual(['EDGE East Side Tower, Berlin', 'Gone', 'Work']);
+    await apply('008-address-ids', hash);
+
+    const saved = JSON.parse((await db.collection('settings').doc('u1__home_addresses').get()).data().value);
+    const [work, gym] = saved;
+    expect(work).toMatchObject({ label: 'Work', id: expect.stringMatching(/^addr_/) });
+    expect(gym.id).not.toBe(work.id);
+
+    expect((await db.collection('jobs').doc('j1').get()).data().commuteFilter).toEqual({
+      action: 'exclude',
+      limits: { [work.id]: 25, [gym.id]: 15 },
+    });
+
+    // Both old Work documents collapse into one under the id; the newer answer wins.
+    const docs = (await tt.get()).docs;
+    expect(docs.map((doc) => doc.id)).toEqual([work.id]);
+    expect(docs[0].data()).toMatchObject({ addressId: work.id, label: 'Work', transitMinutes: 22 });
+
+    // A second run finds nothing to do.
+    const [again] = await runMigrations({ only: '008-address-ids', stateDir, db });
+    expect(again.skipped ?? again.changes).toBeTruthy();
+  });
 });

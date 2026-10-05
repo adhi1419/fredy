@@ -22,6 +22,8 @@ interface Departure {
 
 /** One editable home-address row. */
 interface AddressRow {
+  /** Server-assigned; absent for a row added on this page. Sent back so the address keeps it. */
+  id?: string;
   label: string;
   address: string;
   coords: { lat: number; lng: number } | null;
@@ -56,6 +58,7 @@ const MODES = ['transit', 'car', 'bike', 'walk'];
 /** Normalise one stored home address into an editable row. */
 function toRow(a: HomeAddress): AddressRow {
   return {
+    id: a.id,
     label: a.label || '',
     address: a.address || '',
     coords: a.coords || null,
@@ -126,6 +129,7 @@ export default function TravelTimePage(): ReactElement {
         addresses
           .filter((a) => a.address)
           .map((a): HomeAddress => ({
+            ...(a.id ? { id: a.id } : {}),
             label: a.label,
             address: a.address,
             departure: { ...a.departure },

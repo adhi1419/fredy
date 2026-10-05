@@ -219,8 +219,15 @@ describe('backupRestoreService contract (Firestore)', () => {
       const listingId = seeded[0].id; // mutated by storeListings to the doc id
 
       const travelEntries = [
-        { label: 'Office', originLat: 52.52, originLng: 13.405, transitMinutes: 25, carMinutes: 15 },
-        { label: 'Gym', originLat: 52.51, originLng: 13.41, transitMinutes: 10, carMinutes: 8 },
+        {
+          addressId: 'id-Office',
+          label: 'Office',
+          originLat: 52.52,
+          originLng: 13.405,
+          transitMinutes: 25,
+          carMinutes: 15,
+        },
+        { addressId: 'id-Gym', label: 'Gym', originLat: 52.51, originLng: 13.41, transitMinutes: 10, carMinutes: 8 },
       ];
       await listingsStorage.saveListingTravelTimes(listingId, travelEntries);
 

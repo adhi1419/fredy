@@ -13,6 +13,8 @@
 
 /** A saved home address, as stored in user settings. */
 export interface SavedAddress {
+  /** Stable id the server assigns. Commute limits are keyed by it. */
+  id?: unknown;
   label?: unknown;
   [key: string]: unknown;
 }
@@ -72,24 +74,24 @@ export function countCommuteLimits(commuteFilter: CommuteFilterValue | null | un
  */
 export function savedAddresses(settings: { home_addresses?: unknown } | null | undefined): SavedAddress[] {
   const raw = Array.isArray(settings?.home_addresses) ? (settings.home_addresses as SavedAddress[]) : [];
-  return raw.filter((address) => typeof address?.label === 'string' && (address.label as string).trim().length > 0);
+  return raw.filter((address) => typeof address?.id === 'string' && (address.id as string).length > 0);
 }
 
 /**
  * The limits naming an address that is not there any more.
  *
  * Worth its own function because of what the form does with the answer: it warns about these, and
- * then deletes them the next time anything in the section is touched. A label wrongly counted here
+ * then deletes them the next time anything in the section is touched. An id wrongly counted here
  * is a limit the user set and watched disappear, so the comparison is against the addresses as
  * stored rather than against whatever subset a screen happens to render.
  *
- * @param limits - Keyed by address label.
+ * @param limits - Keyed by address id.
  * @param addresses - From {@link savedAddresses}.
  */
 export function orphanedCommuteLabels(
   limits: Record<string, number> | null | undefined,
   addresses: SavedAddress[] | null | undefined,
 ): string[] {
-  const saved = new Set((Array.isArray(addresses) ? addresses : []).map((address) => address?.label));
-  return Object.keys(limits ?? {}).filter((label) => !saved.has(label));
+  const saved = new Set((Array.isArray(addresses) ? addresses : []).map((address) => address?.id));
+  return Object.keys(limits ?? {}).filter((id) => !saved.has(id));
 }

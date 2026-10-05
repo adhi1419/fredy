@@ -87,13 +87,13 @@ describe('travelTimeFormat', () => {
 
   describe('addressesWithBudget', () => {
     const saved = [
-      { label: 'Work', mode: 'transit' },
-      { label: 'School', mode: 'transit' },
+      { id: 'Work', label: 'Work', mode: 'transit' },
+      { id: 'School', label: 'School', mode: 'transit' },
     ];
 
     it("joins a job's limits onto the addresses that carry the mode", () => {
       const budgeted = addressesWithBudget(saved, { limits: { Work: 35 } });
-      expect(budgeted).toEqual([{ label: 'Work', mode: 'transit', maxMinutes: 35 }]);
+      expect(budgeted).toEqual([{ id: 'Work', label: 'Work', mode: 'transit', maxMinutes: 35 }]);
     });
 
     it('drops a limit whose address is gone, and one that is not a limit', () => {

@@ -281,12 +281,12 @@ describe('listingsStorage contract', () => {
 
       await listingsStorage.saveListingTravelTimes(
         near.id,
-        [{ label: 'Home', transitMinutes: 45, isEstimate: false, referenceTime: 1000 }],
+        [{ addressId: 'id-Home', label: 'Home', transitMinutes: 45, isEstimate: false, referenceTime: 1000 }],
         1000,
       );
       await listingsStorage.saveListingTravelTimes(
         far.id,
-        [{ label: 'Home', transitMinutes: 15, isEstimate: false, referenceTime: 1000 }],
+        [{ addressId: 'id-Home', label: 'Home', transitMinutes: 15, isEstimate: false, referenceTime: 1000 }],
         1000,
       );
 

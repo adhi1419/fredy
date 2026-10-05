@@ -34,6 +34,7 @@ interface CommuteFilterProps {
 
 /** A saved address as this control renders it: label plus optional transit mode and departure. */
 interface CommuteAddress extends SavedAddress {
+  id: string;
   label: string;
   mode?: string;
   departure?: { time?: string };
@@ -97,7 +98,9 @@ export default function CommuteFilter({ value, onChange }: CommuteFilterProps): 
     // Touching the section is what clears the orphans out. Dropping them on load would be a silent
     // edit of a job nobody asked to change; dropping them here happens next to the warning that
     // says so, and only once the user is already editing.
-    const cleaned = Object.fromEntries(Object.entries(nextLimits).filter(([label]) => !orphaned.includes(label)));
+    const cleaned = Object.fromEntries(
+      Object.entries(nextLimits).filter(([addressId]) => !orphaned.includes(addressId)),
+    );
     // An object with no limits in it would filter nothing while still reading as a configured filter
     // everywhere downstream, so a search with nothing set is null. The one exception is somebody who
     // picked the action before typing a number: throwing that away would silently undo a choice they
@@ -107,13 +110,13 @@ export default function CommuteFilter({ value, onChange }: CommuteFilterProps): 
     onChange(empty && nextAction === DEFAULT_COMMUTE_ACTION ? null : { action: nextAction, limits: cleaned });
   };
 
-  const setLimit = (label: string, raw: unknown): void => {
+  const setLimit = (addressId: string, raw: unknown): void => {
     const next = { ...limits };
     const minutes = toCommuteLimit(raw);
     if (minutes == null) {
-      delete next[label];
+      delete next[addressId];
     } else {
-      next[label] = minutes;
+      next[addressId] = minutes;
     }
     emit(next, action);
   };
@@ -136,7 +139,7 @@ export default function CommuteFilter({ value, onChange }: CommuteFilterProps): 
       <p className="commuteFilter__intro">{t('jobs.mutation.commuteIntro')}</p>
 
       {addresses.map((address) => (
-        <div key={address.label} className="commuteFilter__row">
+        <div key={address.id} className="commuteFilter__row">
           <div className="commuteFilter__place">
             <span className="commuteFilter__label">{address.label}</span>
             <span className="commuteFilter__mode">
@@ -153,10 +156,10 @@ export default function CommuteFilter({ value, onChange }: CommuteFilterProps): 
             precision={0}
             hideButtons
             aria-label={t('jobs.mutation.commuteLimitAria', { label: address.label })}
-            value={limits[address.label] ?? ''}
+            value={limits[address.id] ?? ''}
             placeholder={t('jobs.mutation.commuteLimitPlaceholder')}
             suffix={<span className="commuteFilter__unit">{t('jobs.mutation.commuteLimitUnit')}</span>}
-            onChange={(v) => setLimit(address.label, v)}
+            onChange={(v) => setLimit(address.id, v)}
           />
         </div>
       ))}

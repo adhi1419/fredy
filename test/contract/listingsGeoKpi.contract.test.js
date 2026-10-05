@@ -135,6 +135,7 @@ describe('listingsStorage contract – travel times', () => {
 
     const entries = [
       {
+        addressId: 'id-Home',
         label: 'Home',
         originLat: 52.5,
         originLng: 13.4,
@@ -173,8 +174,24 @@ describe('listingsStorage contract – travel times', () => {
     await listingsStorage.saveListingTravelTimes(
       listing.id,
       [
-        { label: 'Home', originLat: 52, originLng: 13, transitMinutes: 20, isEstimate: true, referenceTime: 1000 },
-        { label: 'Work', originLat: 53, originLng: 14, transitMinutes: 40, isEstimate: true, referenceTime: 1000 },
+        {
+          addressId: 'id-Home',
+          label: 'Home',
+          originLat: 52,
+          originLng: 13,
+          transitMinutes: 20,
+          isEstimate: true,
+          referenceTime: 1000,
+        },
+        {
+          addressId: 'id-Work',
+          label: 'Work',
+          originLat: 53,
+          originLng: 14,
+          transitMinutes: 40,
+          isEstimate: true,
+          referenceTime: 1000,
+        },
       ],
       1000,
     );
@@ -182,7 +199,17 @@ describe('listingsStorage contract – travel times', () => {
     // Second save with only Home (different value) — Work should be deleted.
     await listingsStorage.saveListingTravelTimes(
       listing.id,
-      [{ label: 'Home', originLat: 52, originLng: 13, transitMinutes: 10, isEstimate: false, referenceTime: 2000 }],
+      [
+        {
+          addressId: 'id-Home',
+          label: 'Home',
+          originLat: 52,
+          originLng: 13,
+          transitMinutes: 10,
+          isEstimate: false,
+          referenceTime: 2000,
+        },
+      ],
       2000,
     );
 
@@ -200,7 +227,17 @@ describe('listingsStorage contract – travel times', () => {
 
     await listingsStorage.saveListingTravelTimes(
       listing.id,
-      [{ label: 'Home', originLat: 52, originLng: 13, transitMinutes: 20, isEstimate: true, referenceTime: 1000 }],
+      [
+        {
+          addressId: 'id-Home',
+          label: 'Home',
+          originLat: 52,
+          originLng: 13,
+          transitMinutes: 20,
+          isEstimate: true,
+          referenceTime: 1000,
+        },
+      ],
       1000,
     );
 
@@ -219,6 +256,7 @@ describe('listingsStorage contract – travel times', () => {
       listing.id,
       [
         {
+          addressId: 'id-Work',
           label: 'Work',
           originLat: 52,
           originLng: 13,
@@ -250,6 +288,7 @@ describe('listingsStorage contract – travel times', () => {
       listing.id,
       [
         {
+          addressId: 'id-Transit',
           label: 'Transit',
           transitMinutes: 35,
           transitTransfers: 2,
@@ -267,6 +306,7 @@ describe('listingsStorage contract – travel times', () => {
 
     expect(rows[0].travelTimes).toEqual([
       {
+        addressId: 'id-Transit',
         label: 'Transit',
         mode: null,
         estimate: true,
@@ -342,7 +382,17 @@ describe('listingsStorage contract – travel time failures', () => {
     // Save a successful result.
     await listingsStorage.saveListingTravelTimes(
       listing.id,
-      [{ label: 'Home', originLat: 52, originLng: 13, transitMinutes: 10, isEstimate: true, referenceTime: 2000 }],
+      [
+        {
+          addressId: 'id-Home',
+          label: 'Home',
+          originLat: 52,
+          originLng: 13,
+          transitMinutes: 10,
+          isEstimate: true,
+          referenceTime: 2000,
+        },
+      ],
       2000,
     );
 
@@ -365,7 +415,17 @@ describe('listingsStorage contract – markTravelTimesDirty', () => {
     // Save travel times (stamps travel_times_at).
     await listingsStorage.saveListingTravelTimes(
       listing.id,
-      [{ label: 'Home', originLat: 52, originLng: 13, transitMinutes: 20, isEstimate: true, referenceTime: 1000 }],
+      [
+        {
+          addressId: 'id-Home',
+          label: 'Home',
+          originLat: 52,
+          originLng: 13,
+          transitMinutes: 20,
+          isEstimate: true,
+          referenceTime: 1000,
+        },
+      ],
       1000,
     );
 
@@ -488,7 +548,17 @@ describe('listingsStorage contract – getListingsForMap', () => {
     await listingsStorage.storeListings(JOB.jobId, 'immoscout', [listing]);
     await listingsStorage.saveListingTravelTimes(
       listing.id,
-      [{ label: 'Office', originLat: 52, originLng: 13, transitMinutes: 12, isEstimate: true, referenceTime: 1000 }],
+      [
+        {
+          addressId: 'id-Office',
+          label: 'Office',
+          originLat: 52,
+          originLng: 13,
+          transitMinutes: 12,
+          isEstimate: true,
+          referenceTime: 1000,
+        },
+      ],
       1000,
     );
 

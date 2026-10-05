@@ -127,7 +127,9 @@ describe('pipeline automatic inquiry sending', () => {
 
   it('delivers when the configured commute is measured and within budget', async () => {
     setUserSettings(
-      settings({ home_addresses: [{ label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }] }),
+      settings({
+        home_addresses: [{ id: 'Work', label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }],
+      }),
     );
     const Fredy = await mockFredy();
     const instance = pipeline(
@@ -138,7 +140,7 @@ describe('pipeline automatic inquiry sending', () => {
     const item = {
       ...listing(),
       link: 'https://www.deutsche-wohnen.com/mieten/mietangebote/test-89-1471120007',
-      travelTimes: [{ label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 20 } }],
+      travelTimes: [{ addressId: 'Work', label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 20 } }],
     };
 
     await instance._sendInquiryMessages([item]);
@@ -146,9 +148,11 @@ describe('pipeline automatic inquiry sending', () => {
     expect(inquiryDeliveries).toHaveLength(1);
   });
 
-  it('fails closed when a saved address was renamed but the job retains its old label', async () => {
+  it('fails closed when a limit names an address that is not saved', async () => {
     setUserSettings(
-      settings({ home_addresses: [{ label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }] }),
+      settings({
+        home_addresses: [{ id: 'Work', label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }],
+      }),
     );
     const Fredy = await mockFredy();
     const instance = pipeline(
@@ -160,7 +164,7 @@ describe('pipeline automatic inquiry sending', () => {
     await instance._sendInquiryMessages([
       {
         ...listing(),
-        travelTimes: [{ label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 20 } }],
+        travelTimes: [{ addressId: 'Work', label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 20 } }],
       },
     ]);
 
@@ -179,10 +183,15 @@ describe('pipeline automatic inquiry sending', () => {
 
   it.each([
     ['has no travel time', []],
-    ['is over budget', [{ label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 60 } }]],
+    [
+      'is over budget',
+      [{ addressId: 'Work', label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 60 } }],
+    ],
   ])('fails closed when a listing %s', async (_case, travelTimes) => {
     setUserSettings(
-      settings({ home_addresses: [{ label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }] }),
+      settings({
+        home_addresses: [{ id: 'Work', label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }],
+      }),
     );
     const Fredy = await mockFredy();
     const instance = pipeline(
@@ -342,9 +351,31 @@ describe('pipeline automatic inquiry sending', () => {
     expect(inquiryDeliveries).toEqual([]);
   });
 
+  it('never auto-applies to an archived listing during repair', async () => {
+    const Fredy = await mockFredy();
+    setKnownListingsForRepair([
+      {
+        ...listing(),
+        latitude: 52.5,
+        longitude: 13.4,
+        inquirySendStatus: null,
+        notificationComplete: true,
+        isActive: true,
+        lifecycleState: 'archived',
+      },
+    ]);
+    const source = { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } };
+
+    await pipeline(Fredy, job({ provider: [source] }), 'immoscout', null, source).reconcile();
+
+    expect(inquiryDeliveries).toEqual([]);
+  });
+
   it('applies the same commute safety gate during repair', async () => {
     setUserSettings(
-      settings({ home_addresses: [{ label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }] }),
+      settings({
+        home_addresses: [{ id: 'Work', label: 'Work', address: 'Office', mode: 'transit', coords: { lat: 1, lng: 2 } }],
+      }),
     );
     const Fredy = await mockFredy();
     setKnownListingsForRepair([
@@ -355,7 +386,7 @@ describe('pipeline automatic inquiry sending', () => {
         inquirySendStatus: null,
         notificationComplete: true,
         isActive: true,
-        travelTimes: [{ label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 60 } }],
+        travelTimes: [{ addressId: 'Work', label: 'Work', mode: 'transit', estimate: true, transit: { minutes: 60 } }],
       },
     ]);
     const source = { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } };

@@ -36,6 +36,8 @@ export type ModeKey = 'transit' | 'car' | 'bike' | 'walk';
 
 /** A stored travel-time entry, as the API returns it. Only the fields the UI reads are modelled. */
 export interface TravelTimeEntry {
+  /** The saved address this was measured from. The join key; `label` is display only. */
+  addressId?: string;
   label?: string;
   mode?: string | null;
   estimate?: boolean;
@@ -48,6 +50,8 @@ export interface TravelTimeEntry {
 
 /** A saved address carrying this search's commute limit. */
 export interface CommuteAddress {
+  /** Stable id of the saved address. Commute limits and travel times are keyed by it. */
+  id?: string;
   label?: string;
   mode?: string | null;
   maxMinutes?: number | string | null;
@@ -147,7 +151,7 @@ export function addressesWithBudget(
     return [];
   }
   return (Array.isArray(addresses) ? addresses : [])
-    .map((address) => ({ ...address, maxMinutes: limits[address?.label ?? ''] }))
+    .map((address) => ({ ...address, maxMinutes: address?.id == null ? undefined : limits[address.id] }))
     .filter((address) => commuteBudgetOf(address) != null);
 }
 

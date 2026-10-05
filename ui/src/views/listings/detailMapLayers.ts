@@ -35,6 +35,7 @@ interface RouteListing {
 }
 
 interface RouteHome {
+  id?: string;
   label?: string;
   coords: { lat: number; lng: number };
 }
@@ -216,12 +217,14 @@ export function buildRouteData(
   routeMode: RouteMode = 'straight',
 ): RouteData {
   const homes = Array.isArray(homeAddresses) ? homeAddresses : [];
-  const byLabel = new Map((Array.isArray(travelTimes) ? travelTimes : []).map((entry) => [entry.label, entry]));
+  const byAddress = new Map(
+    (Array.isArray(travelTimes) ? travelTimes : []).map((entry) => [entry.addressId ?? '', entry]),
+  );
 
   return {
     type: 'FeatureCollection',
     features: homes.flatMap((home) => {
-      const { lines, label } = routeFor(listing, home, byLabel.get(home.label ?? ''), routeMode);
+      const { lines, label } = routeFor(listing, home, byAddress.get(home.id ?? ''), routeMode);
       const labelPrefix = home.label ? `${home.label}: ` : '';
       // Halfway along the whole journey rather than halfway along one leg, so the label lands on
       // the middle of what is drawn even when it is drawn in five pieces.

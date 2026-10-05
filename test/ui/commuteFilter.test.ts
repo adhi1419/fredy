@@ -59,33 +59,39 @@ describe('commuteFilter', () => {
     it('keeps an address whose geocode came back empty', () => {
       const settings = {
         home_addresses: [
-          { label: 'Work', coords: { lat: 52.5, lng: 13.4 } },
-          { label: 'Not found yet', coords: { lat: -1, lng: -1 } },
+          { id: 'a1', label: 'Work', coords: { lat: 52.5, lng: 13.4 } },
+          { id: 'a2', label: 'Not found yet', coords: { lat: -1, lng: -1 } },
         ],
       };
       expect(savedAddresses(settings).map((address) => address.label)).toEqual(['Work', 'Not found yet']);
     });
 
-    it('has nothing to show without settings, and skips an entry with no name', () => {
+    it('has nothing to show without settings, and skips an entry without an id', () => {
       expect(savedAddresses(null)).toEqual([]);
       expect(savedAddresses({})).toEqual([]);
       expect(savedAddresses({ home_addresses: 'nope' })).toEqual([]);
-      expect(savedAddresses({ home_addresses: [null, { label: '  ' }, { label: 'Work' }] })).toEqual([
-        { label: 'Work' },
-      ]);
+      expect(
+        savedAddresses({
+          home_addresses: [null, { label: 'No id' }, { id: '', label: 'Empty id' }, { id: 'a1', label: 'Work' }],
+        }),
+      ).toEqual([{ id: 'a1', label: 'Work' }]);
     });
   });
 
   describe('orphanedCommuteLabels', () => {
-    const addresses = [{ label: 'Work' }, { label: 'School' }];
+    // Ids equal to the labels keep the cases readable; only the id is compared.
+    const addresses = [
+      { id: 'Work', label: 'Work' },
+      { id: 'School', label: 'School' },
+    ];
 
     it('names the limits whose address is gone, and only those', () => {
       expect(orphanedCommuteLabels({ Work: 35, 'Old office': 20 }, addresses)).toEqual(['Old office']);
       expect(orphanedCommuteLabels({ Work: 35, School: 20 }, addresses)).toEqual([]);
     });
 
-    /** Labels are compared exactly, the way the stored travel times are keyed. */
-    it('does not match a label that merely looks similar', () => {
+    /** Ids are compared exactly. */
+    it('does not match an id that merely looks similar', () => {
       expect(orphanedCommuteLabels({ work: 35 }, addresses)).toEqual(['work']);
       expect(orphanedCommuteLabels({ 'Work ': 35 }, addresses)).toEqual(['Work ']);
     });
