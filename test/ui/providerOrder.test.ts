@@ -36,13 +36,13 @@ describe('the order providers are offered in', () => {
 
   it('puts the largest portal of a market first, not the alphabetically first', () => {
     const sorted = sortProviders([
-      provider('einsAImmobilien', '1a Immobilien', ['de']),
+      provider('inberlinwohnen', 'InBerlinWohnen', ['de']),
       provider('kleinanzeigen', 'Kleinanzeigen', ['de']),
       provider('immoscout', 'Immoscout', ['de']),
-      provider('immowelt', 'Immowelt', ['de']),
+      provider('deutscheWohnen', 'Deutsche Wohnen', ['de']),
     ]);
 
-    expect(sorted.map((p) => p.id)).toEqual(['immoscout', 'immowelt', 'kleinanzeigen', 'einsAImmobilien']);
+    expect(sorted.map((p) => p.id)).toEqual(['immoscout', 'kleinanzeigen', 'deutscheWohnen', 'inberlinwohnen']);
   });
 
   // Adding a provider should not require editing the ordering list just to make the picker work.
@@ -50,10 +50,10 @@ describe('the order providers are offered in', () => {
     const sorted = sortProviders([
       provider('zzz', 'Zulu Immobilien', ['de']),
       provider('aaa', 'Alpha Immobilien', ['de']),
-      provider('immowelt', 'Immowelt', ['de']),
+      provider('immoscout', 'Immoscout', ['de']),
     ]);
 
-    expect(sorted.map((p) => p.id)).toEqual(['immowelt', 'aaa', 'zzz']);
+    expect(sorted.map((p) => p.id)).toEqual(['immoscout', 'aaa', 'zzz']);
   });
 
   it('sorts a country nobody ranked behind every country that is ranked', () => {
@@ -125,13 +125,13 @@ describe('the providers Fredy actually ships', () => {
     expect(new Set(countries)).toEqual(new Set(['de', 'at', 'ch']));
   });
 
-  it('lead with ImmoScout24, Immowelt and Kleinanzeigen', async () => {
+  it('lead with ImmoScout24, Kleinanzeigen and Deutsche Wohnen', async () => {
     const metas = (await getProviders()).map((p) => p.metaInformation);
 
     expect(
       sortProviders(metas)
         .slice(0, 3)
         .map((p) => p.id),
-    ).toEqual(['immoscout', 'immowelt', 'kleinanzeigen']);
+    ).toEqual(['immoscout', 'kleinanzeigen', 'deutscheWohnen']);
   });
 });

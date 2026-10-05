@@ -40,22 +40,9 @@ export const COUNTRY_ORDER = ['de', 'at', 'ch'];
 export const PROVIDER_SIZE_ORDER = [
   // Germany
   'immoscout',
-  'immowelt',
   'kleinanzeigen',
-  'wgGesucht',
-  'ohneMakler',
-  'immobilienDe',
-  'engelVoelkers',
-  'mcMakler',
-  'sparkasse',
-  'neubauKompass',
   'deutscheWohnen',
-  'einsAImmobilien',
-  'immoswp',
-  'imaxx',
-  'regionalimmobilien24',
   'inberlinwohnen',
-  'schwarzesbrett',
   // Austria
   'willhaben',
   // Switzerland

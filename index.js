@@ -12,7 +12,6 @@ import { initGeocodingCron } from './lib/services/crons/geocoding-cron.js';
 import { getSettings } from './lib/services/storage/settingsStorage.js';
 import FirestoreConnection from './lib/services/storage/firestore/FirestoreConnection.js';
 import { initJobExecutionService } from './lib/services/jobs/jobExecutionService.js';
-import { ensureValidBinary } from './lib/services/ensureValidBinary.js';
 import { removeObsoleteProviders } from './lib/services/providers/providerCleanup.js';
 import { seedDemo } from './lib/services/demo/demoService.js';
 import { initDemoCleanupCron } from './lib/services/crons/demo-cleanup-cron.js';
@@ -57,14 +56,6 @@ function validateProductionAuthConfiguration() {
 }
 
 validateProductionAuthConfiguration();
-
-// Ensure the CloakBrowser stealth Chromium binary is present and complete before
-// jobs run.  ensureValidBinary() also detects and auto-heals partial extractions
-// (e.g. a newer version that was downloaded but only the chrome executable was
-// written) so Chrome never crashes with "Invalid file descriptor to ICU data".
-logger.info('Checking CloakBrowser binary...');
-await ensureValidBinary();
-logger.info('CloakBrowser binary ready.');
 
 // Configuration is loaded before Firestore and the services that consume it.
 if (!(await checkIfConfigIsAccessible())) {

@@ -45,7 +45,7 @@ Fredy keeps the important choices visible without making the home search feel bu
 
 ## What Fredy does
 
-- Searches 19 real-estate providers across Germany, Austria, and Switzerland.
+- Searches 6 real-estate providers across Germany, Austria, and Switzerland.
 - Removes duplicate listings found on multiple providers.
 - Filters listings by home criteria, location, price, size, rooms, and real-world fit.
 - Shows travel time, distance, and map context for each home when the required data is available.
@@ -140,7 +140,7 @@ Fredy sends information to a provider only when you use a provider feature that 
 
 Fredy currently supports these sources:
 
-**Germany:** 1a Immobilien, Deutsche Wohnen, Engel & Völkers, IMAXX, Immobilien.de, Immo Südwest Presse, ImmoScout24, Immowelt, InBerlinWohnen, Kleinanzeigen, McMakler, Neubau Kompass, OhneMakler, Regionalimmobilien24, Schwarzes Brett Bremen, Sparkasse Immobilien, and Wg gesucht.
+**Germany:** Deutsche Wohnen, ImmoScout24, InBerlinWohnen, and Kleinanzeigen.
 
 **Austria:** willhaben.
 

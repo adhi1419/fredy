@@ -96,16 +96,11 @@ else
   exit 1
 fi
 
-printf '%s\n' 'Testing the bundled browser...'
-CHROME=$(docker exec "$APP_CONTAINER" sh -c "find /root/.cloakbrowser /root/.cache /home -type f \\( -name chrome -o -name chromium \\) 2>/dev/null | head -1")
-if [ -z "$CHROME" ]; then
-  printf '%s\n' 'Chrome/Chromium binary not found'
-  exit 1
-fi
-if docker exec "$APP_CONTAINER" "$CHROME" --headless --no-sandbox --disable-gpu --dump-dom https://example.com 2>&1 | grep -q '<html'; then
-  printf '%s\n' 'Bundled browser works'
+printf '%s\n' 'Verifying the container can import a provider...'
+if docker exec "$APP_CONTAINER" node -e "import('./lib/provider/kleinanzeigen.js').then(()=>console.log('ok'))" 2>&1 | grep -q 'ok'; then
+  printf '%s\n' 'Provider import works'
 else
-  printf '%s\n' 'Bundled browser failed to render a page'
+  printf '%s\n' 'Provider import failed'
   exit 1
 fi
 

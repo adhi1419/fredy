@@ -1,37 +1,12 @@
 [
   {
-    "url": "https://www.immowelt.de/classified-search?distributionTypes=Buy,Buy_Auction,Compulsory_Auction&estateTypes=House,Apartment&locations=AD08DE2350",
-    "shouldBecome": "https://www.immowelt.de/classified-search?distributionTypes=Buy,Buy_Auction,Compulsory_Auction&estateTypes=House,Apartment&locations=AD08DE2350&order=DateDesc",
-    "id": "immowelt"
-  },
-  {
-    "url": "https://www.1a-immobilienmarkt.de/suchen/duesseldorf/wohnung-mieten.html?search=yes",
-    "shouldBecome": "https://www.1a-immobilienmarkt.de/suchen/duesseldorf/wohnung-mieten.html?search=yes&sort_type=newest",
-    "id": "einsAImmobilien"
-  },
-  {
-    "url": "https://www.wg-gesucht.de/1-zimmer-wohnungen-in-Dusseldorf.30.1.1.0.html?sort_column=1&sort_order=0",
-    "shouldBecome": "https://www.wg-gesucht.de/1-zimmer-wohnungen-in-Dusseldorf.30.1.1.0.html?sort_column=0&sort_order=0",
-    "id": "wgGesucht"
-  },
-  {
-    "url": "https://www.neubaukompass.de/neubau-immobilien/berlin-region/",
-    "shouldBecome": "https://www.neubaukompass.de/neubau-immobilien/berlin-region/?sort=firstactivation",
-    "id": "neubauKompass"
-  },
-  {
     "url": "https://www.immobilienscout24.de/Suche/de/nordrhein-westfalen/duesseldorf/wohnung-mieten?numberofrooms=1.5-&price=1.0-1000000.0&livingspace=1.0-10000.0&pricetype=rentpermonth&enteredFrom=result_list",
     "shouldBecome": "https://www.immobilienscout24.de/Suche/de/nordrhein-westfalen/duesseldorf/wohnung-mieten?numberofrooms=1.5-&price=1.0-1000000.0&livingspace=1.0-10000.0&pricetype=rentpermonth&enteredFrom=result_list&sorting=-firstactivation",
     "id": "immoscout"
   },
   {
-    "url": "https://www.imaxx.de/immobilien/?post_type=immomakler_object&radius=1&center&vermarktungsart%5B0%5D=kauf&typ%5B0%5D=wohnung",
-    "shouldBecome": "https://www.imaxx.de/immobilien/?post_type=immomakler_object&radius=1&center&vermarktungsart%5B0%5D=kauf&typ%5B0%5D=wohnung&im_order=datedesc",
-    "id": "imaxx"
-  },
-  {
-    "url": "https://www.engelvoelkers.com/de/de/propertysearch?businessArea%5B%5D=residential&placeIds%5B%5D=ChIJ8_KccStOqEcRhtFXjKWPuo0&propertyMarketingType%5B%5D=sale&sortingOptions%5B%5D=SALES_PRICE_DESC",
-    "shouldBecome": "https://www.engelvoelkers.com/de/de/propertysearch?businessArea%5B%5D=residential&placeIds%5B%5D=ChIJ8_KccStOqEcRhtFXjKWPuo0&propertyMarketingType%5B%5D=sale&sortingOptions%5B%5D=CREATED_AT_DESC",
-    "id": "engelVoelkers"
+    "url": "https://www.willhaben.at/iad/immobilien/mietwohnungen/wien",
+    "shouldBecome": "https://www.willhaben.at/iad/immobilien/mietwohnungen/wien?sort=1",
+    "id": "willhaben"
   }
 ]

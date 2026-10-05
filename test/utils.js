@@ -66,23 +66,9 @@ vi.mock('../lib/services/inquiries/deliverInquiry.js', () => ({
   },
 }));
 
-vi.mock('../lib/services/extractor/puppeteerExtractor.js', async (importOriginal) => {
-  if (process.env.TEST_MODE !== 'offline') {
-    return importOriginal();
-  }
-  const { readFixture } = await import('./offlineFixtures.js');
-  return {
-    // the options carry the provider's run name, which is the only way to map detail pages
-    // that live on a partner domain back to their fixture
-    default: (url, waitForSelector, options) => readFixture(url, options),
-    launchBrowser: async () => ({ close: async () => {}, isConnected: () => true }),
-    closeBrowser: async () => {},
-  };
-});
-
-// Providers that read server-rendered pages over plain HTTP share the browser extractor's fixtures:
-// both answer "the page's HTML, or null", and the run name maps partner-domain detail pages back to
-// their fixture the same way.
+// Providers read server-rendered pages over plain HTTP. In offline mode the HTTP loader is swapped
+// for the fixture reader: it answers "the page's HTML, or null", and the run name maps
+// partner-domain detail pages back to their fixture.
 vi.mock('../lib/services/extractor/httpExtractor.js', async (importOriginal) => {
   if (process.env.TEST_MODE !== 'offline') {
     return importOriginal();
@@ -90,22 +76,6 @@ vi.mock('../lib/services/extractor/httpExtractor.js', async (importOriginal) => 
   const { readFixture } = await import('./offlineFixtures.js');
   const actual = await importOriginal();
   return { ...actual, default: (url, options) => readFixture(url, options) };
-});
-
-// Immowelt talks to its search BFF from inside the browser page (the only place a DataDome cookie
-// is worth anything), so neither the extractor mock nor the fetch mock above can intercept it. The
-// transport module is swapped out wholesale instead.
-vi.mock('../lib/services/immowelt/immoweltBff.js', async (importOriginal) => {
-  if (process.env.TEST_MODE !== 'offline') {
-    return importOriginal();
-  }
-  const { readImmoweltFixtures } = await import('./offlineFixtures.js');
-  return {
-    IMMOWELT_ORIGIN: 'https://www.immowelt.de',
-    searchClassifieds: async () => (await readImmoweltFixtures()).classifieds,
-    fetchExposeHtml: async () => (await readImmoweltFixtures()).detailHtml,
-    releaseSession: async () => {},
-  };
 });
 
 if (process.env.TEST_MODE === 'offline') {
@@ -127,13 +97,13 @@ export const mockFredy = async () => {
   const mod = await import('../lib/FredyPipelineExecutioner.js');
   const FredyPipelineExecutioner = mod.default;
   return class TestPipeline extends FredyPipelineExecutioner {
-    constructor(providerConfig, job, providerId, similarityCache, browser, options = {}) {
+    constructor(providerConfig, job, providerId, similarityCache, options = {}) {
       const configured = Array.isArray(job?.notificationAdapter) ? job.notificationAdapter : [];
       const notificationAdapter = (configured.length > 0 ? configured : [{ id: 'test' }]).map((entry, index) => ({
         ...entry,
         configuredAdapterId: entry.configuredAdapterId || `test-channel-${index}`,
       }));
-      super(providerConfig, { ...job, notificationAdapter }, providerId, similarityCache, browser, {
+      super(providerConfig, { ...job, notificationAdapter }, providerId, similarityCache, {
         maxDetailFetches: 1,
         ...options,
       });

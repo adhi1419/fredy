@@ -29,14 +29,7 @@ const testProviderConfig = JSON.parse(
  */
 const EXPECTED_DETAIL_PRICE = {
   deutscheWohnen: 692,
-  engelVoelkers: 24900000,
-  imaxx: 526000,
-  immobilienDe: 1070,
-  immowelt: 1250,
   kleinanzeigen: 890,
-  schwarzesbrett: 560,
-  sparkasse: 410000,
-  wgGesucht: 590,
 };
 
 /**
@@ -45,30 +38,12 @@ const EXPECTED_DETAIL_PRICE = {
  * @type {Record<string, () => number[]>}
  */
 const CUSTOM_LIST_PRICES = {
-  engelVoelkers: () => {
-    const nextData = readNextData(fs.readFileSync(path.join(FIXTURES, 'engelVoelkers.html'), 'utf8'));
-    const queries = nextData?.props?.pageProps?.dehydratedState?.queries ?? [];
-    const listings = queries.find((query) => query?.queryKey?.[0] === 'listings')?.state?.data?.listings ?? [];
-    return listings
-      .map(
-        (entry) =>
-          providerModule('engelVoelkers').config.normalize(
-            entry.listing,
-            'https://www.engelvoelkers.com/de/propertysearch',
-          )?.price,
-      )
-      .filter((price) => price != null);
-  },
   deutscheWohnen: () => {
     const body = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'deutscheWohnen_list.json'), 'utf8'));
     return (body.results ?? [])
       .filter((item) => item.vermarktungsart_miete === '1')
       .map((item) => providerModule('deutscheWohnen').config.normalize({ id: item.wrk_id, price: item.preis })?.price)
       .filter((price) => price != null);
-  },
-  immowelt: () => {
-    const classifieds = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'immowelt_classifieds.json'), 'utf8'));
-    return classifieds.map((entry) => providerModule('immowelt').config.normalize(entry)?.price).filter(Boolean);
   },
   kleinanzeigen: () =>
     parseKleinanzeigenResults(fs.readFileSync(path.join(FIXTURES, 'kleinanzeigen.html'), 'utf8'))
@@ -85,15 +60,6 @@ let providersById;
  */
 function providerModule(id) {
   return providersById.get(id);
-}
-
-/**
- * @param {string} html
- * @returns {any|null}
- */
-function readNextData(html) {
-  const raw = cheerio.load(html)('#__NEXT_DATA__').text();
-  return raw ? JSON.parse(raw) : null;
 }
 
 /**

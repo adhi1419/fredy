@@ -2,7 +2,7 @@
 
 Fredy's hosted frontend lives at [https://adhi1419.github.io/fredy/](https://adhi1419.github.io/fredy/).
 Cloud Run is API-only: it serves `/api` and `/health`; GitHub Pages serves the hash-routed React SPA.
-The API image still includes CloakBrowser and its browser/runtime dependencies for provider scraping.
+The API image fetches every provider over plain HTTP and ships no browser.
 
 ## Runtime architecture
 
@@ -100,10 +100,10 @@ Add `adhi1419.github.io` to Firebase Authentication **Authorized domains**. Do n
 - Without `TRIGGER_TOKEN`, `/api/trigger` returns 404.
 - The Cloud Run runtime service account needs Firestore read/write and Firebase token-verification access.
 - `FIREBASE_WEB_CONFIG` is client configuration, not a service-account key, but remains required.
-- Datacenter IP reputation can still block browser providers; a German residential proxy may be needed.
-- A trigger outside configured working hours succeeds without scraping.
-- `node:22-trixie-slim` plus CloakBrowser's own browser is intentional. Generic Chromium images do not preserve CloakBrowser compatibility/fingerprint behavior.
-- Application code uses BuildKit `COPY --link` layers, allowing manifests to reuse the large browser/runtime layers without downloading and extracting their filesystem for ordinary source changes. This provides the cold-parent optimization without maintaining a custom Fredy browser base image.
+- Datacenter IP reputation can still block providers; a German residential proxy may be needed.
+- A trigger outside configured working hours succeeds without fetching listings.
+- `node:22-trixie-slim` is used as-is: the API fetches providers over plain HTTP and needs no headless browser, so no browser system libraries or fonts are installed.
+- Application code uses BuildKit `COPY --link` layers, allowing manifests to reuse the base runtime layers without downloading and extracting their filesystem for ordinary source changes. This provides the cold-parent optimization without maintaining a custom Fredy base image.
 
 ## Verification
 

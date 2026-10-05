@@ -34,8 +34,7 @@
       "HEALTHCHECK",
       "http://localhost:9998/health",
       "ENTRYPOINT [\"/usr/bin/tini\", \"-g\", \"--\"]",
-      "CMD [\"node\", \"index.js\"]",
-      "cloakbrowser"
+      "CMD [\"node\", \"index.js\"]"
     ],
     "mustNotCopy": ["COPY ui", "ui/public", "build:frontend"]
   },

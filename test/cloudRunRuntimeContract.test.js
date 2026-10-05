@@ -27,7 +27,7 @@ function expectAllIncluded(source, values, sourceName) {
 }
 
 describe('Cloud Run runtime contract', () => {
-  it('keeps the backend container and CloakBrowser process boundary intact', () => {
+  it('keeps the backend container and process boundary intact', () => {
     const dockerfile = readContractFile('dockerfile');
 
     expectAllIncluded(dockerfile, fixture.container.required, 'Dockerfile');

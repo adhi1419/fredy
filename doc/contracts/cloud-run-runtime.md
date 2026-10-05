@@ -1,6 +1,6 @@
 # Cloud Run runtime contract for the Rust strangler
 
-This document freezes the deployment and runtime boundary that a future Rust route group must preserve. It describes the current Node/CloakBrowser service as implemented; it is not a Rust implementation plan. The executable authority is [`test/cloudRunRuntimeContract.test.js`](../../test/cloudRunRuntimeContract.test.js), driven by [`test/contract/fixtures/cloud-run-runtime.json`](../../test/contract/fixtures/cloud-run-runtime.json).
+This document freezes the deployment and runtime boundary that a future Rust route group must preserve. It describes the current Node service as implemented; it is not a Rust implementation plan. The executable authority is [`test/cloudRunRuntimeContract.test.js`](../../test/cloudRunRuntimeContract.test.js), driven by [`test/contract/fixtures/cloud-run-runtime.json`](../../test/contract/fixtures/cloud-run-runtime.json).
 
 ## Current invariants
 
@@ -15,10 +15,10 @@ This document freezes the deployment and runtime boundary that a future Rust rou
 
 ### Container and process boundary
 
-- The backend image starts from `node:22-trixie-slim`, installs the CloakBrowser system/runtime dependencies and `tini`, and runs `node index.js` through `tini` as the init process.
+- The backend image starts from `node:22-trixie-slim`, installs minimal runtime dependencies (`curl`, `ca-certificates`, `tini`), and runs `node index.js` through `tini` as the init process. Fredy fetches every provider over plain HTTP, so the image ships no browser.
 - The container listens on `0.0.0.0`. Its effective port is exactly `Number(process.env.PORT) || settings.port || 9998`; Cloud Run's `PORT` therefore wins over the persisted setting and the default.
 - `/conf` is the image's configuration path and Docker-declared volume for self-hosted containers. The steady-state Cloud Run deployment does not mount persistent storage there, so a Rust cutover must not rely on `/conf` durability; Firestore remains the sole persistent application store. The image exposes port `9998`, carries a Docker healthcheck for `GET /health`, and copies backend `lib/` plus `index.js` without copying the SPA.
-- CloakBrowser remains in this runtime. Provider and browser-heavy paths stay in Node during incremental migration; a Rust route cutover must not silently remove or replace that dependency.
+- All providers fetch over plain HTTP in Node; the runtime carries no browser. A Rust route cutover must preserve this HTTP-only provider boundary.
 
 ### Boot, configuration, and scheduling
 

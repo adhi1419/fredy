@@ -75,10 +75,6 @@ describe('kleinanzeigen search results', () => {
     );
   });
 
-  it('declares itself browserless', () => {
-    expect(config.browserless).toBe(true);
-  });
-
   it('builds page URLs the way Kleinanzeigen links them', () => {
     const url = 'https://www.kleinanzeigen.de/s-wohnung-mieten/berlin/preis::1000/c203l3331+wohnung_mieten.qm_d:55.00';
     expect(pageUrl(url, 1)).toBe(url);

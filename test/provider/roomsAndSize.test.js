@@ -146,19 +146,19 @@ describe('kleinanzeigen rooms and size', () => {
   });
 
   it('falls back to the detail page when the search result had no tags', async () => {
-    const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures, null);
+    const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures);
 
     expect(enriched).toMatchObject({ size: 31, rooms: 1 });
   });
 
   it('keeps the figures the search result already provided', async () => {
-    const enriched = await kleinanzeigenConfig.fetchDetails({ ...listingWithoutFigures, size: 55, rooms: 1 }, null);
+    const enriched = await kleinanzeigenConfig.fetchDetails({ ...listingWithoutFigures, size: 55, rooms: 1 });
 
     expect(enriched).toMatchObject({ size: 55, rooms: 1 });
   });
 
   it('extracts the multi-line description with preserved newlines', async () => {
-    const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures, null);
+    const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures);
 
     expect(enriched.description).toContain('\n');
     expect(enriched.description).toMatch(/zu vermieten\.\n\nDas komplett ausgestattete Apartment/);
@@ -167,7 +167,7 @@ describe('kleinanzeigen rooms and size', () => {
   it('leaves the figures alone when the detail page cannot be loaded', async () => {
     fetchHtml.mockResolvedValue(null);
 
-    const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures, null);
+    const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures);
 
     expect(enriched).toMatchObject({ size: null, rooms: null });
   });

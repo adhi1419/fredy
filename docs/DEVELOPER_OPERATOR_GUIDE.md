@@ -28,13 +28,12 @@ The repository also contains release-tag workflows and a Compose default that re
 `index.js` performs the startup sequence before `lib/api/api.js` begins listening:
 
 1. In production, validate `FIREBASE_WEB_CONFIG`, `FRONTEND_ORIGIN`, and the absence of `FIRESTORE_EMULATOR_HOST`.
-2. Validate or download the CloakBrowser binary.
-3. Ensure `conf/config.json` exists and is readable, then load it.
-4. Initialize the Firestore client and load global settings.
-5. Load providers, remove provider records that no longer have a module, and initialize the similarity cache.
-6. Initialize `jobExecutionService`, including the trigger runner and event-bus listeners.
-7. Register the Fastify API and listen on `0.0.0.0`.
-8. Seed demo state when demo mode is enabled, then start background sweeps.
+2. Ensure `conf/config.json` exists and is readable, then load it.
+3. Initialize the Firestore client and load global settings.
+4. Load providers, remove provider records that no longer have a module, and initialize the similarity cache.
+5. Initialize `jobExecutionService`, including the trigger runner and event-bus listeners.
+6. Register the Fastify API and listen on `0.0.0.0`.
+7. Seed demo state when demo mode is enabled, then start background sweeps.
 
 The ordering of job-service initialization before the API listener is intentional. A cold Cloud Run instance can receive `/api/trigger` immediately after it accepts connections.
 
@@ -334,14 +333,14 @@ It creates or finds the GitHub deployer identity and Workload Identity Federatio
 The production image:
 
 - Starts from `node:22-trixie-slim`.
-- Installs the CloakBrowser runtime and `tini`.
+- Installs minimal runtime dependencies (`curl`, `ca-certificates`, `tini`).
 - Installs backend production dependencies from `package.json` and `yarn.lock`.
 - Includes `lib/` and `index.js`, not the SPA source.
 - Listens on `0.0.0.0` and uses Cloud Run's `PORT` when supplied.
 - Runs `node index.js` through `tini`.
 - Exposes `/health` as the health signal.
 
-CloakBrowser remains part of the API runtime because browser-based providers depend on it. A generic Chromium image is not an equivalent replacement.
+The API fetches every provider over plain HTTP, so the image ships no browser and none of the browser system libraries or fonts a headless browser would need.
 
 ## 8. Scheduler and working-hours behavior
 
@@ -413,7 +412,7 @@ The expected response is `204` with the exact allowed-method and allowed-header 
 
 **The scheduler returns success but no listings appear.** Check the saved `workingHours` window and IANA time zone, whether jobs are enabled, provider logs, and whether `EXTERNAL_SCHEDULER` is set as intended. A valid trigger outside the window deliberately skips execution.
 
-**A provider or browser run fails.** Confirm the CloakBrowser binary is present and valid, inspect the provider-specific error, and check external portal reachability and bot prevention. The pipeline isolates provider errors so one failing provider does not abort the remaining providers. A German residential proxy can be required by portal IP reputation, but its credentials must remain in the supported operator configuration path and not in provider source documents.
+**A provider run fails.** Inspect the provider-specific error, and check external portal reachability and bot prevention. The pipeline isolates provider errors so one failing provider does not abort the remaining providers. A German residential proxy can be required by portal IP reputation, but its credentials must remain in the supported operator configuration path and not in provider source documents.
 
 **A notification channel exposes an empty credential field.** This is expected for a user who may use a shared channel but may not edit it. Channel list responses omit fields, and non-editors receive secret fields as empty values. Mark every token, password, API key, or webhook URL with `secret: true` in an adapter's declarative field definition.
 

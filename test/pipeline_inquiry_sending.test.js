@@ -27,11 +27,17 @@ const applicationCapabilities = {
   unsupported: { automatic: false, eligibility: 'none' },
 };
 const pipeline = (Fredy, jobConfig, providerId, applicationCapability = null, providerSource = null) =>
-  new Fredy(providerConfig, jobConfig, providerId, {}, undefined, {
-    providerSource: providerSource ?? jobConfig.provider.find((source) => source.id === providerId),
-    applicationCapability:
-      applicationCapability ?? applicationCapabilities[providerId] ?? applicationCapabilities.unsupported,
-  });
+  new Fredy(
+    providerConfig,
+    jobConfig,
+    providerId,
+    {},
+    {
+      providerSource: providerSource ?? jobConfig.provider.find((source) => source.id === providerId),
+      applicationCapability:
+        applicationCapability ?? applicationCapabilities[providerId] ?? applicationCapabilities.unsupported,
+    },
+  );
 const listing = () => ({
   id: 'listing-1',
   link: 'https://www.immobilienscout24.de/expose/170874105',

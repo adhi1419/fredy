@@ -36,11 +36,11 @@ describe('backend image layering', () => {
     expect(install).toContain('yarn cache clean');
   });
 
-  it('trims unused Chromium locales and chromedriver in the download layer', () => {
-    const download = dockerfile
-      .split('\nRUN ')
-      .find((step) => step.startsWith('node ') && step.includes('ensureBinary'));
-    expect(download).toContain("-type f ! -name 'de.pak' ! -name 'en-US.pak' -delete");
-    expect(download).toContain('-name chromedriver');
+  it('ships no browser stack', () => {
+    // The backend reads every provider over plain HTTP, so the image carries no Chromium download,
+    // no Chromium system libraries and no CloakBrowser.
+    expect(dockerfile).not.toMatch(/cloakbrowser/i);
+    expect(dockerfile).not.toMatch(/chromium/i);
+    expect(dockerfile).not.toMatch(/ensureBinary/);
   });
 });

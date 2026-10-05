@@ -38,7 +38,9 @@ const jobs = [
     enabled: false,
     running: false,
     blacklist: ['keller', 'EG'],
-    provider: [{ id: 'immo', name: 'Immowelt', url: 'https://www.immowelt.de/suche/berlin/wohnungen/mieten' }],
+    provider: [
+      { id: 'immo', name: 'Kleinanzeigen', url: 'https://www.kleinanzeigen.de/s-immobilien/berlin/wohnung/k0' },
+    ],
     notificationAdapter: [],
     specFilter: {},
     numberOfFoundListings: 2,
@@ -50,7 +52,9 @@ const jobs = [
     enabled: true,
     running: true,
     blacklist: [],
-    provider: [{ id: 'immo', name: 'Immowelt', url: 'https://www.immowelt.de/suche/hamburg/wohnungen/mieten' }],
+    provider: [
+      { id: 'immo', name: 'Kleinanzeigen', url: 'https://www.kleinanzeigen.de/s-immobilien/hamburg/wohnung/k0' },
+    ],
     notificationAdapter: [],
     specFilter: {},
     numberOfFoundListings: 1,
@@ -134,7 +138,7 @@ const listings = [
     title: 'Altbau in Prenzlauer Berg',
     price: 1100,
     address: 'Kastanienallee 28, Berlin',
-    provider: 'Immowelt',
+    provider: 'Kleinanzeigen',
     createdAt: now - 86400000,
     created_at: now - 86400000,
     image_url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=60',
@@ -163,7 +167,7 @@ const listings = [
     title: '4-Zimmer Neubau Mitte',
     price: 2200,
     address: 'Karl-Liebknecht-Str. 5, Berlin',
-    provider: 'Immowelt',
+    provider: 'Kleinanzeigen',
     createdAt: now - 172800000,
     created_at: now - 172800000,
     image_url: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=60',
@@ -217,7 +221,7 @@ const providerMetadata = [
       },
     },
   },
-  { id: 'immo', name: 'Immowelt', baseUrl: 'https://www.immowelt.de' },
+  { id: 'immo', name: 'Kleinanzeigen', baseUrl: 'https://www.kleinanzeigen.de' },
   { id: 'metadataOnly', name: 'Metadata-only provider', baseUrl: 'https://example.com/metadata-only' },
 ];
 const providerIdsByName = new Map(providerMetadata.map(({ id, name }) => [name, id]));
@@ -230,7 +234,7 @@ const dashboard = {
   kpis: { totalJobs: 2, totalListings: 4, numberOfActiveListings: 3, medianPriceOfListings: 1225 },
   pie: [
     { type: 'ImmobilienScout24', value: 50 },
-    { type: 'Immowelt', value: 50 },
+    { type: 'Kleinanzeigen', value: 50 },
   ],
 };
 

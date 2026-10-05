@@ -8,7 +8,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 const root = (await import('node:path')).resolve('.');
 const storagePath = root + '/lib/services/storage/listingsStorage.js';
 const settingsPath = root + '/lib/services/storage/settingsStorage.js';
-const puppeteerPath = root + '/lib/services/extractor/puppeteerExtractor.js';
+const httpExtractorPath = root + '/lib/services/extractor/httpExtractor.js';
 const historyPath = root + '/lib/services/listings/priceHistoryService.js';
 const utilsPath = root + '/lib/utils.js';
 const loggerPath = root + '/lib/services/logger.js';
@@ -28,21 +28,14 @@ async function loadService() {
     markListingsPriceChecked: (ids) => state.marked.push(...ids),
   }));
   vi.doMock(settingsPath, () => ({ getSettings: async () => state.settings }));
-  vi.doMock(puppeteerPath, () => ({
+  vi.doMock(httpExtractorPath, () => ({
     default: async (url) => {
-      state.rendered.push(url);
+      state.fetched.push(url);
       state.concurrent += 1;
       state.maxConcurrent = Math.max(state.maxConcurrent, state.concurrent);
       await new Promise((resolve) => setTimeout(resolve, 1));
       state.concurrent -= 1;
       return state.html[url] ?? null;
-    },
-    launchBrowser: async () => {
-      state.launches += 1;
-      return { id: 'browser' };
-    },
-    closeBrowser: async () => {
-      state.closes += 1;
     },
   }));
   vi.doMock(historyPath, () => ({
@@ -63,7 +56,7 @@ async function loadService() {
   return (await import(root + '/lib/services/listings/priceTrackingService.js')).default;
 }
 
-const listing = (id, provider = 'immowelt') => ({
+const listing = (id, provider = 'kleinanzeigen') => ({
   id,
   link: `https://example.com/${id}`,
   provider,
@@ -73,7 +66,7 @@ const listing = (id, provider = 'immowelt') => ({
 
 /** A provider whose price sits in the markup, read through the shared selector path. */
 const markupProvider = {
-  metaInformation: { id: 'immowelt' },
+  metaInformation: { id: 'kleinanzeigen' },
   config: { priceTracking: { selector: '.price | trim' } },
 };
 
@@ -81,12 +74,10 @@ beforeEach(() => {
   state = {
     due: [],
     marked: [],
-    rendered: [],
+    fetched: [],
     recorded: [],
     notified: [],
     html: {},
-    launches: 0,
-    closes: 0,
     concurrent: 0,
     maxConcurrent: 0,
     providers: [markupProvider],
@@ -103,12 +94,11 @@ describe('services/listings/priceTrackingService', () => {
 
     await run();
 
-    expect(state.launches).toBe(0);
-    expect(state.rendered).toHaveLength(0);
+    expect(state.fetched).toHaveLength(0);
     expect(state.marked).toHaveLength(0);
   });
 
-  it('reads the price off a rendered page and hands it to the recorder', async () => {
+  it('reads the price off a fetched page and hands it to the recorder', async () => {
     state.due = [listing('a')];
     state.html['https://example.com/a'] = '<html><body><div class="price">1.100 €</div></body></html>';
     const run = await loadService();
@@ -118,8 +108,8 @@ describe('services/listings/priceTrackingService', () => {
     expect(state.recorded).toEqual([['a', 1100]]);
   });
 
-  // puppeteerExtractor answers null both for a bot wall and for a navigation failure. Either way we
-  // do not know the price, and "do not know" must never reach the recorder as a number.
+  // fetchHtml answers null both for a bot wall and for a navigation failure. Either way we do not
+  // know the price, and "do not know" must never reach the recorder as a number.
   it('records nothing when the page comes back empty, but still marks the listing checked', async () => {
     state.due = [listing('a')];
     state.html['https://example.com/a'] = null;
@@ -132,7 +122,7 @@ describe('services/listings/priceTrackingService', () => {
     expect(state.marked).toEqual(['a']);
   });
 
-  it('marks a listing checked even when the page renders without a price', async () => {
+  it('marks a listing checked even when the page carries no price', async () => {
     state.due = [listing('a')];
     state.html['https://example.com/a'] = '<html><body>no price here</body></html>';
     const run = await loadService();
@@ -150,10 +140,10 @@ describe('services/listings/priceTrackingService', () => {
 
     await run();
 
-    expect(state.rendered).toHaveLength(2);
+    expect(state.fetched).toHaveLength(2);
   });
 
-  it('never renders more pages at once than the concurrency allows', async () => {
+  it('never fetches more pages at once than the concurrency allows', async () => {
     state.due = ['a', 'b', 'c', 'd', 'e'].map((id) => listing(id));
     const run = await loadService();
 
@@ -162,24 +152,12 @@ describe('services/listings/priceTrackingService', () => {
     expect(state.maxConcurrent).toBeLessThanOrEqual(2);
   });
 
-  it('opens one browser for the whole run and closes it', async () => {
-    state.due = [listing('a'), listing('b')];
-    state.html['https://example.com/a'] = '<div class="price">1.100 €</div>';
-    state.html['https://example.com/b'] = '<div class="price">900 €</div>';
-    const run = await loadService();
-
-    await run();
-
-    expect(state.launches).toBe(1);
-    expect(state.closes).toBe(1);
-  });
-
-  // A leaked browser on the error path leaves a Chromium process behind on every failed run.
-  it('closes the browser even when a probe throws', async () => {
+  // A thrown parser must not abort the run or reach the recorder with a bogus value.
+  it('swallows a probe that throws and records nothing for that listing', async () => {
     state.due = [listing('a')];
     state.providers = [
       {
-        metaInformation: { id: 'immowelt' },
+        metaInformation: { id: 'kleinanzeigen' },
         config: {
           priceTracking: {
             extract: () => {
@@ -194,12 +172,11 @@ describe('services/listings/priceTrackingService', () => {
 
     await run();
 
-    expect(state.closes).toBe(1);
     expect(state.recorded).toHaveLength(0);
   });
 
-  // A provider reading its price from an API must not drag a browser along for the ride.
-  it('never launches a browser when every provider answers through probe', async () => {
+  // A provider reading its price from an API must not fetch a page at all.
+  it('fetches no page when every provider answers through probe', async () => {
     state.due = [listing('a', 'immoscout')];
     state.providers = [
       {
@@ -211,8 +188,7 @@ describe('services/listings/priceTrackingService', () => {
 
     await run();
 
-    expect(state.launches).toBe(0);
-    expect(state.rendered).toHaveLength(0);
+    expect(state.fetched).toHaveLength(0);
     expect(state.recorded).toEqual([['a', 1100]]);
   });
 
@@ -222,7 +198,7 @@ describe('services/listings/priceTrackingService', () => {
 
     await run();
 
-    expect(state.launches).toBe(0);
+    expect(state.fetched).toHaveLength(0);
     expect(state.marked).toHaveLength(0);
   });
 
