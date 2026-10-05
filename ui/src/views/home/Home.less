@@ -688,121 +688,89 @@
     overflow: hidden;
     border-radius: @radius-card;
 
-    .maplibregl-marker {
-      display: grid;
-      place-items: center;
-      width: 44px;
-      height: 44px;
-    }
-
     .map-container {
       height: 100%;
       min-height: 560px;
     }
   }
 
+  // Pins are the reference sites' product dots: a small square of ink with a paper hairline, a wider
+  // square carrying the count for a same-address group. Hover and selection scale and invert. The
+  // element passed to MapLibre becomes the `.maplibregl-marker` itself, so the 44px touch target is
+  // an invisible pseudo-element around the dot rather than a sized container.
   &__map-marker {
+    position: relative;
     display: grid;
     place-items: center;
     box-sizing: border-box;
-    width: 44px;
-    height: 44px;
+    width: 16px;
+    height: 16px;
     padding: 0;
     border: 2px solid @color-surface;
-    border-radius: 50%;
+    border-radius: 0;
     background: @color-accent;
     color: @color-on-accent;
-    font: inherit;
+    font-family: @font-mono;
+    font-size: @text-xs;
     font-weight: 500;
+    line-height: 1;
     cursor: pointer;
+    transition:
+      transform 120ms ease,
+      background-color 120ms ease;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -14px;
+    }
+
+    &--group {
+      width: 28px;
+      height: 28px;
+    }
 
     &:hover,
+    &:focus-visible,
+    &--hover {
+      transform: scale(1.25);
+      outline: none;
+    }
+
     &:focus-visible {
-      background: @color-accent-fill;
-      outline: 3px solid @color-accent;
+      outline: 2px solid @color-accent;
+      outline-offset: 3px;
+    }
+
+    &--selected {
+      border-color: @color-accent;
+      background: @color-surface;
+      color: @color-text;
+      transform: scale(1.25);
+    }
+  }
+
+  &__card--highlighted {
+    .home__card-media {
+      outline: 2px solid @color-accent;
       outline-offset: 2px;
     }
   }
 
-  &__map-chooser {
-    position: absolute;
-    right: @space-3;
-    bottom: @space-3;
-    z-index: 3;
+  // Saved places are context, drawn as paper squares carrying an ink glyph so they never read as a
+  // result pin. Not interactive: the marker container stays 44px for touch parity, the tile is 24px.
+  &__map-place {
     display: grid;
-    gap: @space-2;
-    width: min(320px, calc(100% - 24px));
-    max-height: calc(100% - 24px);
-    padding: @space-2;
-    border: 1px solid @color-border-bright;
-    border-radius: @radius-card;
-    background: @color-elevated;
-    box-shadow: @shadow-md;
+    place-items: center;
+    box-sizing: border-box;
+    width: 24px;
+    height: 24px;
+    border: 1px solid @color-text;
+    background: @color-surface;
+    color: @color-text;
 
-    &-heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: @space-2;
-      color: @color-text;
-      font-size: @text-base;
-
-      button {
-        min-width: 44px;
-        min-height: 44px;
-        padding: 0;
-        border: 1px solid @color-border;
-        border-radius: @radius-btn;
-        background: @color-surface;
-        color: @color-text;
-        font-size: @text-lg;
-        line-height: 1;
-        cursor: pointer;
-
-        &:hover,
-        &:focus-visible {
-          border-color: @color-accent;
-          outline: none;
-        }
-      }
-    }
-
-    &-options {
-      display: grid;
-      gap: @space-1;
-      overflow-y: auto;
-
-      button {
-        display: grid;
-        gap: 2px;
-        min-height: 44px;
-        padding: @space-2;
-        border: 1px solid @color-border;
-        border-radius: @radius-btn;
-        background: @color-surface;
-        color: @color-text;
-        font: inherit;
-        text-align: left;
-        cursor: pointer;
-
-        &:hover,
-        &:focus-visible {
-          border-color: @color-accent;
-          outline: none;
-        }
-
-        strong,
-        span {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        span {
-          color: @color-muted;
-          font-size: @text-sm;
-        }
-      }
+    svg {
+      display: block;
     }
   }
 
@@ -813,17 +781,49 @@
     z-index: 2;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: @space-2;
-    padding: @space-2 @space-3;
+    max-width: calc(100% - 24px);
+    padding: @space-1 @space-2;
     border: 1px solid @color-border;
     border-radius: @radius-pill;
     background: @color-elevated;
     color: @color-muted;
-    font-size: @text-sm;
+    font-family: @font-mono;
+    font-size: @text-xs;
+    letter-spacing: @tracking-label;
+    text-transform: uppercase;
 
     strong {
       color: @color-text;
+      font-weight: 500;
     }
+  }
+
+  &__map-chip {
+    min-height: 28px;
+    padding: 0 @space-2;
+    border: 1px solid @color-text;
+    border-radius: @radius-chip;
+    background: @color-text;
+    color: @color-surface;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: @color-surface;
+      color: @color-text;
+      outline: none;
+    }
+  }
+
+  &__sentinel {
+    flex-basis: 100%;
+    height: 1px;
   }
 
   &__map-empty {

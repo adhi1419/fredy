@@ -12,6 +12,10 @@ import {
   homeProviderOptions,
   homeQueryFromState,
   homeSearchForNavigation,
+  homeSavedPlaceGlyph,
+  homeBboxFromEdges,
+  formatHomeBbox,
+  parseHomeBbox,
   homeSortOption,
   normalizeProviderIds,
   providerParamFromIds,
@@ -28,7 +32,7 @@ describe('homeViewState', () => {
       providerIds: [],
       sort: 'created_at',
       dir: 'desc',
-      page: 1,
+      bbox: null,
     });
   });
 
@@ -94,10 +98,17 @@ describe('homeViewState', () => {
 
   it('maps legacy listings status and sort aliases without losing the view state', () => {
     const values = readHomeViewState(
-      new URLSearchParams('status=viewing&sortfield=distance&sortdir=asc&page=2'),
+      new URLSearchParams('status=viewing&sortfield=distance&sortdir=asc&page=2&bbox=13.3,52.4,13.5,52.6'),
       'map',
     );
-    expect(values).toMatchObject({ view: 'map', activity: 'viewed', sort: 'distance', dir: 'asc', page: 2 });
+    expect(values).toMatchObject({
+      view: 'map',
+      activity: 'viewed',
+      sort: 'distance',
+      dir: 'asc',
+      bbox: { west: 13.3, south: 52.4, east: 13.5, north: 52.6 },
+    });
+    expect(values).not.toHaveProperty('page');
     expect(readHomeViewState(new URLSearchParams('status=accepted')).activity).toBe('archived');
     expect(readHomeViewState(new URLSearchParams('status=rejected')).activity).toBe('archived');
   });
@@ -109,33 +120,62 @@ describe('homeViewState', () => {
       providerIds: ['immoscout', 'immowelt'],
       sort: 'distance',
       dir: 'asc',
-      page: 1,
+      bbox: { west: 13.3, south: 52.4, east: 13.5, north: 52.6 },
     });
 
     expect(params.toString()).toBe(
-      'source=legacy&view=map&activity=archived&provider=immoscout%2Cimmowelt&sort=distance',
+      'source=legacy&view=map&activity=archived&provider=immoscout%2Cimmowelt&sort=distance&bbox=13.3%2C52.4%2C13.5%2C52.6',
     );
+  });
+
+  it('drops a page number from an old link and clears the box when it is unset', () => {
+    const params = writeHomeViewState(new URLSearchParams('page=4&bbox=13.3,52.4,13.5,52.6'), { bbox: null });
+    expect(params.toString()).toBe('');
+  });
+
+  it('reads only well-formed boxes and rounds them for the URL', () => {
+    expect(parseHomeBbox('13.3,52.4,13.5,52.6')).toEqual({ west: 13.3, south: 52.4, east: 13.5, north: 52.6 });
+    expect(parseHomeBbox('13.5,52.4,13.3,52.6')).toBeNull();
+    expect(parseHomeBbox('13.3,52.4,13.5')).toBeNull();
+    expect(parseHomeBbox('a,b,c,d')).toBeNull();
+    expect(parseHomeBbox('-200,52.4,13.5,52.6')).toBeNull();
+    expect(formatHomeBbox(homeBboxFromEdges(13.3000001, 52.4123456789, 13.5, 52.6))).toBe('13.3,52.41235,13.5,52.6');
+    expect(formatHomeBbox(null)).toBeNull();
+  });
+
+  it('recognises the workplace by label in all three languages and flags everything else', () => {
+    for (const label of ['Work', 'OFFICE', 'Arbeit', 'Büro Mitte', 'İş']) {
+      expect(homeSavedPlaceGlyph(label)).toBe('work');
+    }
+    for (const label of ['Home', 'Gym', 'Workshop', '', undefined]) {
+      expect(homeSavedPlaceGlyph(label)).toBe('flag');
+    }
   });
 
   it('maps the mutually exclusive Home activity to the existing table query contract', () => {
     expect(HOME_ACTIVITIES).toEqual(['new', 'applied', 'viewed', 'archived']);
     expect(
-      homeQueryFromState({
-        page: 3,
-        q: 'Kreuzberg',
-        activity: 'viewed',
-        providerIds: ['immoscout', 'immowelt'],
-        sort: 'travel_time',
-        dir: 'asc',
-      }),
+      homeQueryFromState(
+        {
+          q: 'Kreuzberg',
+          activity: 'viewed',
+          providerIds: ['immoscout', 'immowelt'],
+          sort: 'travel_time',
+          dir: 'asc',
+          bbox: { west: 13.3, south: 52.4, east: 13.5, north: 52.6 },
+        },
+        3,
+      ),
     ).toEqual({
       page: 3,
-      pageSize: 40,
+      pageSize: 10,
       freeTextFilter: 'Kreuzberg',
       sortfield: 'travel_time',
       sortdir: 'asc',
-      filter: { statusFilter: 'viewed', providerFilter: 'immoscout,immowelt' },
+      filter: { statusFilter: 'viewed', providerFilter: 'immoscout,immowelt', bbox: '13.3,52.4,13.5,52.6' },
     });
+    expect(homeQueryFromState({}).page).toBe(1);
+    expect(homeQueryFromState({}).filter.bbox).toBeNull();
   });
 
   it('keeps unknown future sort keys round-trippable', () => {

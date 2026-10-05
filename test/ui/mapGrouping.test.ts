@@ -5,58 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { groupListingsByPosition, type MapListing } from '../../ui/src/views/listings/mapUtils.js';
-import {
-  homeMapGroupSelectionId,
-  homeMapMarkerAction,
-  restoreHomeMapMarkerFocus,
-} from '../../ui/src/services/home/homeViewState.js';
-
-describe('home map chooser focus restoration', () => {
-  const focusTarget = (isConnected: boolean) => {
-    let focusCount = 0;
-    return {
-      target: {
-        isConnected,
-        focus: () => {
-          focusCount += 1;
-        },
-      },
-      get focusCount() {
-        return focusCount;
-      },
-    };
-  };
-
-  it('restores the triggering marker after Close and Escape close paths', () => {
-    const marker = focusTarget(true);
-    let chooserOpen = true;
-    const closeFromButton = () => {
-      chooserOpen = false;
-      restoreHomeMapMarkerFocus(marker.target);
-    };
-    const closeFromEscape = () => {
-      chooserOpen = false;
-      restoreHomeMapMarkerFocus(marker.target);
-    };
-
-    closeFromButton();
-    expect(chooserOpen).toBe(false);
-    expect(marker.focusCount).toBe(1);
-
-    chooserOpen = true;
-    closeFromEscape();
-    expect(chooserOpen).toBe(false);
-    expect(marker.focusCount).toBe(2);
-  });
-
-  it('does not focus a disconnected triggering marker', () => {
-    const marker = focusTarget(false);
-
-    restoreHomeMapMarkerFocus(marker.target);
-
-    expect(marker.focusCount).toBe(0);
-  });
-});
+import { homeMapMarkerIds, homeMapToggleSelection } from '../../ui/src/services/home/homeViewState.js';
 
 interface TestListing extends MapListing {
   id: string;
@@ -118,26 +67,24 @@ describe('groupListingsByPosition', () => {
     expect(groups.map((group) => group.listings.map((entry) => entry.id))).toEqual([['a']]);
   });
 
-  it('opens every same-coordinate listing from pointer and keyboard group activation', () => {
+  it('turns a marker into the IDs its list rows carry, skipping unaddressable rows', () => {
     const grouped = [
       { id: 'first', latitude: 51.2277, longitude: 6.7735 },
+      { latitude: 51.2277, longitude: 6.7735 },
       { id: 'second', latitude: 51.2277, longitude: 6.7735 },
     ];
 
-    const pointerAction = homeMapMarkerAction(grouped, 'pointer');
-    const keyboardAction = homeMapMarkerAction(grouped, 'keyboard');
+    expect(homeMapMarkerIds(grouped)).toEqual(['first', 'second']);
+    expect(homeMapMarkerIds([])).toEqual([]);
+  });
 
-    expect(pointerAction).toMatchObject({ trigger: 'pointer', kind: 'group' });
-    expect(keyboardAction).toMatchObject({ trigger: 'keyboard', kind: 'group' });
-    expect(pointerAction?.kind === 'group' ? pointerAction.listings.map((entry) => entry.id) : []).toEqual([
-      'first',
-      'second',
-    ]);
-    expect(
-      keyboardAction?.kind === 'group'
-        ? keyboardAction.listings.map((entry) => homeMapGroupSelectionId(keyboardAction.listings, entry.id ?? ''))
-        : [],
-    ).toEqual(['first', 'second']);
+  it('toggles a marker selection: same pins clear it, other pins replace it', () => {
+    expect(homeMapToggleSelection(null, ['a'])).toEqual(['a']);
+    expect(homeMapToggleSelection(['a'], ['a'])).toBeNull();
+    expect(homeMapToggleSelection(['a', 'b'], ['b', 'a'])).toBeNull();
+    expect(homeMapToggleSelection(['a'], ['b', 'c'])).toEqual(['b', 'c']);
+    expect(homeMapToggleSelection(['a'], [])).toEqual(['a']);
+    expect(homeMapToggleSelection(null, [])).toBeNull();
   });
 
   it('copes with nothing to group', () => {

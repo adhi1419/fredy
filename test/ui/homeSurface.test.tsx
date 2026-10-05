@@ -323,8 +323,8 @@ describe('Home view switch, sort, and card age', () => {
 
   it('flips the active sort direction in place and activates another criterion via chooseSort', () => {
     expect(homeSource).toContain('const chooseSort = (option: HomeSortOption) => {');
-    expect(homeSource).toContain("updateState({ dir: activeDirection === 'asc' ? 'desc' : 'asc', page: 1 })");
-    expect(homeSource).toContain('updateState({ sort: option.key, dir: option.direction, page: 1 })');
+    expect(homeSource).toContain("updateState({ dir: activeDirection === 'asc' ? 'desc' : 'asc' })");
+    expect(homeSource).toContain('updateState({ sort: option.key, dir: option.direction })');
   });
 
   it('shows a relative age line on every card, replacing the absolute timestamp', () => {

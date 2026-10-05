@@ -217,24 +217,6 @@
   }
 }
 
-/* Override MapLibre default popup styles */
-.maplibregl-popup-content {
-  background-color: var(--semi-color-bg-1) !important;
-  color: var(--semi-color-text-0) !important;
-  border-radius: 8px !important;
-  box-shadow: var(--semi-shadow-elevated) !important;
-  /* A listing popup with image, details and nearby stops easily outgrows the map. Capping it and
-     scrolling inside keeps the whole popup reachable; keepPopupInView() then pans the map so it
-     is fully on screen. */
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-.maplibregl-popup-tip {
-  border-top-color: var(--semi-color-bg-1) !important;
-  border-bottom-color: var(--semi-color-bg-1) !important;
-}
-
 .map {
   &__rangesliderLabels {
     color: @color-muted;

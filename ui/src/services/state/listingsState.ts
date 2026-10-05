@@ -70,6 +70,12 @@ export type ListingLifecycleAction = 'applied' | 'viewing' | 'archive' | 'restor
 
 export interface ListingsEffects {
   getListingsData(params: ListingsDataQuery): Promise<void>;
+  /**
+   * Fetches the page after the one currently held and appends its rows, for an endless feed. A
+   * response for a different query than the one in flight when it returns is dropped, so a filter
+   * change mid-scroll cannot splice stale rows into the new result.
+   */
+  appendListingsPage(params: ListingsDataQuery): Promise<void>;
   getListing(listingId: string): Promise<unknown>;
   getListingsForMap(params?: ListingsMapQuery): Promise<void>;
   setListingLifecycleAction(listingId: string, action: ListingLifecycleAction): Promise<void>;
@@ -97,28 +103,40 @@ export function createListingsEffects(
   transport: ListingsTransport,
   stringify: ListingsQueryStringify,
 ): ListingsEffects {
+  // Identity of the last query getListingsData issued, minus the page. appendListingsPage compares
+  // against it when its response lands so a page fetched for a superseded filter is discarded.
+  let currentQueryKey = '';
+  let appendInFlight = false;
+
+  const queryOf = ({
+    page = 1,
+    pageSize = 20,
+    freeTextFilter = null,
+    sortfield = null,
+    sortdir = 'asc',
+    filter,
+  }: ListingsDataQuery) =>
+    stringify(
+      {
+        page,
+        pageSize,
+        freeTextFilter,
+        sortfield,
+        sortdir,
+        ...(filter ?? {}),
+      },
+      { skipNull: true, skipEmptyString: true },
+    );
+
+  const keyOf = (params: ListingsDataQuery) => queryOf({ ...params, page: 1 });
+
   return {
-    async getListingsData({
-      page = 1,
-      pageSize = 20,
-      freeTextFilter = null,
-      sortfield = null,
-      sortdir = 'asc',
-      filter,
-    }) {
+    async getListingsData(params) {
+      const key = keyOf(params);
+      currentQueryKey = key;
       try {
-        const query = stringify(
-          {
-            page,
-            pageSize,
-            freeTextFilter,
-            sortfield,
-            sortdir,
-            ...(filter ?? {}),
-          },
-          { skipNull: true, skipEmptyString: true },
-        );
-        const response = await transport.get(`/api/listings/table?${query}`);
+        const response = await transport.get(`/api/listings/table?${queryOf(params)}`);
+        if (currentQueryKey !== key) return;
         const payload = asRecord(response.json);
         set((state) => ({
           listingsData: {
@@ -129,6 +147,31 @@ export function createListingsEffects(
         }));
       } catch (exception) {
         console.error('Error while trying to get resource for api/listings. Error:', exception);
+      }
+    },
+
+    async appendListingsPage(params) {
+      if (appendInFlight) return;
+      const key = keyOf(params);
+      if (key !== currentQueryKey) return;
+      appendInFlight = true;
+      try {
+        const response = await transport.get(`/api/listings/table?${queryOf(params)}`);
+        if (currentQueryKey !== key) return;
+        const payload = asRecord(response.json);
+        const rows = Array.isArray(payload.result) ? payload.result : [];
+        set((state) => ({
+          listingsData: {
+            ...state.listingsData,
+            ...payload,
+            result: [...state.listingsData.result, ...rows],
+            availableProviders: stringArray(payload.availableProviders),
+          },
+        }));
+      } catch (exception) {
+        console.error('Error while trying to append a page from api/listings. Error:', exception);
+      } finally {
+        appendInFlight = false;
       }
     },
 

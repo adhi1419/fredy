@@ -16,6 +16,7 @@
  */
 
 import { TRANSIT_BUS_ICON, TRANSIT_RAIL_ICON } from './transitIcons.js';
+import { currentTheme, type Theme } from '../../services/theme/theme.js';
 import type { FilterSpecification, LayerSpecification, SourceSpecification } from 'maplibre-gl';
 
 export interface OverlayLayerView {
@@ -93,6 +94,47 @@ const TRANSIT_STOP_FILTER: FilterSpecification = [
  * silently left whole stations unnamed.
  */
 const STOP_LABEL_PADDING = 10;
+
+/**
+ * The chrome colours of the overlay - the line casing and the stop-label ink and halo - per theme.
+ *
+ * These are plain colour literals rather than CSS custom properties on purpose: MapLibre paint
+ * values are evaluated by the GL renderer and cannot read `var(--...)` tokens, so the overlay has
+ * to carry its own light/dark values and pick between them from the interface theme.
+ */
+interface ChromePalette {
+  casingColor: string;
+  casingOpacity: number;
+  labelColor: string;
+  haloColor: string;
+}
+
+/**
+ * Light: a white casing lifts the coloured line off the pale positron basemap, and dark ink with a
+ * white halo keeps stop names legible over it.
+ */
+const CHROME_LIGHT: ChromePalette = {
+  casingColor: '#ffffff',
+  casingOpacity: 0.6,
+  labelColor: '#1f2937',
+  haloColor: '#ffffff',
+};
+
+/**
+ * Dark: a near-black casing does the same lifting job on the dark basemap, and a warm off-white ink
+ * with a near-black halo keeps the names legible without glowing white over the dark surface.
+ */
+const CHROME_DARK: ChromePalette = {
+  casingColor: '#0c0c0c',
+  casingOpacity: 0.7,
+  labelColor: '#f3f0ea',
+  haloColor: '#0c0c0c',
+};
+
+/** The chrome palette for a theme. */
+function chromeFor(theme: Theme): ChromePalette {
+  return theme === 'dark' ? CHROME_DARK : CHROME_LIGHT;
+}
 
 /**
  * Adds the shared OpenFreeMap vector source unless the style already carries it.
@@ -174,9 +216,17 @@ function buildingsLayer(): LayerSpecification {
  * no rail at all, so there is nothing to label them with. Which line serves a place is answered by
  * the departure board behind {@link TRANSIT_STOPS_LAYER_ID} instead.
  *
+ * The 'other rail' bucket (the `#7c3aed` lines) lumps S-Bahn in with regional and long-distance
+ * rail because OpenMapTiles exposes no network tag on the `transportation` layer to tell them apart.
+ *
+ * Line colours are the same in both themes - they are network colours, not interface chrome - while
+ * the casing and the stop-label ink/halo follow the interface theme via {@link chromeFor}.
+ *
+ * @param {Theme} [theme] Defaults to the theme the document is painted in.
  * @returns {import('maplibre-gl').LayerSpecification[]}
  */
-function transitLayers(): LayerSpecification[] {
+function transitLayers(theme: Theme = currentTheme()): LayerSpecification[] {
+  const chrome = chromeFor(theme);
   return [
     {
       id: 'transit-line-casing',
@@ -187,8 +237,8 @@ function transitLayers(): LayerSpecification[] {
       filter: TRANSIT_LINE_FILTER,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': '#ffffff',
-        'line-opacity': 0.6,
+        'line-color': chrome.casingColor,
+        'line-opacity': chrome.casingOpacity,
         'line-width': ['interpolate', ['linear'], ['zoom'], 8, 2.8, 14, 4.5, 18, 7],
       },
     },
@@ -250,8 +300,8 @@ function transitLayers(): LayerSpecification[] {
         'text-max-width': 9,
       },
       paint: {
-        'text-color': '#1f2937',
-        'text-halo-color': '#ffffff',
+        'text-color': chrome.labelColor,
+        'text-halo-color': chrome.haloColor,
         'text-halo-width': 1.2,
       },
     },
@@ -374,8 +424,9 @@ export function applyBuildingsLayer(map: OverlayMap, enabled: boolean): void {
  *
  * @param {import('maplibre-gl').Map} map
  * @param {boolean} enabled
+ * @param {Theme} [theme] Defaults to the theme the document is painted in.
  */
-export function applyTransitLayers(map: OverlayMap, enabled: boolean): void {
+export function applyTransitLayers(map: OverlayMap, enabled: boolean, theme: Theme = currentTheme()): void {
   setBasemapTransitPoisVisible(map, !enabled);
 
   if (!enabled) {
@@ -386,5 +437,5 @@ export function applyTransitLayers(map: OverlayMap, enabled: boolean): void {
   ensureOpenFreeMapSource(map);
   // The basemap's own stop icons and names are suppressed above, so the overlay names its stops
   // itself on every style - one icon, one name, and the same look on the satellite basemap.
-  addLayers(map, transitLayers(), findFirstSymbolLayerId(map));
+  addLayers(map, transitLayers(theme), findFirstSymbolLayerId(map));
 }

@@ -15,7 +15,7 @@ function setup() {
   const state = { listingsData: createListingsDataState() };
   const get = vi.fn();
   const post = vi.fn();
-  const stringify = vi.fn(() => 'encoded-query');
+  const stringify = vi.fn((_query: Record<string, unknown>) => 'encoded-query');
   const set: ListingsStateSetter = (updater) => Object.assign(state, updater(state));
   const effects = createListingsEffects(set, { get, post }, stringify);
   return { state, get, post, stringify, effects };
@@ -73,6 +73,43 @@ describe('listings state domain', () => {
       availableProviders: ['immoscout', 'immowelt'],
     });
     expect(state.listingsData.availableProviders).not.toBe(response.availableProviders);
+  });
+
+  it('appends the next page onto the rows already held and drops a page for a superseded query', async () => {
+    const { state, get, stringify, effects } = setup();
+    stringify.mockImplementation((query: Record<string, unknown>) => `${query.freeTextFilter}-${query.page}`);
+    get.mockResolvedValueOnce({ status: 200, json: { totalNumber: 3, page: 1, result: [{ id: 'a' }] } });
+    const base = { pageSize: 1, freeTextFilter: 'berlin', sortfield: 'created_at', sortdir: 'desc' };
+    await effects.getListingsData({ ...base, page: 1 });
+
+    get.mockResolvedValueOnce({ status: 200, json: { totalNumber: 3, page: 2, result: [{ id: 'b' }] } });
+    await effects.appendListingsPage({ ...base, page: 2 });
+    expect(state.listingsData.result).toEqual([{ id: 'a' }, { id: 'b' }]);
+    expect(state.listingsData.page).toBe(2);
+
+    // A page requested for a query that is no longer current never reaches the store.
+    get.mockResolvedValueOnce({ status: 200, json: { totalNumber: 9, page: 2, result: [{ id: 'stale' }] } });
+    await effects.appendListingsPage({ ...base, freeTextFilter: 'munich', page: 2 });
+    expect(state.listingsData.result).toEqual([{ id: 'a' }, { id: 'b' }]);
+    expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets a filter change win over an append that was in flight', async () => {
+    const { state, get, stringify, effects } = setup();
+    stringify.mockImplementation((query: Record<string, unknown>) => `${query.freeTextFilter}-${query.page}`);
+    get.mockResolvedValueOnce({ status: 200, json: { totalNumber: 3, page: 1, result: [{ id: 'a' }] } });
+    await effects.getListingsData({ pageSize: 1, freeTextFilter: 'berlin', page: 1 });
+
+    let resolveAppend: (value: { status: number; json: unknown }) => void = () => {};
+    get.mockReturnValueOnce(new Promise((resolve) => (resolveAppend = resolve)));
+    const appending = effects.appendListingsPage({ pageSize: 1, freeTextFilter: 'berlin', page: 2 });
+
+    get.mockResolvedValueOnce({ status: 200, json: { totalNumber: 1, page: 1, result: [{ id: 'm' }] } });
+    await effects.getListingsData({ pageSize: 1, freeTextFilter: 'munich', page: 1 });
+    resolveAppend({ status: 200, json: { totalNumber: 3, page: 2, result: [{ id: 'b' }] } });
+    await appending;
+
+    expect(state.listingsData.result).toEqual([{ id: 'm' }]);
   });
 
   it('maps map data and keeps the existing empty-value fallbacks', async () => {
