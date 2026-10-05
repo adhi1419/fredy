@@ -5,7 +5,7 @@
 
 import { readFile } from 'fs/promises';
 import { describe, expect, it } from 'vitest';
-import { config, parseSearchResults } from '../../lib/provider/kleinanzeigen.js';
+import { config, pageUrl, parseSearchResults } from '../../lib/provider/kleinanzeigen.js';
 
 const fixture = await readFile(new URL('../testFixtures/kleinanzeigen.html', import.meta.url), 'utf-8');
 
@@ -77,5 +77,49 @@ describe('kleinanzeigen search results', () => {
 
   it('declares itself browserless', () => {
     expect(config.browserless).toBe(true);
+  });
+
+  it('builds page URLs the way Kleinanzeigen links them', () => {
+    const url = 'https://www.kleinanzeigen.de/s-wohnung-mieten/berlin/preis::1000/c203l3331+wohnung_mieten.qm_d:55.00';
+    expect(pageUrl(url, 1)).toBe(url);
+    expect(pageUrl(url, 3)).toBe(
+      'https://www.kleinanzeigen.de/s-wohnung-mieten/berlin/preis::1000/seite:3/c203l3331+wohnung_mieten.qm_d:55.00',
+    );
+    // An existing page segment is replaced, not stacked.
+    expect(pageUrl(pageUrl(url, 2), 4)).toBe(pageUrl(url, 4));
+  });
+
+  it('walks every page until the reported total is covered, keeping each result once', async () => {
+    const heading = (total) => `<h1>1 - 25 von ${total} Ergebnissen in Berlin</h1>`;
+    const pageOf = (total, ids) =>
+      page(ids.map((id) => card({ id: String(id), description: 'Hell' }))).replace(
+        '<h1>Ergebnisse</h1>',
+        heading(total),
+      );
+    const pages = {
+      1: pageOf(5, [1, 2]),
+      2: pageOf(5, [2, 3, 4]), // the list shifted while it was walked: 2 shows up again
+      3: pageOf(5, [5]),
+    };
+    const asked = [];
+    const listings = await config.getListings('https://www.kleinanzeigen.de/s-x/c203l3331', async (url) => {
+      const number = Number(/seite:(\d+)/.exec(url)?.[1] ?? 1);
+      asked.push(number);
+      return pages[number] ?? null;
+    });
+
+    expect(asked).toEqual([1, 2, 3]);
+    expect(listings.map((listing) => listing.id)).toEqual(['1', '2', '3', '4', '5']);
+  });
+
+  it('keeps what it has when a later page cannot be loaded', async () => {
+    const first = page([card({ id: '1', description: 'Hell' })]).replace(
+      '<h1>Ergebnisse</h1>',
+      '<h1>1 - 25 von 60 Ergebnissen</h1>',
+    );
+    const listings = await config.getListings('https://www.kleinanzeigen.de/s-x/c203l3331', async (url) =>
+      url.includes('seite:') ? null : first,
+    );
+    expect(listings.map((listing) => listing.id)).toEqual(['1']);
   });
 });
