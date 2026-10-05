@@ -93,8 +93,17 @@ describe('provider application capabilities', () => {
       automatic: true,
       eligibility: 'listing',
       validation: 'local',
+      profileRequirements: ['identity', 'contact', 'household', 'move-in'],
+      consentRequirements: ['provider-privacy'],
+      connectionRequired: false,
+    });
+    expect(byId.get('kleinanzeigen').capabilities.application).toEqual({
+      manual: true,
+      automatic: true,
+      eligibility: 'provider',
+      validation: 'provider',
       profileRequirements: ['identity'],
-      consentRequirements: ['provider-application'],
+      consentRequirements: ['provider-privacy'],
       connectionRequired: false,
     });
 

@@ -20,7 +20,7 @@ describe('sanitizeInquiryProfile', () => {
 });
 
 describe('isInquiryProfileReady', () => {
-  it('requires provider-specific consent and fields plus the authenticated email', () => {
+  it('requires provider-specific facts plus the authenticated email', () => {
     expect(
       isInquiryProfileReady(
         {
@@ -28,26 +28,43 @@ describe('isInquiryProfileReady', () => {
           phoneNumber: '+49 30 123456',
           deutscheWohnenIncomeType: '1',
           deutscheWohnenMonthlyNetIncome: 'M_3',
-          deutscheWohnenPrivacyAccepted: true,
         },
         'alice@example.com',
         'deutscheWohnen',
       ),
     ).toBe(true);
+    expect(isInquiryProfileReady({ name: 'Alice Example' }, 'alice@example.com', 'kleinanzeigen')).toBe(true);
+    expect(isInquiryProfileReady({ name: 'Alice Example' }, 'not-an-email', 'kleinanzeigen')).toBe(false);
+
+    const howogeListing = { link: 'https://www.howoge.de/immobiliensuche/wohnungssuche/detail/1.html' };
+    expect(isInquiryProfileReady({ name: 'Alice Example' }, 'alice@example.com', 'inberlinwohnen', howogeListing)).toBe(
+      true,
+    );
+
+    const wbmListing = { link: 'https://www.wbm.de/wohnungen-berlin/angebote/details/example/' };
+    const wbmProfile = {
+      name: 'Alice Example',
+      salutation: 'Frau',
+      wbsAvailable: false,
+    };
+    expect(isInquiryProfileReady(wbmProfile, 'alice@example.com', 'inberlinwohnen', wbmListing)).toBe(true);
     expect(
-      isInquiryProfileReady(
-        { name: 'Alice Example', howogeApplicationAccepted: true },
-        'alice@example.com',
-        'inberlinwohnen',
-      ),
-    ).toBe(true);
-    expect(
-      isInquiryProfileReady(
-        { name: 'Alice Example', howogeApplicationAccepted: true },
-        'not-an-email',
-        'inberlinwohnen',
-      ),
+      isInquiryProfileReady({ ...wbmProfile, salutation: '' }, 'alice@example.com', 'inberlinwohnen', wbmListing),
     ).toBe(false);
+
+    const stadtListing = { link: 'https://stadtundland.de/wohnungssuche/1001%2F7318%2F00031' };
+    const stadtProfile = {
+      name: 'Alice Example',
+      salutation: 'Frau',
+      numberOfPersons: '2',
+      numberOfChildren: '0',
+      moveInDate: '01.11.2026',
+      netIncome: '3500 €',
+      wbsAvailable: false,
+    };
+    expect(isInquiryProfileReady(stadtProfile, 'alice@example.com', 'inberlinwohnen', stadtListing)).toBe(true);
+    expect(isInquiryProfileReady(stadtProfile, 'not-an-email', 'inberlinwohnen', stadtListing)).toBe(false);
+    expect(isInquiryProfileReady(stadtProfile, 'alice@example.com', 'inberlinwohnen')).toBe(true);
   });
 });
 

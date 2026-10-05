@@ -12,7 +12,6 @@ const listing = {
 const profile = {
   name: 'Alice Example',
   email: 'attacker-controlled@example.net',
-  howogeApplicationAccepted: true,
 };
 const applicationPath =
   '/immobiliensuche/wohnungssuche/besichtigung-vereinbaren/bewerbungsprozess.html?tx_howrealestate_visitform%5Baction%5D=showVisitForm&tx_howrealestate_visitform%5Bcontroller%5D=Immoobject&tx_howrealestate_visitform%5Bobid%5D=1770-20776-16&cHash=detail-hash';
@@ -71,7 +70,7 @@ describe('HOWOGE inquiry delivery', () => {
     expect(result).toMatchObject({ requestId: 'howoge:9454' });
   });
 
-  it('does not POST without explicit HOWOGE consent', async () => {
+  it('does not POST without a complete applicant name', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(htmlResponse(detailHtml))
@@ -80,13 +79,13 @@ describe('HOWOGE inquiry delivery', () => {
     await expect(
       sendHowogeInquiry({
         listing,
-        profile: { name: 'Alice Example' },
+        profile: { name: 'Alice' },
         accountEmail: 'applicant@example.com',
         fetchImpl,
       }),
     ).rejects.toMatchObject({
       outcome: 'failed',
-      missingFields: ['howogeApplicationAccepted'],
+      missingFields: ['name'],
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });

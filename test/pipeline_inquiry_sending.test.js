@@ -24,6 +24,7 @@ const applicationCapabilities = {
   immoscout: { automatic: true, eligibility: 'provider' },
   deutscheWohnen: { automatic: true, eligibility: 'provider' },
   inberlinwohnen: { automatic: true, eligibility: 'listing' },
+  kleinanzeigen: { automatic: true, eligibility: 'provider' },
   unsupported: { automatic: false, eligibility: 'none' },
 };
 const pipeline = (Fredy, jobConfig, providerId, applicationCapability = null, providerSource = null) =>
@@ -51,6 +52,7 @@ const job = (overrides = {}) => ({
     { id: 'immoscout', applicationPolicy: { automatic: 'enabled' } },
     { id: 'deutscheWohnen', applicationPolicy: { automatic: 'enabled' } },
     { id: 'inberlinwohnen', applicationPolicy: { automatic: 'enabled' } },
+    { id: 'kleinanzeigen', applicationPolicy: { automatic: 'enabled' } },
   ],
   ...overrides,
 });
@@ -63,11 +65,14 @@ const INQUIRY_PROFILE = {
   postcode: '10115',
   city: 'Berlin',
   phoneNumber: '+49 30 123456',
-  immoscoutPrivacyAccepted: true,
   deutscheWohnenIncomeType: '1',
   deutscheWohnenMonthlyNetIncome: 'M_3',
-  deutscheWohnenPrivacyAccepted: true,
-  howogeApplicationAccepted: true,
+  salutation: 'Frau',
+  numberOfPersons: '2',
+  numberOfChildren: '0',
+  moveInDate: '01.11.2026',
+  netIncome: '3500 €',
+  wbsAvailable: false,
 };
 
 const settings = (overrides = {}) => ({ inquiry_profile: INQUIRY_PROFILE, ...overrides });
@@ -100,6 +105,24 @@ describe('pipeline automatic inquiry sending', () => {
       message: item.inquiryMessage,
     });
     expect(item.inquirySendStatus).toBe('sent');
+  });
+
+  it('delivers a generated draft for an enabled Kleinanzeigen rental job', async () => {
+    const Fredy = await mockFredy();
+    const item = {
+      ...listing(),
+      link: 'https://www.kleinanzeigen.de/s-anzeige/berlin-wohnung/3507935505-203-3483',
+    };
+
+    await pipeline(Fredy, job(), 'kleinanzeigen')._sendInquiryMessages([item]);
+
+    expect(inquiryDeliveries).toHaveLength(1);
+    expect(inquiryDeliveries[0]).toMatchObject({
+      providerId: 'kleinanzeigen',
+      userId: 'user1',
+      accountEmail: 'user1@example.com',
+      message: item.inquiryMessage,
+    });
   });
 
   it('delivers a generated draft for an enabled Deutsche Wohnen rental job', async () => {
@@ -229,6 +252,23 @@ describe('pipeline automatic inquiry sending', () => {
       message: '',
     });
     expect(item.inquirySendStatus).toBe('sent');
+  });
+
+  it.each([
+    ['WBM', 'https://www.wbm.de/wohnungen-berlin/angebote/details/example/'],
+    ['Stadt und Land', 'https://stadtundland.de/wohnungssuche/1001%2F7318%2F00031'],
+  ])('applies to a %s partner listing without requiring a generated message', async (_partner, link) => {
+    const Fredy = await mockFredy();
+    const item = { ...listing(), link, description: 'Gesamtmiete: 1.000 €', inquiryMessage: null };
+
+    await pipeline(Fredy, job(), 'inberlinwohnen')._sendInquiryMessages([item]);
+
+    expect(inquiryDeliveries).toHaveLength(1);
+    expect(inquiryDeliveries[0]).toMatchObject({
+      providerId: 'inberlinwohnen',
+      accountEmail: 'user1@example.com',
+      message: '',
+    });
   });
 
   it('skips newly supported providers until their profile fields and consent are configured', async () => {

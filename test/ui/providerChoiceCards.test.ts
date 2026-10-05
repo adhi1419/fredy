@@ -76,6 +76,7 @@ describe('provider choice cards', () => {
       'onRemove',
       'onCompleteProfile',
       'policyToggle',
+      'policyConsent',
     ]) {
       expect(cardsSource).toContain(marker);
     }

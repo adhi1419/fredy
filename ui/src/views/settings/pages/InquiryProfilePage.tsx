@@ -28,11 +28,16 @@ interface InquiryProfileDraft {
   houseNumber: string;
   postcode: string;
   city: string;
-  immoscoutPrivacyAccepted: boolean;
+  salutation: string;
+  numberOfPersons: string;
+  numberOfChildren: string;
+  wbsAvailable: string;
+  wbsValidUntil: string;
+  wbsMaxRooms: string;
+  wbsIncomeLimit: string;
+  wbsSpecialNeed: boolean;
   deutscheWohnenIncomeType: string;
   deutscheWohnenMonthlyNetIncome: string;
-  deutscheWohnenPrivacyAccepted: boolean;
-  howogeApplicationAccepted: boolean;
 }
 
 /** The store slice this page reads. */
@@ -58,11 +63,16 @@ const EMPTY_DRAFT: InquiryProfileDraft = {
   houseNumber: '',
   postcode: '',
   city: '',
-  immoscoutPrivacyAccepted: false,
+  salutation: '',
+  numberOfPersons: '',
+  numberOfChildren: '',
+  wbsAvailable: '',
+  wbsValidUntil: '',
+  wbsMaxRooms: '',
+  wbsIncomeLimit: '',
+  wbsSpecialNeed: false,
   deutscheWohnenIncomeType: '',
   deutscheWohnenMonthlyNetIncome: '',
-  deutscheWohnenPrivacyAccepted: false,
-  howogeApplicationAccepted: false,
 };
 
 /** Read one field from the stored profile as a string, defaulting to empty (mirrors `x ?? ''`). */
@@ -104,11 +114,16 @@ export default function InquiryProfilePage(): ReactElement {
         houseNumber: storedString(stored, 'houseNumber'),
         postcode: storedString(stored, 'postcode'),
         city: storedString(stored, 'city'),
-        immoscoutPrivacyAccepted: stored.immoscoutPrivacyAccepted === true,
+        salutation: storedString(stored, 'salutation'),
+        numberOfPersons: storedString(stored, 'numberOfPersons'),
+        numberOfChildren: storedString(stored, 'numberOfChildren'),
+        wbsAvailable: typeof stored.wbsAvailable === 'boolean' ? String(stored.wbsAvailable) : '',
+        wbsValidUntil: storedString(stored, 'wbsValidUntil'),
+        wbsMaxRooms: storedString(stored, 'wbsMaxRooms'),
+        wbsIncomeLimit: storedString(stored, 'wbsIncomeLimit'),
+        wbsSpecialNeed: stored.wbsSpecialNeed === true,
         deutscheWohnenIncomeType: storedString(stored, 'deutscheWohnenIncomeType'),
         deutscheWohnenMonthlyNetIncome: storedString(stored, 'deutscheWohnenMonthlyNetIncome'),
-        deutscheWohnenPrivacyAccepted: stored.deutscheWohnenPrivacyAccepted === true,
-        howogeApplicationAccepted: stored.howogeApplicationAccepted === true,
       });
     }
   }, [stored]);
@@ -116,13 +131,23 @@ export default function InquiryProfilePage(): ReactElement {
   const field = <K extends keyof InquiryProfileDraft>(key: K, value: InquiryProfileDraft[K]) =>
     setDraft((prev) => ({ ...prev, [key]: value }));
 
-  const dirty = (Object.entries(draft) as Array<[keyof InquiryProfileDraft, string | boolean]>).some(
-    ([key, value]) => value !== (stored?.[key] ?? (typeof value === 'boolean' ? false : '')),
-  );
+  const dirty = (Object.entries(draft) as Array<[keyof InquiryProfileDraft, string | boolean]>).some(([key, value]) => {
+    const storedValue = stored?.[key];
+    if (key === 'wbsAvailable') {
+      return value !== (typeof storedValue === 'boolean' ? String(storedValue) : '');
+    }
+    return value !== (storedValue ?? (typeof value === 'boolean' ? false : ''));
+  });
 
   const handleSave = async () => {
     try {
-      await actions.userSettings.saveInquiryProfile({ ...draft });
+      const submitted: SettingsObject = { ...draft };
+      for (const key of ['wbsAvailable'] as const) {
+        const value = draft[key];
+        if (value === '') delete submitted[key];
+        else submitted[key] = value === 'true';
+      }
+      await actions.userSettings.saveInquiryProfile(submitted);
       Toast.success(t('settings.toastSaved'));
     } catch (error) {
       Toast.error(errorMessage(error, t('settings.toastSaveError')));
@@ -224,12 +249,100 @@ export default function InquiryProfilePage(): ReactElement {
               <Input value={draft.city} onChange={(val) => field('city', val)} />
             </label>
           </div>
-          <Checkbox
-            checked={draft.immoscoutPrivacyAccepted}
-            onChange={(event) => field('immoscoutPrivacyAccepted', event.target.checked === true)}
-          >
-            {t('settings.inquiryProfile.privacyConsent')}
-          </Checkbox>
+        </div>
+      </SegmentPart>
+
+      <SegmentPart
+        name={t('settings.inquiryProfile.householdTitle')}
+        helpText={t('settings.inquiryProfile.householdHelp')}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <label>
+            {t('settings.inquiryProfile.salutation')}
+            <Select
+              value={draft.salutation}
+              onChange={(val) => field('salutation', typeof val === 'string' ? val : '')}
+              style={{ width: '100%' }}
+              optionList={[
+                { value: 'Frau', label: t('settings.inquiryProfile.salutation.frau') },
+                { value: 'Herr', label: t('settings.inquiryProfile.salutation.herr') },
+                { value: 'Offen', label: t('settings.inquiryProfile.salutation.open') },
+              ]}
+            />
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+            <label>
+              {t('settings.inquiryProfile.numberOfPersons')}
+              <Input
+                type="number"
+                min={1}
+                value={draft.numberOfPersons}
+                onChange={(val) => field('numberOfPersons', val)}
+              />
+            </label>
+            <label>
+              {t('settings.inquiryProfile.numberOfChildren')}
+              <Input
+                type="number"
+                min={0}
+                value={draft.numberOfChildren}
+                onChange={(val) => field('numberOfChildren', val)}
+              />
+            </label>
+          </div>
+          <label>
+            {t('settings.inquiryProfile.wbsAvailable')}
+            <Select
+              value={draft.wbsAvailable}
+              onChange={(val) => field('wbsAvailable', typeof val === 'string' ? val : '')}
+              style={{ width: '100%' }}
+              optionList={[
+                { value: 'true', label: t('common.yes') },
+                { value: 'false', label: t('common.no') },
+              ]}
+            />
+          </label>
+          {draft.wbsAvailable === 'true' && (
+            <>
+              <label>
+                {t('settings.inquiryProfile.wbsValidUntil')}
+                <Input
+                  value={draft.wbsValidUntil}
+                  onChange={(val) => field('wbsValidUntil', val)}
+                  placeholder="TT.MM.JJJJ"
+                />
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+                <label>
+                  {t('settings.inquiryProfile.wbsMaxRooms')}
+                  <Input
+                    type="number"
+                    min={1}
+                    value={draft.wbsMaxRooms}
+                    onChange={(val) => field('wbsMaxRooms', val)}
+                  />
+                </label>
+                <label>
+                  {t('settings.inquiryProfile.wbsIncomeLimit')}
+                  <Select
+                    value={draft.wbsIncomeLimit}
+                    onChange={(val) => field('wbsIncomeLimit', typeof val === 'string' ? val : '')}
+                    style={{ width: '100%' }}
+                    optionList={['100', '140', '160', '180', '220'].map((value) => ({
+                      value,
+                      label: `WBS ${value}`,
+                    }))}
+                  />
+                </label>
+              </div>
+              <Checkbox
+                checked={draft.wbsSpecialNeed}
+                onChange={(event) => field('wbsSpecialNeed', event.target.checked === true)}
+              >
+                {t('settings.inquiryProfile.wbsSpecialNeed')}
+              </Checkbox>
+            </>
+          )}
         </div>
       </SegmentPart>
 
@@ -266,22 +379,7 @@ export default function InquiryProfilePage(): ReactElement {
               ]}
             />
           </label>
-          <Checkbox
-            checked={draft.deutscheWohnenPrivacyAccepted}
-            onChange={(event) => field('deutscheWohnenPrivacyAccepted', event.target.checked === true)}
-          >
-            {t('settings.inquiryProfile.deutscheWohnenPrivacyConsent')}
-          </Checkbox>
         </div>
-      </SegmentPart>
-
-      <SegmentPart name={t('settings.inquiryProfile.howogeTitle')} helpText={t('settings.inquiryProfile.howogeHelp')}>
-        <Checkbox
-          checked={draft.howogeApplicationAccepted}
-          onChange={(event) => field('howogeApplicationAccepted', event.target.checked === true)}
-        >
-          {t('settings.inquiryProfile.howogeApplicationConsent')}
-        </Checkbox>
       </SegmentPart>
 
       <div className="settingsShell__saveRow">

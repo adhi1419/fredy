@@ -46,16 +46,13 @@ export function setInquiryDeliveryError(error) {
   inquiryDeliveryError = error;
 }
 vi.mock('../lib/services/inquiries/sendInquiry.js', () => ({
-  supportsInquirySending: (providerId, listing) =>
-    ['deutscheWohnen', 'immoscout'].includes(providerId) ||
-    (providerId === 'inberlinwohnen' &&
-      (listing == null || new URL(listing.link).hostname.toLowerCase().endsWith('howoge.de'))),
-  inquiryRequiresMessage: (providerId, listing) =>
-    !(
-      providerId === 'inberlinwohnen' &&
-      listing != null &&
-      new URL(listing.link).hostname.toLowerCase().endsWith('howoge.de')
-    ),
+  supportsInquirySending: (providerId, listing) => {
+    if (['deutscheWohnen', 'immoscout', 'kleinanzeigen'].includes(providerId)) return true;
+    if (providerId !== 'inberlinwohnen' || listing == null) return providerId === 'inberlinwohnen';
+    const host = new URL(listing.link).hostname.toLowerCase().replace(/^www\./, '');
+    return ['howoge.de', 'wbm.de', 'stadtundland.de'].includes(host);
+  },
+  inquiryRequiresMessage: (providerId, listing) => !(providerId === 'inberlinwohnen' && listing != null),
 }));
 vi.mock('../lib/services/inquiries/deliverInquiry.js', () => ({
   deliverInquiry: async (params) => {

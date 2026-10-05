@@ -18,7 +18,6 @@ const profile = {
   phoneNumber: '+49 30 123456',
   deutscheWohnenIncomeType: '1',
   deutscheWohnenMonthlyNetIncome: 'M_3',
-  deutscheWohnenPrivacyAccepted: true,
 };
 const contactConfig = {
   incomeTypes: { fieldId: 'einkommensart', isRequired: true },
@@ -58,7 +57,6 @@ describe('buildDeutscheWohnenContact', () => {
       'phoneNumber',
       'deutscheWohnenIncomeType',
       'deutscheWohnenMonthlyNetIncome',
-      'deutscheWohnenPrivacyAccepted',
       'message',
     ]);
   });
