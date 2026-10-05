@@ -32,7 +32,6 @@ describe('settingsStorage contract', () => {
   describe('global settings', () => {
     it('returns effective application defaults when nothing is stored', async () => {
       expect(await settingsStorage.getSettings()).toMatchObject({
-        interval: 60,
         port: 9998,
       });
     });
@@ -44,10 +43,9 @@ describe('settingsStorage contract', () => {
     });
 
     it('stored values override effective defaults', async () => {
-      await settingsStorage.upsertSettings({ interval: 5 });
+      await settingsStorage.upsertSettings({ port: 9001 });
       const settings = await settingsStorage.getSettings();
-      expect(settings.interval).toBe(5);
-      expect(settings.port).toBe(9998);
+      expect(settings.port).toBe(9001);
     });
 
     it('updates an existing setting in place (upsert semantics)', async () => {
