@@ -81,14 +81,13 @@ if (process.env.TEST_MODE === 'offline') {
 }
 
 /**
- * The pipeline, with the detail-page enrichment capped at one listing.
+ * The pipeline, constructed with the production signature.
  *
- * The cap used to live in the pipeline itself as `process.env.NODE_ENV === 'test'`. It belongs
- * here: a fixture run only needs to prove the enrichment path works once, and walking every
- * listing's detail page makes the provider suites slow (and, in live mode, rude).
+ * The test subclass fills in a default notification adapter so the suites can construct the
+ * pipeline without wiring one up, and otherwise forwards straight to the production constructor.
  *
- * @returns {Promise<typeof import('../lib/FredyPipelineExecutioner.js').default>} A subclass that
- *   applies the cap, so the tests can keep constructing it with the production signature.
+ * @returns {Promise<typeof import('../lib/FredyPipelineExecutioner.js').default>} A subclass the
+ *   tests can keep constructing with the production signature.
  */
 export const mockFredy = async () => {
   const mod = await import('../lib/FredyPipelineExecutioner.js');
@@ -100,10 +99,7 @@ export const mockFredy = async () => {
         ...entry,
         configuredAdapterId: entry.configuredAdapterId || `test-channel-${index}`,
       }));
-      super(providerConfig, { ...job, notificationAdapter }, providerId, similarityCache, {
-        maxDetailFetches: 1,
-        ...options,
-      });
+      super(providerConfig, { ...job, notificationAdapter }, providerId, similarityCache, options);
     }
   };
 };

@@ -3,11 +3,10 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { expect, vi } from 'vitest';
+import { expect } from 'vitest';
 import { mockFredy, providerConfig } from '../utils.js';
 import * as similarityCache from '../../lib/services/similarity-check/similarityCache.js';
 import { get } from '../mocks/mockNotification.js';
-import * as mockStore from '../mocks/mockStore.js';
 import * as provider from '../../lib/provider/inberlinwohnen.js';
 
 /** Run-scoped provider config, built per test via createConfig(). */
@@ -72,31 +71,4 @@ describe('#inberlinwohnen testsuite()', () => {
     },
     TEST_TIMEOUT,
   );
-
-  describe('with provider_details enabled', () => {
-    beforeEach(() => {
-      vi.spyOn(mockStore, 'getUserSettings').mockReturnValue({ provider_details: [provider.metaInformation.id] });
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
-    it(
-      'should enrich listings with details',
-      async () => {
-        if (!liveListings?.length) throw new Error('No listings from first test to enrich');
-
-        const enriched = await runConfig.fetchDetails(liveListings[0]);
-
-        expect(enriched).toBeTruthy();
-        expect(enriched.link).toBe(liveListings[0].link);
-        expect(enriched.description).toBeTypeOf('string');
-        // enrichment only works for partners with a known description selector,
-        // for all others the original description is kept unchanged
-        expect(enriched.description).toContain(liveListings[0].description);
-      },
-      TEST_TIMEOUT,
-    );
-  });
 });

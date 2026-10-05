@@ -77,8 +77,6 @@ describe('pipeline run timing', () => {
       'provider-filter',
       'find-new',
       'spec-filter',
-      'fetch-details',
-      'detail-filter',
       'geocode',
       'store',
       'distance',

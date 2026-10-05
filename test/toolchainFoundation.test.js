@@ -72,8 +72,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/views/jobs/savedSearchesLegacy.d.ts',
       'ui/src/views/settings/SettingsLayout.tsx',
       'ui/src/views/settings/pages/PreferencesPage.tsx',
-      'ui/src/views/settings/pages/ListingDetailsPage.tsx',
-      'ui/src/views/settings/pages/personalSettingsDrafts.ts',
       'ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx',
       'ui/src/vite-env.d.ts',
       'ui/src/services/onboarding/applicantProfileOnboarding.ts',
@@ -444,7 +442,7 @@ describe('Bun and TypeScript foundation', () => {
     expect(fs.existsSync(path.join(root, 'test/ui/navigationShell.test.js'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/views/settings/pages/PreferencesPage.tsx'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/views/settings/pages/PreferencesPage.jsx'))).toBe(false);
-    expect(fs.existsSync(path.join(root, 'ui/src/views/settings/pages/ListingDetailsPage.tsx'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'ui/src/views/settings/pages/ListingDetailsPage.tsx'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'ui/src/views/settings/pages/ListingDetailsPage.jsx'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'test/ui/personalSettingsPages.test.ts'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'ui/src/views/listings/ListingDetail.tsx'))).toBe(true);

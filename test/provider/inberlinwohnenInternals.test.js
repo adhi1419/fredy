@@ -81,26 +81,6 @@ describe('#inberlinwohnen internals()', () => {
       });
     });
 
-    it('fetches later pages with bounded concurrency', async () => {
-      const ids = [1, 2, 3, 4, 5, 6, 7];
-      let active = 0;
-      let maxActive = 0;
-      const extractPage = vi.fn(async (url) => {
-        const page = Number(new URL(url).searchParams.get('page'));
-        if (page === 1) return resultPage([1], paginationElement(ids, 1));
-        active += 1;
-        maxActive = Math.max(maxActive, active);
-        await new Promise((resolve) => setTimeout(resolve, 5));
-        active -= 1;
-        return resultPage([page]);
-      });
-
-      const listings = await runConfig.getListings(SEARCH_URL, extractPage);
-
-      expect(listings).toHaveLength(7);
-      expect(maxActive).toBe(3);
-    });
-
     it('should deduplicate listings repeated across page boundaries', async () => {
       const extractPage = vi
         .fn()
@@ -196,51 +176,6 @@ describe('#inberlinwohnen internals()', () => {
 
     it('should prefer the partner object id so ids survive portal side re-imports', () => {
       expect(normalize({ ...baseItem, id: 100, objectId: 'partner-42' }).id).toBe(buildHash('partner-42'));
-    });
-  });
-
-  describe('fetchDetails()', () => {
-    it.each([
-      ['berlinovo.de', '<div class="field--name-field-description">Helle Wohnung mit Einbauküche und Balkon.</div>'],
-      [
-        'www.degewo.de',
-        '<section id="section-description"><div class="c-copy">Ruhige Wohnung im obersten Geschoss.</div></section>',
-      ],
-      [
-        'www.gesobau.de',
-        '<div class="immoContent"><div class="immoMainContent"><p>Wohnung mit Serviceangeboten für Seniorinnen und Senioren.</p></div></div>',
-      ],
-      [
-        'www.gewobag.de',
-        '<div class="details-description"><h2 id="objektbeschreibung"></h2><p>Neubauwohnung mit Balkon und Fußbodenheizung.</p></div>',
-      ],
-      [
-        'www.howoge.de',
-        '<main><div class="section"><strong>Beschreibung</strong><p class="readmore__wrap">Drei Zimmer mit Balkon und modernem Bad.</p></div></main>',
-      ],
-      ['www.wbm.de', '<div class="openimmo-detail__intro-text">Gut geschnittene Wohnung mit hellen Wohnräumen.</div>'],
-    ])('should enrich detail descriptions from %s', async (hostname, html) => {
-      const extractDetails = vi.fn().mockResolvedValue(html);
-      const listing = { id: 'listing-1', link: `https://${hostname}/listing/1`, description: 'Gesamtmiete: 600 €' };
-
-      const enriched = await runConfig.fetchDetails(listing, extractDetails);
-
-      expect(enriched.description).toContain('Gesamtmiete: 600 €');
-      expect(enriched.description).not.toBe(listing.description);
-      expect(extractDetails).toHaveBeenCalledWith(listing.link, expect.objectContaining({ name: expect.any(String) }));
-    });
-
-    it('should preserve listings when detail enrichment is unsupported or unavailable', async () => {
-      const unsupported = { id: '1', link: 'https://example.com/listing/1', description: 'Original' };
-      expect(await runConfig.fetchDetails(unsupported)).toBe(unsupported);
-
-      const supported = { ...unsupported, link: 'https://www.degewo.de/listing/1' };
-      const extractDetails = vi.fn().mockResolvedValue(null);
-      expect(await runConfig.fetchDetails(supported, extractDetails)).toBe(supported);
-
-      // stadtundland renders its exposes client side, so no selector is known
-      const stadtUndLand = { ...unsupported, link: 'https://stadtundland.de/wohnungssuche/1' };
-      expect(await runConfig.fetchDetails(stadtUndLand, extractDetails)).toBe(stadtUndLand);
     });
   });
 

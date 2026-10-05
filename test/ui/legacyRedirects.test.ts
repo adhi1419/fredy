@@ -61,7 +61,7 @@ describe('legacyRedirects', () => {
   });
 
   it('resolves each nested child against the right parent', () => {
-    for (const tab of ['preferences', 'travel-time', 'listings', 'notifications']) {
+    for (const tab of ['preferences', 'travel-time', 'notifications', 'inquiry-profile']) {
       expect(routes.has(`/settings/${tab}`)).toBe(true);
     }
   });

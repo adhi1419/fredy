@@ -8,12 +8,10 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-vi.mock('../../lib/services/extractor/httpExtractor.js', () => ({ default: vi.fn() }));
 vi.mock('../../lib/services/logger.js', () => ({
   default: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
-import fetchHtml from '../../lib/services/extractor/httpExtractor.js';
 import { config as immoscoutConfig } from '../../lib/provider/immoscout.js';
 import { config as kleinanzeigenConfig } from '../../lib/provider/kleinanzeigen.js';
 
@@ -79,42 +77,9 @@ describe('immoscout rooms and size', () => {
 
     expect(immoscoutConfig.normalize(listing)).toMatchObject({ price: 450000, size: 820, rooms: null });
   });
-
-  it('fills a missing room count from the exposé', async () => {
-    const enriched = await immoscoutConfig.fetchDetails({
-      link: 'https://www.immobilienscout24.de/expose/168963883',
-      rooms: null,
-      size: null,
-    });
-
-    expect(enriched.rooms).toBe(2);
-    // The exposé is the more precise source: "131,37 m²" against the list's rounded "131 m²".
-    expect(enriched.size).toBe(131.37);
-  });
-
-  it('keeps the figures the search list already provided', async () => {
-    const enriched = await immoscoutConfig.fetchDetails({
-      link: 'https://www.immobilienscout24.de/expose/168963883',
-      rooms: 3,
-      size: 99,
-    });
-
-    expect(enriched).toMatchObject({ rooms: 3, size: 99 });
-  });
 });
 
 describe('kleinanzeigen rooms and size', () => {
-  const listingWithoutFigures = {
-    id: 'abc',
-    link: '/s-anzeige/vollmoeblierte-2-zimmer-premium-wohnung/3466126848-203-2462',
-    size: null,
-    rooms: null,
-  };
-
-  beforeEach(async () => {
-    fetchHtml.mockResolvedValue(await readFixture('kleinanzeigen_detail.html'));
-  });
-
   it('still reads the figures off the search result tags', () => {
     const normalized = kleinanzeigenConfig.normalize({
       id: '1',
@@ -143,32 +108,5 @@ describe('kleinanzeigen rooms and size', () => {
     const normalized = kleinanzeigenConfig.normalize({ id: '1', title: 'Wohnung', price: '1.200 €', tags: '' });
 
     expect(normalized).toMatchObject({ size: null, rooms: null });
-  });
-
-  it('falls back to the detail page when the search result had no tags', async () => {
-    const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures);
-
-    expect(enriched).toMatchObject({ size: 31, rooms: 1 });
-  });
-
-  it('keeps the figures the search result already provided', async () => {
-    const enriched = await kleinanzeigenConfig.fetchDetails({ ...listingWithoutFigures, size: 55, rooms: 1 });
-
-    expect(enriched).toMatchObject({ size: 55, rooms: 1 });
-  });
-
-  it('extracts the multi-line description with preserved newlines', async () => {
-    const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures);
-
-    expect(enriched.description).toContain('\n');
-    expect(enriched.description).toMatch(/zu vermieten\.\n\nDas komplett ausgestattete Apartment/);
-  });
-
-  it('leaves the figures alone when the detail page cannot be loaded', async () => {
-    fetchHtml.mockResolvedValue(null);
-
-    const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures);
-
-    expect(enriched).toMatchObject({ size: null, rooms: null });
   });
 });

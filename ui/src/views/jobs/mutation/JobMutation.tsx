@@ -50,7 +50,6 @@ interface JobMutationStoreState {
   userSettings: {
     settings?: {
       inquiry_profile?: Record<string, unknown>;
-      listing_deletion_preference?: { hardDelete?: boolean; skipPrompt?: boolean };
     };
   };
 }
@@ -58,9 +57,6 @@ interface JobMutationStoreState {
 interface JobMutationActions {
   jobsData: { getJobs: () => Promise<void> };
   notificationChannels: { getChannels: () => Promise<void>; tryChannel: (channelId: string) => Promise<void> };
-  userSettings: {
-    setListingDeletionPreference: (preference: { skipPrompt: boolean; hardDelete: boolean }) => Promise<void>;
-  };
 }
 
 type PendingDeletion = 'job' | 'listings' | null;
@@ -99,10 +95,6 @@ export default function JobMutator() {
   const inquiryProfile = useSelector<JobMutationStoreState, Record<string, unknown> | undefined>(
     (state) => state.userSettings.settings?.inquiry_profile,
   );
-  const listingDeletionPreference = useSelector<
-    JobMutationStoreState,
-    { hardDelete?: boolean; skipPrompt?: boolean } | undefined
-  >((state) => state.userSettings.settings?.listing_deletion_preference);
   const params = useParams();
   const location = useLocation();
 
@@ -422,16 +414,12 @@ export default function JobMutator() {
 
   const confirmDeletion = async (
     hardDelete: boolean,
-    remember: boolean = false,
     deletion: Exclude<PendingDeletion, null> | null = pendingDeletion,
   ) => {
     const jobId = jobToBeEdit?.id;
     if (jobId == null || deletion == null) return;
     try {
       if (deletion === 'listings') {
-        if (remember) {
-          await actions.userSettings.setListingDeletionPreference({ skipPrompt: true, hardDelete });
-        }
         await xhrDelete('/api/listings/job', { jobId, hardDelete });
         Toast.success(t('jobs.toastListingsDeleted'));
       } else {
@@ -450,10 +438,6 @@ export default function JobMutator() {
 
   const requestDeletion = (deletion: Exclude<PendingDeletion, null>) => {
     if (jobToBeEdit == null) return;
-    if (deletion === 'listings' && listingDeletionPreference?.skipPrompt) {
-      void confirmDeletion(Boolean(listingDeletionPreference.hardDelete), false, deletion);
-      return;
-    }
     setPendingDeletion(deletion);
   };
 
@@ -596,9 +580,8 @@ export default function JobMutator() {
           visible={pendingDeletion != null}
           title={pendingDeletion === 'job' ? t('jobs.deletion.title') : t('listing.deletion.title')}
           showOptions={pendingDeletion === 'listings'}
-          defaultDeleteType={listingDeletionPreference?.hardDelete ? 'hard' : 'soft'}
           message={pendingDeletion === 'job' ? t('jobs.deletion.message') : t('listing.deletion.message')}
-          onConfirm={confirmDeletion}
+          onConfirm={(hardDelete) => confirmDeletion(hardDelete)}
           onCancel={() => setPendingDeletion(null)}
         />
       </div>

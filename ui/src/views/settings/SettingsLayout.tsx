@@ -19,7 +19,6 @@ interface PersonalSettingsSection {
 export const PERSONAL_SETTINGS_SECTIONS: readonly PersonalSettingsSection[] = [
   { path: '/settings/preferences', labelKey: 'settings.tabPreferences' },
   { path: '/settings/travel-time', labelKey: 'settings.tabTravelTime' },
-  { path: '/settings/listings', labelKey: 'settings.tabListingDetails' },
   { path: '/settings/notifications', labelKey: 'settings.tabNotifications' },
   { path: '/settings/inquiry-profile', labelKey: 'settings.tabInquiryProfile' },
 ];

@@ -172,7 +172,8 @@ Status: DONE (PR #91)
 
 ### T1.5 One browser per trigger, launched lazily
 
-Status: DONE (PR #91, lazy getBrowser thunk)
+Status: DONE (PR #91, lazy getBrowser thunk); since superseded -- every provider is fetched over plain
+HTTP and the detail-page stage (`fetchDetails`) was removed, so no browser exists to launch.
 
 - Change: `runAll` owns the browser. It launches on the first provider that needs one and closes
   in `finally` after all jobs. API-only providers never launch it. A provider declares the need
