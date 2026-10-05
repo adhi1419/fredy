@@ -88,20 +88,25 @@ describe('notification-complete repair from durable evidence', () => {
 });
 
 describe('missed external action eligibility', () => {
-  it('is missed only when never attempted or explicitly failed', () => {
-    expect(isInquiryActionMissed({ inquirySendStatus: null })).toBe(true);
+  it('is missed only when explicitly failed before a provider side effect', () => {
+    expect(isInquiryActionMissed({ inquirySendStatus: null })).toBe(false);
     expect(isInquiryActionMissed({ inquirySendStatus: 'failed' })).toBe(true);
   });
-  it('is not missed for sent / sending / unknown', () => {
+  it('is not missed for sent / sending / unknown / rejected', () => {
     expect(isInquiryActionMissed({ inquirySendStatus: 'sent' })).toBe(false);
     expect(isInquiryActionMissed({ inquirySendStatus: 'sending' })).toBe(false);
     expect(isInquiryActionMissed({ inquirySendStatus: 'unknown' })).toBe(false);
+    expect(isInquiryActionMissed({ inquirySendStatus: 'rejected' })).toBe(false);
   });
 });
 
 describe('planListingRepair', () => {
   it('plans every field on a broken row when the job may auto-act', () => {
-    const plan = planListingRepair(brokenRow(), { now: NOW, settleMs: SETTLE, autoActEligible: true });
+    const plan = planListingRepair(brokenRow({ inquirySendStatus: 'failed' }), {
+      now: NOW,
+      settleMs: SETTLE,
+      autoActEligible: true,
+    });
     expect(plan.repairs).toEqual({ coordinates: true, inquiryText: true, notificationComplete: true });
     expect(plan.missedAction).toEqual({ kind: 'inquiry' });
     expect(plan.manualReview).toBeNull();
@@ -127,7 +132,11 @@ describe('planListingRepair', () => {
 
 describe('planReconcile idempotency — the core guarantee', () => {
   it('plans work on the first pass and NOTHING on the second', () => {
-    const first = planReconcile([brokenRow()], { now: NOW, settleMs: SETTLE, autoActEligible: true });
+    const first = planReconcile([brokenRow({ inquirySendStatus: 'failed' })], {
+      now: NOW,
+      settleMs: SETTLE,
+      autoActEligible: true,
+    });
     expect(planIsNoop(first)).toBe(false);
     expect(first.summary).toMatchObject({
       scanned: 1,
@@ -150,9 +159,10 @@ describe('planReconcile idempotency — the core guarantee', () => {
 
   it('performs exactly one safely-missed action across a mixed batch', () => {
     const rows = [
-      brokenRow({ id: 'a' }), // never attempted → one missed action
+      brokenRow({ id: 'a', inquirySendStatus: 'failed' }), // explicit failure → one retry
       repairedRow({ id: 'b' }), // fully healthy → nothing
       brokenRow({ id: 'c', inquirySendStatus: 'unknown' }), // unknown → manual review, no send
+      brokenRow({ id: 'd', inquirySendStatus: null }), // no attempt → no retry
     ];
     const { summary } = planReconcile(rows, { now: NOW, settleMs: SETTLE, autoActEligible: true });
     expect(summary.missedActions).toBe(1);

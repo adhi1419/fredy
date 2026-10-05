@@ -80,7 +80,9 @@ describe('listing repair storage seams', () => {
     });
 
     const rows = await storage.getListingsNeedingRepair('job-1', 'provider-1', { inquiries: true, drafts: true });
-    expect(rows.map((row) => row.id).sort()).toEqual(['failed', 'never-sent', 'no-coords', 'no-draft', 'no-notify']);
+    expect(rows.map((row) => row.id).sort()).toEqual(['failed', 'no-coords', 'no-draft', 'no-notify']);
+    expect(rows.map((row) => row.id)).not.toContain('never-sent');
+    // Null status means no application was attempted; notification drafts alone are not retry evidence.
     // The -1 "found nothing" marker is a final geocoder answer, not a repair category.
     expect(rows.map((row) => row.id)).not.toContain('not-found');
     expect(rows.find((row) => row.id === 'failed')).toEqual(
