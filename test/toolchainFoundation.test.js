@@ -135,11 +135,9 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/countryFlags.ts',
       'ui/src/services/developmentMode.ts',
       'ui/src/services/authenticatedFetch.ts',
-      'ui/src/components/connectivity/connectivityFormat.ts',
       'ui/src/services/transformer/providerTransformer.ts',
       'ui/src/Index.tsx',
       'ui/src/components/ListingDeletionModal.tsx',
-      'ui/src/components/connectivity/ConnectivityCard.tsx',
       'ui/src/components/filters/ActiveFilterChips.tsx',
       'ui/src/components/filters/FilterButton.tsx',
       'ui/src/components/filters/FilterDrawer.tsx',
@@ -149,7 +147,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/components/logo/Logo.tsx',
       'ui/src/components/logout/Logout.tsx',
       'ui/src/components/permission/InsufficientPermission.tsx',
-      'ui/src/components/permission/PermissionAwareRoute.tsx',
       'ui/src/components/placeholder/Placeholder.tsx',
       'ui/src/components/segment/SegmentPart.tsx',
       'ui/src/components/settingsShell/SettingsShell.tsx',
@@ -159,12 +156,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/transitClient.ts',
       'ui/src/services/xhr.ts',
       'ui/src/utils.ts',
-      'ui/src/views/admin/AdminLayout.tsx',
-      'ui/src/views/admin/ScopeBanner.tsx',
-      'ui/src/views/admin/pages/ConnectivityPage.tsx',
-      'ui/src/views/admin/pages/ExecutionPage.tsx',
-      'ui/src/views/admin/pages/SystemPage.tsx',
-      'ui/src/views/admin/useAdminSettings.ts',
       'ui/src/views/dashboard/Dashboard.tsx',
       'ui/src/views/listings/Map.tsx',
       'ui/src/views/listings/components/AddressEditor.tsx',
@@ -323,7 +314,6 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/services/countryFlags.ts', 'ui/src/services/countryFlags.js'],
       ['ui/src/services/developmentMode.ts', 'ui/src/services/developmentMode.js'],
       ['ui/src/services/authenticatedFetch.ts', 'ui/src/services/authenticatedFetch.js'],
-      ['ui/src/components/connectivity/connectivityFormat.ts', 'ui/src/components/connectivity/connectivityFormat.js'],
       ['ui/src/services/transformer/providerTransformer.ts', 'ui/src/services/transformer/providerTransformer.js'],
       ['test/ui/returnTo.test.ts', 'test/ui/returnTo.test.js'],
       ['test/ui/timeZoneOptions.test.ts', 'test/ui/timeZoneOptions.test.js'],
@@ -340,7 +330,7 @@ describe('Bun and TypeScript foundation', () => {
       ['test/ui/apiUrl.test.ts', 'test/ui/apiUrl.test.js'],
       ['test/ui/locales.test.ts', 'test/ui/locales.test.js'],
     ];
-    expect(waveThreeMigrations).toHaveLength(27);
+    expect(waveThreeMigrations).toHaveLength(26);
     for (const [typedPath, legacyPath] of waveThreeMigrations) {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
@@ -348,7 +338,6 @@ describe('Bun and TypeScript foundation', () => {
     const finalMigrations = [
       ['ui/src/Index.tsx', 'ui/src/Index.jsx'],
       ['ui/src/components/ListingDeletionModal.tsx', 'ui/src/components/ListingDeletionModal.jsx'],
-      ['ui/src/components/connectivity/ConnectivityCard.tsx', 'ui/src/components/connectivity/ConnectivityCard.jsx'],
       ['ui/src/components/filters/ActiveFilterChips.tsx', 'ui/src/components/filters/ActiveFilterChips.jsx'],
       ['ui/src/components/filters/FilterButton.tsx', 'ui/src/components/filters/FilterButton.jsx'],
       ['ui/src/components/filters/FilterDrawer.tsx', 'ui/src/components/filters/FilterDrawer.jsx'],
@@ -361,10 +350,6 @@ describe('Bun and TypeScript foundation', () => {
         'ui/src/components/permission/InsufficientPermission.tsx',
         'ui/src/components/permission/InsufficientPermission.jsx',
       ],
-      [
-        'ui/src/components/permission/PermissionAwareRoute.tsx',
-        'ui/src/components/permission/PermissionAwareRoute.jsx',
-      ],
       ['ui/src/components/placeholder/Placeholder.tsx', 'ui/src/components/placeholder/Placeholder.jsx'],
       ['ui/src/components/segment/SegmentPart.tsx', 'ui/src/components/segment/SegmentPart.jsx'],
       ['ui/src/components/settingsShell/SettingsShell.tsx', 'ui/src/components/settingsShell/SettingsShell.jsx'],
@@ -374,12 +359,6 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/services/transitClient.ts', 'ui/src/services/transitClient.js'],
       ['ui/src/services/xhr.ts', 'ui/src/services/xhr.js'],
       ['ui/src/utils.ts', 'ui/src/utils.js'],
-      ['ui/src/views/admin/AdminLayout.tsx', 'ui/src/views/admin/AdminLayout.jsx'],
-      ['ui/src/views/admin/ScopeBanner.tsx', 'ui/src/views/admin/ScopeBanner.jsx'],
-      ['ui/src/views/admin/pages/ConnectivityPage.tsx', 'ui/src/views/admin/pages/ConnectivityPage.jsx'],
-      ['ui/src/views/admin/pages/ExecutionPage.tsx', 'ui/src/views/admin/pages/ExecutionPage.jsx'],
-      ['ui/src/views/admin/pages/SystemPage.tsx', 'ui/src/views/admin/pages/SystemPage.jsx'],
-      ['ui/src/views/admin/useAdminSettings.ts', 'ui/src/views/admin/useAdminSettings.js'],
       ['ui/src/views/dashboard/Dashboard.tsx', 'ui/src/views/dashboard/Dashboard.jsx'],
       [
         'ui/src/views/jobs/mutation/components/CommuteFilter.tsx',
@@ -423,7 +402,7 @@ describe('Bun and TypeScript foundation', () => {
       ['test/ui/homeViewState.test.ts', 'test/ui/homeViewState.test.js'],
       ['test/ui/noWhatsNewSurface.test.ts', 'test/ui/noWhatsNewSurface.test.js'],
     ];
-    expect(finalMigrations).toHaveLength(46);
+    expect(finalMigrations).toHaveLength(38);
     for (const [typedPath, legacyPath] of finalMigrations) {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);

@@ -83,7 +83,6 @@ const settingsStyles = read('ui/src/views/settings/SettingsLayout.less');
 const appSource = read('ui/src/App.tsx');
 const menuSource = read('ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx');
 const settingsSource = read('ui/src/views/settings/SettingsLayout.tsx');
-const adminSource = read('ui/src/views/admin/AdminLayout.tsx');
 const routeTabsSource = read('ui/src/components/settingsRouteTabs/SettingsRouteTabs.tsx');
 const routeTabsStyles = read('ui/src/components/settingsRouteTabs/SettingsRouteTabs.less');
 
@@ -149,10 +148,9 @@ describe('two-destination product shell', () => {
     }
   });
 
-  it('keeps exactly one personal destination and makes Administration conditional', () => {
-    expect(accountDestinationPaths(false, true)).toEqual(['/settings']);
-    expect(accountDestinationPaths(true, true)).toEqual(['/settings', '/admin']);
-    expect(accountDestinationPaths(true, false)).toEqual([]);
+  it('keeps exactly one personal destination, hidden during onboarding', () => {
+    expect(accountDestinationPaths(true)).toEqual(['/settings']);
+    expect(accountDestinationPaths(false)).toEqual([]);
   });
 
   it('renders an account-only shell during mandatory onboarding', () => {
@@ -162,7 +160,7 @@ describe('two-destination product shell', () => {
     expect(html).toContain('fredy-shell-nav__account-button');
   });
 
-  it.each(['/settings/preferences', '/admin/system'])('leaves product tabs unselected on %s', (pathname) => {
+  it.each(['/settings/preferences', '/settings/notifications'])('leaves product tabs unselected on %s', (pathname) => {
     expect(renderNavigation(pathname)).not.toContain('is-active');
   });
 });
@@ -263,12 +261,12 @@ describe('cohesive My account destination', () => {
     expect(routeTabsSource).toContain('<NavLink');
   });
 
-  it('uses a compact local heading and keeps Admin on its guarded shared shell', () => {
+  it('uses a compact local heading and ships no admin surface', () => {
     expect(settingsSource).toContain('className="settingsLayout__heading"');
     expect(settingsSource).not.toContain('Headline');
-    expect(adminSource).toContain('SettingsShell');
     expect(appSource).toContain('path="/settings"');
-    expect(appSource).toContain('path="/admin"');
+    expect(appSource).not.toContain('path="/admin"');
+    expect(fs.existsSync(path.join(root, 'ui/src/views/admin'))).toBe(false);
   });
 
   it('keeps mobile navigation contained above fixed primary navigation', () => {

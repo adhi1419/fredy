@@ -29,15 +29,6 @@
         { "fieldPath": "isActive", "order": "ASCENDING" },
         { "fieldPath": "inactiveSince", "order": "ASCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "listings",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "isActive", "order": "ASCENDING" },
-        { "fieldPath": "manuallyDeleted", "order": "ASCENDING" },
-        { "fieldPath": "connectivityCheckedAt", "order": "ASCENDING" }
-      ]
     }
   ],
   "fieldOverrides": []

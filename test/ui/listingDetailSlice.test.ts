@@ -185,7 +185,6 @@ describe('Listing Detail Slice 5', () => {
       'AddressEditor',
       'NearbyStops',
       'TravelTimes',
-      'ConnectivityCard',
       'listing-detail__notes',
       'handleReactivate',
       'handleArchive',

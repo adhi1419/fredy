@@ -59,7 +59,6 @@ import { xhrPost, errorMessage } from '../../services/xhr.js';
 import IconEuro from '../../components/icons/IconEuro.jsx';
 import ListingFinanceCard from './components/ListingFinanceCard.jsx';
 import NearbyStops from '../../components/transit/NearbyStops.jsx';
-import ConnectivityCard from '../../components/connectivity/ConnectivityCard.jsx';
 import TravelTimes from '../../components/transit/TravelTimes.jsx';
 import AddressEditor from './components/AddressEditor.jsx';
 import './ListingDetail.less';
@@ -101,26 +100,6 @@ interface ListingDistance {
   meters: number;
 }
 
-interface ListingTechnologyCoverage {
-  maxDownMbit?: number | null;
-  sharePercent?: number | null;
-}
-
-interface ListingMobileConnectivity {
-  neutral?: Record<string, boolean | undefined>;
-  operators?: Record<string, Record<string, boolean | undefined>>;
-  roamingOnly?: readonly string[];
-  operatorCount?: number | null;
-}
-
-interface ListingConnectivity {
-  maxDownMbit?: number | null;
-  sharePercent?: number | null;
-  source?: string;
-  technologies?: Record<string, ListingTechnologyCoverage | undefined>;
-  mobile?: ListingMobileConnectivity | null;
-}
-
 interface UserSettings {
   inquiry_profile?: unknown;
   home_addresses?: readonly unknown[];
@@ -150,7 +129,6 @@ interface ListingRecord {
   notes?: string | null;
   distances?: readonly ListingDistance[];
   travelTimes?: readonly TravelTimeEntry[];
-  connectivity?: ListingConnectivity | null;
   is_active?: number;
   description?: string | null;
 }
@@ -158,7 +136,6 @@ interface ListingRecord {
 interface ListingStoreState {
   listingsData: { currentListing: ListingRecord | null };
   userSettings: { settings: UserSettings };
-  generalSettings: { settings?: { connectivityEnabled?: boolean } };
 }
 
 interface ListingActions {
@@ -225,9 +202,6 @@ export default function ListingDetail(): ReactNode {
   const canApplyWithoutMessage =
     isInquiryProviderSupported(listing?.provider, listing) &&
     !inquiryProviderRequiresMessage(listing?.provider, listing);
-  const connectivityEnabled = useSelector<ListingStoreState, boolean>(
-    (state) => state.generalSettings.settings?.connectivityEnabled === true,
-  );
   const homeAddresses = useMemo(() => getAddresses(userSettings) as HomeAddress[], [userSettings]);
   // The listing does name a provider, but the pin can be dragged anywhere the user's own searches
   // reach, so the map takes the same account-wide union the listings map does.
@@ -1347,14 +1321,6 @@ export default function ListingDetail(): ReactNode {
                           </Tag>
                         ))}
                       </Space>
-                    </div>
-                  )}
-                  {/* Only shown once the operator has the enrichment on - with it off nothing is ever
-                  stored, and an empty block would read as a fault rather than a setting. */}
-                  {hasGeo && connectivityEnabled && (
-                    <div className="listing-detail__fold-sub">
-                      <Text strong>{t('connectivity.title')}</Text>
-                      <ConnectivityCard connectivity={listing.connectivity} />
                     </div>
                   )}
                 </div>

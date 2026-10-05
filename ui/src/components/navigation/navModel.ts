@@ -31,19 +31,17 @@ export const PRIMARY_NAV: readonly PrimaryDestination[] = [
 ];
 
 export interface AccountDestination {
-  key: 'account' | 'admin';
+  key: 'account';
   path: string;
   labelKey: string;
-  adminOnly?: boolean;
 }
 
 export const ACCOUNT_NAV: readonly AccountDestination[] = [
   { key: 'account', path: '/settings', labelKey: 'nav.myAccount' },
-  { key: 'admin', path: '/admin', labelKey: 'nav.adminPanel', adminOnly: true },
 ];
 
 /**
- * Returns the primary destination that owns a pathname. Settings and admin deliberately return
+ * Returns the primary destination that owns a pathname. Settings deliberately returns
  * null: they are reachable from the account control but must not compete with the two tabs.
  *
  * @param pathname
@@ -67,7 +65,6 @@ export interface NavNode {
   key: string;
   labelKey: string;
   path?: string;
-  adminOnly?: boolean;
 }
 
 export const NAV_TREE: readonly NavNode[] = [
@@ -75,8 +72,10 @@ export const NAV_TREE: readonly NavNode[] = [
   ...ACCOUNT_NAV,
 ];
 
-export function navTreeFor(isAdmin: boolean): readonly NavNode[] {
-  return NAV_TREE.filter((node) => !node.adminOnly || isAdmin);
+/** Every shell destination. Kept as a function for callers that used to pass a role; there are no
+ * role-gated destinations any more. */
+export function navTreeFor(): readonly NavNode[] {
+  return NAV_TREE;
 }
 
 export function routeKeysOf(tree: readonly NavNode[]): readonly string[] {
@@ -87,7 +86,7 @@ export function routeKeysOf(tree: readonly NavNode[]): readonly string[] {
 
 /**
  * Resolve the old route-key shape for callers that still need it. Primary deep links resolve to the
- * root route for their family; settings/admin stay individually addressable.
+ * root route for their family; settings stays individually addressable.
  *
  * @param tree
  * @param pathname

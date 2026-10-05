@@ -83,12 +83,8 @@ Fredy keeps the important choices visible without making the home search feel bu
     <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/my-account-mobile-dark.png" />
     <img src="doc/screenshots/my-account-mobile-light.png" alt="Fredy My account on a phone: Preferences tab with appearance, language and listing deletion settings" width="390" />
   </picture>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/admin-panel-mobile-dark.png" />
-    <img src="doc/screenshots/admin-panel-mobile-light.png" alt="Fredy Admin panel on a phone: System tab with port, base URL and offline-listing retention" width="390" />
-  </picture>
   <br />
-  <em>Setup, account and instance settings share one hairline layout.</em>
+  <em>Setup and account settings share one hairline layout.</em>
 </div>
 
 <div align="center">

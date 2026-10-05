@@ -44,7 +44,6 @@ export interface FredyStoreState {
   notificationAdapter: readonly NotificationAdapter[];
   notificationChannels: NotificationChannelsState;
   listingsData: ListingsDataState;
-  generalSettings: { settings: Record<string, unknown> };
   userSettings: UserSettingsState;
   provider: readonly unknown[];
   jobsData: JobsDataState;
@@ -130,18 +129,6 @@ export const useFredyState = create<FredyStoreState>()(
         finance: financeEffects,
         notificationAdapter: { ...notificationEffects.notificationAdapter },
         notificationChannels: { ...notificationEffects.notificationChannels },
-        generalSettings: {
-          async getGeneralSettings() {
-            try {
-              const response = await xhrGet('/api/admin/generalSettings');
-              set((state) => ({
-                generalSettings: { ...state.generalSettings, settings: response.json as Record<string, unknown> },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/admin/generalSettings. Error:', Exception);
-            }
-          },
-        },
         provider: {
           async getProvider() {
             try {
@@ -187,7 +174,6 @@ export const useFredyState = create<FredyStoreState>()(
         finance: createFinanceState(),
         ...createNotificationState(),
         listingsData: createListingsDataState(),
-        generalSettings: { settings: {} },
         userSettings: createUserSettingsState(),
         provider: [],
         jobsData: createJobsDataState(),
@@ -200,7 +186,6 @@ export const useFredyState = create<FredyStoreState>()(
         finance: { ...effects.finance },
         notificationAdapter: { ...effects.notificationAdapter },
         notificationChannels: { ...effects.notificationChannels },
-        generalSettings: { ...effects.generalSettings },
         listingsData: { ...effects.listingsData },
         provider: { ...effects.provider },
         jobsData: { ...effects.jobsData },
