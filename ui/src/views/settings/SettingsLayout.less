@@ -1,12 +1,15 @@
 @import '../../tokens.less';
 
+// My account. The heading block mirrors .settingsShell__heading so this area and Administration
+// sit in the same place on the page; the sections beneath come from the sub-pages.
 .settingsLayout {
   display: grid;
   gap: @space-5;
   width: 100%;
-  max-width: 1180px;
+  max-width: 760px;
   margin: 0 auto;
   padding: @space-6;
+  box-sizing: border-box;
 
   &__heading {
     display: grid;
@@ -17,7 +20,7 @@
       font-family: @font-mono;
       font-size: @text-xs;
       font-weight: 500;
-      letter-spacing: 0.08em;
+      letter-spacing: @tracking-label;
       text-transform: uppercase;
     }
 
@@ -29,22 +32,22 @@
     h1 {
       color: @color-text;
       font-family: @font-display;
-      font-size: clamp(@text-xl, 4vw, 30px);
-      line-height: 1.15;
+      font-size: clamp(32px, 4vw, 40px);
+      font-weight: 500;
+      letter-spacing: @tracking-display;
+      line-height: 1;
     }
 
     p {
-      max-width: 680px;
+      max-width: 60ch;
       color: @color-muted;
       font-family: @font-ui;
-      font-size: @text-sm;
-      line-height: 1.5;
+      font-size: @text-base;
+      line-height: 1.4;
     }
   }
 
-  // The navigation rail is the shared SettingsRouteTabs component (see its stylesheet); this host
-  // only tightens the gap between the heading and the rail. The old vertical/lopsided rail and its
-  // bespoke item styles are gone - Account and Admin now navigate identically.
+  // The navigation rail is the shared SettingsRouteTabs component (see its stylesheet).
   &__nav {
     margin-bottom: 0;
   }

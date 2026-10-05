@@ -1,19 +1,18 @@
 @import '../../tokens.less';
 
+// The hairline settings page: heading, a rail of underlined tabs, then sections divided by rules
+// in one reading column. Shared with .settingsLayout (My account), which repeats the heading block
+// so the two areas sit in the same place on the page.
 .settingsShell {
   display: flex;
   flex-direction: column;
   flex: 1;
-  // Same centred column as the personal settings area, so Administration and My account sit in
-  // the same place on the page instead of one stretching to the viewport edge.
   width: 100%;
-  max-width: 1180px;
+  max-width: 760px;
   margin: 0 auto;
   padding: @space-6;
   box-sizing: border-box;
 
-  // Heading mirrors .settingsLayout__heading: an uppercase label for the area, the page title as
-  // it reads in the account menu, and one line of description.
   &__heading {
     display: grid;
     gap: @space-1;
@@ -24,7 +23,7 @@
       font-family: @font-mono;
       font-size: @text-xs;
       font-weight: 500;
-      letter-spacing: 0.08em;
+      letter-spacing: @tracking-label;
       text-transform: uppercase;
     }
 
@@ -36,44 +35,42 @@
     h1 {
       color: @color-text;
       font-family: @font-display;
-      font-size: clamp(@text-xl, 4vw, 30px);
-      line-height: 1.15;
+      font-size: clamp(32px, 4vw, 40px);
+      font-weight: 500;
+      letter-spacing: @tracking-display;
+      line-height: 1;
     }
 
     p {
-      max-width: 680px;
+      max-width: 60ch;
       color: @color-muted;
       font-family: @font-ui;
-      font-size: @text-sm;
-      line-height: 1.5;
+      font-size: @text-base;
+      line-height: 1.4;
     }
   }
 
-  // The navigation rail is the shared SettingsRouteTabs component (see its stylesheet). The old
-  // Semi Tabs bar and its horizontal-scroll overrides are gone: Administration and Account
-  // Preferences now share one rail, so the scroll behaviour lives once in the component.
   &__nav {
     margin-top: @space-2;
   }
 
   &__content {
-    padding: @space-4 0;
     display: flex;
     flex-direction: column;
-    gap: @space-4;
   }
 
-  // A settings page holds a handful of cards, not a document. Keeping the column narrow means the
-  // label, the help text and the control stay within one eye movement of each other instead of the
-  // control drifting off to the right on a wide monitor.
   &__page {
-    max-width: 860px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
 
   &__saveRow {
     display: flex;
     justify-content: flex-end;
-    margin-top: @space-2;
+    margin-top: @space-5;
+    padding-top: @space-4;
+    border-top: 1px solid @color-border-bright;
   }
 
   // Settings that only mean something once their parent feature is switched on. Indented and
@@ -81,7 +78,7 @@
   &__subSettings {
     margin-top: @space-4;
     padding-left: @space-4;
-    border-left: 2px solid @color-border-bright;
+    border-left: 1px solid @color-text;
     display: flex;
     flex-direction: column;
     gap: @space-4;
@@ -118,48 +115,63 @@
   }
 }
 
-// InputNumber fix
+// InputNumber: square hairline, same as every other field. The border lives on the outer wrapper
+// only, so the inner input must not draw a second one.
 .semi-input-number {
-  background: @color-elevated !important;
+  background: @color-surface !important;
   border: 1px solid @color-border-bright !important;
-  border-radius: @radius-input !important;
+  border-radius: 0 !important;
   color: @color-text !important;
+
+  .semi-input-wrapper {
+    border: 0 !important;
+    background: transparent !important;
+  }
 }
 
 .semi-input-number-button-up,
 .semi-input-number-button-down {
-  background: @color-fill-1 !important;
+  background: transparent !important;
   border-color: @color-border-bright !important;
   color: @color-muted !important;
 
   &:hover {
-    background: @color-fill-strong !important;
+    background: @color-surface !important;
     color: @color-text !important;
   }
 }
 
-// TimePicker fix - scoped so it doesn't pollute modal headers
+// TimePicker - scoped so it doesn't pollute modal headers
 .semi-timepicker .semi-input-wrapper,
 .semi-timepicker .semi-input-inset-label-wrapper {
-  background: @color-elevated !important;
+  background: @color-surface !important;
   border: 1px solid @color-border-bright !important;
-  border-radius: @radius-input !important;
+  border-radius: 0 !important;
   color: @color-text !important;
 }
 
 /* Sits next to an inline control - the departure pickers under an address - and has to read as a
    caption for them rather than as another field label above them. */
 .settingsShell__inlineLabel {
-  color: var(--semi-color-text-2);
-  font-size: 0.78rem;
+  color: @color-muted;
+  font-family: @font-mono;
+  font-size: @text-xs;
+  letter-spacing: @tracking-label;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 /* Explanation under an inline control, indented to read as belonging to it rather than to the
    next field down. */
 .settingsShell__inlineHint {
-  color: var(--semi-color-text-2);
-  font-size: 0.72rem;
+  color: @color-muted;
+  font-size: @text-sm;
   margin-top: 4px;
   line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .settingsShell {
+    padding: @space-4 @space-4 calc(80px + env(safe-area-inset-bottom));
+  }
 }

@@ -99,10 +99,13 @@ describe('SettingsRouteTabs source contract', () => {
     expect(componentSource).toContain('.focus()');
   });
 
-  it('is a horizontally scrollable pill rail with 44px targets and no colour literals', () => {
+  it('is a horizontally scrollable hairline rail with 44px targets and no colour literals', () => {
     expect(styles).toMatch(/\.settingsRouteTabs\s*{[\s\S]*?overflow-x:\s*auto;/);
+    expect(styles).toMatch(/\.settingsRouteTabs\s*{[\s\S]*?border-bottom:\s*1px solid @color-border-bright;/);
     expect(styles).toMatch(/&__tab\s*{[\s\S]*?min-height:\s*44px;/);
-    expect(styles).toMatch(/&__tab\s*{[\s\S]*?border-radius:\s*@radius-pill;/);
+    // Text tabs on a rule, not pills: no box around a tab, the active one underlined in ink.
+    expect(styles).not.toMatch(/&__tab\s*{[\s\S]*?border-radius:/);
+    expect(styles).toMatch(/&__tab--active\s*{[\s\S]*?&::after\s*{[\s\S]*?background:\s*@color-text;/);
     expect(styles).not.toMatch(/#[0-9a-f]{3,8}/i);
   });
 });
