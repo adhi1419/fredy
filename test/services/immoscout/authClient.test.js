@@ -30,6 +30,12 @@ function connectedFetch(email = 'applicant@example.com') {
         entitlements: [{ serviceType: 'PRIORITY_CONTACT_RENT' }],
         bundles: [{ productType: 'MIETER_PLUS' }],
       }),
+    )
+    .mockResolvedValueOnce(
+      response({
+        profileData: { levelOfEmployment: 'PUBLIC_EMPLOYEE', incomeAmount: 5200, hasPets: false },
+        statusOfDocuments: [{ documentType: 'SELF_REPORT', present: true }],
+      }),
     );
 }
 
@@ -63,6 +69,12 @@ describe('ImmoScout application session', () => {
       hasMieterPlus: true,
       expiresAt: 14_401_000,
       accountEmail: 'applicant@example.com',
+      applicationProfile: {
+        employmentRelationship: 'PUBLIC_EMPLOYEE',
+        income: 'OVER_5000',
+        hasPets: false,
+        applicationPackageCompleted: true,
+      },
     });
     expect(second).toBe(first);
     expect(store.get).toHaveBeenCalledOnce();
@@ -73,7 +85,7 @@ describe('ImmoScout application session', () => {
       secret: 'refresh-secret-2',
       expectedRevision: 4,
     });
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     const tokenRequest = fetchImpl.mock.calls[0][1];
     expect(tokenRequest.method).toBe('POST');
     expect(tokenRequest.body.get('grant_type')).toBe('refresh_token');
@@ -99,8 +111,8 @@ describe('ImmoScout application session', () => {
       fetchImpl: secondFetch,
     });
 
-    expect(firstFetch).toHaveBeenCalledTimes(3);
-    expect(secondFetch).toHaveBeenCalledTimes(3);
+    expect(firstFetch).toHaveBeenCalledTimes(4);
+    expect(secondFetch).toHaveBeenCalledTimes(4);
   });
 
   it('fails closed when the connected ImmoScout email differs from the Fredy login', async () => {
