@@ -84,7 +84,6 @@ describe('pipeline run timing', () => {
       'distance',
       'similarity-filter',
       'area-filter',
-      'broadcast',
       'travel-times',
       'commute-filter',
       'inquiry-drafts',

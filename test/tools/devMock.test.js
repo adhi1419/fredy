@@ -84,9 +84,7 @@ describe('dev mock Saved Search contract', () => {
     expect(Array.isArray(channels.body)).toBe(true);
     expect(channels.body[0]).toEqual(expect.objectContaining({ id: 'channel-1' }));
     expect(adapters.response.status).toBe(200);
-    expect(adapters.body).toEqual([
-      expect.objectContaining({ id: 'browser', name: 'Browser Notifications', config: {} }),
-    ]);
+    expect(adapters.body).toEqual([expect.objectContaining({ id: 'telegram', name: 'Telegram', config: {} })]);
     expect(adapters.body.map((adapter) => adapter.id)).not.toContain('immoscout');
   });
 

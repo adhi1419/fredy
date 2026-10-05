@@ -102,7 +102,7 @@ async function createAuthClient(): Promise<FirebaseAuthClient | { enabled: false
   };
 }
 
-/** A single promise shared by the login screen, request helpers, and SSE client. */
+/** A single promise shared by the login screen and request helpers. */
 export const authReady: Promise<FirebaseAuthClient | { enabled: false }> = createAuthClient();
 
 /**

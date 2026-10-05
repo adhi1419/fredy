@@ -27,7 +27,6 @@ vi.mock('../../lib/services/logger.js', () => ({ default: { error: vi.fn() } }))
 import authPlugin from '../../lib/api/routes/firebaseLoginRoute.js';
 import jobPlugin from '../../lib/api/routes/jobRouter.js';
 import { registerHttpSupport } from '../../lib/api/http.js';
-import { heartbeat, sendToUser } from '../../lib/services/sse/sse-broker.js';
 
 const FRONTEND_ORIGIN = wireContract.assumptions.frontendOrigin;
 
@@ -153,34 +152,5 @@ describe('shared HTTP wire contract', () => {
     expect(preflight.headers['access-control-allow-headers']).toBe(cors.allowHeaders);
     expect(preflight.headers['access-control-max-age']).toBe(cors.maxAge);
     expect(preflight.headers.vary).toBe(cors.vary);
-  });
-
-  it('keeps SSE handshake, event frames, heartbeat, and hijacked CORS stable', async () => {
-    const address = await app.listen({ port: 0, host: '127.0.0.1' });
-    const response = await fetch(`${address}/api/jobs/events`, {
-      headers: { origin: FRONTEND_ORIGIN, authorization: 'Bearer firebase-token' },
-    });
-    expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toBe(wireContract.sse.contentType);
-    expect(response.headers.get('access-control-allow-origin')).toBe(wireContract.cors.allowOrigin);
-    expect(response.headers.get('access-control-allow-methods')).toBe(wireContract.cors.allowMethods);
-    expect(response.headers.get('access-control-allow-headers')).toBe(wireContract.cors.allowHeaders);
-    expect(response.headers.get('access-control-max-age')).toBe(wireContract.cors.maxAge);
-    expect(response.headers.get('vary')).toBe(wireContract.cors.vary);
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    const first = decoder.decode((await reader.read()).value);
-    expect(first).toContain(wireContract.sse.handshake);
-    expect(first).toContain(wireContract.sse.hello);
-
-    sendToUser('wire-test-user', 'jobStatus', { running: true });
-    const event = decoder.decode((await reader.read()).value);
-    expect(event).toBe(wireContract.sse.jobStatus);
-
-    heartbeat();
-    const heartbeatFrame = decoder.decode((await reader.read()).value);
-    expect(heartbeatFrame).toMatch(new RegExp(wireContract.sse.heartbeatPattern));
-    await reader.cancel();
   });
 });

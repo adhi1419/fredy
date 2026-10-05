@@ -15,17 +15,15 @@ export interface AuthenticatedRequestPolicyDependencies {
   fetchImpl?: typeof fetch;
   tokenGetter?: TokenGetter;
   apiBaseUrl?: string;
-  eventTarget?: UnauthorizedEventTarget;
 }
 
 /**
- * The small interface used by the two real protocol adapters. Ordinary HTTP uses `request` and
- * `publicRequest`; SSE additionally uses `handleSse` for its broader 401/403 transition rule.
+ * The small interface used by the HTTP adapter: `request` for authenticated calls and
+ * `publicRequest` for the bootstrap calls that carry no bearer.
  */
 export interface AuthenticatedRequestPolicy {
   request(input: TransportInput, options?: RequestInit, forceRefresh?: boolean): Promise<Response>;
   publicRequest(input: TransportInput, options?: RequestInit): Promise<Response>;
-  handleSse(status: number): boolean;
 }
 
 /** Add or remove the bearer header without mutating caller-owned headers. */
@@ -52,7 +50,6 @@ export function createAuthenticatedRequestPolicy(
   dependencies: AuthenticatedRequestPolicyDependencies = {},
 ): AuthenticatedRequestPolicy {
   const fetchImpl = dependencies.fetchImpl ?? globalThis.fetch;
-  const eventTarget = dependencies.eventTarget ?? defaultEventTarget();
 
   return {
     async request(input, options = {}, forceRefresh = false) {
@@ -73,10 +70,6 @@ export function createAuthenticatedRequestPolicy(
         credentials: 'omit',
         headers: headersWithBearer(options.headers, null),
       });
-    },
-
-    handleSse(status) {
-      return dispatchIf(status === 401 || status === 403, eventTarget);
     },
   };
 }

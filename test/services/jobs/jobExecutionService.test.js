@@ -22,7 +22,6 @@ describe('services/jobs/jobExecutionService', () => {
     const jobStoragePath = root + '/lib/services/storage/jobStorage.js';
     const userStoragePath = root + '/lib/services/storage/userStorage.js';
     const settingsStoragePath = root + '/lib/services/storage/settingsStorage.js';
-    const brokerPath = root + '/lib/services/sse/sse-broker.js';
     const utilsPath = root + '/lib/utils.js';
     const loggerPath = root + '/lib/services/logger.js';
     const notifyPath = root + '/lib/notification/notify.js';
@@ -46,9 +45,6 @@ describe('services/jobs/jobExecutionService', () => {
     // serve what the scenario configured.
     vi.doMock(settingsStoragePath, () => ({
       getSettings: async () => settings,
-    }));
-    vi.doMock(brokerPath, () => ({
-      sendToUsers: (...args) => calls.sent.push(args),
     }));
     vi.doMock(utilsPath, () => ({
       duringWorkingHoursOrNotSet: () => false,
@@ -107,7 +103,6 @@ describe('services/jobs/jobExecutionService', () => {
     pipelineHook = null;
     bus = new EventEmitter();
     calls = {
-      sent: [],
       markRunning: [],
       markFinished: [],
       lastRunUpdates: [],
@@ -123,30 +118,6 @@ describe('services/jobs/jobExecutionService', () => {
       providers: [],
       browser: { connected: true },
     };
-  });
-
-  it('forwards jobStatus only to the owner and explicitly shared users', async () => {
-    state.jobsById['j1'] = { id: 'j1', userId: 'owner1', shared_with_user: ['u2'] };
-    state.users = [
-      { id: 'a1', isAdmin: true },
-      { id: 'owner1', isAdmin: false },
-      { id: 'u2', isAdmin: false },
-    ];
-
-    await initService();
-
-    bus.emit('jobs:status', { jobId: 'j1', running: true });
-
-    // resolveRecipients is async; give the microtask queue a tick to settle.
-    await new Promise((r) => setTimeout(r, 10));
-
-    expect(calls.sent.length, 'sendToUsers should be called once').toBe(1);
-    const [recipients, event, data] = calls.sent[0];
-    expect(event).toBe('jobStatus');
-    expect(data).toEqual({ jobId: 'j1', running: true });
-    const got = new Set(recipients);
-    const expected = new Set(['owner1', 'u2']);
-    expect(got).toEqual(expected);
   });
 
   it('runs only the caller-owned jobs for admins and regular users', async () => {

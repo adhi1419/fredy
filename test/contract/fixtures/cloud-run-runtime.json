@@ -4,7 +4,6 @@
     "startup": "index.js",
     "api": "lib/api/api.js",
     "http": "lib/api/http.js",
-    "sse": "lib/api/routes/jobRouter.js",
     "security": "lib/api/security.js",
     "trigger": "lib/api/routes/triggerRoute.js",
     "jobs": "lib/services/jobs/jobExecutionService.js",
@@ -62,7 +61,10 @@
   },
   "adc": {
     "firestoreRequired": ["new Firestore(", "FIRESTORE_EMULATOR_HOST"],
-    "firebaseAdminRequired": ["credential: applicationDefault()", "FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT"]
+    "firebaseAdminRequired": [
+      "credential: applicationDefault()",
+      "FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT"
+    ]
   },
   "deployment": {
     "workflowRequired": [
@@ -73,7 +75,14 @@
       "image: ${{ env.IMAGE }}",
       "\"$SERVICE_URL/health\""
     ],
-    "productionInputs": ["'lib/**'", "'index.js'", "'Dockerfile'", "'scripts/backend-image-key.sh'", "'package.json'", "'yarn.lock'"],
+    "productionInputs": [
+      "'lib/**'",
+      "'index.js'",
+      "'Dockerfile'",
+      "'scripts/backend-image-key.sh'",
+      "'package.json'",
+      "'yarn.lock'"
+    ],
     "workflowMustNotContain": ["- 'test/**'", "- 'doc/**'", "- 'rust/**'"],
     "workflowMustNotReplace": ["env_vars:", "env_vars_file:", "update_env_vars:", "remove_env_vars:"]
   },
@@ -95,10 +104,6 @@
       "authentication": "Direct Firebase ID bearer token in Authorization",
       "credentials": "omit",
       "deployment": "Cloud Run API-only; GitHub Pages serves the SPA"
-    },
-    "requiredSse": {
-      "contentType": "text/event-stream",
-      "heartbeatIntervalMs": 25000
     }
   },
   "documentMarkers": [

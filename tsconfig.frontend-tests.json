@@ -28,8 +28,6 @@
     "test/ui/navModel.test.ts",
     "test/ui/theme.test.ts",
     "test/ui/firebaseAuth.test.ts",
-    "test/ui/browserNotificationGate.d.ts",
-    "test/ui/browserNotificationGate.test.ts",
     "test/ui/financeMathSingleHome.test.ts",
     "test/ui/financeState.test.ts",
     "test/ui/priceFormat.test.ts",
@@ -56,7 +54,6 @@
     "test/ui/authenticatedTransport.test.ts",
     "test/ui/apiUrl.test.ts",
     "test/ui/locales.test.ts",
-    "test/ui/authenticatedEventStream.test.ts",
     "test/ui/globalShadowing.test.ts",
     "test/ui/homeViewState.test.ts",
     "test/ui/noWhatsNewSurface.test.ts"

@@ -30,7 +30,7 @@ This document freezes the deployment and runtime boundary that a future Rust rou
 
 Cloud Run is API-only: `GET /health` and `/api/**` are served by the backend, while GitHub Pages serves the hash-routed SPA. Unknown paths return JSON `404 {"error":"Not found"}` and never fall back to frontend HTML.
 
-The route, bearer, CORS, and SSE bytes are frozen by the existing [first Rust wire contract](first-rust-wire.md) and [`test/wireContracts.json`](../../test/wireContracts.json): direct Firebase `Authorization: Bearer <token>` transport, no Fredy cookie or server session, exact Pages-origin CORS, public Firebase bootstrap, allowlist-backed identity, and fetch-based SSE with its handshake, events, and heartbeat. A Rust route group must pass that wire contract rather than reproduce Fastify internals.
+The route, bearer, and CORS bytes are frozen by the existing [first Rust wire contract](first-rust-wire.md) and [`test/wireContracts.json`](../../test/wireContracts.json): direct Firebase `Authorization: Bearer <token>` transport, no Fredy cookie or server session, exact Pages-origin CORS, public Firebase bootstrap, allowlist-backed identity,. A Rust route group must pass that wire contract rather than reproduce Fastify internals.
 
 ### Readiness and termination as actually implemented
 
@@ -47,7 +47,7 @@ The route, bearer, CORS, and SSE bytes are frozen by the existing [first Rust wi
 ## Future route-cutover procedure (not current behavior)
 
 1. Select one API route group and keep the existing Node service authoritative for all other routes, including browser-heavy providers.
-2. Implement the selected Rust handler against the HTTP/auth/CORS/SSE contract above and run the same fixture-driven parity cases against both implementations.
+2. Implement the selected Rust handler against the HTTP/auth/CORS contract above and run the same fixture-driven parity cases against both implementations.
 3. Build and promote one immutable, fully runnable image; preserve the existing Cloud Run environment, secrets, `PORT` handling, scheduler mode, and `/health` verification.
 4. Cut traffic only after route-level parity is demonstrated. Roll back by promoting the prior immutable image; do not change Firebase, Firestore, scheduler, or Pages configuration as part of a route-only cutover.
 

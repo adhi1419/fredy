@@ -158,7 +158,6 @@ Create a notification channel once and reuse it across saved searches. Current c
 - Mattermost
 - ntfy
 - Pushover
-- Browser Notifications
 - Apprise
 - Generic HTTP POST
 - Email through SMTP, SendGrid, MailJet, or Resend
