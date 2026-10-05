@@ -53,7 +53,10 @@
     align-items: center;
     flex: 1 1 auto;
     gap: @space-2;
-    min-height: 52px;
+    // Same 48px as the view switch beside it, so the row reads as one rule.
+    box-sizing: border-box;
+    height: 48px;
+    min-height: 48px;
     padding: 0 @space-4;
     border: 1px solid @color-border;
     border-radius: @radius-pill;
@@ -63,7 +66,7 @@
 
     input {
       min-width: 0;
-      min-height: 50px;
+      height: 100%;
       flex: 1;
       padding: @space-2 0;
       border: 0;
@@ -183,12 +186,13 @@
     display: flex;
     align-items: center;
     gap: @space-2;
-    flex: 0 1 clamp(320px, 42%, 520px);
+    flex: 0 1 clamp(360px, 56%, 680px);
     min-width: 0;
   }
 
-  // Icon-based sort control: one bordered icon button per criterion, the active one filled and
-  // carrying a direction arrow. No visible text label - meaning is the glyph plus its aria/tooltip.
+  // Sort control: one labelled pill per criterion in the same mono uppercase as the activity pills.
+  // Every pill carries its direction arrow - muted when inactive (what a tap would apply), paper on
+  // the inverted active pill (the current direction).
   &__sort {
     display: inline-flex;
     align-items: center;
@@ -198,21 +202,34 @@
     button {
       display: inline-flex;
       align-items: center;
-      gap: 2px;
-      min-width: 44px;
+      gap: @space-1;
       min-height: 44px;
-      padding: @space-2 @space-2;
+      padding: @space-2 @space-3;
       border: 1px solid @color-border;
       border-radius: @radius-pill;
       background: @color-surface;
       color: @color-text;
       font: inherit;
+      font-family: @font-mono;
+      font-size: @text-sm;
+      font-weight: 500;
+      letter-spacing: @tracking-label;
+      text-transform: uppercase;
+      white-space: nowrap;
       cursor: pointer;
+
+      .home__sort-direction {
+        color: @color-muted;
+      }
 
       &:hover,
       &:focus-visible {
         border-color: @color-border-bright;
         outline: none;
+
+        .home__sort-direction {
+          color: @color-text;
+        }
       }
 
       // Selected controls invert: ink fill, paper text. The accent is kept for state, not chrome.
@@ -220,12 +237,12 @@
         border-color: @color-text;
         background: @color-text;
         color: @color-base;
+
+        .home__sort-direction {
+          color: inherit;
+        }
       }
     }
-  }
-
-  &__sort-symbol {
-    font-size: @text-base;
   }
 
   &__sort-direction {
@@ -284,57 +301,108 @@
     left: 0;
     display: grid;
     min-width: 240px;
-    gap: @space-1;
-    padding: @space-2;
+    padding: @space-1 0;
     border: 1px solid @color-border-bright;
     border-radius: @radius-card;
     background: @color-elevated;
     box-shadow: @shadow-md;
+  }
 
-    button {
-      display: flex;
-      align-items: center;
-      gap: @space-2;
-      min-height: 44px;
-      padding: @space-2 @space-3;
-      border: 1px solid transparent;
-      border-radius: @radius-btn;
-      background: transparent;
-      color: @color-text;
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
+  // One Excel-style row per provider: a square hairline box drawn over a visually hidden native
+  // checkbox, so `indeterminate` and keyboard focus come for free. The header row's box is the
+  // tri-state one: a tick when all are chosen, a bar when some are.
+  &__provider-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: @space-2;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 @space-3;
+    color: @color-text;
+    font: inherit;
+    font-size: @text-base;
+    cursor: pointer;
 
-      &:hover,
-      &:focus-visible {
-        border-color: @color-border-bright;
-        outline: none;
-      }
+    input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
 
-      &.is-selected {
-        color: @color-accent;
-      }
+    &:hover,
+    &:focus-within {
+      background: @color-surface;
+    }
 
-      small {
-        margin-left: auto;
-        color: @color-warning;
-        font-size: @text-xs;
-      }
+    small {
+      margin-left: auto;
+      color: @color-warning;
+      font-size: @text-xs;
     }
   }
 
-  // A fixed-width check gutter keeps every provider name left-aligned whether or not it is ticked.
-  &__provider-check {
-    display: grid;
-    place-items: center;
-    width: 18px;
-    min-width: 18px;
-    height: 18px;
-    color: @color-accent;
+  &__provider-box {
+    position: relative;
+    display: inline-block;
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    border: 1px solid @color-text;
+    background: transparent;
 
-    svg {
-      font-size: @text-base;
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      display: none;
+      background: @color-base;
     }
+  }
+
+  input:checked + .home__provider-box {
+    background: @color-text;
+
+    // The tick: an L shape rotated into a check, drawn in paper on the ink fill.
+    &::after {
+      display: block;
+      top: 2px;
+      right: auto;
+      bottom: auto;
+      left: 5px;
+      width: 4px;
+      height: 8px;
+      border-right: 2px solid @color-base;
+      border-bottom: 2px solid @color-base;
+      background: transparent;
+      transform: rotate(45deg);
+    }
+  }
+
+  input:indeterminate + .home__provider-box {
+    background: @color-text;
+
+    &::after {
+      display: block;
+      inset: 6px 3px;
+    }
+  }
+
+  input:focus-visible + .home__provider-box {
+    outline: 1px solid @color-text;
+    outline-offset: 2px;
+  }
+
+  &__provider-all {
+    margin-bottom: @space-1;
+    border-bottom: 1px solid @color-border;
+    font-family: @font-mono;
+    font-size: @text-sm;
+    letter-spacing: @tracking-label;
+    text-transform: uppercase;
   }
 
   &__provider-name {
@@ -848,7 +916,7 @@
     &__view-switch {
       flex-shrink: 0;
       gap: 0;
-      padding: 2px;
+      padding: 1px; // 44px buttons + 1px padding + 1px border = the search field's 48px
       border: 1px solid @color-border;
       border-radius: @radius-pill;
       background: @color-surface;
@@ -863,8 +931,11 @@
       }
     }
 
+    // `nowrap` matters here: a wrapping column container sizes each line to its content, so the
+    // tools row would be as wide as its pills and run off the right edge instead of stretching.
     &__controls {
       flex-direction: column;
+      flex-wrap: nowrap;
       align-items: stretch;
       gap: @space-3;
     }
@@ -880,16 +951,17 @@
       }
     }
 
-    // Tools stay on one row at the requested 70/30 split. The sort criteria remain icon-only and
-    // scroll within their 30% lane, so the provider picker never collapses to a narrow sliver.
+    // Tools stack: the provider picker takes the full row, the labelled sort pills swipe on a row
+    // of their own beneath it rather than being squeezed into a lane.
     &__tools {
       flex: 1 1 auto;
+      flex-wrap: wrap;
       align-items: center;
       gap: @space-2;
     }
 
     &__providers {
-      flex: 7 1 0;
+      flex: 1 1 100%;
       width: auto;
       min-width: 0;
       max-width: none;
@@ -903,14 +975,14 @@
     }
 
     &__sort {
-      flex: 3 1 0;
+      flex: 1 1 100%;
       min-width: 0;
       overflow-x: auto;
       scrollbar-width: thin;
       -webkit-overflow-scrolling: touch;
 
       button {
-        flex: 0 0 44px;
+        flex: 0 0 auto;
       }
     }
 

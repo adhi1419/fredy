@@ -16,6 +16,8 @@ export interface ListingsDataState {
   page: number;
   result: unknown[];
   availableProviders: string[];
+  /** Every coordinate-bearing row matching the Home filters, regardless of pagination. */
+  pins: unknown[];
   mapListings: unknown[];
   currentListing: unknown | null;
   maxPrice: number;
@@ -76,6 +78,12 @@ export interface ListingsEffects {
    * change mid-scroll cannot splice stale rows into the new result.
    */
   appendListingsPage(params: ListingsDataQuery): Promise<void>;
+  /**
+   * Fetches the pins for a filter set: every matching row with coordinates, unpaginated, via the
+   * table endpoint's `pins=true` mode. Page, size and sort are irrelevant to pins and dropped, so a
+   * scroll or a re-sort never refetches them. A response for a superseded filter is discarded.
+   */
+  getListingsPins(params: ListingsDataQuery): Promise<void>;
   getListing(listingId: string): Promise<unknown>;
   getListingsForMap(params?: ListingsMapQuery): Promise<void>;
   setListingLifecycleAction(listingId: string, action: ListingLifecycleAction): Promise<void>;
@@ -92,6 +100,7 @@ export function createListingsDataState(): ListingsDataState {
     page: 1,
     result: [],
     availableProviders: [],
+    pins: [],
     mapListings: [],
     currentListing: null,
     maxPrice: 0,
@@ -107,6 +116,7 @@ export function createListingsEffects(
   // against it when its response lands so a page fetched for a superseded filter is discarded.
   let currentQueryKey = '';
   let appendInFlight = false;
+  let currentPinsKey = '';
 
   const queryOf = ({
     page = 1,
@@ -172,6 +182,32 @@ export function createListingsEffects(
         console.error('Error while trying to append a page from api/listings. Error:', exception);
       } finally {
         appendInFlight = false;
+      }
+    },
+
+    async getListingsPins(params) {
+      // The server ignores page, size and sort in pins mode; pinning them here keeps the key stable.
+      const pinsQuery = queryOf({
+        ...params,
+        page: 1,
+        pageSize: 1,
+        sortfield: null,
+        sortdir: 'asc',
+        filter: { ...(params.filter ?? {}), pins: true },
+      });
+      currentPinsKey = pinsQuery;
+      try {
+        const response = await transport.get(`/api/listings/table?${pinsQuery}`);
+        if (currentPinsKey !== pinsQuery) return;
+        const payload = asRecord(response.json);
+        set((state) => ({
+          listingsData: {
+            ...state.listingsData,
+            pins: Array.isArray(payload.pins) ? payload.pins : [],
+          },
+        }));
+      } catch (exception) {
+        console.error('Error while trying to get pins from api/listings. Error:', exception);
       }
     },
 

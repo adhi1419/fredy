@@ -300,25 +300,30 @@ describe('Home view switch, sort, and card age', () => {
     );
   });
 
-  it('gives provider roughly seventy percent and keeps icon sorts scrollable in the remainder', () => {
+  it('stacks the provider picker over a full-width, swipeable row of labelled sort pills on mobile', () => {
     const mobile = homeStyles.slice(
       homeStyles.indexOf('@media (max-width: 768px)'),
       homeStyles.indexOf('@media (max-width: 430px)'),
     );
-    expect(mobile).toMatch(/&__providers\s*{[\s\S]*?flex:\s*7 1 0;/);
-    expect(mobile).toMatch(/&__sort\s*{[\s\S]*?flex:\s*3 1 0;[\s\S]*?overflow-x:\s*auto;/);
+    expect(mobile).toMatch(/&__tools\s*{[\s\S]*?flex-wrap:\s*wrap;/);
+    expect(mobile).toMatch(/&__providers\s*{[\s\S]*?flex:\s*1 1 100%;/);
+    expect(mobile).toMatch(/&__sort\s*{[\s\S]*?flex:\s*1 1 100%;[\s\S]*?overflow-x:\s*auto;/);
   });
 
-  it('renders an icon-based sort control with a visible direction arrow, no text select', () => {
+  it('renders a labelled sort control where every criterion carries its direction arrow', () => {
     mockListings = [APPLIED];
     const html = renderHome();
     expect(html).toContain('home__sort');
-    expect(html).toContain('home__sort-symbol');
-    // Default sort is newest (created_at, desc): the active criterion shows the down arrow.
-    expect(html).toContain('home__sort-direction');
+    // The criterion is spelled out - no glyph stands in for "sort by price".
+    expect(html.match(/class="home__sort-name"/g)?.length).toBe(5);
+    expect(html).not.toContain('home__sort-symbol');
+    // Every pill shows an arrow: the active one its current direction, the others their default.
+    expect(html.match(/class="home__sort-direction"/g)?.length).toBe(5);
     // The old text <select> is gone; the control is a group of buttons with aria labels.
     expect(html).not.toContain('<select');
     expect(html).toContain('home.sortActiveLabel');
+    // aria-label plus title on each of the four inactive pills.
+    expect(html.match(/home\.sortSelectLabel/g)?.length).toBe(8);
   });
 
   it('flips the active sort direction in place and activates another criterion via chooseSort', () => {

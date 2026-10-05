@@ -116,6 +116,8 @@
   "home.providerUnavailable": "Unavailable",
   "home.providersEmpty": "No providers found",
   "home.providerAll": "All",
+  "home.providerNone": "None",
+  "home.providerSelectAll": "Select all",
   "home.cardActionsLabel": "Listing actions",
   "home.markApplied": "Mark applied",
   "home.markViewed": "Mark viewed",

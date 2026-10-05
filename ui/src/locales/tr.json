@@ -116,6 +116,8 @@
   "home.providerUnavailable": "Kullanılamıyor",
   "home.providersEmpty": "Sağlayıcı bulunamadı",
   "home.providerAll": "Tümü",
+  "home.providerNone": "Hiçbiri",
+  "home.providerSelectAll": "Tümünü seç",
   "home.cardActionsLabel": "İlan işlemleri",
   "home.markApplied": "Başvuruldu olarak işaretle",
   "home.markViewed": "Görüldü olarak işaretle",

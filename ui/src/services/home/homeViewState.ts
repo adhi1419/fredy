@@ -75,6 +75,8 @@ export interface HomeQueryFilter {
   statusFilter: HomeActivity;
   providerFilter: string | null;
   bbox: string | null;
+  /** Comma-separated listing ids a pin selection narrows the list to; null for the whole result. */
+  ids: string | null;
 }
 
 export interface HomeQueryPayload {
@@ -249,7 +251,7 @@ export function homeBboxFromEdges(west: number, south: number, east: number, nor
 
 // Small on purpose: the feed scrolls endlessly, and travel times are hydrated per page, so the
 // first cards land sooner the fewer rows the first page carries.
-export const HOME_PAGE_SIZE = 10;
+export const HOME_PAGE_SIZE = 9;
 
 export const HOME_VIEWS: readonly HomeView[] = Object.freeze(['feed', 'map']);
 export const HOME_ACTIVITIES: readonly HomeActivity[] = Object.freeze(['new', 'applied', 'viewed', 'archived']);
@@ -313,8 +315,54 @@ export function homeProviderOptions(
 
   const ids = [
     ...new Set([...normalizeProviderIds(availableProviders ?? []), ...normalizeProviderIds(selectedProviderIds)]),
-  ];
+  ].filter((id) => id !== HOME_NO_PROVIDERS);
   return ids.map((id) => ({ id, name: namesById.get(id) ?? id }));
+}
+
+/**
+ * The provider selection that matches nothing. An empty `providerIds` already means "all", so the
+ * Excel-style picker needs a second sentinel for "every box unticked"; no portal is called this, so
+ * the server simply returns no rows for it.
+ */
+export const HOME_NO_PROVIDERS = 'none';
+
+export type HomeProviderSelectionState = 'all' | 'none' | 'partial';
+
+/**
+ * Collapse a selection to the state the picker's header box shows: ticked (every provider, which is
+ * how an empty selection and a selection naming all options both read), unticked (the sentinel), or
+ * indeterminate.
+ */
+export function homeProviderSelectionState(
+  providerIds: readonly string[],
+  optionIds: readonly string[],
+): HomeProviderSelectionState {
+  const selected = normalizeProviderIds(providerIds);
+  if (selected.length === 0) return 'all';
+  if (selected.length === 1 && selected[0] === HOME_NO_PROVIDERS) return 'none';
+  const options = new Set(normalizeProviderIds(optionIds));
+  if (options.size > 0 && [...options].every((id) => selected.includes(id))) return 'all';
+  return 'partial';
+}
+
+/**
+ * Tick or untick one provider. Starting from "all" unticks that one provider; unticking the last
+ * ticked box yields the sentinel rather than wrapping back to "all"; ticking the final missing
+ * provider collapses to the canonical empty "all".
+ */
+export function homeToggleProvider(providerIds: readonly string[], optionIds: readonly string[], id: string): string[] {
+  const options = normalizeProviderIds(optionIds);
+  const state = homeProviderSelectionState(providerIds, options);
+  const current = state === 'all' ? options : state === 'none' ? [] : normalizeProviderIds(providerIds);
+  const next = current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id];
+  if (next.length === 0) return [HOME_NO_PROVIDERS];
+  if (options.length > 0 && options.every((entry) => next.includes(entry))) return [];
+  return normalizeProviderIds(next);
+}
+
+/** The header box: ticked goes to none, anything else (unticked or indeterminate) goes to all. */
+export function homeToggleAllProviders(providerIds: readonly string[], optionIds: readonly string[]): string[] {
+  return homeProviderSelectionState(providerIds, optionIds) === 'all' ? [HOME_NO_PROVIDERS] : [];
 }
 
 function nonEmptyProviderValue(value: unknown): string | null {
@@ -432,7 +480,16 @@ export function writeHomeViewState(
  * Translate Home state into the existing listing table action contract. `page` is the page to
  * fetch; the endless feed asks for 1 on every state change and N+1 as it scrolls.
  */
-export function homeQueryFromState(state: HomeQueryState, page = 1): HomeQueryPayload {
+/**
+ * @param selectedIds Listing ids picked on the map, or null for the whole result. They narrow the
+ *   list server-side (`ids`), so a pin can select a listing the endless feed has not loaded yet; the
+ *   pins request never carries them, so the map keeps showing every match.
+ */
+export function homeQueryFromState(
+  state: HomeQueryState,
+  page = 1,
+  selectedIds: readonly string[] | null = null,
+): HomeQueryPayload {
   return {
     page,
     pageSize: HOME_PAGE_SIZE,
@@ -444,6 +501,7 @@ export function homeQueryFromState(state: HomeQueryState, page = 1): HomeQueryPa
       providerFilter: providerParamFromIds(state.providerIds ?? []),
       // Only the map view asks for a box; a stale one in a feed URL is ignored, not applied.
       bbox: state.view === 'map' ? formatHomeBbox(state.bbox) : null,
+      ids: selectedIds && selectedIds.length > 0 ? selectedIds.join(',') : null,
     },
   };
 }
