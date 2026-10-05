@@ -142,6 +142,7 @@
   "home.mapClearArea": "Clear area",
   "home.mapShowAll": "{{count}} selected · Show all",
   "home.mapSelectionEmpty": "Nothing selected on the map has a listing here.",
+  "home.mapAreaEmpty": "No homes in this map area.",
   "home.showingOf": "Showing {{loaded}} of {{total}} homes",
   "home.loadMore": "Load more",
   "home.loadingMore": "Loading…",

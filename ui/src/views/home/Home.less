@@ -669,6 +669,12 @@
     overflow-y: auto;
     max-height: 620px;
     padding-right: @space-2;
+    transition: opacity 120ms ease;
+
+    &--refreshing {
+      opacity: 0.5;
+      pointer-events: none;
+    }
   }
 
   &__card--split {
@@ -757,20 +763,36 @@
     }
   }
 
-  // Saved places are context, drawn as paper squares carrying an ink glyph so they never read as a
-  // result pin. Not interactive: the marker container stays 44px for touch parity, the tile is 24px.
+  // Saved places are context, not results, so they are the one classic pin shape on the map: a
+  // paper teardrop with a hairline, the glyph in its head. The outer box is the pin's true extent
+  // (28px head plus the tip), so MapLibre's bottom anchor lands the tip on the place; the head is
+  // a rotated square inside it. Not interactive.
   &__map-place {
-    display: grid;
-    place-items: center;
-    box-sizing: border-box;
-    width: 24px;
-    height: 24px;
-    border: 1px solid @color-text;
-    background: @color-surface;
-    color: @color-text;
+    position: relative;
+    width: 28px;
+    height: 36px;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      box-sizing: border-box;
+      width: 28px;
+      height: 28px;
+      border: 1px solid @color-text;
+      border-radius: 50% 50% 50% 0;
+      background: @color-surface;
+      transform: rotate(-45deg);
+      transform-origin: 50% 50%;
+    }
 
     svg {
+      position: absolute;
+      top: 7px;
+      left: 7px;
       display: block;
+      color: @color-text;
     }
   }
 

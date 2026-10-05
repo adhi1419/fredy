@@ -128,9 +128,24 @@ describe('homeViewState', () => {
     );
   });
 
+  it('keeps the map area only while the map is the view and the result set is the same', () => {
+    const inMap = new URLSearchParams('view=map&bbox=13.3,52.4,13.5,52.6');
+    expect(writeHomeViewState(inMap, { sort: 'price' }).get('bbox')).toBe('13.3,52.4,13.5,52.6');
+    expect(writeHomeViewState(inMap, { view: 'feed' }).has('bbox')).toBe(false);
+    expect(writeHomeViewState(inMap, { activity: 'viewed' }).has('bbox')).toBe(false);
+    expect(writeHomeViewState(inMap, { q: 'Mitte' }).has('bbox')).toBe(false);
+    expect(writeHomeViewState(inMap, { providerIds: ['immoscout'] }).has('bbox')).toBe(false);
+    // A stale box in a feed URL is neither read nor sent to the API.
+    const feedState = readHomeViewState(new URLSearchParams('bbox=13.3,52.4,13.5,52.6'));
+    expect(feedState.bbox).toBeNull();
+    expect(
+      homeQueryFromState({ ...feedState, bbox: { west: 13.3, south: 52.4, east: 13.5, north: 52.6 } }).filter.bbox,
+    ).toBeNull();
+  });
+
   it('drops a page number from an old link and clears the box when it is unset', () => {
-    const params = writeHomeViewState(new URLSearchParams('page=4&bbox=13.3,52.4,13.5,52.6'), { bbox: null });
-    expect(params.toString()).toBe('');
+    const params = writeHomeViewState(new URLSearchParams('view=map&page=4&bbox=13.3,52.4,13.5,52.6'), { bbox: null });
+    expect(params.toString()).toBe('view=map');
   });
 
   it('reads only well-formed boxes and rounds them for the URL', () => {
@@ -157,6 +172,7 @@ describe('homeViewState', () => {
     expect(
       homeQueryFromState(
         {
+          view: 'map',
           q: 'Kreuzberg',
           activity: 'viewed',
           providerIds: ['immoscout', 'immowelt'],

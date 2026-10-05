@@ -142,6 +142,7 @@
   "home.mapClearArea": "Alanı temizle",
   "home.mapShowAll": "{{count}} seçili · Hepsini göster",
   "home.mapSelectionEmpty": "Haritada seçilenlerin burada ilanı yok.",
+  "home.mapAreaEmpty": "Bu harita alanında ev yok.",
   "home.showingOf": "{{total}} evden {{loaded}} tanesi gösteriliyor",
   "home.loadMore": "Daha fazla yükle",
   "home.loadingMore": "Yükleniyor…",
