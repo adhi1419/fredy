@@ -10,37 +10,94 @@ Fredy was created by **Christian Kellner**. This fork keeps the original Fredy a
 
 ## See Fredy in action
 
-Fredy keeps the important choices visible without making the home search feel busy. The same workspace adapts from a quiet desktop feed to a one-handed mobile flow.
+Fredy keeps the important choices visible without making the home search feel busy. The same workspace adapts from a quiet desktop feed to a one-handed mobile flow, in light and dark. Every screenshot below follows your system theme; the full set in both themes is in [`doc/screenshots`](doc/screenshots).
 
 <div align="center">
-  <img src="doc/screenshots/home-quiet-feed-desktop.png" alt="Fredy Home in Quiet feed view with four new homes, provider filters, and listing activity tabs" width="1200" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/home-quiet-feed-desktop-dark.png" />
+    <img src="doc/screenshots/home-quiet-feed-desktop-light.png" alt="Fredy Home in Quiet feed view: a grid of listing photos with price, size and rooms, activity tabs with counts, a provider picker and labelled sort pills" width="1200" />
+  </picture>
   <br />
   <em>Home starts with a quiet feed for scanning new matches.</em>
 </div>
 
 <div align="center">
-  <img src="doc/screenshots/home-list-map-desktop.png" alt="Fredy Home in List plus map view showing four homes across Germany with map markers" width="1200" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/home-list-map-desktop-dark.png" />
+    <img src="doc/screenshots/home-list-map-desktop-light.png" alt="Fredy Home in List plus map view: listings on the left, a map of Berlin with a pin for every match and your saved places on the right" width="1200" />
+  </picture>
   <br />
-  <em>List + map adds location context when geography matters.</em>
+  <em>List + map adds location context. Pan to narrow the list to the area in view; pick a pin to see just that home.</em>
 </div>
 
 <div align="center">
-  <img src="doc/screenshots/saved-searches-desktop.png" alt="Fredy Saved Searches page showing Munich Apartments and Berlin Rentals with listing, provider, and channel counts" width="1200" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/listing-detail-desktop-dark.png" />
+    <img src="doc/screenshots/listing-detail-desktop-light.png" alt="Fredy listing detail: a sticky photo and map column beside the facts, a spec strip, and the Apply, Draft inquiry and Open listing actions" width="1200" />
+  </picture>
+  <br />
+  <em>A listing reads like a product page: photo and map stay put while the facts scroll.</em>
+</div>
+
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/saved-searches-desktop-dark.png" />
+    <img src="doc/screenshots/saved-searches-desktop-light.png" alt="Fredy Saved Searches page listing Berlin Rentals and Munich Apartments with their run health and actions" width="1200" />
+  </picture>
   <br />
   <em>Saved Searches keeps the searches that supply Home easy to manage.</em>
 </div>
 
 <div align="center">
-  <img src="doc/screenshots/listing-actions-mobile.png" alt="Fredy mobile listing detail with Apply first, followed by Google Maps and the provider listing actions" width="390" />
-  <img src="doc/screenshots/saved-search-four-steps-mobile.png" alt="Fredy mobile saved-search setup showing step 1 of 4, Providers, with the search name and provider area" width="390" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/saved-search-step-1-desktop-dark.png" />
+    <img src="doc/screenshots/saved-search-step-1-desktop-light.png" alt="Fredy saved-search editor, step 1 of 4, Providers: the search name and the provider sources with their auto-apply policy" width="1200" />
+  </picture>
   <br />
-  <em>Mobile layouts keep listing actions and the four-step search setup within easy reach.</em>
+  <em>A search is set up in four steps; each provider keeps its own apply policy.</em>
 </div>
 
 <div align="center">
-  <img src="doc/screenshots/applicant-profile-onboarding-desktop.png" alt="Fredy first-time setup form asking for a name and address before searching" width="1000" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/home-quiet-feed-mobile-dark.png" />
+    <img src="doc/screenshots/home-quiet-feed-mobile-light.png" alt="Fredy Home on a phone: activity tabs, one listing photo per row, bottom navigation" width="390" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/home-list-map-mobile-dark.png" />
+    <img src="doc/screenshots/home-list-map-mobile-light.png" alt="Fredy List plus map view on a phone with the map above the listings" width="390" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/listing-detail-mobile-dark.png" />
+    <img src="doc/screenshots/listing-detail-mobile-light.png" alt="Fredy listing detail on a phone with the Apply action docked at the bottom" width="390" />
+  </picture>
   <br />
-  <em>First-time setup asks explicitly for only the common profile facts Fredy needs.</em>
+  <em>Mobile keeps the feed, the map and the listing actions within one thumb.</em>
+</div>
+
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/saved-search-step-1-mobile-dark.png" />
+    <img src="doc/screenshots/saved-search-step-1-mobile-light.png" alt="Fredy saved-search setup on a phone showing step 1 of 4, Providers, with Back and Continue in a sticky ribbon" width="390" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/my-account-mobile-dark.png" />
+    <img src="doc/screenshots/my-account-mobile-light.png" alt="Fredy My account on a phone: Preferences tab with appearance, language and listing deletion settings" width="390" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/admin-panel-mobile-dark.png" />
+    <img src="doc/screenshots/admin-panel-mobile-light.png" alt="Fredy Admin panel on a phone: System tab with port, base URL and offline-listing retention" width="390" />
+  </picture>
+  <br />
+  <em>Setup, account and instance settings share one hairline layout.</em>
+</div>
+
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/my-account-desktop-dark.png" />
+    <img src="doc/screenshots/my-account-desktop-light.png" alt="Fredy My account on desktop: Preferences, Travel time, Listing details, Notification channels and Inquiry profile tabs over ruled settings sections" width="1200" />
+  </picture>
+  <br />
+  <em>Settings are one column of ruled sections, no boxes.</em>
 </div>
 
 ## What Fredy does

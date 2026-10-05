@@ -34,7 +34,7 @@ export default defineConfig({
         target: {
           host: '0.0.0.0',
           protocol: 'http:',
-          port: 9998,
+          port: Number(process.env.FREDY_API_PORT) || 9998,
         },
       },
     },

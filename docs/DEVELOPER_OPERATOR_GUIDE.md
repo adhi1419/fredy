@@ -183,6 +183,18 @@ The Firestore emulator covers storage behavior. It does not validate:
 
 For an end-to-end Firebase check, use a real Firebase web configuration and a real allowlisted Google account in a non-production project. `FIREBASE_AUTH_EMULATOR_HOST` is recognized by the Firebase Admin SDK, but Compose and the repository's standard test workflows start only the Firestore emulator. Do not describe emulator tests as proof of hosted authentication.
 
+### Refreshing the README screenshots
+
+The screenshots in `doc/screenshots` are taken from the real app running against the two emulators, in both themes and both viewports, by `scripts/screenshots/shoot.cjs`. To refresh them after a visual change:
+
+1. Start the Firestore emulator (above) and the Auth emulator: `npx firebase-tools emulators:start --only auth --project demo-fredy` (listens on `127.0.0.1:9099`).
+2. Start the backend with both emulators and a fake web config: `FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 FIRESTORE_PROJECT_ID=demo-fredy FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 FIREBASE_WEB_CONFIG='{"apiKey":"fake-api-key","authDomain":"demo-fredy.firebaseapp.com","projectId":"demo-fredy","appId":"1:1:web:1"}' node index.js`, and Vite with `yarn run start:frontend:dev`. The login route reports `authEmulatorHost` to the SPA, which then signs in through the emulator popup.
+3. Allowlist the demo account by writing `allowed_users/dev@example.com` with `isAdmin: true` to the emulator, sign in once in a browser so the user and inquiry profile exist, and note the uid the Auth emulator minted.
+4. `FIRESTORE_EMULATOR_HOST=127.0.0.1:8144 node scripts/screenshots/seed-demo.cjs <uid>` seeds two searches, fourteen Berlin and Munich listings across the four lifecycle states, and two saved places. It refuses to run without the emulator variable.
+5. `node scripts/screenshots/shoot.cjs doc/screenshots` writes the 28 frames (`<surface>-<desktop|mobile>-<light|dark>.png`). It needs `playwright-core` on the path; point `PLAYWRIGHT_CHROMIUM` at a Chromium if the default download is missing.
+
+The README uses `<picture>` with a `prefers-color-scheme` source, so GitHub shows the viewer's theme and falls back to light.
+
 ## 5. Configuration and secret handling
 
 ### Runtime variables
