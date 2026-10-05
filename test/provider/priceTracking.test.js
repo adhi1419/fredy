@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { extractField, parse } from '../../lib/services/extractor/parser/parser.js';
 import { extractNumber } from '../../lib/utils/extract-number.js';
 import { getProviders } from '../../lib/utils.js';
+import { parseSearchResults as parseKleinanzeigenResults } from '../../lib/provider/kleinanzeigen.js';
 
 const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'testFixtures');
 const testProviderConfig = JSON.parse(
@@ -32,7 +33,7 @@ const EXPECTED_DETAIL_PRICE = {
   imaxx: 526000,
   immobilienDe: 1070,
   immowelt: 1250,
-  kleinanzeigen: 1600,
+  kleinanzeigen: 890,
   schwarzesbrett: 560,
   sparkasse: 410000,
   wgGesucht: 590,
@@ -69,6 +70,10 @@ const CUSTOM_LIST_PRICES = {
     const classifieds = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'immowelt_classifieds.json'), 'utf8'));
     return classifieds.map((entry) => providerModule('immowelt').config.normalize(entry)?.price).filter(Boolean);
   },
+  kleinanzeigen: () =>
+    parseKleinanzeigenResults(fs.readFileSync(path.join(FIXTURES, 'kleinanzeigen.html'), 'utf8'))
+      .map((entry) => providerModule('kleinanzeigen').config.normalize(entry)?.price)
+      .filter((price) => price != null),
 };
 
 /** @type {Map<string, any>} */

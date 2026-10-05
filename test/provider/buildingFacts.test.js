@@ -91,34 +91,35 @@ describe('engelVoelkers', () => {
 });
 
 describe('kleinanzeigen', () => {
+  // Kleinanzeigen pages are read over plain HTTP, so the loader is injected rather than mocked.
+  const loadFixture = (html) => async () => html;
+
   it('reads the Baujahr off the attribute list when the ad states one', async () => {
-    puppeteerExtractor.mockResolvedValue(
-      (await readFixture('kleinanzeigen_detail.html')).replace(
-        '<ul class="addetailslist--split">',
-        '<ul class="addetailslist--split"><li class="addetailslist--detail">Baujahr' +
-          '<span class="addetailslist--detail--value">1998</span></li>',
-      ),
+    const html = (await readFixture('kleinanzeigen_detail.html')).replace(
+      '<ul class="addetailslist--split">',
+      '<ul class="addetailslist--split"><li class="addetailslist--detail">Baujahr' +
+        '<span class="addetailslist--detail--value">1998</span></li>',
     );
 
     const enriched = await kleinanzeigenConfig.fetchDetails(
       { id: 'a', link: '/s-anzeige/schoene-wohnung/1234-203-2462' },
       null,
+      loadFixture(html),
     );
 
     expect(enriched.buildYear).toBe(1998);
   });
 
   it('falls back to the ad text for the class the attribute list never carries', async () => {
-    puppeteerExtractor.mockResolvedValue(await readFixture('kleinanzeigen_detail.html'));
-
     const enriched = await kleinanzeigenConfig.fetchDetails(
       { id: 'a', link: '/s-anzeige/schoene-wohnung/1234-203-2462' },
       null,
+      loadFixture(await readFixture('kleinanzeigen_detail.html')),
     );
 
     // This ad states no Baujahr anywhere, but spells the class out in its energy block.
     expect(enriched.buildYear).toBeNull();
-    expect(enriched.energyClass).toBe('C');
+    expect(enriched.energyClass).toBe('E');
   });
 });
 

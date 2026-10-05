@@ -341,7 +341,12 @@ async function detailUrlFromGetListings(providerConfig, browser) {
   if (typeof providerConfig.getListings !== 'function') return null;
 
   try {
-    const listings = (await providerConfig.getListings(providerConfig.url, browser)) ?? [];
+    // Same convention as the pipeline: only a getListings that declares a second parameter is
+    // handed the browser. Browserless providers take an injectable page loader there instead.
+    const listings =
+      (await (providerConfig.getListings.length >= 2
+        ? providerConfig.getListings(providerConfig.url, browser)
+        : providerConfig.getListings(providerConfig.url))) ?? [];
     for (const listing of listings) {
       const link = providerConfig.normalize(listing)?.link;
       if (typeof link === 'string' && link.startsWith('http')) return link;

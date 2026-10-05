@@ -8,12 +8,12 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-vi.mock('../../lib/services/extractor/puppeteerExtractor.js', () => ({ default: vi.fn() }));
+vi.mock('../../lib/services/extractor/httpExtractor.js', () => ({ default: vi.fn() }));
 vi.mock('../../lib/services/logger.js', () => ({
   default: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
-import puppeteerExtractor from '../../lib/services/extractor/puppeteerExtractor.js';
+import fetchHtml from '../../lib/services/extractor/httpExtractor.js';
 import { config as immoscoutConfig } from '../../lib/provider/immoscout.js';
 import { config as kleinanzeigenConfig } from '../../lib/provider/kleinanzeigen.js';
 
@@ -112,7 +112,7 @@ describe('kleinanzeigen rooms and size', () => {
   };
 
   beforeEach(async () => {
-    puppeteerExtractor.mockResolvedValue(await readFixture('kleinanzeigen_detail.html'));
+    fetchHtml.mockResolvedValue(await readFixture('kleinanzeigen_detail.html'));
   });
 
   it('still reads the figures off the search result tags', () => {
@@ -148,7 +148,7 @@ describe('kleinanzeigen rooms and size', () => {
   it('falls back to the detail page when the search result had no tags', async () => {
     const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures, null);
 
-    expect(enriched).toMatchObject({ size: 89, rooms: 2 });
+    expect(enriched).toMatchObject({ size: 31, rooms: 1 });
   });
 
   it('keeps the figures the search result already provided', async () => {
@@ -161,11 +161,11 @@ describe('kleinanzeigen rooms and size', () => {
     const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures, null);
 
     expect(enriched.description).toContain('\n');
-    expect(enriched.description).toMatch(/Flingern\.\nÜber das freundliche Treppenhaus/);
+    expect(enriched.description).toMatch(/zu vermieten\.\n\nDas komplett ausgestattete Apartment/);
   });
 
   it('leaves the figures alone when the detail page cannot be loaded', async () => {
-    puppeteerExtractor.mockResolvedValue(null);
+    fetchHtml.mockResolvedValue(null);
 
     const enriched = await kleinanzeigenConfig.fetchDetails(listingWithoutFigures, null);
 
