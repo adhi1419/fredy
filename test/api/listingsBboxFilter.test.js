@@ -131,10 +131,19 @@ vi.mock('../../lib/services/storage/firestore/listingsShared.js', () => {
       id: d.id,
       data: () => d,
     }));
+  // The query's filters are not what this suite is about, so the chain ignores them.
+  const chainable = (docs) => {
+    const query = {
+      where: () => query,
+      limit: () => query,
+      get: async () => ({ docs: docs(), empty: docs().length === 0 }),
+    };
+    return query;
+  };
   return {
-    listingsCol: () => ({ get: async () => ({ docs: makeSnapshotDocs() }) }),
+    listingsCol: () => chainable(makeSnapshotDocs),
     jobsCol: () => ({ doc: () => ({ get: async () => ({ exists: false }) }) }),
-    watchCol: () => ({ doc: () => ({ get: async () => ({ exists: false }) }) }),
+    watchCol: () => chainable(() => []),
     accessibleJobIds: async () => new Set(SEEDED.map((d) => d.jobId)),
     // Minimal API-row projection carrying the fields the filter and pipeline read.
     toApiRow: (snap) => {
