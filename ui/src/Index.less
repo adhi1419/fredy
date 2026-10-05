@@ -51,6 +51,61 @@ h4 {
 .semi-button-borderless {
   border-color: transparent !important;
 }
+// The switch follows the same grammar: a square hairline track with a square ink knob, ink-filled
+// with a paper knob when on. Its geometry is pinned here because a wrapper that stretches the track
+// (a 44px touch-target rule, say) leaves Semi's knob anchored to the top edge; the touch target
+// belongs on the wrapping label or row, not on the track.
+.semi-switch,
+.semi-switch-small,
+.semi-switch-large {
+  width: 36px !important;
+  height: 20px !important;
+  border: 1px solid @color-border-bright !important;
+  border-radius: @radius-input !important;
+  background: @color-surface !important;
+  transition: background-color 160ms ease;
+
+  &:hover,
+  &:active {
+    border-color: @color-text !important;
+    background: @color-surface !important;
+  }
+
+  .semi-switch-knob {
+    top: 2px !important;
+    width: 14px !important;
+    height: 14px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: @color-text !important;
+    box-shadow: none !important;
+    transform: translateX(2px) !important;
+  }
+
+  &.semi-switch-checked {
+    border-color: @color-accent !important;
+    background: @color-accent !important;
+
+    .semi-switch-knob {
+      background: @color-on-accent !important;
+      transform: translateX(18px) !important;
+    }
+  }
+
+  &.semi-switch-disabled {
+    border-color: @color-border !important;
+    background: transparent !important;
+
+    .semi-switch-knob {
+      background: @color-muted !important;
+    }
+  }
+
+  &.semi-switch-focus {
+    outline: 2px solid @color-accent !important;
+    outline-offset: 2px;
+  }
+}
 .semi-input-wrapper,
 .semi-select,
 .semi-tag,
@@ -59,7 +114,6 @@ h4 {
 .semi-popover-content,
 .semi-dropdown,
 .semi-card,
-.semi-switch,
 .semi-autocomplete,
 .semi-tabs-bar-line .semi-tabs-tab {
   border-radius: @radius-input !important;

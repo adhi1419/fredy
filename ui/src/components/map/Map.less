@@ -112,7 +112,6 @@
       padding-left: 10px;
       border-left: 1px solid @color-map-panel-border;
     }
-
   }
 
   &__label {
@@ -159,4 +158,67 @@
   cursor: grab;
   cursor: -moz-grab;
   cursor: -webkit-grab;
+}
+
+// MapLibre's own popup is white-on-white chrome. Every map imports this file, so the override lives
+// here rather than on one route, and it paints on the tokens so both themes read.
+.maplibregl-popup-content {
+  padding: @space-3;
+  border: 1px solid @color-border-bright;
+  border-radius: @radius-card;
+  background: @color-elevated;
+  color: @color-text;
+  box-shadow: @shadow-md;
+  // A listing popup with image, details and nearby stops easily outgrows the map. Capping it and
+  // scrolling inside keeps the whole popup reachable; keepPopupInView() then pans the map so it is
+  // fully on screen.
+  max-height: 70vh;
+  overflow-y: auto;
+  font-family: @font-ui;
+  font-size: @text-sm;
+
+  h4 {
+    margin: 0 0 @space-1;
+    color: @color-text;
+    font-size: @text-base;
+    font-weight: 500;
+  }
+
+  p {
+    margin: 0;
+    color: @color-muted;
+  }
+}
+
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: @color-elevated;
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: @color-elevated;
+}
+
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: @color-elevated;
+}
+
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: @color-elevated;
+}
+
+.maplibregl-popup-close-button {
+  width: 28px;
+  height: 28px;
+  color: @color-muted;
+  font-size: @text-lg;
+  line-height: 1;
+
+  &:hover {
+    background: transparent;
+    color: @color-text;
+  }
 }

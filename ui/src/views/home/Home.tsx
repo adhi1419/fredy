@@ -26,6 +26,7 @@ import maplibregl from '../../components/map/maplibre.js';
 import MapCanvas from '../../components/map/Map.jsx';
 import { groupListingsByPosition, getBoundsFromCoords } from '../listings/mapUtils.js';
 import { useProviderCountries } from '../../hooks/useProviderCountries.js';
+import { getAddresses } from '../../utils.js';
 import { useActions, useSelector } from '../../services/state/store.js';
 import { formatEuroPrice } from '../../services/price/priceService.js';
 import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
@@ -37,10 +38,12 @@ import {
   homeLifecycleState,
   homeListingNavigationId,
   homeMapListing,
-  homeMapMarkerAction,
-  homeMapGroupSelectionId,
-  homeMapMarkerTarget,
-  restoreHomeMapMarkerFocus,
+  homeMapMarkerIds,
+  homeMapToggleSelection,
+  homeBboxFromEdges,
+  homeSavedPlaceGlyph,
+  HOME_PAGE_SIZE,
+  type HomeBbox,
   homeProviderOptions,
   homeQueryFromState,
   homeSortOption,
@@ -208,18 +211,15 @@ function moveMenuFocus(event: globalThis.KeyboardEvent, currentIndex: number, it
 interface HomeStoreState {
   listingsData: ListingsDataState;
   provider: readonly HomeProviderMetadata[];
+  userSettings?: { settings?: { home_addresses?: unknown } | null };
 }
 
 interface HomeActions {
   listingsData: {
     getListingsData: (query: HomeQueryPayload) => Promise<void>;
+    appendListingsPage: (query: HomeQueryPayload) => Promise<void>;
     setListingLifecycleAction: (listingId: string, action: 'applied' | 'viewing' | 'archive') => Promise<void>;
   };
-}
-
-interface HomeMapProps {
-  listings: readonly HomeListing[];
-  onNavigate: (id: string) => void;
 }
 
 interface HomeProps {
@@ -237,6 +237,9 @@ function asHomeListings(value: unknown): HomeListing[] {
 interface HomeStayCardProps {
   listing: HomeListing;
   variant: 'grid' | 'split';
+  /** Lit from the map: the pin under the pointer is this card's. */
+  highlighted?: boolean;
+  onHover?: (hovering: boolean) => void;
   onNavigate: (id: string) => void;
   onLifecycleAction: (id: string, action: 'applied' | 'viewing' | 'archive') => void | Promise<void>;
 }
@@ -251,7 +254,14 @@ interface HomeStayCardProps {
  * card never nests one control inside another; the menu is state-aware and hides the action that
  * matches the card's current lifecycle. No Watch, Status, or Delete affordance is shown.
  */
-function HomeStayCard({ listing, variant, onNavigate, onLifecycleAction }: HomeStayCardProps) {
+function HomeStayCard({
+  listing,
+  variant,
+  highlighted = false,
+  onHover,
+  onNavigate,
+  onLifecycleAction,
+}: HomeStayCardProps) {
   const t = useTranslation();
   const locale = useLocale();
   const lifecycle = homeLifecycleState(listing);
@@ -322,7 +332,13 @@ function HomeStayCard({ listing, variant, onNavigate, onLifecycleAction }: HomeS
   };
 
   return (
-    <article className={`home__card home__card--${variant}`}>
+    <article
+      className={`home__card home__card--${variant}${highlighted ? ' home__card--highlighted' : ''}`}
+      onMouseEnter={onHover ? () => onHover(true) : undefined}
+      onMouseLeave={onHover ? () => onHover(false) : undefined}
+      onFocus={onHover ? () => onHover(true) : undefined}
+      onBlur={onHover ? () => onHover(false) : undefined}
+    >
       <button
         type="button"
         className="home__card-open"
@@ -416,139 +432,209 @@ function HomeStayCard({ listing, variant, onNavigate, onLifecycleAction }: HomeS
   );
 }
 
+interface HomeMapProps {
+  listings: readonly HomeListing[];
+  /** The viewport the results are narrowed to; null means the map still frames the results. */
+  bbox: HomeBbox | null;
+  onBboxChange: (bbox: HomeBbox | null) => void;
+  /** Listing IDs the user picked by activating a pin, or null when every pin counts. */
+  selectedIds: readonly string[] | null;
+  onSelectionChange: (ids: string[] | null) => void;
+  hoveredId: string | null;
+  onHoverChange: (id: string | null) => void;
+}
+
+/**
+ * Glyphs for saved places, as markup because the markers are plain DOM nodes. Stroked at 1.75 so
+ * they read at 14px on both basemaps; `currentColor` lets the marker's CSS colour them.
+ */
+const SAVED_PLACE_GLYPHS = {
+  work: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M3 12h18"/></svg>',
+  flag: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"/></svg>',
+} as const;
+
+/** How long the map may rest after a user gesture before the viewport becomes the filter. */
+const BBOX_SETTLE_MS = 400;
+
 /**
  * The map half of Home deliberately consumes the already-filtered table result. The route-level map
  * owns its own all-listings request and controls; mounting it here would create a second fetch and a
  * second filter state for the same Home view.
+ *
+ * Three things tie it to the list beside it:
+ * - panning or zooming narrows the results to what is in view (`bbox`), after the gesture settles;
+ *   programmatic camera moves (the initial fit) carry no `originalEvent` and never write it;
+ * - activating a pin narrows the list to that pin's listings instead of leaving the page;
+ * - the hovered card and the hovered pin highlight each other.
  */
-function HomeMap({ listings, onNavigate }: HomeMapProps) {
+function HomeMap({
+  listings,
+  bbox,
+  onBboxChange,
+  selectedIds,
+  onSelectionChange,
+  hoveredId,
+  onHoverChange,
+}: HomeMapProps) {
   const t = useTranslation();
   const countries = useProviderCountries();
+  const userSettings = useSelector((state: HomeStoreState) => state.userSettings?.settings ?? null);
+  const savedPlaces = useMemo(() => getAddresses(userSettings), [userSettings]);
   const [map, setMap] = useState<MapLibreMap | null>(null);
-  const [activeGroup, setActiveGroup] = useState<readonly HomeMapListing[] | null>(null);
-  const firstChooserOption = useRef<HTMLButtonElement | null>(null);
-  const activeGroupTrigger = useRef<HTMLElement | null>(null);
   const markers = useMemo(
     () => listings.map(homeMapListing).filter((listing): listing is HomeMapListing => listing !== null),
     [listings],
   );
-  const groupOptions =
-    activeGroup
-      ?.map((listing) => ({ listing, id: homeListingNavigationId(listing) }))
-      .filter((entry): entry is { listing: HomeMapListing; id: string } => entry.id != null) ?? [];
+  const markerElements = useRef(new Map<string, HTMLElement>());
+  // The first fit frames the listings; after that only the user moves the camera. Kept in a ref so
+  // the marker effect can re-run for new listings without re-fitting.
+  const hasFittedRef = useRef(false);
+  const bboxRef = useRef(bbox);
+  bboxRef.current = bbox;
 
-  const closeGroupChooser = useCallback(() => {
-    const trigger = activeGroupTrigger.current;
-    activeGroupTrigger.current = null;
-    setActiveGroup(null);
-    restoreHomeMapMarkerFocus(trigger);
-  }, []);
-
-  const selectGroupListing = useCallback(
-    (id: string) => {
-      if (!activeGroup) return;
-      const selectedId = homeMapGroupSelectionId(activeGroup, id);
-      if (selectedId != null) {
-        activeGroupTrigger.current = null;
-        onNavigate(selectedId);
-      }
-    },
-    [activeGroup, onNavigate],
-  );
-
+  // Saved places: the workplace as a briefcase, every other address as a flag. They are context, not
+  // results, so they take no part in selection, hover or the viewport filter.
   useEffect(() => {
-    if (activeGroup) firstChooserOption.current?.focus();
-  }, [activeGroup]);
+    if (!map) return undefined;
+    const created = savedPlaces.map((place) => {
+      const glyph = homeSavedPlaceGlyph(place.label);
+      const element = document.createElement('div');
+      element.className = `home__map-place home__map-place--${glyph}`;
+      element.innerHTML = SAVED_PLACE_GLYPHS[glyph];
+      element.setAttribute('role', 'img');
+      const label = place.label || place.address;
+      element.setAttribute('aria-label', label);
+      element.title = label;
+      return new maplibregl.Marker({ element, anchor: 'center' })
+        .setLngLat([place.coords.lng, place.coords.lat])
+        .addTo(map);
+    });
+    return () => created.forEach((marker) => marker.remove());
+  }, [map, savedPlaces]);
 
+  // Viewport -> filter. `moveend` fires once per gesture and once per programmatic move; only the
+  // gestures carry `originalEvent`, which is what keeps the initial fit from narrowing the results.
   useEffect(() => {
-    setActiveGroup(null);
-    activeGroupTrigger.current = null;
-  }, [markers]);
-
-  useEffect(() => {
-    if (!activeGroup) return undefined;
-    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeGroupChooser();
-      }
+    if (!map) return undefined;
+    let timer: number | null = null;
+    const onMoveEnd = (event: { originalEvent?: unknown }) => {
+      if (!event.originalEvent) return;
+      if (timer != null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const bounds = map.getBounds();
+        onBboxChange(homeBboxFromEdges(bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()));
+      }, BBOX_SETTLE_MS);
     };
-    document.addEventListener('keydown', closeOnEscape);
-    return () => document.removeEventListener('keydown', closeOnEscape);
-  }, [activeGroup, closeGroupChooser]);
+    map.on('moveend', onMoveEnd);
+    return () => {
+      if (timer != null) window.clearTimeout(timer);
+      map.off('moveend', onMoveEnd);
+    };
+  }, [map, onBboxChange]);
+
+  // Hover -> pin. A class toggle on the marker element, so hovering a card never rebuilds the pins.
+  useEffect(() => {
+    for (const [id, element] of markerElements.current) {
+      element.classList.toggle('home__map-marker--hover', hoveredId != null && id.split('\u0000').includes(hoveredId));
+    }
+  }, [hoveredId, markers]);
+
+  useEffect(() => {
+    for (const [id, element] of markerElements.current) {
+      const ids = id.split('\u0000');
+      element.classList.toggle(
+        'home__map-marker--selected',
+        selectedIds != null && ids.some((entry) => selectedIds.includes(entry)),
+      );
+      element.setAttribute(
+        'aria-pressed',
+        selectedIds != null && ids.some((entry) => selectedIds.includes(entry)) ? 'true' : 'false',
+      );
+    }
+  }, [selectedIds, markers]);
 
   useEffect(() => {
     if (!map) return undefined;
 
-    const markerColor = getComputedStyle(document.body).getPropertyValue('--f-accent').trim();
     const created: Array<{
       marker: MapMarker;
       element: HTMLElement;
-      onClick: () => void;
-      onKeyDown: (event: globalThis.KeyboardEvent) => void;
+      cleanup: () => void;
     }> = [];
+    const elements = markerElements.current;
+    elements.clear();
     const markerGroups = groupListingsByPosition(markers);
     markerGroups.forEach(({ lat, lng, listings: grouped }) => {
-      const targetId = homeMapMarkerTarget(grouped);
-      const targetListing = grouped.find((listing) => homeListingNavigationId(listing) === targetId) ?? grouped[0];
+      const ids = homeMapMarkerIds(grouped);
+      const first = grouped[0];
       const label =
-        grouped.length > 1 ? t('home.mapMarkerMany', { count: String(grouped.length) }) : (targetListing.title ?? '');
-      const markerElement = grouped.length > 1 ? document.createElement('button') : undefined;
-      if (markerElement) {
-        markerElement.type = 'button';
-        markerElement.className = 'home__map-marker home__map-marker--group';
-        markerElement.textContent = String(grouped.length);
-      }
-      const marker = new maplibregl.Marker(
-        markerElement ? { element: markerElement } : markerColor ? { color: markerColor } : undefined,
-      )
+        grouped.length > 1 ? t('home.mapMarkerMany', { count: String(grouped.length) }) : (first.title ?? '');
+      const markerElement = document.createElement('button');
+      markerElement.type = 'button';
+      markerElement.className = `home__map-marker${grouped.length > 1 ? ' home__map-marker--group' : ''}`;
+      markerElement.textContent = grouped.length > 1 ? String(grouped.length) : '';
+      markerElement.setAttribute('aria-label', label);
+      markerElement.setAttribute('aria-pressed', 'false');
+      markerElement.title = label;
+      const marker = new maplibregl.Marker({ element: markerElement, anchor: 'center' })
         .setLngLat([lng, lat])
         .addTo(map);
-      const element = marker.getElement();
-      element.setAttribute('role', 'button');
-      element.setAttribute('tabindex', '0');
-      element.setAttribute('aria-label', label);
-      if (grouped.length > 1) element.setAttribute('aria-haspopup', 'dialog');
-      element.title = label;
-      const open = (trigger: 'pointer' | 'keyboard') => {
-        const action = homeMapMarkerAction(grouped, trigger);
-        if (!action) return;
-        if (action.kind === 'group') {
-          activeGroupTrigger.current = element;
-          setActiveGroup(action.listings);
-        } else {
-          activeGroupTrigger.current = null;
-          onNavigate(action.id);
-        }
-      };
-      const onClick = () => open('pointer');
-      const onKeyDown = (event: globalThis.KeyboardEvent) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          open('keyboard');
-        }
-      };
-      element.addEventListener('click', onClick);
-      element.addEventListener('keydown', onKeyDown);
-      created.push({ marker, element, onClick, onKeyDown });
+      if (ids.length > 0) elements.set(ids.join('\u0000'), markerElement);
+
+      const onClick = () => onSelectionChange(homeMapToggleSelection(selectedIds, ids));
+      const onEnter = () => onHoverChange(ids[0] ?? null);
+      const onLeave = () => onHoverChange(null);
+      markerElement.addEventListener('click', onClick);
+      markerElement.addEventListener('mouseenter', onEnter);
+      markerElement.addEventListener('mouseleave', onLeave);
+      markerElement.addEventListener('focus', onEnter);
+      markerElement.addEventListener('blur', onLeave);
+      created.push({
+        marker,
+        element: markerElement,
+        cleanup: () => {
+          markerElement.removeEventListener('click', onClick);
+          markerElement.removeEventListener('mouseenter', onEnter);
+          markerElement.removeEventListener('mouseleave', onLeave);
+          markerElement.removeEventListener('focus', onEnter);
+          markerElement.removeEventListener('blur', onLeave);
+        },
+      });
     });
 
-    const coordinates: Array<[number, number]> = markers.map((listing) => [listing.longitude, listing.latitude]);
-    const bounds = getBoundsFromCoords(coordinates);
-    const fitTimer = window.setTimeout(() => {
-      map.resize();
-      if (bounds) map.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 0 });
-    }, 250);
+    let fitTimer: number | null = null;
+    if (!hasFittedRef.current) {
+      const current = bboxRef.current;
+      const coordinates: Array<[number, number]> = markers.map((listing) => [listing.longitude, listing.latitude]);
+      const bounds = current
+        ? ([
+            [current.west, current.south],
+            [current.east, current.north],
+          ] as [[number, number], [number, number]])
+        : getBoundsFromCoords(coordinates);
+      fitTimer = window.setTimeout(() => {
+        map.resize();
+        if (bounds) {
+          map.fitBounds(bounds, { padding: current ? 0 : 48, maxZoom: 14, duration: 0 });
+          hasFittedRef.current = true;
+        }
+      }, 250);
+    }
 
     return () => {
-      window.clearTimeout(fitTimer);
-      created.forEach(({ marker, element, onClick, onKeyDown }) => {
-        element.removeEventListener('click', onClick);
-        element.removeEventListener('keydown', onKeyDown);
+      if (fitTimer != null) window.clearTimeout(fitTimer);
+      created.forEach(({ marker, cleanup }) => {
+        cleanup();
         marker.remove();
       });
     };
-  }, [map, markers, onNavigate, t]);
+  }, [map, markers, onHoverChange, onSelectionChange, selectedIds, t]);
+
+  const clearSelection = () => onSelectionChange(null);
+  const clearBbox = () => {
+    hasFittedRef.current = false;
+    onBboxChange(null);
+  };
 
   return (
     <section className="home__map" aria-label={t('home.mapAria')}>
@@ -558,44 +644,23 @@ function HomeMap({ listings, onNavigate }: HomeMapProps) {
         initialCenter={markers.length > 0 ? [markers[0].longitude, markers[0].latitude] : undefined}
         initialZoom={markers.length > 0 ? 10 : undefined}
         controlsMode="never"
+        defaultShowTransit
         onMapReady={(readyMap) => setMap(readyMap)}
       />
       {markers.length === 0 && <p className="home__map-empty">{t('home.mapNoCoordinates')}</p>}
-      {activeGroup && groupOptions.length > 0 && (
-        <aside
-          className="home__map-chooser"
-          role="dialog"
-          aria-label={t('home.mapMarkerMany', { count: String(activeGroup.length) })}
-        >
-          <div className="home__map-chooser-heading">
-            <strong>{t('home.mapMarkerMany', { count: String(activeGroup.length) })}</strong>
-            <button type="button" aria-label={t('common.cancel')} onClick={closeGroupChooser}>
-              ×
-            </button>
-          </div>
-          <div className="home__map-chooser-options">
-            {groupOptions.map(({ listing, id }, index) => {
-              const title = listing.title || t('listing.detail.defaultTitle');
-              const detail = listing.address || listing.provider || t('listing.detail.noAddress');
-              return (
-                <button
-                  key={id}
-                  ref={index === 0 ? firstChooserOption : undefined}
-                  type="button"
-                  onClick={() => selectGroupListing(id)}
-                  aria-label={title}
-                >
-                  <strong>{title}</strong>
-                  <span>{detail}</span>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-      )}
-      <div className="home__map-count">
-        <span>{t('home.mapView')}</span>
+      <div className="home__map-count" role="status">
+        <span>{bbox ? t('home.mapInView') : t('home.mapView')}</span>
         <strong>{t('home.mapCount', { count: String(markers.length) })}</strong>
+        {bbox && (
+          <button type="button" className="home__map-chip" onClick={clearBbox}>
+            {t('home.mapClearArea')}
+          </button>
+        )}
+        {selectedIds && (
+          <button type="button" className="home__map-chip" onClick={clearSelection}>
+            {t('home.mapShowAll', { count: String(selectedIds.length) })}
+          </button>
+        )}
       </div>
     </section>
   );
@@ -620,7 +685,26 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   const [searchDraft, setSearchDraft] = useState('');
   const values = useMemo(() => readHomeViewState(searchParams, defaultView), [defaultView, searchParams.toString()]);
   const query = useMemo(() => homeQueryFromState(values), [values]);
-  const listings = useMemo(() => asHomeListings(listingsData.result), [listingsData.result]);
+  const allListings = useMemo(() => asHomeListings(listingsData.result), [listingsData.result]);
+  // Pin selection and hover are view state, not URL state: they describe where the pointer is, and a
+  // reload should start from the whole result again.
+  const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const listings = useMemo(
+    () =>
+      selectedIds == null
+        ? allListings
+        : allListings.filter((listing) => {
+            const id = homeListingNavigationId(listing);
+            return id != null && selectedIds.includes(id);
+          }),
+    [allListings, selectedIds],
+  );
+  const loadedCount = allListings.length;
+  const totalCount = listingsData.totalNumber ?? loadedCount;
+  const hasMore = loadedCount < totalCount;
+  const [appending, setAppending] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const updateState = useCallback(
     (patch: HomeViewStatePatch) => {
@@ -637,6 +721,41 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
       setLoading(false);
     }
   }, [actions, query]);
+
+  // The endless feed: the next page is the one after the rows already held, so a partial last page
+  // (a lifecycle move removed a row) still resolves to the right offset.
+  const loadMore = useCallback(async () => {
+    if (appending || !hasMore) return;
+    setAppending(true);
+    try {
+      await actions.listingsData.appendListingsPage(
+        homeQueryFromState(values, Math.floor(loadedCount / HOME_PAGE_SIZE) + 1),
+      );
+    } finally {
+      setAppending(false);
+    }
+  }, [actions, appending, hasMore, loadedCount, values]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || loading || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) void loadMore();
+      },
+      { rootMargin: '600px 0px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore, loading, values.view]);
+
+  // A new query means a new result; whatever pin was picked belongs to the old one.
+  useEffect(() => {
+    setSelectedIds(null);
+    setHoveredId(null);
+  }, [query]);
+
+  const onBboxChange = useCallback((bbox: HomeBbox | null) => updateState({ bbox }), [updateState]);
 
   // A card overflow action mutates the one lifecycle through the canonical action, then reloads the
   // current query so the moved listing leaves (or joins) the active scope without a second source of
@@ -709,11 +828,11 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
     const next = selectedProviders.has(id)
       ? values.providerIds.filter((entry) => entry !== id)
       : [...values.providerIds, id];
-    updateState({ providerIds: normalizeProviderIds(next), page: 1 });
+    updateState({ providerIds: normalizeProviderIds(next) });
   };
 
   const selectAllProviders = () => {
-    updateState({ providerIds: [], page: 1 });
+    updateState({ providerIds: [] });
   };
 
   const selectedSort = homeSortOption(values.sort);
@@ -726,9 +845,9 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   // the reader reverse it without a separate direction toggle.
   const chooseSort = (option: HomeSortOption) => {
     if (option.key === values.sort) {
-      updateState({ dir: activeDirection === 'asc' ? 'desc' : 'asc', page: 1 });
+      updateState({ dir: activeDirection === 'asc' ? 'desc' : 'asc' });
     } else {
-      updateState({ sort: option.key, dir: option.direction, page: 1 });
+      updateState({ sort: option.key, dir: option.direction });
     }
   };
   const navigateToListing = useCallback(
@@ -738,7 +857,7 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    updateState({ q: searchDraft.trim() || null, page: 1 });
+    updateState({ q: searchDraft.trim() || null });
   };
 
   return (
@@ -793,7 +912,7 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
                 type="button"
                 className={values.activity === activity ? 'is-selected' : ''}
                 aria-pressed={values.activity === activity}
-                onClick={() => updateState({ activity, page: 1 })}
+                onClick={() => updateState({ activity })}
               >
                 {ActivitySymbol && <ActivitySymbol aria-hidden="true" className="home__activity-symbol" />}
                 {t(ACTIVITY_LABEL_KEYS[activity as Activity])}
@@ -921,36 +1040,46 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
           ))}
         </section>
       )}
-      {!loading && listings.length > 0 && values.view === 'map' && (
+      {!loading && allListings.length > 0 && values.view === 'map' && (
         <div className="home__split">
           <section className="home__split-list" aria-label={t('home.feedAria')}>
-            {listings.map((listing, index) => (
-              <HomeStayCard
-                key={homeListingNavigationId(listing) ?? `listing-${index}`}
-                listing={listing}
-                variant="split"
-                onNavigate={navigateToListing}
-                onLifecycleAction={handleLifecycleAction}
-              />
-            ))}
+            {listings.map((listing, index) => {
+              const id = homeListingNavigationId(listing);
+              return (
+                <HomeStayCard
+                  key={id ?? `listing-${index}`}
+                  listing={listing}
+                  variant="split"
+                  highlighted={id != null && id === hoveredId}
+                  onHover={(hovering) => setHoveredId(hovering ? id : null)}
+                  onNavigate={navigateToListing}
+                  onLifecycleAction={handleLifecycleAction}
+                />
+              );
+            })}
+            {listings.length === 0 && <p className="home__state">{t('home.mapSelectionEmpty')}</p>}
           </section>
-          <HomeMap listings={listings} onNavigate={navigateToListing} />
+          <HomeMap
+            listings={allListings}
+            bbox={values.bbox}
+            onBboxChange={onBboxChange}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
+            hoveredId={hoveredId}
+            onHoverChange={setHoveredId}
+          />
         </div>
       )}
 
-      {!loading && listings.length > 0 && (
+      {!loading && allListings.length > 0 && (
         <div className="home__footer-state">
-          {t('home.showing', { count: String(listingsData.totalNumber ?? listings.length) })}
-          {values.page > 1 && (
-            <button type="button" onClick={() => updateState({ page: values.page - 1 })}>
-              {t('home.previous')}
+          <span>{t('home.showingOf', { loaded: String(loadedCount), total: String(totalCount) })}</span>
+          {hasMore && (
+            <button type="button" onClick={() => void loadMore()} disabled={appending}>
+              {appending ? t('home.loadingMore') : t('home.loadMore')}
             </button>
           )}
-          {values.page * query.pageSize < (listingsData.totalNumber ?? 0) && (
-            <button type="button" onClick={() => updateState({ page: values.page + 1 })}>
-              {t('home.next')}
-            </button>
-          )}
+          <div ref={sentinelRef} className="home__sentinel" aria-hidden="true" />
         </div>
       )}
     </div>

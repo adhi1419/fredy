@@ -27,9 +27,9 @@ const listing = (id: string | undefined, latitude: number | null, longitude: num
 });
 
 describe('Home list and map convergence', () => {
-  it('switches representation without dropping query, activity, provider, sort, or page state', () => {
+  it('switches representation without dropping query, activity, provider, sort, or map area state', () => {
     const initial = new URLSearchParams(
-      'q=Kreuzberg&activity=applied&provider=immoscout%2Cimmowelt&sort=price&dir=asc&page=2&source=legacy',
+      'q=Kreuzberg&activity=applied&provider=immoscout%2Cimmowelt&sort=price&dir=asc&bbox=13.3,52.4,13.5,52.6&source=legacy',
     );
 
     const mapParams = writeHomeViewState(initial, { view: 'map' });
@@ -41,7 +41,7 @@ describe('Home list and map convergence', () => {
       providerIds: ['immoscout', 'immowelt'],
       sort: 'price',
       dir: 'asc',
-      page: 2,
+      bbox: { west: 13.3, south: 52.4, east: 13.5, north: 52.6 },
     });
     expect(mapParams.get('source')).toBe('legacy');
 

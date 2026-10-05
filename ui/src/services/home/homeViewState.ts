@@ -47,23 +47,33 @@ export interface HomeViewState {
   providerIds: string[];
   sort: HomeSortKey;
   dir: string;
-  page: number;
+  /** The map viewport the results are narrowed to, or null for everywhere. */
+  bbox: HomeBbox | null;
+}
+
+/** A geographic box in WGS84 degrees, longitude first, as the listings API takes it. */
+export interface HomeBbox {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
 }
 
 export type HomeViewStatePatch = Partial<HomeViewState>;
 
 export interface HomeQueryState {
-  page?: number;
   q?: string | null;
   activity?: HomeActivity;
   providerIds?: readonly string[];
   sort?: HomeSortKey;
   dir?: string;
+  bbox?: HomeBbox | null;
 }
 
 export interface HomeQueryFilter {
   statusFilter: HomeActivity;
   providerFilter: string | null;
+  bbox: string | null;
 }
 
 export interface HomeQueryPayload {
@@ -155,37 +165,90 @@ export function homeMapMarkerTarget(listings: readonly HomeMapListing[]): string
   return null;
 }
 
-export type HomeMapMarkerTrigger = 'pointer' | 'keyboard';
-
-export type HomeMapMarkerAction =
-  | { trigger: HomeMapMarkerTrigger; kind: 'group'; listings: HomeMapListing[] }
-  | { trigger: HomeMapMarkerTrigger; kind: 'listing'; id: string };
+/**
+ * The listing IDs a marker stands for, in list order. Activating a marker narrows the companion list
+ * to exactly these rows - one for a lone pin, several for a same-address group - instead of leaving
+ * the page, so the pin and the list stay one view of the same data.
+ */
+export function homeMapMarkerIds(listings: readonly HomeMapListing[]): string[] {
+  const ids: string[] = [];
+  for (const listing of listings) {
+    const id = homeListingNavigationId(listing);
+    if (id != null) ids.push(id);
+  }
+  return ids;
+}
 
 /**
- * Keep marker activation deterministic: a collision group always opens the chooser, while a
- * single marker keeps its direct navigation path.
+ * Toggle semantics for a marker selection: activating the pins already selected clears the
+ * selection, anything else replaces it. Two groups never share an ID, so comparing the sorted lists
+ * is enough.
  */
-export function homeMapMarkerAction(
-  listings: readonly HomeMapListing[],
-  trigger: HomeMapMarkerTrigger,
-): HomeMapMarkerAction | null {
-  if (listings.length > 1) return { trigger, kind: 'group', listings: [...listings] };
-
-  const id = homeMapMarkerTarget(listings);
-  return id == null ? null : { trigger, kind: 'listing', id };
+export function homeMapToggleSelection(current: readonly string[] | null, next: readonly string[]): string[] | null {
+  if (next.length === 0) return current == null ? null : [...current];
+  if (current != null && current.length === next.length) {
+    const sortedCurrent = [...current].sort();
+    const sortedNext = [...next].sort();
+    if (sortedCurrent.every((id, index) => id === sortedNext[index])) return null;
+  }
+  return [...next];
 }
 
-/** Restore focus only while the original marker remains mounted in the document. */
-export function restoreHomeMapMarkerFocus(marker: Pick<HTMLElement, 'isConnected' | 'focus'> | null): void {
-  if (marker?.isConnected) marker.focus();
+/**
+ * Which glyph marks a saved location on the Home map. Labels are free text, so the workplace is
+ * recognised by name in the three interface languages; every other place is a flag. A match is
+ * only ever cosmetic - the commute figures do not depend on it.
+ */
+export type HomeSavedPlaceGlyph = 'work' | 'flag';
+
+// Not `\b`: JavaScript word boundaries are ASCII-only, so one would never close after `Büro`.
+const WORK_LABEL = /(?<![\p{L}\p{N}])(work|office|job|arbeit|büro|buero|firma|iş|ofis)(?![\p{L}\p{N}])/u;
+
+export function homeSavedPlaceGlyph(label: string | null | undefined): HomeSavedPlaceGlyph {
+  // Default lower-casing, plus the one Turkish letter it leaves alone: the dotted capital İ. The
+  // Turkish locale's own rule would turn an English "OFFICE" into "offıce" instead.
+  const folded = label?.toLowerCase().replace(/i̇/g, 'i');
+  return typeof folded === 'string' && WORK_LABEL.test(folded) ? 'work' : 'flag';
 }
 
-/** Return a chooser ID only when the requested listing belongs to the active group. */
-export function homeMapGroupSelectionId(listings: readonly HomeMapListing[], selectedId: string): string | null {
-  return listings.some((listing) => homeListingNavigationId(listing) === selectedId) ? selectedId : null;
+/** Bounding boxes travel in the URL and to the API at this precision: about a metre. */
+const BBOX_DECIMALS = 5;
+
+function roundCoordinate(value: number): number {
+  return Number(value.toFixed(BBOX_DECIMALS));
 }
 
-export const HOME_PAGE_SIZE = 40;
+/**
+ * Parse `west,south,east,north` into a box, or null when it is not four finite ordered WGS84
+ * numbers. Lenient on purpose: a hand-edited URL falls back to "everywhere" rather than erroring.
+ */
+export function parseHomeBbox(value: string | null | undefined): HomeBbox | null {
+  if (typeof value !== 'string') return null;
+  const parts = value.split(',').map((part) => Number(part.trim()));
+  if (parts.length !== 4 || parts.some((part) => !Number.isFinite(part))) return null;
+  const [west, south, east, north] = parts;
+  if (west < -180 || east > 180 || south < -90 || north > 90) return null;
+  if (west >= east || south >= north) return null;
+  return { west, south, east, north };
+}
+
+/** Serialise a box the way {@link parseHomeBbox} reads it, rounded so URLs stay short. */
+export function formatHomeBbox(bbox: HomeBbox | null | undefined): string | null {
+  if (bbox == null) return null;
+  return [bbox.west, bbox.south, bbox.east, bbox.north].map(roundCoordinate).join(',');
+}
+
+/**
+ * The box a map viewport reports, rounded. Takes the four edges rather than a MapLibre
+ * `LngLatBounds` so this module stays free of the map library.
+ */
+export function homeBboxFromEdges(west: number, south: number, east: number, north: number): HomeBbox | null {
+  return parseHomeBbox([west, south, east, north].map(roundCoordinate).join(','));
+}
+
+// Small on purpose: the feed scrolls endlessly, and travel times are hydrated per page, so the
+// first cards land sooner the fewer rows the first page carries.
+export const HOME_PAGE_SIZE = 10;
 
 export const HOME_VIEWS: readonly HomeView[] = Object.freeze(['feed', 'map']);
 export const HOME_ACTIVITIES: readonly HomeActivity[] = Object.freeze(['new', 'applied', 'viewed', 'archived']);
@@ -289,7 +352,6 @@ export function readHomeViewState(
     providerValues.push(...searchParams.getAll('providerFilter'));
   }
 
-  const parsedPage = Number(first('page'));
   return {
     view,
     q: first('q', 'freeTextFilter'),
@@ -297,7 +359,7 @@ export function readHomeViewState(
     providerIds: normalizeProviderIds(providerValues),
     sort,
     dir: first('dir', 'sortdir') ?? sortOption?.direction ?? DEFAULT_DIRECTION,
-    page: Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+    bbox: parseHomeBbox(first('bbox')),
   };
 }
 
@@ -346,18 +408,24 @@ export function writeHomeViewState(
     else next.set('dir', state.dir);
     next.delete('sortdir');
   }
-  if ('page' in patch) {
-    if (state.page === 1) next.delete('page');
-    else next.set('page', String(state.page));
+  if ('bbox' in patch) {
+    const serialized = formatHomeBbox(state.bbox);
+    if (serialized == null) next.delete('bbox');
+    else next.set('bbox', serialized);
   }
+  // The feed scrolls endlessly now; a page number from an old link means nothing and is dropped.
+  next.delete('page');
 
   return next;
 }
 
-/** Translate Home state into the existing listing table action contract. */
-export function homeQueryFromState(state: HomeQueryState): HomeQueryPayload {
+/**
+ * Translate Home state into the existing listing table action contract. `page` is the page to
+ * fetch; the endless feed asks for 1 on every state change and N+1 as it scrolls.
+ */
+export function homeQueryFromState(state: HomeQueryState, page = 1): HomeQueryPayload {
   return {
-    page: state.page ?? 1,
+    page,
     pageSize: HOME_PAGE_SIZE,
     freeTextFilter: state.q ?? null,
     sortfield: state.sort ?? DEFAULT_SORT,
@@ -365,6 +433,7 @@ export function homeQueryFromState(state: HomeQueryState): HomeQueryPayload {
     filter: {
       statusFilter: state.activity ?? DEFAULT_ACTIVITY,
       providerFilter: providerParamFromIds(state.providerIds ?? []),
+      bbox: formatHomeBbox(state.bbox),
     },
   };
 }

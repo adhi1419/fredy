@@ -22,6 +22,7 @@ import {
 interface TestLayer extends OverlayLayerView {
   type: string;
   layout?: Record<string, unknown>;
+  paint?: Record<string, unknown>;
   filter?: FilterSpecification;
   source?: unknown;
   'source-layer'?: unknown;
@@ -42,11 +43,13 @@ interface TestMap extends OverlayMap {
 
 function mutableLayer(layer: LayerSpecification): TestLayer {
   const layout = 'layout' in layer && layer.layout != null ? { ...layer.layout } : undefined;
+  const paint = 'paint' in layer && layer.paint != null ? { ...layer.paint } : undefined;
   const filter = 'filter' in layer ? layer.filter : undefined;
   return {
     id: layer.id,
     type: layer.type,
     ...(layout == null ? {} : { layout }),
+    ...(paint == null ? {} : { paint }),
     ...(filter == null ? {} : { filter }),
     ...('source' in layer ? { source: layer.source } : {}),
     ...('source-layer' in layer ? { 'source-layer': layer['source-layer'] } : {}),
@@ -163,7 +166,7 @@ describe('overlayLayers', () => {
     it('adds the source and the transit layers', () => {
       const map = makeMap(LABELLED_STYLE);
 
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
 
       expect(map.sources[OPENFREEMAP_SOURCE_ID]).toBeDefined();
       expect(layerIds(map)).toEqual([
@@ -179,7 +182,7 @@ describe('overlayLayers', () => {
     it('reads rail lines and transit stops from the shared source', () => {
       const map = makeMap(RASTER_STYLE);
 
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
 
       expect(map.added.map(({ layer }) => layer.id)).toEqual(TRANSIT_LAYER_IDS);
       for (const { layer } of map.added) {
@@ -191,7 +194,7 @@ describe('overlayLayers', () => {
     it('inserts the layers below the first label layer', () => {
       const map = makeMap(LABELLED_STYLE);
 
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
 
       for (const { beforeId } of map.added) {
         expect(beforeId).toBe('place-labels');
@@ -201,7 +204,7 @@ describe('overlayLayers', () => {
     it('labels the stops itself on a style that has no labels', () => {
       const map = makeMap(RASTER_STYLE);
 
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
 
       expect(layerIds(map)).toEqual(['satellite-tiles', 'satellite-labels', ...TRANSIT_LAYER_IDS]);
       for (const { beforeId } of map.added) {
@@ -212,9 +215,9 @@ describe('overlayLayers', () => {
     it('adds nothing twice when re-applied', () => {
       const map = makeMap(LABELLED_STYLE);
 
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
       const afterFirstRun = layerIds(map);
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
 
       expect(layerIds(map)).toEqual(afterFirstRun);
       expect(map.added).toHaveLength(TRANSIT_LAYER_IDS.length);
@@ -222,9 +225,9 @@ describe('overlayLayers', () => {
 
     it('removes only its own layers and keeps the source', () => {
       const map = makeMap(RASTER_STYLE);
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
 
-      applyTransitLayers(map, false);
+      applyTransitLayers(map, false, 'light');
 
       expect(layerIds(map)).toEqual(['satellite-tiles', 'satellite-labels']);
       expect(map.sources[OPENFREEMAP_SOURCE_ID]).toBeDefined();
@@ -234,7 +237,7 @@ describe('overlayLayers', () => {
       const map = makeMap(LABELLED_STYLE);
       const originalPoiFilter = map.getFilter('poi_r7');
 
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
       expect(basemapPoiVisibility(map)).toBe('none');
       // The rank layers stay, minus the stops the overlay now draws itself.
       expect(map.getFilter('poi_r7')).toEqual([
@@ -243,7 +246,7 @@ describe('overlayLayers', () => {
         ['!', ['match', ['get', 'class'], ['railway', 'rail', 'bus'], true, false]],
       ]);
 
-      applyTransitLayers(map, false);
+      applyTransitLayers(map, false, 'light');
       expect(basemapPoiVisibility(map)).toBe('visible');
       expect(map.getFilter('poi_r7')).toEqual(originalPoiFilter);
     });
@@ -252,9 +255,9 @@ describe('overlayLayers', () => {
       const map = makeMap(LABELLED_STYLE);
 
       // A style reload re-applies the overlay repeatedly; the filter must not grow each time.
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
       const afterFirstRun = map.getFilter('poi_r7');
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
 
       expect(map.getFilter('poi_r7')).toEqual(afterFirstRun);
     });
@@ -262,14 +265,14 @@ describe('overlayLayers', () => {
     it('copes with a style that has no transit POIs of its own', () => {
       const map = makeMap(RASTER_STYLE);
 
-      expect(() => applyTransitLayers(map, true)).not.toThrow();
-      expect(() => applyTransitLayers(map, false)).not.toThrow();
+      expect(() => applyTransitLayers(map, true, 'light')).not.toThrow();
+      expect(() => applyTransitLayers(map, false, 'light')).not.toThrow();
     });
 
     it('marks the stops with an icon rather than a bare dot', () => {
       const map = makeMap(RASTER_STYLE);
 
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
       const stops = map.getLayer(TRANSIT_STOPS_LAYER_ID);
 
       expect(stops).toBeDefined();
@@ -284,10 +287,10 @@ describe('overlayLayers', () => {
 
     it('is a no-op when disabled twice', () => {
       const map = makeMap(LABELLED_STYLE);
-      applyTransitLayers(map, true);
-      applyTransitLayers(map, false);
+      applyTransitLayers(map, true, 'light');
+      applyTransitLayers(map, false, 'light');
 
-      expect(() => applyTransitLayers(map, false)).not.toThrow();
+      expect(() => applyTransitLayers(map, false, 'light')).not.toThrow();
       expect(layerIds(map)).toEqual(['background', 'water', 'place-labels', 'poi_transit', 'poi_r7']);
     });
   });
@@ -315,14 +318,14 @@ describe('overlayLayers', () => {
       const map = makeMap(LABELLED_STYLE);
 
       applyBuildingsLayer(map, true);
-      applyTransitLayers(map, true);
+      applyTransitLayers(map, true, 'light');
 
       expect(Object.keys(map.sources)).toEqual([OPENFREEMAP_SOURCE_ID]);
       expect(layerIds(map)).toContain(BUILDINGS_LAYER_ID);
       expect(layerIds(map)).toEqual(expect.arrayContaining(['transit-lines', 'transit-stops']));
 
       // Turning one off leaves the other alone.
-      applyTransitLayers(map, false);
+      applyTransitLayers(map, false, 'light');
       expect(layerIds(map)).toEqual([
         'background',
         'water',
@@ -331,6 +334,53 @@ describe('overlayLayers', () => {
         'poi_transit',
         'poi_r7',
       ]);
+    });
+  });
+
+  describe('transit overlay theme', () => {
+    const paintOf = (map: TestMap, id: string): Record<string, unknown> => {
+      const layer = map.getLayer(id);
+      if (layer?.paint == null) throw new Error(`Layer ${id} has no paint.`);
+      return layer.paint;
+    };
+
+    it('paints light chrome on the light basemap', () => {
+      const map = makeMap(RASTER_STYLE);
+
+      applyTransitLayers(map, true, 'light');
+
+      const casing = paintOf(map, 'transit-line-casing');
+      expect(casing['line-color']).toBe('#ffffff');
+      expect(casing['line-opacity']).toBe(0.6);
+
+      const labels = paintOf(map, 'transit-stop-labels');
+      expect(labels['text-color']).toBe('#1f2937');
+      expect(labels['text-halo-color']).toBe('#ffffff');
+    });
+
+    it('paints dark chrome on the dark basemap', () => {
+      const map = makeMap(RASTER_STYLE);
+
+      applyTransitLayers(map, true, 'dark');
+
+      const casing = paintOf(map, 'transit-line-casing');
+      expect(casing['line-color']).toBe('#0c0c0c');
+      expect(casing['line-opacity']).toBe(0.7);
+
+      const labels = paintOf(map, 'transit-stop-labels');
+      expect(labels['text-color']).toBe('#f3f0ea');
+      expect(labels['text-halo-color']).toBe('#0c0c0c');
+    });
+
+    it('keeps the network line colours identical across themes', () => {
+      const light = makeMap(RASTER_STYLE);
+      const dark = makeMap(RASTER_STYLE);
+
+      applyTransitLayers(light, true, 'light');
+      applyTransitLayers(dark, true, 'dark');
+
+      // The coloured line itself is a network colour, not interface chrome, so it must not move.
+      expect(paintOf(dark, 'transit-lines')['line-color']).toEqual(paintOf(light, 'transit-lines')['line-color']);
     });
   });
 });
