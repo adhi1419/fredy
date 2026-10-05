@@ -102,7 +102,6 @@ interface MapState {
       home_addresses?: unknown;
       language?: string;
       transit_hover_popups?: boolean;
-      listing_deletion_preference?: { skipPrompt?: boolean; hardDelete?: boolean } | null;
     } | null;
   };
   jobsData: { jobs: Array<{ id: string; name: string }> };
@@ -112,7 +111,6 @@ interface MapState {
 interface MapActions {
   listingsData: { getListingsForMap: (query: { jobId: string | null }) => void };
   userSettings: {
-    setListingDeletionPreference: (preference: { skipPrompt: boolean; hardDelete: boolean }) => Promise<void>;
     setTransitHoverPopups: (value: boolean) => Promise<void>;
   };
 }
@@ -150,8 +148,6 @@ export default function MapView(): ReactElement {
   const language = userSettings?.language ?? 'en';
   // Absent means off, which is why this needed no migration.
   const transitHoverPopups = userSettings?.transit_hover_popups === true;
-  const listingDeletionPref = userSettings?.listing_deletion_preference;
-  const defaultDeleteType = listingDeletionPref?.hardDelete ? 'hard' : 'soft';
 
   const jobs = useSelector((state: MapState) => state.jobsData.jobs);
   // No job is selected here by default and a listing carries no provider into this view, so the
@@ -180,15 +176,8 @@ export default function MapView(): ReactElement {
   const [listingToDelete, setListingToDelete] = useState<string | null>(null);
   const deleteListingRef = useRef<(id: string) => void>(() => {});
 
-  const confirmListingDeletion = async (
-    hardDelete: boolean,
-    remember?: boolean,
-    id: string | null = listingToDelete,
-  ) => {
+  const confirmListingDeletion = async (hardDelete: boolean, id: string | null = listingToDelete) => {
     try {
-      if (remember) {
-        await actions.userSettings.setListingDeletionPreference({ skipPrompt: true, hardDelete });
-      }
       await xhrDelete('/api/listings/', { ids: [id], hardDelete });
       Toast.success(t('map.toastDeleted'));
       fetchListings();
@@ -201,10 +190,6 @@ export default function MapView(): ReactElement {
   };
 
   deleteListingRef.current = (id: string) => {
-    if (listingDeletionPref?.skipPrompt) {
-      confirmListingDeletion(listingDeletionPref.hardDelete ?? false, false, id);
-      return;
-    }
     setListingToDelete(id);
     setDeleteModalVisible(true);
   };
@@ -677,8 +662,7 @@ export default function MapView(): ReactElement {
 
         <ListingDeletionModal
           visible={deleteModalVisible}
-          defaultDeleteType={defaultDeleteType}
-          onConfirm={confirmListingDeletion}
+          onConfirm={(hardDelete) => confirmListingDeletion(hardDelete)}
           onCancel={() => {
             setDeleteModalVisible(false);
             setListingToDelete(null);

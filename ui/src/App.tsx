@@ -10,7 +10,6 @@ import InsufficientPermission from './components/permission/InsufficientPermissi
 import SettingsLayout from './views/settings/SettingsLayout';
 import PreferencesPage from './views/settings/pages/PreferencesPage';
 import TravelTimePage from './views/settings/pages/TravelTimePage';
-import ListingDetailsPage from './views/settings/pages/ListingDetailsPage';
 import NotificationsPage from './views/settings/pages/NotificationsPage';
 import InquiryProfilePage from './views/settings/pages/InquiryProfilePage';
 import JobMutation from './views/jobs/mutation/JobMutation';
@@ -263,7 +262,6 @@ export default function FredyApp() {
                         <Route index element={<Navigate to="/settings/preferences" replace />} />
                         <Route path="preferences" element={<PreferencesPage />} />
                         <Route path="travel-time" element={<TravelTimePage />} />
-                        <Route path="listings" element={<ListingDetailsPage />} />
                         <Route path="notifications" element={<NotificationsPage />} />
                         <Route path="inquiry-profile" element={<InquiryProfilePage />} />
                       </Route>

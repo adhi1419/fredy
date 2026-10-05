@@ -25,21 +25,12 @@ export interface HomeAddress {
   [key: string]: unknown;
 }
 
-export interface ListingDeletionPreference {
-  skipPrompt?: boolean;
-  hardDelete?: boolean;
-  [key: string]: unknown;
-}
-
 export interface UserSettings {
   home_addresses?: readonly HomeAddress[];
   finance_profile?: SettingsObject | null;
-  provider_details?: readonly string[];
   transit_hover_popups?: boolean;
-  blacklist_filter_on_provider_details?: boolean;
   listings_view_mode?: 'grid' | 'table';
   jobs_view_mode?: 'grid' | 'table';
-  listing_deletion_preference?: ListingDeletionPreference;
   inquiry_profile?: SettingsObject;
   language?: string;
   theme?: 'dark' | 'light';
@@ -86,12 +77,9 @@ export interface UserSettingsEffects {
   setHomeAddresses(addresses: readonly HomeAddress[]): Promise<unknown>;
   saveFinanceSection(params: SaveFinanceSectionParams): Promise<unknown>;
   deleteFinanceSection(section: 'rent' | 'buy'): Promise<unknown>;
-  setProviderDetails(providers: readonly string[]): Promise<void>;
   setTransitHoverPopups(enabled: boolean): Promise<void>;
-  setBlacklistFilterOnProviderDetails(enabled: boolean): Promise<void>;
   setListingsViewMode(listingsViewMode: 'grid' | 'table'): Promise<void>;
   setJobsViewMode(jobsViewMode: 'grid' | 'table'): Promise<void>;
-  setListingDeletionPreference(preference: ListingDeletionPreference): Promise<void>;
   saveInquiryProfile(profile: SettingsObject, options?: SaveInquiryProfileOptions): Promise<SettingsObject>;
   setLanguage(language: string): Promise<void>;
   setTheme(theme: 'dark' | 'light'): Promise<void>;
@@ -150,34 +138,12 @@ export function createUserSettingsEffects(
       return persistFinanceSection(set, transport, refreshFinanceSummary, { section, remove: true });
     },
 
-    async setProviderDetails(providers) {
-      try {
-        await transport.post('/api/user/settings/provider-details', { provider_details: providers });
-        setSetting(set, 'provider_details', providers);
-      } catch (exception) {
-        console.error('Error while trying to update provider details setting. Error:', exception);
-        throw exception;
-      }
-    },
-
     async setTransitHoverPopups(enabled) {
       try {
         await transport.post('/api/user/settings/transit-hover-popups', { transit_hover_popups: enabled });
         setSetting(set, 'transit_hover_popups', enabled);
       } catch (exception) {
         console.error('Error while trying to update the transit hover popups setting. Error:', exception);
-        throw exception;
-      }
-    },
-
-    async setBlacklistFilterOnProviderDetails(enabled) {
-      try {
-        await transport.post('/api/user/settings/blacklist-filter-on-details', {
-          blacklist_filter_on_provider_details: enabled,
-        });
-        setSetting(set, 'blacklist_filter_on_provider_details', enabled);
-      } catch (exception) {
-        console.error('Error while trying to update blacklist-filter-on-provider-details setting. Error:', exception);
         throw exception;
       }
     },
@@ -198,18 +164,6 @@ export function createUserSettingsEffects(
         setSetting(set, 'jobs_view_mode', jobsViewMode);
       } catch (exception) {
         console.error('Error while trying to update jobs view mode setting. Error:', exception);
-        throw exception;
-      }
-    },
-
-    async setListingDeletionPreference(preference) {
-      try {
-        await transport.post('/api/user/settings/listing-deletion-preference', {
-          listing_deletion_preference: preference,
-        });
-        setSetting(set, 'listing_deletion_preference', preference);
-      } catch (exception) {
-        console.error('Error while updating listing deletion preference. Error:', exception);
         throw exception;
       }
     },

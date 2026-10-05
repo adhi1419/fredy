@@ -240,7 +240,6 @@ describe('cohesive My account destination', () => {
     expect(PERSONAL_SETTINGS_SECTIONS.map(({ path }) => path)).toEqual([
       '/settings/preferences',
       '/settings/travel-time',
-      '/settings/listings',
       '/settings/notifications',
       '/settings/inquiry-profile',
     ]);

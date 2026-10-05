@@ -229,25 +229,4 @@ describe('#deutscheWohnen provider testsuite()', () => {
       expect(provider.matchesSearchCriteria({ size: 60, price: 900, rooms: 1 }, url)).toBe(true);
     });
   });
-
-  describe('with provider_details enabled', () => {
-    it(
-      'should enrich listings with details',
-      async () => {
-        if (!liveListings?.length) throw new Error('No listings from first test to enrich');
-
-        const enriched = await runConfig.fetchDetails(liveListings[0]);
-
-        expect(enriched).toBeTruthy();
-        expect(enriched.link).toContain('https://www.deutsche-wohnen.com/');
-        expect(enriched.address).toBeTypeOf('string');
-        expect(enriched.address).not.toBe('');
-        if (enriched.description != null) {
-          expect(enriched.description).toBeTypeOf('string');
-          expect(enriched.description).not.toBe('');
-        }
-      },
-      TEST_TIMEOUT,
-    );
-  });
 });

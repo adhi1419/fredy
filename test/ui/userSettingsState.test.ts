@@ -57,29 +57,18 @@ describe('user settings state domain', () => {
     post.mockResolvedValue({ status: 200, json: { success: true } });
 
     await effects.setHomeAddresses(addresses);
-    await effects.setProviderDetails(['immoscout']);
     await effects.setTransitHoverPopups(true);
-    await effects.setBlacklistFilterOnProviderDetails(false);
     await effects.setListingsViewMode('table');
     await effects.setJobsViewMode('grid');
-    await effects.setListingDeletionPreference({ skipPrompt: true, hardDelete: false });
     await effects.saveInquiryProfile({ name: 'Alice Example', immoscoutPrivacyAccepted: true });
     await effects.setLanguage('de');
     await effects.setTheme('light');
 
     expect(post.mock.calls).toEqual([
       ['/api/user/settings/home-address', { home_addresses: addresses }],
-      ['/api/user/settings/provider-details', { provider_details: ['immoscout'] }],
       ['/api/user/settings/transit-hover-popups', { transit_hover_popups: true }],
-      ['/api/user/settings/blacklist-filter-on-details', { blacklist_filter_on_provider_details: false }],
       ['/api/user/settings/listings-view-mode', { listings_view_mode: 'table' }],
       ['/api/user/settings/jobs-view-mode', { jobs_view_mode: 'grid' }],
-      [
-        '/api/user/settings/listing-deletion-preference',
-        {
-          listing_deletion_preference: { skipPrompt: true, hardDelete: false },
-        },
-      ],
       [
         '/api/user/settings/inquiry-profile',
         { inquiry_profile: { name: 'Alice Example', immoscoutPrivacyAccepted: true } },
@@ -89,12 +78,9 @@ describe('user settings state domain', () => {
     ]);
     expect(state.userSettings.settings).toMatchObject({
       home_addresses: homeAddressResponse.home_addresses,
-      provider_details: ['immoscout'],
       transit_hover_popups: true,
-      blacklist_filter_on_provider_details: false,
       listings_view_mode: 'table',
       jobs_view_mode: 'grid',
-      listing_deletion_preference: { skipPrompt: true, hardDelete: false },
       inquiry_profile: { name: 'Alice Example', immoscoutPrivacyAccepted: true },
       language: 'de',
       theme: 'light',

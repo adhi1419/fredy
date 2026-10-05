@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Modal, Radio, RadioGroup, Typography, Checkbox } from '@douyinfe/semi-ui-19';
+import { Modal, Radio, RadioGroup, Typography } from '@douyinfe/semi-ui-19';
 import { useTranslation } from '../services/i18n/i18n.jsx';
 
 const { Text } = Typography;
@@ -13,12 +13,11 @@ type DeleteType = 'soft' | 'hard';
 
 interface ListingDeletionModalProps {
   visible: boolean;
-  onConfirm: (hardDelete: boolean, remember?: boolean) => void | Promise<void>;
+  onConfirm: (hardDelete: boolean) => void | Promise<void>;
   onCancel: () => void;
   title?: string;
   showOptions?: boolean;
   message?: string;
-  defaultDeleteType?: DeleteType;
 }
 
 const ListingDeletionModal = ({
@@ -28,24 +27,21 @@ const ListingDeletionModal = ({
   title,
   showOptions = true,
   message,
-  defaultDeleteType = 'soft',
 }: ListingDeletionModalProps) => {
   const t = useTranslation();
   const resolvedTitle = title ?? t('listing.deletion.title');
   const resolvedMessage = message ?? t('listing.deletion.message');
   const [deleteType, setDeleteType] = useState<DeleteType>('soft');
-  const [remember, setRemember] = useState(false);
 
   useEffect(() => {
     if (visible) {
-      setDeleteType(defaultDeleteType);
-      setRemember(false);
+      setDeleteType('soft');
     }
-  }, [visible, defaultDeleteType]);
+  }, [visible]);
 
   const handleOk = () => {
     if (showOptions) {
-      onConfirm(deleteType === 'hard', remember);
+      onConfirm(deleteType === 'hard');
     } else {
       onConfirm(true);
     }
@@ -90,13 +86,6 @@ const ListingDeletionModal = ({
               </div>
             </Radio>
           </RadioGroup>
-          <Checkbox
-            checked={remember}
-            onChange={(e) => setRemember(e.target.checked ?? false)}
-            style={{ marginTop: 16 }}
-          >
-            {t('listing.deletion.rememberChoice')}
-          </Checkbox>
         </>
       )}
     </Modal>

@@ -42,8 +42,6 @@
     "ui/src/views/jobs/savedSearchesLegacy.d.ts",
     "ui/src/views/settings/SettingsLayout.tsx",
     "ui/src/views/settings/pages/PreferencesPage.tsx",
-    "ui/src/views/settings/pages/ListingDetailsPage.tsx",
-    "ui/src/views/settings/pages/personalSettingsDrafts.ts",
     "ui/src/components/myAccountWireframe/MyAccountWireframeMenu.tsx",
     "ui/src/vite-env.d.ts",
     "ui/src/services/onboarding/applicantProfileOnboarding.ts",
