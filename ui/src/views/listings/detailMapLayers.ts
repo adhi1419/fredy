@@ -14,8 +14,17 @@ export const ROUTE_CASING_LAYER_ID = 'route-casing';
 export const ROUTE_LINE_LAYER_ID = 'route';
 export const ROUTE_LABEL_LAYER_ID = 'route-distance';
 
-/** Same blue as the listing marker, so the line reads as belonging to it. */
-const ROUTE_COLOR = '#3FB1CE';
+/**
+ * The straight-line and label chrome per theme. MapLibre paint cannot read CSS custom properties,
+ * so these mirror the ink/paper tokens as literals: the route is ink on the light basemap and paper
+ * on the dark one, with the opposite as casing so it still reads over any road.
+ */
+const ROUTE_CHROME = {
+  light: { line: '#10100f', casing: '#fefdfa', text: '#fefdfa', halo: '#10100f' },
+  dark: { line: '#f3f0ea', casing: '#0c0c0c', text: '#0c0c0c', halo: '#f3f0ea' },
+} as const;
+
+export type RouteTheme = keyof typeof ROUTE_CHROME;
 
 type Coordinate = [number, number];
 export type RouteMode = 'straight' | 'car' | 'bike' | 'walk' | 'transit';
@@ -243,7 +252,12 @@ export function buildRouteData(
  * @param {{type: string, features: Array<Object>}} data - From `buildRouteData`.
  * @returns {void}
  */
-export function applyRouteLayers(map: RouteMap | null | undefined, data: RouteData | null | undefined): void {
+export function applyRouteLayers(
+  map: RouteMap | null | undefined,
+  data: RouteData | null | undefined,
+  theme: RouteTheme = 'dark',
+): void {
+  const chrome = ROUTE_CHROME[theme];
   if (map == null) return;
 
   if (data == null || data.features.length === 0) {
@@ -263,15 +277,15 @@ export function applyRouteLayers(map: RouteMap | null | undefined, data: RouteDa
     map.addSource(ROUTE_SOURCE_ID, { type: 'geojson', data });
   }
 
-  // A dark casing under everything. Transit legs are drawn in their operator's colour, and a yellow
-  // bus line on top of a yellow motorway is invisible without one - which is exactly what happened.
+  // A casing under everything, in the basemap's own colour. Transit legs are drawn in their
+  // operator's colour, and a yellow bus line on a yellow motorway is invisible without one.
   if (map.getLayer(ROUTE_CASING_LAYER_ID) == null) {
     map.addLayer({
       id: ROUTE_CASING_LAYER_ID,
       type: 'line',
       source: ROUTE_SOURCE_ID,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#1b1b1b', 'line-width': 8, 'line-opacity': 0.55 },
+      paint: { 'line-color': chrome.casing, 'line-width': 8, 'line-opacity': 0.85 },
       filter: ['==', '$type', 'LineString'],
     });
   }
@@ -283,8 +297,8 @@ export function applyRouteLayers(map: RouteMap | null | undefined, data: RouteDa
       source: ROUTE_SOURCE_ID,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        // Per-feature colour where a transit leg carried one, the listing blue everywhere else.
-        'line-color': ['coalesce', ['get', 'color'], ROUTE_COLOR],
+        // Per-feature colour where a transit leg carried one, the ink everywhere else.
+        'line-color': ['coalesce', ['get', 'color'], chrome.line],
         'line-width': 5,
         // Dashed for the parts you walk, solid for the parts you ride. Reads as a journey rather
         // than as one undifferentiated squiggle.
@@ -301,11 +315,12 @@ export function applyRouteLayers(map: RouteMap | null | undefined, data: RouteDa
       source: ROUTE_SOURCE_ID,
       layout: {
         'text-field': ['get', 'distance'],
-        'text-size': 14,
+        'text-size': 12,
+        'text-font': ['Noto Sans Regular'],
         'text-offset': [0, -1],
         'text-allow-overlap': true,
       },
-      paint: { 'text-color': '#ffffff', 'text-halo-color': ROUTE_COLOR, 'text-halo-width': 2 },
+      paint: { 'text-color': chrome.text, 'text-halo-color': chrome.halo, 'text-halo-width': 2 },
       filter: ['==', '$type', 'Point'],
     });
   }

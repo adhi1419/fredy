@@ -27,6 +27,7 @@ import MapCanvas from '../../components/map/Map.jsx';
 import { groupListingsByPosition, getBoundsFromCoords } from '../listings/mapUtils.js';
 import { useProviderCountries } from '../../hooks/useProviderCountries.js';
 import { getAddresses } from '../../utils.js';
+import { createPinElement } from '../../components/map/pins.js';
 import { useActions, useSelector } from '../../services/state/store.js';
 import { formatEuroPrice } from '../../services/price/priceService.js';
 import { useLocale, useTranslation } from '../../services/i18n/i18n.jsx';
@@ -444,15 +445,6 @@ interface HomeMapProps {
   onHoverChange: (id: string | null) => void;
 }
 
-/**
- * Glyphs for saved places, as markup because the markers are plain DOM nodes. Stroked at 1.75 so
- * they read at 14px on both basemaps; `currentColor` lets the marker's CSS colour them.
- */
-const SAVED_PLACE_GLYPHS = {
-  work: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M3 12h18"/></svg>',
-  flag: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"/></svg>',
-} as const;
-
 /** How long the map may rest after a user gesture before the viewport becomes the filter. */
 const BBOX_SETTLE_MS = 400;
 
@@ -497,15 +489,11 @@ function HomeMap({
   useEffect(() => {
     if (!map) return undefined;
     const created = savedPlaces.map((place) => {
-      const glyph = homeSavedPlaceGlyph(place.label);
-      const element = document.createElement('div');
-      element.className = `home__map-place home__map-place--${glyph}`;
-      element.innerHTML = SAVED_PLACE_GLYPHS[glyph];
-      element.setAttribute('role', 'img');
-      const label = place.label || place.address;
-      element.setAttribute('aria-label', label);
-      element.title = label;
-      // A pin points at its place, so it hangs from its tip rather than sitting on its centre.
+      const element = createPinElement({
+        role: 'place',
+        glyph: homeSavedPlaceGlyph(place.label),
+        label: place.label || place.address,
+      });
       return new maplibregl.Marker({ element, anchor: 'bottom' })
         .setLngLat([place.coords.lng, place.coords.lat])
         .addTo(map);
@@ -536,7 +524,7 @@ function HomeMap({
   // Hover -> pin. A class toggle on the marker element, so hovering a card never rebuilds the pins.
   useEffect(() => {
     for (const [id, element] of markerElements.current) {
-      element.classList.toggle('home__map-marker--hover', hoveredId != null && id.split('\u0000').includes(hoveredId));
+      element.classList.toggle('fredy-pin--hover', hoveredId != null && id.split('\u0000').includes(hoveredId));
     }
   }, [hoveredId, markers]);
 
@@ -544,7 +532,7 @@ function HomeMap({
     for (const [id, element] of markerElements.current) {
       const ids = id.split('\u0000');
       element.classList.toggle(
-        'home__map-marker--selected',
+        'fredy-pin--selected',
         selectedIds != null && ids.some((entry) => selectedIds.includes(entry)),
       );
       element.setAttribute(
@@ -570,14 +558,13 @@ function HomeMap({
       const first = grouped[0];
       const label =
         grouped.length > 1 ? t('home.mapMarkerMany', { count: String(grouped.length) }) : (first.title ?? '');
-      const markerElement = document.createElement('button');
-      markerElement.type = 'button';
-      markerElement.className = `home__map-marker${grouped.length > 1 ? ' home__map-marker--group' : ''}`;
-      markerElement.textContent = grouped.length > 1 ? String(grouped.length) : '';
-      markerElement.setAttribute('aria-label', label);
-      markerElement.setAttribute('aria-pressed', 'false');
-      markerElement.title = label;
-      const marker = new maplibregl.Marker({ element: markerElement, anchor: 'center' })
+      const markerElement = createPinElement({
+        role: grouped.length > 1 ? 'group' : 'listing',
+        count: grouped.length,
+        label,
+        interactive: true,
+      });
+      const marker = new maplibregl.Marker({ element: markerElement, anchor: 'bottom' })
         .setLngLat([lng, lat])
         .addTo(map);
       if (ids.length > 0) elements.set(ids.join('\u0000'), markerElement);

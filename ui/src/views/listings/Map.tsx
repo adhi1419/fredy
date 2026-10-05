@@ -30,7 +30,9 @@ import { createListingPopupContent } from './listingPopupContent.jsx';
 // Not imported as `Map`. This module is itself called Map.tsx, and a component of that name shadows
 // the global `Map` constructor for the whole file: `new Map()` then invokes a React function
 // component with no props, which fails somewhere inside it rather than where it was written.
-import MapCanvas, { HOME_MARKER_COLOR } from '../../components/map/Map.jsx';
+import MapCanvas from '../../components/map/Map.jsx';
+import { createPinElement } from '../../components/map/pins.js';
+import { homeSavedPlaceGlyph } from '../../services/home/homeViewState.js';
 import type { MapStyleName } from '../../components/map/MapControls.jsx';
 import { useProviderCountries } from '../../hooks/useProviderCountries.js';
 import Headline from '../../components/headline/Headline.jsx';
@@ -69,7 +71,6 @@ const MAP_URL_STATE = {
 const LISTING_POPUP_MAX_WIDTH = '380px';
 
 /** The plain pin, for every job without a limit and for anything not measured yet. */
-const DEFAULT_MARKER_COLOR = '#3FB1CE';
 
 const RangeSliderComponent = ((_RangeSlider as { default?: unknown })?.default ?? _RangeSlider) as (
   props: Record<string, unknown>,
@@ -383,7 +384,14 @@ export default function MapView(): ReactElement {
     popupRoots.current = [];
 
     homeAddresses.forEach((home) => {
-      const marker = new maplibregl.Marker({ color: HOME_MARKER_COLOR })
+      const marker = new maplibregl.Marker({
+        element: createPinElement({
+          role: 'place',
+          glyph: homeSavedPlaceGlyph(home.label),
+          label: home.label || t('map.popupHomeAddress'),
+        }),
+        anchor: 'bottom',
+      })
         .setLngLat([home.coords.lng, home.coords.lat])
         .setPopup(
           new maplibregl.Popup({ offset: 25 }).setHTML(
@@ -488,27 +496,28 @@ export default function MapView(): ReactElement {
       });
 
       // The commute verdict is drawn as the shape underneath rather than onto the pin, so the only
-      // thing left that recolours a pin is the distance ring, which is asked for explicitly.
-      let color = DEFAULT_MARKER_COLOR;
-      if (distanceFilter > 0 && homeAddresses.length > 0) {
-        const inRange = homeAddresses.some(
+      // thing left that marks a pin is the distance ring: a pin inside it is shown selected.
+      const inRange =
+        distanceFilter > 0 &&
+        homeAddresses.length > 0 &&
+        homeAddresses.some(
           (home) => distanceMeters(home.coords.lat, home.coords.lng, lat, lng) <= distanceFilter * 1000,
         );
-        if (inRange) {
-          color = 'orange';
-        }
-      }
+      const pin = createPinElement({
+        role: grouped.length > 1 ? 'group' : 'listing',
+        count: grouped.length,
+        label:
+          grouped.length > 1
+            ? t('map.popupSameAddress', { count: grouped.length })
+            : t('listing.detail.mapPopupListingLocation'),
+        interactive: true,
+      });
+      if (inRange) pin.classList.add('fredy-pin--selected');
 
-      const marker = new maplibregl.Marker({ color }).setLngLat([lng, lat]).setPopup(popup).addTo(map.current!);
-
-      if (grouped.length > 1) {
-        // Says how many listings hide behind this pin, so a stack is recognisable before opening it.
-        const badge = document.createElement('span');
-        badge.className = 'map-marker-badge';
-        badge.textContent = String(grouped.length);
-        badge.title = t('map.popupSameAddress', { count: grouped.length });
-        marker.getElement().appendChild(badge);
-      }
+      const marker = new maplibregl.Marker({ element: pin, anchor: 'bottom' })
+        .setLngLat([lng, lat])
+        .setPopup(popup)
+        .addTo(map.current!);
 
       markers.current.push(marker);
     });
