@@ -101,7 +101,7 @@ resolved in `lib/services/providers/`.
 
 ### How to write new notification adapter?
 
-An **adapter** is the integration itself (Slack, Telegram, ntfy, ...). What a user creates in the
+An **adapter** is the integration itself (Telegram). What a user creates in the
 UI is a **notification channel**: one saved, filled-in configuration of an adapter, reusable across
 jobs. You write adapters, Fredy takes care of the channels built on top of them.
 

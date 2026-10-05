@@ -493,14 +493,12 @@ describe('jobStorage contract', () => {
         [{ addressId: 'id-Home', label: 'Home', transitMinutes: 20, isEstimate: true, referenceTime: 1000 }],
         1000,
       );
-      await listingsStorage.recordPriceObservation(items[0].id, 800, 1000, 'contract');
 
       expect(await listingsStorage.getKnownListingHashesForJobAndProvider('j1', 'immoscout')).toHaveLength(2);
       await jobStorage.removeJob('j1');
 
       expect(await listingsStorage.getKnownListingHashesForJobAndProvider('j1', 'immoscout')).toHaveLength(0);
       expect((await listingsStorage.getTravelTimesForListings([items[0].id])).size).toBe(0);
-      expect(await listingsStorage.getPriceHistory(items[0].id)).toEqual([]);
 
       // Recreate the deterministic listing id and verify its old watch row did not survive.
       await jobStorage.upsertJob(makeJob({ jobId: 'j1' }));

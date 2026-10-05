@@ -12,7 +12,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 interface MockState {
-  generalSettings: { settings: { debugLoggingEnabled: boolean } };
+  generalSettings: { settings: Record<string, unknown> };
   jobsData: { jobs: readonly unknown[] };
   dashboard: { data: { general?: { lastRun?: number | null } | null } | null };
 }
@@ -24,7 +24,7 @@ vi.mock('../../ui/src/services/state/store.js', () => ({
   useActions: () => ({ user: { resetCurrentUser: vi.fn() } }),
   useSelector: (selector: (state: MockState) => unknown) =>
     selector({
-      generalSettings: { settings: { debugLoggingEnabled: false } },
+      generalSettings: { settings: {} },
       jobsData: { jobs: mockJobs },
       dashboard: { data: { general: { lastRun: mockLastRun } } },
     }),

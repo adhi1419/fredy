@@ -4,7 +4,7 @@
  */
 
 import type { ReactElement } from 'react';
-import { IconSignal, IconRefresh, IconGlobe, IconFolder, IconAlertTriangle } from '@douyinfe/semi-icons';
+import { IconSignal, IconRefresh, IconGlobe } from '@douyinfe/semi-icons';
 
 import SettingsShell from '../../components/settingsShell/SettingsShell.jsx';
 import type { SettingsShellTab } from '../../components/settingsShell/SettingsShell.jsx';
@@ -14,9 +14,9 @@ import type { GeneralSettings } from './useAdminSettings.js';
 import { useSelector } from '../../services/state/store';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 
-/** The store slice the layout reads for the debug-capture indicator. */
+/** The store slice the layout reads to seed the shared admin form. */
 interface AdminLayoutState {
-  generalSettings: { settings: (GeneralSettings & { debug_logging_enabled?: boolean }) | null | undefined };
+  generalSettings: { settings: GeneralSettings | null | undefined };
 }
 
 /**
@@ -40,19 +40,6 @@ export default function AdminLayout(): ReactElement {
     { path: '/admin/system', label: t('admin.tabSystem'), icon: <IconSignal size="small" /> },
     { path: '/admin/execution', label: t('admin.tabExecution'), icon: <IconRefresh size="small" /> },
     { path: '/admin/connectivity', label: t('admin.tabConnectivity'), icon: <IconGlobe size="small" /> },
-    { path: '/admin/backup', label: t('admin.tabBackup'), icon: <IconFolder size="small" /> },
-    {
-      path: '/admin/debug',
-      label: t('admin.tabDebug'),
-      // Red while capture is running, read from the same global flag the app-wide banner uses so
-      // the label needs no status of its own.
-      icon: (
-        <IconAlertTriangle
-          size="small"
-          style={{ color: settings?.debug_logging_enabled ? 'var(--semi-color-danger)' : undefined }}
-        />
-      ),
-    },
   ];
 
   return (

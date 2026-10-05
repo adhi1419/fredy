@@ -5,7 +5,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { describeChannel, redactSecrets } from '../../lib/notification/adapterSummary.js';
-import { getNotificationAdapters } from '../../lib/utils.js';
 
 const telegramConfig = {
   id: 'telegram',
@@ -107,61 +106,5 @@ describe('redactSecrets', () => {
 
   it('returns an empty bag for an unknown adapter', () => {
     expect(redactSecrets(null, { token: 'tok' }, { reveal: true })).toEqual({});
-  });
-});
-
-describe('shipped adapters declare their metadata', () => {
-  const EXPECTED_SECRETS = {
-    discord_webhook: ['webhookUrl'],
-    http: ['authToken'],
-    mailjet: ['apiPublicKey', 'apiPrivateKey'],
-    mattermost: ['webhook'],
-    ntfy: ['accessToken', 'password', 'topic'],
-    pushover: ['token', 'user'],
-    resend: ['apiKey'],
-    sendgrid: ['apiKey'],
-    slack: ['token'],
-    slack_with_webhooks: ['webhookUrl'],
-    smtp: ['password'],
-    telegram: ['token'],
-  };
-
-  const EXPECTED_TARGETS = {
-    apprise: 'server',
-    http: 'endpointUrl',
-    mailjet: 'receiver',
-    mattermost: 'channel',
-    ntfy: 'server',
-    pushover: 'device',
-    resend: 'receiver',
-    sendgrid: 'receiver',
-    slack: 'channel',
-    smtp: 'receiver',
-    telegram: 'chatId',
-  };
-
-  it('marks every credential as secret', async () => {
-    const adapters = await getNotificationAdapters();
-    for (const [adapterId, keys] of Object.entries(EXPECTED_SECRETS)) {
-      const config = adapters.find((a) => a.config?.id === adapterId)?.config;
-      expect(config, `adapter ${adapterId} is missing`).toBeTruthy();
-      const marked = Object.entries(config.fields || {})
-        .filter(([, def]) => def.secret === true)
-        .map(([key]) => key)
-        .sort();
-      expect(marked, `adapter ${adapterId}`).toEqual([...keys].sort());
-    }
-  });
-
-  it('marks exactly one target field per adapter that has one', async () => {
-    const adapters = await getNotificationAdapters();
-    for (const [adapterId, key] of Object.entries(EXPECTED_TARGETS)) {
-      const config = adapters.find((a) => a.config?.id === adapterId)?.config;
-      expect(config, `adapter ${adapterId} is missing`).toBeTruthy();
-      const marked = Object.entries(config.fields || {})
-        .filter(([, def]) => def.target === true)
-        .map(([k]) => k);
-      expect(marked, `adapter ${adapterId}`).toEqual([key]);
-    }
   });
 });

@@ -22,7 +22,7 @@ describe('notificationDeliveryPlanner', () => {
     it('keeps only entries with both a configuredAdapterId and an adapterId', () => {
       const resolved = resolveChannels([
         channel('c1', 'telegram'),
-        { id: 'slack' }, // no configuredAdapterId
+        { id: 'webhook' }, // no configuredAdapterId
         { configuredAdapterId: 'c2' }, // no adapterId
         null,
       ]);
@@ -52,7 +52,7 @@ describe('notificationDeliveryPlanner', () => {
     it('produces one target per (listing, channel) with a deterministic delivery id', () => {
       const targets = planDeliveryTargets(
         [{ id: 'L1' }, { id: 'L2' }],
-        [channel('c1', 'telegram'), channel('c2', 'slack')],
+        [channel('c1', 'telegram'), channel('c2', 'webhook')],
       );
       expect(targets).toHaveLength(4);
       const t = targets.find((x) => x.listingId === 'L1' && x.configuredAdapterId === 'c1');
@@ -82,7 +82,7 @@ describe('notificationDeliveryPlanner', () => {
     });
 
     it('attaches the sorted intended-channel snapshot to every target', () => {
-      const targets = planDeliveryTargets([{ id: 'L1' }], [channel('c2', 'slack'), channel('c1', 'telegram')]);
+      const targets = planDeliveryTargets([{ id: 'L1' }], [channel('c2', 'webhook'), channel('c1', 'telegram')]);
       for (const t of targets) {
         expect(t.intendedConfiguredAdapterIds).toEqual(['c1', 'c2']);
         expect(t.intendedChannelCount).toBe(2);
@@ -94,7 +94,7 @@ describe('notificationDeliveryPlanner', () => {
     it('groups targets per listing with a shared sorted intended set', () => {
       const groups = planDeliveryByListing(
         [{ id: 'L1' }, { id: 'L2' }],
-        [channel('c2', 'slack'), channel('c1', 'telegram')],
+        [channel('c2', 'webhook'), channel('c1', 'telegram')],
       );
       expect(groups).toHaveLength(2);
       for (const g of groups) {
@@ -107,7 +107,7 @@ describe('notificationDeliveryPlanner', () => {
 
     it('flat planDeliveryTargets equals the flattened grouped targets', () => {
       const listings = [{ id: 'L1' }, { id: 'L2' }];
-      const config = [channel('c1', 'telegram'), channel('c2', 'slack')];
+      const config = [channel('c1', 'telegram'), channel('c2', 'webhook')];
       const flat = planDeliveryTargets(listings, config).map((t) => t.deliveryId);
       const grouped = planDeliveryByListing(listings, config)
         .flatMap((g) => g.targets)

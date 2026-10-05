@@ -52,10 +52,10 @@ describe('settingsStorage contract', () => {
     });
 
     it('updates an existing setting in place (upsert semantics)', async () => {
-      await settingsStorage.upsertSettings({ proxyUrl: 'http://one' });
-      await settingsStorage.upsertSettings({ proxyUrl: 'http://two' });
+      await settingsStorage.upsertSettings({ baseUrl: 'http://one' });
+      await settingsStorage.upsertSettings({ baseUrl: 'http://two' });
       const settings = await settingsStorage.getSettings();
-      expect(settings.proxyUrl).toBe('http://two');
+      expect(settings.baseUrl).toBe('http://two');
     });
 
     it('upserts multiple settings from one object map', async () => {
@@ -67,9 +67,9 @@ describe('settingsStorage contract', () => {
     });
 
     it('accepts the single {name, value} entry shape', async () => {
-      await settingsStorage.upsertSettings({ name: 'demoMode', value: true });
+      await settingsStorage.upsertSettings({ name: 'connectivityEnabled', value: true });
       const settings = await settingsStorage.getSettings();
-      expect(settings.demoMode).toBe(true);
+      expect(settings.connectivityEnabled).toBe(true);
     });
 
     it('preserves value types: numbers, booleans, arrays, objects, null-in-object', async () => {
@@ -165,12 +165,12 @@ describe('settingsStorage contract', () => {
       await settingsStorage.upsertSettings({
         session_secret: 'top-secret',
         proxyAuthSecret: 'also-secret',
-        proxyUrl: 'http://proxy:8080',
+        baseUrl: 'http://fredy:8080',
       });
       const publicSettings = await settingsStorage.getPublicSettings();
       expect(publicSettings.session_secret).toBeUndefined();
       expect(publicSettings.proxyAuthSecret).toBeUndefined();
-      expect(publicSettings.proxyUrl).toBe('http://proxy:8080');
+      expect(publicSettings.baseUrl).toBe('http://fredy:8080');
     });
   });
 });

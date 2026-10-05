@@ -6,17 +6,13 @@
 import { checkIfConfigIsAccessible, getProviders, refreshConfig } from './lib/utils.js';
 import * as similarityCache from './lib/services/similarity-check/similarityCache.js';
 import logger from './lib/services/logger.js';
-import { reloadEnabledFromSettings } from './lib/services/debug/debugLogStorage.js';
 import { initActiveCheckerCron } from './lib/services/crons/listing-alive-cron.js';
 import { initGeocodingCron } from './lib/services/crons/geocoding-cron.js';
 import { getSettings } from './lib/services/storage/settingsStorage.js';
 import FirestoreConnection from './lib/services/storage/firestore/FirestoreConnection.js';
 import { initJobExecutionService } from './lib/services/jobs/jobExecutionService.js';
 import { removeObsoleteProviders } from './lib/services/providers/providerCleanup.js';
-import { seedDemo } from './lib/services/demo/demoService.js';
-import { initDemoCleanupCron } from './lib/services/crons/demo-cleanup-cron.js';
 import { initListingRetentionCron } from './lib/services/crons/listing-retention-cron.js';
-import { initPriceTrackingCron } from './lib/services/crons/price-tracking-cron.js';
 import { initTravelTimeCron } from './lib/services/crons/travel-time-cron.js';
 import { initConnectivityCron } from './lib/services/crons/connectivity-cron.js';
 
@@ -75,12 +71,6 @@ logger.info('Storage: Firestore');
 
 const settings = await getSettings();
 
-// Restore the persisted on/off flag for opt-in DB log capture so it survives a
-// Fredy restart. reloadEnabledFromSettings() also (un)wires the logger sink based
-// on the restored flag, so the logger hot path stays cost-free when nobody enabled
-// the feature.
-await reloadEnabledFromSettings();
-
 // Load provider modules once at startup
 const providers = await getProviders();
 
@@ -105,24 +95,12 @@ initJobExecutionService({ providers, intervalMs: INTERVAL });
 // Initialize API only after migrations completed
 await import('./lib/api/api.js');
 
-if (settings.demoMode) {
-  logger.info('Running in demo mode');
-}
-
 logger.info('Authentication: Firebase bearer tokens');
-
-// A demo instance must always present a working Fredy: the demo job is created on the first
-// start and repaired on every later one, so a drifted config can never leave the demo empty.
-await seedDemo(providers);
 
 //do not wait for this to finish, let it run in the background
 initActiveCheckerCron();
 initGeocodingCron();
-await initDemoCleanupCron();
 await initListingRetentionCron();
-// Schedules only. Unlike the others this one is never run on start: it renders a browser page per
-// listing, and a restart is the worst moment to begin doing that.
-initPriceTrackingCron();
 // Same reasoning: schedule only. The sweep talks to a community routing service, and hammering it
 // every time an instance restarts is exactly the behaviour their usage policy asks projects to avoid.
 initTravelTimeCron();

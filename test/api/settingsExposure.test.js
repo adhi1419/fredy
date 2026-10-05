@@ -7,15 +7,13 @@ import { describe, it, expect, vi } from 'vitest';
 
 /**
  * A full global settings row set, as `getSettings()` would compile it: operator configuration,
- * the two flags the whole UI needs, and a legacy signing secret that must never leave the
+ * the flag the whole UI needs, and a legacy signing secret that must never leave the
  * process.
  */
 const STORED_SETTINGS = {
-  demoMode: false,
   interval: 60,
   port: 9998,
   baseUrl: 'https://fredy.example',
-  proxyUrl: 'http://user:hunter2@proxy.example:8080',
   workingHours: { from: '08:00', to: '20:00' },
   session_secret: 'super-secret-signing-key',
   proxyAuthSecret: 'shared-with-the-proxy',
@@ -61,8 +59,8 @@ describe('settings exposure', () => {
 
     it('returns a copy, so a caller cannot mutate the settings cache', async () => {
       const published = await getPublicSettings();
-      published.demoMode = 'tampered';
-      expect((await getSettings()).demoMode).toBe(false);
+      published.interval = 'tampered';
+      expect((await getSettings()).interval).toBe(60);
     });
   });
 
@@ -92,13 +90,13 @@ describe('settings exposure', () => {
     it('gives an admin the operator configuration', async () => {
       const handler = await loadGetHandler(true);
       const payload = await handler({});
-      expect(payload.proxyUrl).toBe(STORED_SETTINGS.proxyUrl);
+      expect(payload.baseUrl).toBe(STORED_SETTINGS.baseUrl);
     });
 
     it('withholds operator configuration from a non-admin', async () => {
       const handler = await loadGetHandler(false);
       const payload = await handler({});
-      for (const secret of ['proxyUrl', 'port', 'baseUrl', 'session_secret']) {
+      for (const secret of ['port', 'baseUrl', 'session_secret']) {
         expect(payload).not.toHaveProperty(secret);
       }
     });
@@ -106,8 +104,8 @@ describe('settings exposure', () => {
     it('still gives a non-admin the flags the app needs to boot', async () => {
       const handler = await loadGetHandler(false);
       const payload = await handler({});
-      // App.jsx gates the demo banner on demoMode; the dashboard renders the interval.
-      expect(payload).toEqual({ demoMode: false, interval: 60 });
+      // The dashboard renders the interval.
+      expect(payload).toEqual({ interval: 60 });
     });
   });
 });

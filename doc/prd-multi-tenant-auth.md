@@ -28,16 +28,16 @@ allowlist enforcement without a Fredy cookie or server-side browser session.
 
 ## Key design decisions
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| Sign-in | Firebase provider configured by the instance | Firebase owns identity and refresh behavior |
-| Browser persistence | `browserLocalPersistence` | Reloads preserve the Firebase user without a Fredy cookie |
-| Transport | `Authorization: Bearer <Firebase ID token>` | Works for normal requests and authenticated fetch-based streams |
-| Verification | Firebase Admin `verifyIdToken` | The server never trusts a client-supplied user id |
-| Allowlist | `allowed_users/{lowercase-email}` | Small trusted installations need no registration UI |
-| Tenant id | Firebase UID | Stable server-derived owner id for all Fredy data |
-| Admin | `isAdmin` on the allowlist entry, reflected server-side | Instance-admin status is controlled outside the browser |
-| Machine trigger | `X-Trigger-Token` on `/api/trigger` | Scheduler is not a browser and does not use Firebase user auth |
+| Decision            | Choice                                                  | Rationale                                                       |
+| ------------------- | ------------------------------------------------------- | --------------------------------------------------------------- |
+| Sign-in             | Firebase provider configured by the instance            | Firebase owns identity and refresh behavior                     |
+| Browser persistence | `browserLocalPersistence`                               | Reloads preserve the Firebase user without a Fredy cookie       |
+| Transport           | `Authorization: Bearer <Firebase ID token>`             | Works for normal requests and authenticated fetch-based streams |
+| Verification        | Firebase Admin `verifyIdToken`                          | The server never trusts a client-supplied user id               |
+| Allowlist           | `allowed_users/{lowercase-email}`                       | Small trusted installations need no registration UI             |
+| Tenant id           | Firebase UID                                            | Stable server-derived owner id for all Fredy data               |
+| Admin               | `isAdmin` on the allowlist entry, reflected server-side | Instance-admin status is controlled outside the browser         |
+| Machine trigger     | `X-Trigger-Token` on `/api/trigger`                     | Scheduler is not a browser and does not use Firebase user auth  |
 
 ## Runtime requirements
 
@@ -111,6 +111,6 @@ are not a migration credential; users must sign in through Firebase again.
 4. Verify UID ownership against existing Firestore data before inviting more
    users. A mismatched UID or email allowlist id can make existing data appear
    absent without deleting it.
-5. Keep a Firestore backup before the first multi-tenant rollout. Incorrect
+5. Keep a Firestore export before the first multi-tenant rollout. Incorrect
    allowlist admin flags change visibility immediately, and revocation is
    enforced on the next request.

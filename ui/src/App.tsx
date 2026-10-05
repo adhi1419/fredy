@@ -18,8 +18,6 @@ import AdminLayout from './views/admin/AdminLayout';
 import SystemPage from './views/admin/pages/SystemPage';
 import ExecutionPage from './views/admin/pages/ExecutionPage';
 import ConnectivityPage from './views/admin/pages/ConnectivityPage';
-import BackupPage from './views/admin/pages/BackupPage';
-import DebugPage from './views/admin/pages/DebugPage';
 import JobMutation from './views/jobs/mutation/JobMutation';
 import { useActions, useSelector } from './services/state/store.js';
 import { Routes, Route, Navigate, useLocation } from 'react-router';
@@ -35,8 +33,6 @@ import Home from './views/home/Home';
 import FinanceCalculator from './views/finance/FinanceCalculator.jsx';
 import ListingDetail from './views/listings/ListingDetail.js';
 import { I18nProvider, availableLanguages } from './services/i18n/i18n.jsx';
-import DebugLoggingBanner from './components/debug/DebugLoggingBanner.jsx';
-import DemoBanner from './components/demo/DemoBanner.jsx';
 import { LEGACY_REDIRECTS, legacyRedirectTarget } from './services/routes/legacyRedirects.js';
 import { applyTheme, normalizeTheme } from './services/theme/theme.js';
 import { signOutFirebase, subscribeToAuthState, safePhotoUrl } from './services/auth/firebaseAuth.js';
@@ -54,7 +50,6 @@ interface FredyUser {
 
 interface FredyState {
   user: { currentUser: FredyUser | null };
-  generalSettings: { settings: { demoMode?: boolean } };
   userSettings: {
     loaded: boolean;
     loadFailed: boolean;
@@ -120,9 +115,6 @@ export default function FredyApp() {
    */
   const [accountPhotoUrl, setAccountPhotoUrl] = React.useState<string | null>(null);
   const currentUser = useSelector<FredyState, FredyUser | null>((state) => state.user.currentUser);
-  const settings = useSelector<FredyState, FredyState['generalSettings']['settings']>(
-    (state) => state.generalSettings.settings,
-  );
   const userSettings = useSelector<FredyState, FredyState['userSettings']>((state) => state.userSettings);
   const language = useSelector<FredyState, string | undefined>((state) => state.userSettings.settings.language);
   /*
@@ -251,8 +243,6 @@ export default function FredyApp() {
             />
             <Layout className="app__main">
               <Content className="app__content" id="fredy-main-content" tabIndex={-1}>
-                <DebugLoggingBanner />
-                {settings.demoMode && <DemoBanner />}
                 <Routes>
                   {onboardingDecision.requiresSetup ? (
                     <>
@@ -299,8 +289,6 @@ export default function FredyApp() {
                         <Route path="system" element={<SystemPage />} />
                         <Route path="execution" element={<ExecutionPage />} />
                         <Route path="connectivity" element={<ConnectivityPage />} />
-                        <Route path="backup" element={<BackupPage />} />
-                        <Route path="debug" element={<DebugPage />} />
                       </Route>
 
                       {/* The addresses these things used to live at, kept so existing bookmarks and the

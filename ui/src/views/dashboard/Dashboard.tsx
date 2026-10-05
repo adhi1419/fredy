@@ -26,7 +26,7 @@ import TrendSparkline from '../../components/cards/TrendSparkline.jsx';
 import Headline from '../../components/headline/Headline.jsx';
 
 import './Dashboard.less';
-import { xhrPost, errorMessage } from '../../services/xhr.js';
+import { xhrPost } from '../../services/xhr.js';
 import { formatEuroPrice } from '../../services/price/priceService.js';
 import { format } from '../../services/time/timeService.js';
 import { useTranslation, useLocale } from '../../services/i18n/i18n.jsx';
@@ -59,7 +59,6 @@ interface DashboardState {
   dashboard: { data: DashboardData | null };
   jobsData: { jobs: unknown[] };
   user: { currentUser?: { isAdmin?: boolean } | null };
-  generalSettings: { settings?: { priceTrackingEnabled?: boolean } | null };
 }
 
 /** The store actions the dashboard dispatches. */
@@ -103,15 +102,7 @@ export default function Dashboard(): ReactElement {
   const navigate = useNavigate();
   const dashboard = useSelector((state: DashboardState) => state.dashboard.data);
   const jobs = useSelector((state: DashboardState) => state.jobsData.jobs);
-  const currentUser = useSelector((state: DashboardState) => state.user.currentUser);
-  const generalSettings = useSelector((state: DashboardState) => state.generalSettings.settings);
   const [searching, setSearching] = React.useState(false);
-  const [trackingPrices, setTrackingPrices] = React.useState(false);
-
-  // Admin-only, and only worth offering when the feature is switched on: the sweep touches every
-  // tracked listing on the instance, so it is the same audience that configures it. Non-admins are
-  // not served `priceTrackingEnabled` at all, which is why both halves of this are needed.
-  const canRunPriceTracker = currentUser?.isAdmin === true && generalSettings?.priceTrackingEnabled === true;
 
   React.useEffect(() => {
     actions.dashboard.getDashboard();
@@ -136,20 +127,6 @@ export default function Dashboard(): ReactElement {
       Toast.error(t('dashboard.searchNowFailed'));
     } finally {
       setSearching(false);
-    }
-  };
-
-  const runPriceTracker = async () => {
-    setTrackingPrices(true);
-    try {
-      await xhrPost('/api/admin/price-tracking/run', null);
-      Toast.success(t('dashboard.priceTrackerStarted'));
-    } catch (error) {
-      // The backend says why - the feature is off, or a sweep is already going - and that is more
-      // useful than a generic failure.
-      Toast.error(errorMessage(error, t('dashboard.priceTrackerFailed')));
-    } finally {
-      setTrackingPrices(false);
     }
   };
 
@@ -198,14 +175,6 @@ export default function Dashboard(): ReactElement {
             <Button icon={<IconPlayCircle />} loading={searching} onClick={runNow} theme="borderless">
               {t('dashboard.searchNowButton')}
             </Button>
-            {canRunPriceTracker && (
-              <>
-                <span className="dashboard__actions-divider" aria-hidden="true" />
-                <Button icon={<IconEuro />} loading={trackingPrices} onClick={runPriceTracker} theme="borderless">
-                  {t('dashboard.priceTrackerButton')}
-                </Button>
-              </>
-            )}
           </div>
         }
       />

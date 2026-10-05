@@ -27,7 +27,6 @@ vi.mock('../../lib/services/storage/listingsStorage.js', () => ({
   // other exports referenced by the router module at import time:
   queryListings: async () => ({ result: [], totalNumber: 0 }),
   getListingsForMap: async () => [],
-  getPriceHistory: async () => [],
   userCanAccessListing: async () => true,
   userCanModifyListing: async () => true,
   setListingNotes: async () => 1,

@@ -13,7 +13,6 @@ vi.mock('../../lib/services/storage/listingsStorage.js', () => ({
   setListingAddress: vi.fn(() => 1),
   queryListings: vi.fn(),
   getListingsForMap: vi.fn(),
-  getPriceHistory: vi.fn(),
   setListingNotes: vi.fn(),
   setListingStatus: vi.fn(),
   deleteListingsByJobId: vi.fn(),
@@ -24,18 +23,14 @@ vi.mock('../../lib/services/storage/jobStorage.js', () => ({
   getJob: vi.fn(() => ({ id: 'job-1', userId: 'owner-1' })),
 }));
 vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
-  getSettings: vi.fn(async () => ({ demoMode: false })),
   getUserSettings: vi.fn(() => ({})),
 }));
 vi.mock('../../lib/services/geocoding/distanceService.js', () => ({ updateDistancesForListing: vi.fn() }));
 vi.mock('../../lib/services/logger.js', () => ({ default: { error: vi.fn(), info: vi.fn(), debug: vi.fn() } }));
-vi.mock('../../lib/api/security.js', () => ({ isAdmin: vi.fn(() => false) }));
 
 import * as listingStorage from '../../lib/services/storage/listingsStorage.js';
 import { getJob } from '../../lib/services/storage/jobStorage.js';
-import { getSettings } from '../../lib/services/storage/settingsStorage.js';
 import { updateDistancesForListing } from '../../lib/services/geocoding/distanceService.js';
-import { isAdmin } from '../../lib/api/security.js';
 import listingsPlugin from '../../lib/api/routes/listingsRouter.js';
 
 async function buildApp() {
@@ -63,8 +58,6 @@ beforeEach(() => {
   listingStorage.getListingById.mockReturnValue({ id: 'listing-1', job_id: 'job-1', address: 'old address' });
   listingStorage.setListingAddress.mockReturnValue(1);
   getJob.mockReturnValue({ id: 'job-1', userId: 'owner-1' });
-  getSettings.mockResolvedValue({ demoMode: false });
-  isAdmin.mockReturnValue(false);
 });
 
 describe('POST /:listingId/address', () => {
@@ -171,18 +164,6 @@ describe('POST /:listingId/address', () => {
 
       expect(response.statusCode).toBe(403);
       expect(listingStorage.setListingAddress).not.toHaveBeenCalled();
-    });
-
-    it('refuses in demo mode unless the user is an admin', async () => {
-      getSettings.mockResolvedValue({ demoMode: true });
-
-      const denied = await post(VALID_BODY);
-      expect(denied.statusCode).toBe(403);
-      expect(listingStorage.setListingAddress).not.toHaveBeenCalled();
-
-      isAdmin.mockReturnValue(true);
-      const allowed = await post(VALID_BODY);
-      expect(allowed.statusCode).toBe(200);
     });
   });
 

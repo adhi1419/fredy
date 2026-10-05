@@ -19,12 +19,10 @@ async function loadPostHandler(isAdmin = true) {
   upserted = [];
   vi.resetModules();
   vi.doMock(root + '/lib/services/storage/settingsStorage.js', () => ({
-    getSettings: async () => ({ demoMode: false }),
     getPublicSettings: async () => ({}),
     upsertSettings: (settings) => upserted.push(settings),
   }));
   vi.doMock(root + '/lib/api/security.js', () => ({ isAdmin: () => isAdmin }));
-  vi.doMock(root + '/lib/services/storage/userStorage.js', () => ({ ensureDemoUserExists: vi.fn() }));
   // The real isValidTimeZone: asking Intl whether a zone resolves needs no fixture, and it is the
   // behaviour under test.
   const utils = await vi.importActual(root + '/lib/utils.js');
@@ -122,7 +120,7 @@ describe('POST /api/admin/generalSettings - workingHours', () => {
   });
 
   it('leaves the setting untouched when the request does not mention it', async () => {
-    const result = await post({ proxyUrl: 'http://proxy.local' });
+    const result = await post({ baseUrl: 'http://fredy.local' });
 
     expect(result.status).toBe(200);
     expect(upserted[0].workingHours).toBeUndefined();

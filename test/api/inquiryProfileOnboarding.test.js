@@ -15,7 +15,7 @@ async function loadInquiryProfileHandler() {
   upsertError = null;
   vi.resetModules();
   vi.doMock(root + '/lib/services/storage/settingsStorage.js', () => ({
-    getSettings: async () => ({ demoMode: false }),
+    getSettings: async () => ({}),
     getUserSettings: async () => ({}),
     getAddresses: () => [],
     upsertSettings: async (settings, userId) => {
