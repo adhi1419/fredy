@@ -16,13 +16,18 @@ let backupRestoreService;
 let userStorage;
 let jobStorage;
 let listingsStorage;
+let providerCredentialStorage;
+
+const CREDENTIAL_KEY = Buffer.alloc(32, 9).toString('base64');
 
 beforeAll(async () => {
+  process.env.PROVIDER_CREDENTIAL_ENCRYPTION_KEY = CREDENTIAL_KEY;
   await initBackend();
   backupRestoreService = await loadStorageModule('backupRestoreService');
   userStorage = await loadStorageModule('userStorage');
   jobStorage = await loadStorageModule('jobStorage');
   listingsStorage = await loadStorageModule('listingsStorage');
+  providerCredentialStorage = await loadStorageModule('providerCredentialStorage');
 });
 
 beforeEach(async () => {
@@ -30,6 +35,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  delete process.env.PROVIDER_CREDENTIAL_ENCRYPTION_KEY;
   await teardownBackend();
 });
 
@@ -103,6 +109,7 @@ describe('backupRestoreService contract (Firestore)', () => {
       expect(names).toContain('jobs.json');
       expect(names).toContain('listings.json');
       expect(names).toContain('notification_deliveries.json');
+      expect(names).not.toContain('provider_credentials.json');
       expect(names).toContain('manifest.json');
       expect(names).toContain('travel_times.json');
       expect(names).toContain('price_history.json');
@@ -262,6 +269,23 @@ describe('backupRestoreService contract (Firestore)', () => {
       const users = await userStorage.getUsers();
       expect(users.some((u) => u.username === 'new_user')).toBe(true);
       expect(users.some((u) => u.username === 'old_user')).toBe(false);
+    });
+
+    it('preserves provider credentials while restoring user data', async () => {
+      const user = await seedUser('credential_owner');
+      const buf = await backupRestoreService.createBackupZip();
+      await providerCredentialStorage.createProviderCredential({
+        userId: user.id,
+        providerId: 'immoscout',
+        secret: 'refresh-token',
+      });
+
+      await backupRestoreService.restoreFromZip(buf);
+
+      await expect(providerCredentialStorage.getProviderCredential(user.id, 'immoscout')).resolves.toEqual({
+        secret: 'refresh-token',
+        revision: 1,
+      });
     });
 
     it('returns warning when precheck severity is not info', async () => {

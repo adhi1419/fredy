@@ -77,12 +77,22 @@ describe('userStorage contract', () => {
     expect((await userStorage.getUser('uid-alice')).lastLogin).toBeGreaterThanOrEqual(before);
   });
 
-  it('removes a user and cascades their jobs', async () => {
+  it('removes a user and cascades their jobs and provider credentials', async () => {
     await seedUser();
     await seedJob('uid-alice', 'doomed');
+    const { default: FirestoreConnection } =
+      await import('../../lib/services/storage/firestore/FirestoreConnection.js');
+    await FirestoreConnection.collection('provider_credentials').doc('credential').set({
+      userId: 'uid-alice',
+      providerId: 'immoscout',
+      ciphertext: 'encrypted',
+    });
+
     await userStorage.removeUser('uid-alice');
+
     expect(await userStorage.getUser('uid-alice')).toBeNull();
     expect((await jobStorage.getJobs({ includeDisabled: true })).some((job) => job.name === 'doomed')).toBe(false);
+    expect((await FirestoreConnection.collection('provider_credentials').get()).size).toBe(0);
   });
 
   it('maintains a non-admin demo data owner only when demo mode is enabled', async () => {
