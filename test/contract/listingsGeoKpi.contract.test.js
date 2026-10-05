@@ -962,6 +962,8 @@ describe('listingsStorage contract – repair candidates', () => {
     });
     const inactive = makeListing({ title: 'Withdrawn home' });
     await listingsStorage.storeListings(JOB.jobId, 'deutscheWohnen', [active, inactive]);
+    await listingsStorage.reserveInquirySend(active.id);
+    await listingsStorage.finishInquirySend(active.id, { status: 'failed', error: 'provider unavailable' });
     await listingsStorage.deactivateListings([inactive.id]);
 
     const rows = await listingsStorage.getListingsNeedingRepair(JOB.jobId, 'deutscheWohnen', {
