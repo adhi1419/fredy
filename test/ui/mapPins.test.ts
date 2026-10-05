@@ -40,7 +40,7 @@ describe('createPinElement', () => {
     expect(pin.getAttribute('aria-label')).toBe('Ruhige 1-Zimmer');
     expect(pin.title).toBe('Ruhige 1-Zimmer');
     expect(pin.children[0].className).toBe('fredy-pin__head');
-    expect(pin.children[0].children).toHaveLength(0);
+    expect(pin.children[0].children.map((child) => child.className)).toEqual(['fredy-pin__dot']);
   });
 
   it('puts the count in the head of a group pin as an element, so it can be turned upright', () => {

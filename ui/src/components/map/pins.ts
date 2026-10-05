@@ -75,6 +75,13 @@ export function createPinElement(
     head.appendChild(number);
   }
   if (role === 'place') head.innerHTML = PLACE_GLYPHS[glyph ?? 'flag'];
+  if (role === 'listing') {
+    // The classic dot in the opposite colour: it flips with the fill, so a selected pin reads as
+    // selected at a glance rather than as an empty head.
+    const dot = doc.createElement('span');
+    dot.className = 'fredy-pin__dot';
+    head.appendChild(dot);
+  }
   element.appendChild(head);
   return element;
 }
