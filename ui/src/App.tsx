@@ -7,17 +7,12 @@ import React, { useEffect } from 'react';
 import type { ComponentProps, ComponentType, PropsWithChildren } from 'react';
 
 import InsufficientPermission from './components/permission/InsufficientPermission';
-import PermissionAwareRoute from './components/permission/PermissionAwareRoute';
 import SettingsLayout from './views/settings/SettingsLayout';
 import PreferencesPage from './views/settings/pages/PreferencesPage';
 import TravelTimePage from './views/settings/pages/TravelTimePage';
 import ListingDetailsPage from './views/settings/pages/ListingDetailsPage';
 import NotificationsPage from './views/settings/pages/NotificationsPage';
 import InquiryProfilePage from './views/settings/pages/InquiryProfilePage';
-import AdminLayout from './views/admin/AdminLayout';
-import SystemPage from './views/admin/pages/SystemPage';
-import ExecutionPage from './views/admin/pages/ExecutionPage';
-import ConnectivityPage from './views/admin/pages/ConnectivityPage';
 import JobMutation from './views/jobs/mutation/JobMutation';
 import { useActions, useSelector } from './services/state/store.js';
 import { Routes, Route, Navigate, useLocation } from 'react-router';
@@ -62,7 +57,6 @@ interface FredyActions {
   provider: { getProvider(): Promise<unknown> };
   jobsData: { getJobs(): Promise<unknown>; getSharableUserList(): Promise<unknown> };
   notificationAdapter: { getAdapter(): Promise<unknown> };
-  generalSettings: { getGeneralSettings(): Promise<unknown> };
   userSettings: { getUserSettings(): Promise<unknown> };
   finance: { getProfileSummary(): Promise<unknown> };
 }
@@ -170,7 +164,6 @@ export default function FredyApp() {
             actions.jobsData.getJobs(),
             actions.jobsData.getSharableUserList(),
             actions.notificationAdapter.getAdapter(),
-            actions.generalSettings.getGeneralSettings(),
             actions.userSettings.getUserSettings(),
             // Powers every finance surface; derived server-side so the browser holds no such math.
             actions.finance.getProfileSummary(),
@@ -273,22 +266,6 @@ export default function FredyApp() {
                         <Route path="listings" element={<ListingDetailsPage />} />
                         <Route path="notifications" element={<NotificationsPage />} />
                         <Route path="inquiry-profile" element={<InquiryProfilePage />} />
-                      </Route>
-
-                      {/* Settings that belong to the instance. Guarded once, at the parent, so a new
-                      page cannot be added without inheriting the check. */}
-                      <Route
-                        path="/admin"
-                        element={
-                          <PermissionAwareRoute currentUser={currentUser}>
-                            <AdminLayout />
-                          </PermissionAwareRoute>
-                        }
-                      >
-                        <Route index element={<Navigate to="/admin/system" replace />} />
-                        <Route path="system" element={<SystemPage />} />
-                        <Route path="execution" element={<ExecutionPage />} />
-                        <Route path="connectivity" element={<ConnectivityPage />} />
                       </Route>
 
                       {/* The addresses these things used to live at, kept so existing bookmarks and the

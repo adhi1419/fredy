@@ -26,11 +26,6 @@ const expectedKeys = [
   'activeCheckFailures',
   'address',
   'buildYear',
-  'connectivity',
-  'connectivityCheckedAt',
-  'connectivityFiber',
-  'connectivityMaxDown',
-  'connectivityMobileBits',
   'createdAt',
   'description',
   'distances',
@@ -92,6 +87,5 @@ describe('toFirestoreListing', () => {
       },
     });
     expect(row.inquiryMessage).toBeNull();
-    expect(row.connectivityCheckedAt).toBeNull();
   });
 });

@@ -86,13 +86,12 @@ describe('Rust plugin parity contract', () => {
   });
 
   it('freezes startup versus schedule-only task classification and cron expressions', () => {
-    expect(contract.schedules).toHaveLength(5);
+    expect(contract.schedules).toHaveLength(4);
     expect(new Set(contract.schedules.map((task) => task.id)).size).toBe(contract.schedules.length);
     expect(contract.schedules.filter((task) => task.startup).map((task) => task.id)).toEqual([
       'active-checker',
       'geocoding',
       'listing-retention',
-      'connectivity',
     ]);
     expect(contract.schedules.filter((task) => !task.startup).map((task) => task.id)).toEqual(['travel-time']);
     for (const task of contract.schedules) {

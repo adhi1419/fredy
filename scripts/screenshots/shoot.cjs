@@ -24,7 +24,6 @@ const SHOTS = [
   { name: 'saved-search-step-1', url: '/#/jobs/edit/job-berlin', vps: ['desktop', 'mobile'] },
   { name: 'listing-detail', url: '/#/listings/listing/demo-1', vps: ['desktop', 'mobile'], settle: 5000 },
   { name: 'my-account', url: '/#/settings/preferences', vps: ['desktop', 'mobile'] },
-  { name: 'admin-panel', url: '/#/admin/system', vps: ['desktop', 'mobile'] },
 ];
 const VP = { desktop: { width: 1440, height: 900 }, mobile: { width: 390, height: 844 } };
 

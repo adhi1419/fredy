@@ -24,14 +24,12 @@ const appSource = fs.readFileSync(path.join(here, '../../ui/src/App.tsx'), 'utf8
  * Read out of the source rather than listed here, because a list would be the thing that goes
  * stale: renaming a route in App.tsx has to break this test, not quietly agree with it.
  *
- * There are exactly two nested parents, `/settings` and `/admin`, and they are declared in that
- * order, so a relative path belongs to whichever of the two most recently opened above it.
+ * There is exactly one nested parent, `/settings`, so every relative path belongs to it.
  *
  * @returns {Set<string>}
  */
 function declaredRoutes(): Set<string> {
   const settingsAt = appSource.indexOf('path="/settings"');
-  const adminAt = appSource.indexOf('path="/admin"');
   const routes = new Set<string>();
 
   for (const match of appSource.matchAll(/path="([^"]+)"/g)) {
@@ -40,14 +38,14 @@ function declaredRoutes(): Set<string> {
       routes.add(value);
       continue;
     }
-    const parent = match.index > adminAt ? '/admin' : '/settings';
-    routes.add(`${parent}/${value}`);
-  }
-
-  // Guards the ordering assumption above: a relative path declared before either parent opens
-  // would otherwise be filed under '/settings' without anyone noticing.
-  if (settingsAt < 0 || adminAt < 0 || settingsAt > adminAt) {
-    throw new Error('App.tsx no longer declares /settings before /admin; fix declaredRoutes()');
+    // Catch-all redirects are not destinations.
+    if (value === '*') continue;
+    // Guards the ordering assumption above: a relative path declared before the parent opens
+    // would otherwise be filed under '/settings' without anyone noticing.
+    if (settingsAt < 0 || match.index < settingsAt) {
+      throw new Error('App.tsx declares a relative route outside /settings; fix declaredRoutes()');
+    }
+    routes.add(`/settings/${value}`);
   }
   return routes;
 }
@@ -56,7 +54,8 @@ describe('legacyRedirects', () => {
   const routes = declaredRoutes();
 
   it('reads the routes out of App.tsx rather than trusting a copy', () => {
-    expect(routes.has('/admin')).toBe(true);
+    expect(routes.has('/settings')).toBe(true);
+    expect(routes.has('/admin')).toBe(false);
     expect(routes.has('/dashboard')).toBe(true);
     expect(routes.size).toBeGreaterThan(10);
   });
@@ -64,9 +63,6 @@ describe('legacyRedirects', () => {
   it('resolves each nested child against the right parent', () => {
     for (const tab of ['preferences', 'travel-time', 'listings', 'notifications']) {
       expect(routes.has(`/settings/${tab}`)).toBe(true);
-    }
-    for (const tab of ['system', 'execution', 'connectivity']) {
-      expect(routes.has(`/admin/${tab}`)).toBe(true);
     }
   });
 

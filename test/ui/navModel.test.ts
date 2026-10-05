@@ -45,16 +45,15 @@ describe('two-tab shell navigation model', () => {
     expect(resolvePrimaryKey(pathname)).toBe(expected);
   });
 
-  it('keeps settings and admin out of primary navigation', () => {
+  it('keeps settings out of primary navigation', () => {
     expect(resolvePrimaryKey('/settings/preferences')).toBeNull();
-    expect(resolvePrimaryKey('/admin/system')).toBeNull();
     expect(PRIMARY_NAV).toHaveLength(2);
   });
 
-  it('exposes My account and conditionally Admin panel through the account control', () => {
-    expect(ACCOUNT_NAV.map(({ key }) => key)).toEqual(['account', 'admin']);
-    expect(routeKeysOf(navTreeFor(false))).toEqual(['/dashboard', '/jobs', '/settings']);
-    expect(routeKeysOf(navTreeFor(true))).toEqual(['/dashboard', '/jobs', '/settings', '/admin']);
+  it('exposes My account as the only destination behind the account control', () => {
+    // There is no Admin panel: every instance setting lives in the deployment, not in a page.
+    expect(ACCOUNT_NAV.map(({ key }) => key)).toEqual(['account']);
+    expect(routeKeysOf(navTreeFor())).toEqual(['/dashboard', '/jobs', '/settings']);
   });
 
   it('translates every visible shell label in all supported locales', () => {
@@ -70,6 +69,6 @@ describe('two-tab shell navigation model', () => {
   });
 
   it('keeps the compatibility tree limited to shell destinations', () => {
-    expect(NAV_TREE.map(({ key }) => key)).toEqual(['/dashboard', '/jobs', 'account', 'admin']);
+    expect(NAV_TREE.map(({ key }) => key)).toEqual(['/dashboard', '/jobs', 'account']);
   });
 });

@@ -66,9 +66,9 @@ describe('settingsStorage contract', () => {
     });
 
     it('accepts the single {name, value} entry shape', async () => {
-      await settingsStorage.upsertSettings({ name: 'connectivityEnabled', value: true });
+      await settingsStorage.upsertSettings({ name: 'demoMode', value: true });
       const settings = await settingsStorage.getSettings();
-      expect(settings.connectivityEnabled).toBe(true);
+      expect(settings.demoMode).toBe(true);
     });
 
     it('preserves value types: numbers, booleans, arrays, objects, null-in-object', async () => {

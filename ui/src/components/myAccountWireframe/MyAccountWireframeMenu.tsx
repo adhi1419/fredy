@@ -71,9 +71,9 @@ export function menuItemIndexForKey(key: string, currentIndex: number, itemCount
   return currentIndex;
 }
 
-export function accountDestinationPaths(isAdmin: boolean, primaryVisible: boolean): string[] {
+export function accountDestinationPaths(primaryVisible: boolean): string[] {
   if (!primaryVisible) return [];
-  return ACCOUNT_NAV.filter((item) => !item.adminOnly || isAdmin).map((item) => item.path);
+  return ACCOUNT_NAV.map((item) => item.path);
 }
 
 export default function MyAccountWireframeMenu({
@@ -153,10 +153,7 @@ export default function MyAccountWireframeMenu({
     }
   };
 
-  const accountItems = useMemo(
-    () => (primaryVisible ? ACCOUNT_NAV.filter((item) => !item.adminOnly || isAdmin) : []),
-    [isAdmin, primaryVisible],
-  );
+  const accountItems = useMemo(() => (primaryVisible ? ACCOUNT_NAV : []), [primaryVisible]);
   const username = currentUser?.username ?? '';
   const displayName = accountDisplayName(username) || username;
 

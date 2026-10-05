@@ -14,10 +14,6 @@ export interface NeutralListingFilterValues {
   status: string | null;
   afford: string | null;
   commute: string | null;
-  down: number | null;
-  fiber: boolean | null;
-  mtech: string | null;
-  mop: string | null;
   hidden: boolean;
 }
 
@@ -35,8 +31,8 @@ export type ListingFilterPatch = Partial<ListingFilterValues> & Record<string, u
 /** A filter key represented by the neutral filter state. */
 export type ListingFilterKey = keyof NeutralListingFilterValues;
 
-/** A filter key rendered as a chip; the mobile operator is coupled to `mtech`. */
-export type VisibleListingFilterKey = Exclude<ListingFilterKey, 'mop'>;
+/** A filter key rendered as a chip. */
+export type VisibleListingFilterKey = ListingFilterKey;
 
 /** A choice shown in a job or provider filter. */
 export interface NamedFilterOption {
@@ -85,10 +81,6 @@ export const NEUTRAL: NeutralListingFilterValues = {
   status: null,
   afford: null,
   commute: null,
-  down: null,
-  fiber: null,
-  mtech: null,
-  mop: null,
   hidden: false,
 };
 
@@ -107,21 +99,9 @@ export const FILTER_KEYS: VisibleListingFilterKey[] = [
   'status',
   'afford',
   'commute',
-  'down',
-  'fiber',
-  'mtech',
   'provider',
   'job',
 ];
-
-/**
- * The mobile operator is not in `FILTER_KEYS` on purpose.
- *
- * It cannot filter anything on its own - the query needs a technology to turn the pair into a bit -
- * so counting it would report two filters where the user set one, and clearing the technology has
- * to take it along.
- */
-export const MOBILE_OPERATOR_KEY = 'mop' as const;
 
 /**
  * Whether a filter is doing something.
@@ -161,9 +141,6 @@ export function showPatch(value: ListingShowValue): ListingFilterPatch {
 export function clearFilter(key: string): ListingFilterPatch {
   if (key === 'active' || key === 'hidden') {
     return showPatch('all');
-  }
-  if (key === 'mtech') {
-    return { mtech: NEUTRAL.mtech, [MOBILE_OPERATOR_KEY]: NEUTRAL[MOBILE_OPERATOR_KEY], page: 1 };
   }
   return { [key]: neutralValueForKey(key), page: 1 };
 }
@@ -217,18 +194,6 @@ export function describeActiveFilters(
         : t('listings.filterCommuteOption', {
             mode: t(`travelTime.mode.${parsed.mode}`),
             minutes: parsed.maxMinutes,
-          });
-    },
-    down: () => t('listings.filterDownstreamOption', { mbit: values.down ?? 0 }),
-    fiber: () => t('listings.filterFiberOnly'),
-    mtech: () => {
-      const technology = t(`connectivity.tech.${values.mtech ?? ''}`);
-      const operator = values[MOBILE_OPERATOR_KEY];
-      return operator == null
-        ? technology
-        : t('listings.filterMobileWithOperator', {
-            technology,
-            operator: t(`connectivity.operator.${operator}`),
           });
     },
     provider: () => named(providers, values.provider),

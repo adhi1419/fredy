@@ -62,49 +62,4 @@ describe('settings exposure', () => {
       expect((await getSettings()).interval).toBe(60);
     });
   });
-
-  describe('GET /api/admin/generalSettings', () => {
-    /**
-     * Register the route plugin against a tiny fastify double and return the GET handler.
-     * @param {boolean} isAdmin - What the security layer should report for the request.
-     * @returns {Promise<(request: any) => Promise<Record<string, any>>>}
-     */
-    async function loadGetHandler(isAdmin) {
-      vi.resetModules();
-      vi.doMock('../../lib/api/security.js', () => ({ isAdmin: () => isAdmin }));
-
-      const plugin = (await import('../../lib/api/routes/generalSettingsRoute.js')).default;
-      const routes = {};
-      await plugin({ get: (path, handler) => (routes[`GET ${path}`] = handler), post: () => {} });
-      return routes['GET /'];
-    }
-
-    it('never returns the session secret or the proxy-auth secret, not even to an admin', async () => {
-      const handler = await loadGetHandler(true);
-      const payload = await handler({});
-      expect(payload).not.toHaveProperty('session_secret');
-      expect(payload).not.toHaveProperty('proxyAuthSecret');
-    });
-
-    it('gives an admin the operator configuration', async () => {
-      const handler = await loadGetHandler(true);
-      const payload = await handler({});
-      expect(payload.baseUrl).toBe(STORED_SETTINGS.baseUrl);
-    });
-
-    it('withholds operator configuration from a non-admin', async () => {
-      const handler = await loadGetHandler(false);
-      const payload = await handler({});
-      for (const secret of ['port', 'baseUrl', 'session_secret']) {
-        expect(payload).not.toHaveProperty(secret);
-      }
-    });
-
-    it('still gives a non-admin the flags the app needs to boot', async () => {
-      const handler = await loadGetHandler(false);
-      const payload = await handler({});
-      // The dashboard renders the interval.
-      expect(payload).toEqual({ interval: 60 });
-    });
-  });
 });
