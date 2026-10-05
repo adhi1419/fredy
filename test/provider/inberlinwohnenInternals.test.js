@@ -81,6 +81,26 @@ describe('#inberlinwohnen internals()', () => {
       });
     });
 
+    it('fetches later pages with bounded concurrency', async () => {
+      const ids = [1, 2, 3, 4, 5, 6, 7];
+      let active = 0;
+      let maxActive = 0;
+      const extractPage = vi.fn(async (url) => {
+        const page = Number(new URL(url).searchParams.get('page'));
+        if (page === 1) return resultPage([1], paginationElement(ids, 1));
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active -= 1;
+        return resultPage([page]);
+      });
+
+      const listings = await runConfig.getListings(SEARCH_URL, extractPage);
+
+      expect(listings).toHaveLength(7);
+      expect(maxActive).toBe(3);
+    });
+
     it('should deduplicate listings repeated across page boundaries', async () => {
       const extractPage = vi
         .fn()

@@ -75,6 +75,23 @@ describe('kleinanzeigen search results', () => {
     );
   });
 
+  it.each([
+    ['an unrecognized challenge page', '<html><h1>Finden Sie Ihr neues Zuhause</h1></html>'],
+    ['a false-empty result page', '<html><h1>Es wurden keine Ergebnisse in Berlin gefunden.</h1></html>'],
+  ])('retries %s before accepting the first-page result', async (_name, transientPage) => {
+    const loadPage = vi
+      .fn()
+      .mockResolvedValueOnce(transientPage)
+      .mockResolvedValueOnce(page([card({ id: '7', description: 'Hell' })]));
+
+    await expect(config.getListings('https://www.kleinanzeigen.de/s-x', loadPage)).resolves.toHaveLength(1);
+    expect(loadPage).toHaveBeenCalledTimes(2);
+    expect(loadPage.mock.calls[1][1]).toMatchObject({
+      name: 'kleinanzeigen',
+      headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+    });
+  });
+
   it('builds page URLs the way Kleinanzeigen links them', () => {
     const url = 'https://www.kleinanzeigen.de/s-wohnung-mieten/berlin/preis::1000/c203l3331+wohnung_mieten.qm_d:55.00';
     expect(pageUrl(url, 1)).toBe(url);
