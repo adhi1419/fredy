@@ -87,6 +87,9 @@ async function loadSweeper() {
  * @returns {Object}
  */
 const storedRow = (overrides = {}) => ({
+  // Rows are keyed by the address id; the label is display only. The default id follows the label,
+  // so a test that names another address gets another id.
+  address_id: `id-${overrides.label ?? 'Home'}`,
   label: 'Home',
   origin_lat: 52.52,
   origin_lng: 13.405,
@@ -106,6 +109,7 @@ const storedRow = (overrides = {}) => ({
 });
 
 const address = (overrides = {}) => ({
+  id: `id-${overrides.label ?? 'Home'}`,
   label: 'Home',
   address: 'Alexanderplatz, Berlin',
   coords: { lat: 52.52, lng: 13.405 },
@@ -219,8 +223,9 @@ describe('runTravelTimeSweep', () => {
   });
 
   it('carries a row over under its new name when an address is only renamed', async () => {
-    state.stored.set('l1', [storedRow({ label: 'Old name' })]);
-    state.addressesByUser.u1 = [address({ label: 'Work' })];
+    // Same address id, new label: nothing about the journey changed, so nothing is recomputed.
+    state.stored.set('l1', [storedRow({ label: 'Old name', address_id: 'id-Home' })]);
+    state.addressesByUser.u1 = [address({ id: 'id-Home', label: 'Work' })];
 
     const { run } = await loadSweeper();
     await run({ now: NOW });

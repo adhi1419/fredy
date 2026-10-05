@@ -14,6 +14,7 @@ describe('home-address settings domain module', () => {
     let stored = {};
     const invalidations = [];
     const sweeps = [];
+    const pruned = [];
     const geocode = vi.fn(async (address) => ({ lat: address.length, lng: address.length + 1 }));
     const service = createHomeAddressSettings({
       getUserSettings: async () => stored,
@@ -25,6 +26,8 @@ describe('home-address settings domain module', () => {
       },
       updateDistancesForAddressChange: (userId, addresses) => invalidations.push({ userId, addresses }),
       runGeoCordTask: () => sweeps.push(true),
+      newAddressId: () => 'addr-1',
+      pruneCommuteLimits: async (userId, keep) => pruned.push({ userId, keep: [...keep] }),
     });
 
     const first = await service.saveHomeAddresses({
@@ -34,6 +37,7 @@ describe('home-address settings domain module', () => {
 
     expect(first).toEqual([
       {
+        id: 'addr-1',
         label: 'Work',
         address: 'Office',
         coords: { lat: 6, lng: 7 },
@@ -47,11 +51,16 @@ describe('home-address settings domain module', () => {
 
     await service.saveHomeAddresses({
       userId: 'user-1',
-      homeAddresses: [{ label: 'Work', address: 'Office', mode: 'CAR', departure: { time: '8:05' } }],
+      homeAddresses: [{ id: 'addr-1', label: 'Work', address: 'Office', mode: 'CAR', departure: { time: '8:05' } }],
     });
 
     expect(invalidations).toHaveLength(1);
     expect(sweeps).toHaveLength(2);
+    // Every save tells the jobs which addresses still exist, so a deleted one takes its limits along.
+    expect(pruned).toEqual([
+      { userId: 'user-1', keep: ['addr-1'] },
+      { userId: 'user-1', keep: ['addr-1'] },
+    ]);
   });
 
   it('keeps provider and user country lookup policy behind the same interface', async () => {

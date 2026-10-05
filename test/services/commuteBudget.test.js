@@ -22,12 +22,14 @@ import {
  * @returns {Object}
  */
 function transitEntry(minutes, overrides = {}) {
-  return { label: 'Work', mode: 'transit', estimate: true, transit: { minutes, transfers: 1 }, ...overrides };
+  const label = overrides.label ?? 'Work';
+  return { addressId: label, label, mode: 'transit', estimate: true, transit: { minutes, transfers: 1 }, ...overrides };
 }
 
 /** The user's saved addresses. What the job says about them is passed separately, as it is stored. */
-const WORK = { label: 'Work', mode: 'transit' };
-const SCHOOL = { label: 'School', mode: 'transit' };
+// Ids equal to the labels keep the fixtures readable; the code joins on the id only.
+const WORK = { id: 'Work', label: 'Work', mode: 'transit' };
+const SCHOOL = { id: 'School', label: 'School', mode: 'transit' };
 
 /**
  * The two halves joined the way the pipeline joins them.
@@ -179,13 +181,22 @@ describe('commuteBudget', () => {
       expect(exceedsCommuteBudget(null, within30)).toBe(false);
       expect(exceedsCommuteBudget([], within30)).toBe(false);
       expect(exceedsCommuteBudget([transitEntry(65, { label: 'Home' })], within30)).toBe(false);
-      expect(exceedsCommuteBudget([{ label: 'Work', mode: 'transit', estimate: true }], within30)).toBe(false);
+      expect(
+        exceedsCommuteBudget([{ addressId: 'Work', label: 'Work', mode: 'transit', estimate: true }], within30),
+      ).toBe(false);
     });
 
     it('judges an address in the mode it is measured in', () => {
-      const byCar = budgeted({ limits: { Work: 30 } }, [{ label: 'Work', mode: 'car' }]);
+      const byCar = budgeted({ limits: { Work: 30 } }, [{ id: 'Work', label: 'Work', mode: 'car' }]);
       const byTransit = budgeted({ limits: { Work: 30 } }, [WORK]);
-      const entry = { label: 'Work', mode: 'car', estimate: false, car: { minutes: 20 }, transit: { minutes: 70 } };
+      const entry = {
+        addressId: 'Work',
+        label: 'Work',
+        mode: 'car',
+        estimate: false,
+        car: { minutes: 20 },
+        transit: { minutes: 70 },
+      };
       expect(exceedsCommuteBudget([entry], byCar)).toBe(false);
       // The same listing, judged as the public transport commute it is not: the mode is the question
       // the user asked, so switching it has to switch the answer.
@@ -194,8 +205,10 @@ describe('commuteBudget', () => {
 
     it('falls back to the mode the row was written with', () => {
       // Addresses saved before the mode was recorded. The row still knows what it measured.
-      const entry = { label: 'Work', mode: 'car', estimate: false, car: { minutes: 55 } };
-      expect(exceedsCommuteBudget([entry], budgeted({ limits: { Work: 30 } }, [{ label: 'Work' }]))).toBe(true);
+      const entry = { addressId: 'Work', label: 'Work', mode: 'car', estimate: false, car: { minutes: 55 } };
+      expect(exceedsCommuteBudget([entry], budgeted({ limits: { Work: 30 } }, [{ id: 'Work', label: 'Work' }]))).toBe(
+        true,
+      );
     });
 
     it('treats every limit as a requirement of its own', () => {

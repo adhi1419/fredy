@@ -16,6 +16,7 @@ export interface SettingsObject {
 }
 
 export interface HomeAddress {
+  id?: string;
   label?: string;
   address?: string;
   departure?: SettingsObject;

@@ -12,6 +12,7 @@ const geoCodingPath = root + '/lib/services/geocoding/geoCodingService.js';
 const distanceServicePath = root + '/lib/services/geocoding/distanceService.js';
 const providerCountriesPath = root + '/lib/services/providers/providerCountries.js';
 const geocodingCronPath = root + '/lib/services/crons/geocoding-cron.js';
+const jobStoragePath = root + '/lib/services/storage/jobStorage.js';
 
 let stored;
 let invalidations;
@@ -43,6 +44,7 @@ async function buildServer() {
   }));
   vi.doMock(providerCountriesPath, () => ({ getCountriesForUser: async () => ['de'] }));
   vi.doMock(geocodingCronPath, () => ({ runGeoCordTask: () => sweeps.push(true) }));
+  vi.doMock(jobStoragePath, () => ({ pruneCommuteLimitsForUser: async () => {} }));
 
   const plugin = (await import(root + '/lib/api/routes/userSettingsRoute.js')).default;
   const app = Fastify();
@@ -55,8 +57,17 @@ async function buildServer() {
   return app;
 }
 
-const save = (app, home_addresses) =>
-  app.inject({ method: 'POST', url: '/api/user/settings/home-address', payload: { home_addresses } });
+/**
+ * Save the form the way the Settings page does: every row it loaded carries the id the server gave
+ * it, and a row the user just added carries none. Rows are matched to what is stored by position.
+ */
+const save = (app, home_addresses) => {
+  const previous = Array.isArray(stored?.home_addresses) ? stored.home_addresses : [];
+  const withIds = home_addresses.map((entry, index) =>
+    entry.id == null && previous[index]?.id != null ? { id: previous[index].id, ...entry } : entry,
+  );
+  return app.inject({ method: 'POST', url: '/api/user/settings/home-address', payload: { home_addresses: withIds } });
+};
 
 beforeEach(() => {
   stored = {};
@@ -138,15 +149,26 @@ describe('POST /api/user/settings/home-address, what a save invalidates', () => 
   });
 
   /**
-   * Travel times and distances are both stored under the label, so a rename really does orphan them.
-   * The sweeper can adopt a renamed journey without a request, but only if it is asked to look.
+   * Travel times and commute limits are keyed by the address id, so a rename moves nothing and
+   * there is nothing to re-measure.
    */
-  it('still re-measures when an address is renamed', async () => {
+  it('does not re-measure when an address is only renamed, and keeps its id', async () => {
     const app = await buildServer();
     await save(app, [{ label: 'Work', address: 'Office Street 1', mode: 'transit' }]);
+    const id = stored.home_addresses[0].id;
     await save(app, [{ label: 'The office', address: 'Office Street 1', mode: 'transit' }]);
 
-    expect(invalidations).toHaveLength(2);
+    expect(invalidations).toHaveLength(1);
+    expect(stored.home_addresses[0]).toMatchObject({ id, label: 'The office' });
+    await app.close();
+  });
+
+  it('hands out its own ids and never accepts one the user does not already have', async () => {
+    const app = await buildServer();
+    await save(app, [{ id: 'forged', label: 'Work', address: 'Office Street 1', mode: 'transit' }]);
+
+    expect(stored.home_addresses[0].id).toEqual(expect.any(String));
+    expect(stored.home_addresses[0].id).not.toBe('forged');
     await app.close();
   });
 

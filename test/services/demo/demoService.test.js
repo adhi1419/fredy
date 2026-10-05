@@ -223,6 +223,7 @@ describe('services/demo/demoService', () => {
 
       expect(state.userSettings['u-demo'].home_addresses).toEqual([
         {
+          id: 'demo-home',
           label: 'Zuhause',
           address: 'Adlerstraße, Pempelfort, Stadtbezirk 1, Düsseldorf, Nordrhein-Westfalen, 40211, Deutschland',
           coords: { lat: 51.230581, lng: 6.793402 },

@@ -86,7 +86,7 @@ export default function CommuteBadge({ travelTimes, jobId }: CommuteBadgeProps):
         if (mode == null) {
           return null;
         }
-        const address = budgeted.find((candidate) => candidate?.label === entry.label);
+        const address = budgeted.find((candidate) => candidate?.id != null && candidate.id === entry.addressId);
         // Only when the number on the card is the number the limit was measured against. The two
         // can come apart on a row written before the mode was recorded - the card then leads with
         // the first mode that has an answer, which may not be the one the address is set to - and a

@@ -7,6 +7,7 @@
  * Normalize the configured distance-check addresses from user settings to an array.
  */
 export interface HomeAddress {
+  id?: string;
   label: string;
   address: string;
   coords: { lat: number; lng: number };
