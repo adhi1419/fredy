@@ -786,17 +786,19 @@ describe('listingsStorage contract – provider distribution', () => {
 
 describe('listingsStorage contract – getAvailableProviders', () => {
   it('returns distinct providers for accessible jobs', async () => {
-    await seedContext();
+    await seedContext({}, { provider: [{ id: 'immoscout' }, { id: 'immowelt' }, { id: 'unused' }] });
     await listingsStorage.storeListings(JOB.jobId, 'immoscout', [makeListing()]);
     await listingsStorage.storeListings(JOB.jobId, 'immowelt', [makeListing()]);
 
     const providers = await listingsStorage.getAvailableProviders({ userId: USER.userId });
+    // A configured provider with no stored listing is not offered as a filter.
+    expect(providers).not.toContain('unused');
     expect(providers).toContain('immoscout');
     expect(providers).toContain('immowelt');
   });
 
   it('excludes soft-deleted listings by default', async () => {
-    await seedContext();
+    await seedContext({}, { provider: [{ id: 'immoscout' }, { id: 'onlythis' }] });
     const kept = makeListing();
     const deleted = makeListing();
     await listingsStorage.storeListings(JOB.jobId, 'immoscout', [kept]);
@@ -818,7 +820,7 @@ describe('listingsStorage contract – getAvailableProviders', () => {
   });
 
   it('shows only soft-deleted providers with hiddenOnly', async () => {
-    await seedContext();
+    await seedContext({}, { provider: [{ id: 'immoscout' }, { id: 'onlythis' }] });
     const kept = makeListing();
     const deleted = makeListing();
     await listingsStorage.storeListings(JOB.jobId, 'immoscout', [kept]);
