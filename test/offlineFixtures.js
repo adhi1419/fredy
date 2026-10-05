@@ -91,8 +91,12 @@ export async function readFixture(url, options) {
     return detailProvider == null ? null : tryReadFile(path.join(FIXTURES_DIR, `${detailProvider}_detail.html`));
   }
 
-  if (providerListPath[providerName] === pathname) {
-    return tryReadFile(path.join(FIXTURES_DIR, `${providerName}.html`));
+  const listPathname = providerName === 'kleinanzeigen' ? pathname.replace(/\/seite:\d+(?=\/)/, '') : pathname;
+  if (providerListPath[providerName] === listPathname) {
+    const fixture = await tryReadFile(path.join(FIXTURES_DIR, `${providerName}.html`));
+    if (providerName !== 'kleinanzeigen' || fixture == null) return fixture;
+    const listingCount = (fixture.match(/<article[^>]+data-adid=/gi) ?? []).length;
+    return fixture.replace(/(\d+\s*-\s*\d+\s+von\s+)[\d.]+/, `$1${listingCount}`);
   }
 
   // Detail page: prefer dedicated detail fixture, fall back to list fixture

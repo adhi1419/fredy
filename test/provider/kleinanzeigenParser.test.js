@@ -83,6 +83,9 @@ describe('kleinanzeigen search results', () => {
     );
     // An existing page segment is replaced, not stacked.
     expect(pageUrl(pageUrl(url, 2), 4)).toBe(pageUrl(url, 4));
+    expect(pageUrl('https://www.kleinanzeigen.de/s-immobilien/duesseldorf/k0c195l2068r5', 2)).toBe(
+      'https://www.kleinanzeigen.de/s-immobilien/duesseldorf/seite:2/k0c195l2068r5',
+    );
   });
 
   it('walks every page until the reported total is covered, keeping each result once', async () => {
@@ -108,14 +111,41 @@ describe('kleinanzeigen search results', () => {
     expect(listings.map((listing) => listing.id)).toEqual(['1', '2', '3', '4', '5']);
   });
 
-  it('keeps what it has when a later page cannot be loaded', async () => {
+  it('retries a challenged later page and returns the complete result set', async () => {
+    const first = page([card({ id: '1', description: 'Hell' })]).replace(
+      '<h1>Ergebnisse</h1>',
+      '<h1>1 - 25 von 3 Ergebnissen</h1>',
+    );
+    const second = page([card({ id: '2', description: 'Hell' }), card({ id: '3', description: 'Hell' })]);
+    const asked = [];
+    const loadPage = vi.fn(async (url) => {
+      const pageNumber = Number(/seite:(\d+)/.exec(url)?.[1] ?? 1);
+      asked.push(pageNumber);
+      if (pageNumber === 1) return first;
+      return asked.filter((page) => page === 2).length === 1
+        ? '<html><h1>Finden Sie Ihr neues Zuhause</h1></html>'
+        : second;
+    });
+
+    const listings = await config.getListings('https://www.kleinanzeigen.de/s-x/c203l3331', loadPage);
+
+    expect(asked).toEqual([1, 2, 2]);
+    expect(listings.map((listing) => listing.id)).toEqual(['1', '2', '3']);
+    expect(loadPage.mock.calls[2][1]).toMatchObject({
+      headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+    });
+  });
+
+  it('fails after retrying a later page instead of returning a partial result', async () => {
     const first = page([card({ id: '1', description: 'Hell' })]).replace(
       '<h1>Ergebnisse</h1>',
       '<h1>1 - 25 von 60 Ergebnissen</h1>',
     );
-    const listings = await config.getListings('https://www.kleinanzeigen.de/s-x/c203l3331', async (url) =>
-      url.includes('seite:') ? null : first,
+    const loadPage = vi.fn(async (url) => (url.includes('seite:') ? null : first));
+
+    await expect(config.getListings('https://www.kleinanzeigen.de/s-x/c203l3331', loadPage)).rejects.toThrow(
+      'page 2 could not be loaded',
     );
-    expect(listings.map((listing) => listing.id)).toEqual(['1']);
+    expect(loadPage).toHaveBeenCalledTimes(3);
   });
 });
