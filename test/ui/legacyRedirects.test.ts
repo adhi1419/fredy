@@ -65,7 +65,7 @@ describe('legacyRedirects', () => {
     for (const tab of ['preferences', 'travel-time', 'listings', 'notifications']) {
       expect(routes.has(`/settings/${tab}`)).toBe(true);
     }
-    for (const tab of ['system', 'execution', 'backup', 'debug']) {
+    for (const tab of ['system', 'execution', 'connectivity']) {
       expect(routes.has(`/admin/${tab}`)).toBe(true);
     }
   });

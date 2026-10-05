@@ -28,14 +28,8 @@ export interface AdminSettingsForm {
   port: number | string;
   baseUrl: string;
   listingRetentionDays: number | string;
-  demoMode: boolean;
   interval: number | string;
   workingHours: WorkingHoursForm;
-  proxyUrl: string;
-  priceTrackingEnabled: boolean;
-  priceCheckIntervalDays: number | string;
-  priceCheckLimitPerRun: number | string;
-  priceChangeThresholdPercent: number | string;
   connectivityEnabled: boolean;
   connectivitySources: Record<string, boolean>;
   connectivityLimitPerRun: number | string;
@@ -70,14 +64,8 @@ export interface GeneralSettings {
   port?: number | string | null;
   baseUrl?: string | null;
   listingRetentionDays?: number | string | null;
-  demoMode?: boolean;
   interval?: number | string | null;
   workingHours?: { from?: string | null; to?: string | null; timeZone?: string | null } | null;
-  proxyUrl?: string | null;
-  priceTrackingEnabled?: boolean;
-  priceCheckIntervalDays?: number | string | null;
-  priceCheckLimitPerRun?: number | string | null;
-  priceChangeThresholdPercent?: number | string | null;
   connectivityEnabled?: boolean;
   connectivitySources?: Record<string, boolean> | null;
   connectivityLimitPerRun?: number | string | null;
@@ -86,7 +74,7 @@ export interface GeneralSettings {
 }
 
 /** The fields the System page owns. */
-export const SYSTEM_FIELDS: Array<keyof AdminSettingsForm> = ['port', 'baseUrl', 'listingRetentionDays', 'demoMode'];
+export const SYSTEM_FIELDS: Array<keyof AdminSettingsForm> = ['port', 'baseUrl', 'listingRetentionDays'];
 
 /** The fields the Connectivity page owns. */
 export const CONNECTIVITY_FIELDS: Array<keyof AdminSettingsForm> = [
@@ -97,15 +85,7 @@ export const CONNECTIVITY_FIELDS: Array<keyof AdminSettingsForm> = [
 ];
 
 /** The fields the Execution page owns. */
-export const EXECUTION_FIELDS: Array<keyof AdminSettingsForm> = [
-  'interval',
-  'workingHours',
-  'proxyUrl',
-  'priceTrackingEnabled',
-  'priceCheckIntervalDays',
-  'priceCheckLimitPerRun',
-  'priceChangeThresholdPercent',
-];
+export const EXECUTION_FIELDS: Array<keyof AdminSettingsForm> = ['interval', 'workingHours'];
 
 const nullOrEmpty = (val: unknown): boolean => val == null || String(val).length === 0;
 
@@ -122,7 +102,6 @@ function toForm(settings: GeneralSettings | null | undefined): AdminSettingsForm
     port: settings?.port ?? 9998,
     baseUrl: settings?.baseUrl ?? '',
     listingRetentionDays: settings?.listingRetentionDays ?? 14,
-    demoMode: settings?.demoMode === true,
     interval: settings?.interval ?? 60,
     workingHours: {
       from: settings?.workingHours?.from ?? null,
@@ -132,11 +111,6 @@ function toForm(settings: GeneralSettings | null | undefined): AdminSettingsForm
       // zone the next time they save an unrelated field on this page.
       timeZone: settings?.workingHours?.timeZone ?? null,
     },
-    proxyUrl: settings?.proxyUrl ?? '',
-    priceTrackingEnabled: settings?.priceTrackingEnabled === true,
-    priceCheckIntervalDays: settings?.priceCheckIntervalDays ?? 7,
-    priceCheckLimitPerRun: settings?.priceCheckLimitPerRun ?? 100,
-    priceChangeThresholdPercent: settings?.priceChangeThresholdPercent ?? 1,
     connectivityEnabled: settings?.connectivityEnabled === true,
     // Every source gets a defined value, so an instance whose stored map predates a source still
     // compares equal until somebody actually changes a switch.
@@ -221,12 +195,6 @@ export function useAdminSettings(settings: GeneralSettings | null | undefined): 
       if (fields.includes('connectivityLimitPerRun')) {
         payload.connectivityLimitPerRun = Number(form.connectivityLimitPerRun);
         payload.connectivityMaxAgeDays = Number(form.connectivityMaxAgeDays);
-      }
-      if (fields.includes('priceCheckIntervalDays')) {
-        payload.priceCheckIntervalDays = Number(form.priceCheckIntervalDays);
-        payload.priceCheckLimitPerRun = Number(form.priceCheckLimitPerRun);
-        payload.priceChangeThresholdPercent = Number(form.priceChangeThresholdPercent);
-        payload.proxyUrl = form.proxyUrl?.trim() ?? '';
       }
 
       setSaving(fields);
@@ -314,18 +282,6 @@ export function useAdminSettings(settings: GeneralSettings | null | undefined): 
           const { from, to } = form.workingHours;
           if ((!nullOrEmpty(from) && nullOrEmpty(to)) || (nullOrEmpty(from) && !nullOrEmpty(to))) {
             return t('settings.toastWorkingHoursIncomplete');
-          }
-          // Only the interval and the limit are guarded here. They decide how much traffic Fredy
-          // sends at the portals, so a cleared field must not be silently coerced into a value the
-          // operator never chose - the threshold is allowed to be 0, which legitimately means
-          // "notify me about anything".
-          if (
-            !Number.isInteger(Number(form.priceCheckIntervalDays)) ||
-            Number(form.priceCheckIntervalDays) < 1 ||
-            !Number.isInteger(Number(form.priceCheckLimitPerRun)) ||
-            Number(form.priceCheckLimitPerRun) < 1
-          ) {
-            return t('settings.toastPriceTrackingInvalid');
           }
           return null;
         },

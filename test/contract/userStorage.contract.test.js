@@ -8,13 +8,11 @@ import { initBackend, loadStorageModule, resetBackend, teardownBackend } from '.
 
 let userStorage;
 let jobStorage;
-let settingsStorage;
 
 beforeAll(async () => {
   await initBackend();
   userStorage = await loadStorageModule('userStorage');
   jobStorage = await loadStorageModule('jobStorage');
-  settingsStorage = await loadStorageModule('settingsStorage');
 });
 
 beforeEach(async () => resetBackend());
@@ -93,18 +91,5 @@ describe('userStorage contract', () => {
     expect(await userStorage.getUser('uid-alice')).toBeNull();
     expect((await jobStorage.getJobs({ includeDisabled: true })).some((job) => job.name === 'doomed')).toBe(false);
     expect((await FirestoreConnection.collection('provider_credentials').get()).size).toBe(0);
-  });
-
-  it('maintains a non-admin demo data owner only when demo mode is enabled', async () => {
-    await settingsStorage.upsertSettings({ demoMode: true });
-    await userStorage.ensureDemoUserExists();
-    expect(await userStorage.getUserByUsername('demo')).toMatchObject({ isAdmin: false });
-  });
-
-  it('demotes an existing demo owner', async () => {
-    await seedUser({ id: 'demo-id', username: 'demo', isAdmin: true });
-    await settingsStorage.upsertSettings({ demoMode: true });
-    await userStorage.ensureDemoUserExists();
-    expect(await userStorage.getUserIdentity('demo-id')).toMatchObject({ isAdmin: false });
   });
 });

@@ -4,7 +4,7 @@
  */
 
 import type { ReactElement } from 'react';
-import { TimePicker, Button, Checkbox, Input, InputNumber, Banner, Select } from '@douyinfe/semi-ui-19';
+import { TimePicker, Button, InputNumber, Select } from '@douyinfe/semi-ui-19';
 import { IconSave } from '@douyinfe/semi-icons';
 import { useOutletContext } from 'react-router';
 import { useMemo } from 'react';
@@ -33,8 +33,7 @@ function formatFromTBackend(time: string | null): number | null {
 }
 
 /**
- * How often Fredy searches, within which hours, through which proxy, and whether it re-checks
- * prices afterwards.
+ * How often Fredy searches and within which hours.
  */
 export default function ExecutionPage(): ReactElement {
   const { t, form, setField, setWorkingHour, executionDirty, savingExecution, saveExecution } =
@@ -88,105 +87,6 @@ export default function ExecutionPage(): ReactElement {
             onChange={(val) => setWorkingHour('timeZone', val == null || val === '' ? null : String(val))}
             style={{ minWidth: 260 }}
           />
-        </div>
-      </SegmentPart>
-
-      <SegmentPart name={t('settings.proxyUrl')} helpText={t('settings.proxyUrlHelp')}>
-        <Input
-          type="text"
-          placeholder={t('settings.proxyUrlPlaceholder')}
-          value={form.proxyUrl}
-          onChange={(value) => setField('proxyUrl', value)}
-        />
-      </SegmentPart>
-
-      {/*
-        One block rather than four. The three dials are meaningless on their own - they only
-        describe how the sweep behaves once it exists - so presenting them as peers of the switch
-        invited reading them as four independent knobs. They stay visible while disabled so an
-        operator can see what turning the feature on would commit them to.
-      */}
-      <SegmentPart name={t('settings.priceTracking')} helpText={t('settings.priceTrackingHelp')}>
-        {/*
-          Above the switch, not below it. Turning this on is the moment the operator takes on the
-          risk, so the warning has to be in front of them beforehand, not revealed as a consequence.
-        */}
-        <Banner
-          fullMode={false}
-          type="warning"
-          closeIcon={null}
-          style={{ marginBottom: '12px' }}
-          title={t('settings.priceTrackingWarningTitle')}
-          description={
-            <>
-              <p style={{ margin: '0 0 8px' }}>{t('settings.priceTrackingWarningBody')}</p>
-              <p style={{ margin: 0 }}>{t('settings.priceTrackingWarningDefaults')}</p>
-            </>
-          }
-        />
-
-        <Checkbox
-          checked={form.priceTrackingEnabled}
-          onChange={(e) => setField('priceTrackingEnabled', e.target.checked === true)}
-        >
-          {t('settings.priceTrackingEnabled')}
-        </Checkbox>
-
-        <div
-          className={`settingsShell__subSettings${form.priceTrackingEnabled ? '' : ' settingsShell__subSettings--disabled'}`}
-        >
-          <div className="settingsShell__subSetting">
-            <label className="settingsShell__subSetting__label" htmlFor="priceCheckIntervalDays">
-              {t('settings.priceCheckInterval')}
-            </label>
-            <p className="settingsShell__subSetting__help">{t('settings.priceCheckIntervalHelp')}</p>
-            <InputNumber
-              id="priceCheckIntervalDays"
-              min={1}
-              max={30}
-              disabled={!form.priceTrackingEnabled}
-              value={form.priceCheckIntervalDays}
-              formatter={(value) => `${value}`.replace(/\D/g, '')}
-              onChange={(value) => setField('priceCheckIntervalDays', value)}
-              suffix={t('settings.listingRetentionSuffix')}
-              style={{ maxWidth: 200 }}
-            />
-          </div>
-
-          <div className="settingsShell__subSetting">
-            <label className="settingsShell__subSetting__label" htmlFor="priceCheckLimitPerRun">
-              {t('settings.priceCheckLimit')}
-            </label>
-            <p className="settingsShell__subSetting__help">{t('settings.priceCheckLimitHelp')}</p>
-            <InputNumber
-              id="priceCheckLimitPerRun"
-              min={1}
-              max={500}
-              disabled={!form.priceTrackingEnabled}
-              value={form.priceCheckLimitPerRun}
-              formatter={(value) => `${value}`.replace(/\D/g, '')}
-              onChange={(value) => setField('priceCheckLimitPerRun', value)}
-              style={{ maxWidth: 200 }}
-            />
-          </div>
-
-          <div className="settingsShell__subSetting">
-            <label className="settingsShell__subSetting__label" htmlFor="priceChangeThresholdPercent">
-              {t('settings.priceChangeThreshold')}
-            </label>
-            <p className="settingsShell__subSetting__help">{t('settings.priceChangeThresholdHelp')}</p>
-            <InputNumber
-              id="priceChangeThresholdPercent"
-              min={0}
-              max={50}
-              step={0.5}
-              disabled={!form.priceTrackingEnabled}
-              value={form.priceChangeThresholdPercent}
-              onChange={(value) => setField('priceChangeThresholdPercent', value)}
-              suffix="%"
-              style={{ maxWidth: 200 }}
-            />
-          </div>
         </div>
       </SegmentPart>
 

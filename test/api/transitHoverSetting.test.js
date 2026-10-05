@@ -9,19 +9,16 @@ import Fastify from 'fastify';
 const root = (await import('node:path')).resolve('.');
 const settingsStoragePath = root + '/lib/services/storage/settingsStorage.js';
 
-let globalSettings;
 let stored;
 
 /**
  * A server with the user settings routes mounted over an in-memory settings store.
  *
- * @param {{isAdmin?: boolean}} [session]
  * @returns {Promise<import('fastify').FastifyInstance>}
  */
-async function buildServer({ isAdmin = false } = {}) {
+async function buildServer() {
   vi.resetModules();
   vi.doMock(settingsStoragePath, () => ({
-    getSettings: async () => globalSettings,
     getUserSettings: () => stored,
     upsertSettings: (values) => Object.assign(stored, values),
   }));
@@ -30,7 +27,6 @@ async function buildServer({ isAdmin = false } = {}) {
   const app = Fastify();
   app.addHook('preHandler', (request, _reply, done) => {
     request.currentUser = { id: 'user-1', isAdmin: false };
-    request.currentUser = { id: 'user-1', isAdmin };
     done();
   });
   await app.register(plugin, { prefix: '/api/user/settings' });
@@ -41,7 +37,6 @@ const post = (app, body) =>
   app.inject({ method: 'POST', url: '/api/user/settings/transit-hover-popups', payload: body });
 
 beforeEach(() => {
-  globalSettings = { demoMode: false };
   stored = {};
 });
 
@@ -75,26 +70,6 @@ describe('POST /api/user/settings/transit-hover-popups', () => {
 
     expect(response.statusCode).toBe(400);
     expect(stored.transit_hover_popups).toBeUndefined();
-    await app.close();
-  });
-
-  it('refuses a non-admin on a demo instance', async () => {
-    globalSettings = { demoMode: true };
-    const app = await buildServer({ isAdmin: false });
-    const response = await post(app, { transit_hover_popups: true });
-
-    expect(response.statusCode).toBe(403);
-    expect(stored.transit_hover_popups).toBeUndefined();
-    await app.close();
-  });
-
-  it('still lets an admin change it on a demo instance', async () => {
-    globalSettings = { demoMode: true };
-    const app = await buildServer({ isAdmin: true });
-    const response = await post(app, { transit_hover_popups: true });
-
-    expect(response.statusCode).toBe(200);
-    expect(stored.transit_hover_popups).toBe(true);
     await app.close();
   });
 });

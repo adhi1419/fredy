@@ -54,11 +54,10 @@ import { getBoundsFromCoords } from './mapUtils.js';
 import { applyRouteLayers, buildRouteData } from './detailMapLayers.js';
 import { TRAVEL_MODES, type TravelTimeEntry } from '../../components/transit/travelTimeFormat.js';
 import { getAddresses } from '../../utils.js';
-import { xhrPost, xhrGet, errorMessage } from '../../services/xhr.js';
+import { xhrPost, errorMessage } from '../../services/xhr.js';
 
 import IconEuro from '../../components/icons/IconEuro.jsx';
 import ListingFinanceCard from './components/ListingFinanceCard.jsx';
-import PriceHistoryChart from './components/PriceHistoryChart.jsx';
 import NearbyStops from '../../components/transit/NearbyStops.jsx';
 import ConnectivityCard from '../../components/connectivity/ConnectivityCard.jsx';
 import TravelTimes from '../../components/transit/TravelTimes.jsx';
@@ -100,11 +99,6 @@ type InquiryStatus = 'sending' | 'sent' | 'failed' | 'unknown' | string;
 interface ListingDistance {
   label: string;
   meters: number;
-}
-
-interface PriceHistoryEntry {
-  price: number;
-  observed_at: number;
 }
 
 interface ListingTechnologyCoverage {
@@ -243,7 +237,6 @@ export default function ListingDetail(): ReactNode {
   const [loading, setLoading] = useState(true);
   const [notesDraft, setNotesDraft] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
-  const [priceHistory, setPriceHistory] = useState<readonly PriceHistoryEntry[]>([]);
   // Set while the user is placing the listing by hand: carries the address text they typed, waiting
   // for the coordinates the map is about to give it.
   const [pinDrop, setPinDrop] = useState<{ address: string } | null>(null);
@@ -337,27 +330,6 @@ export default function ListingDetail(): ReactNode {
     setDraftError(null);
     setDraftCopied(false);
   }, [listing?.id]);
-
-  // Fetched separately from the listing rather than joined onto it: most views never draw the
-  // chart, and a series has no size bound, so it must not ride along on every listing read.
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchPriceHistory() {
-      try {
-        // xhrGet resolves { status, json }, not the payload itself.
-        const { json } = await xhrGet(`/api/listings/${listingId}/priceHistory`);
-        if (!cancelled) setPriceHistory(Array.isArray(json) ? (json as readonly PriceHistoryEntry[]) : []);
-      } catch {
-        // A missing history is not an error worth interrupting the page for - the chart simply
-        // does not render.
-        if (!cancelled) setPriceHistory([]);
-      }
-    }
-    fetchPriceHistory();
-    return () => {
-      cancelled = true;
-    };
-  }, [listingId]);
 
   const listingCoords = useMemo(
     () =>
@@ -1308,14 +1280,6 @@ export default function ListingDetail(): ReactNode {
                     </div>
                   ))}
                 </dl>
-                {/* The chart hides itself below two readings, so a listing whose price has never
-                moved shows nothing at all rather than an empty frame. */}
-                {priceHistory.length >= 2 && (
-                  <div className="listing-detail__fold-sub">
-                    <Text strong>{t('listing.detail.priceHistory')}</Text>
-                    <PriceHistoryChart data={priceHistory} locale={locale} />
-                  </div>
-                )}
               </div>
             </details>
 

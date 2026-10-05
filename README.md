@@ -152,15 +152,7 @@ Provider coverage and supported search fields can differ by source because each 
 
 Create a notification channel once and reuse it across saved searches. Current customer-facing delivery options include:
 
-- Slack and Slack with Webhooks
 - Telegram
-- Discord Webhook
-- Mattermost
-- ntfy
-- Pushover
-- Apprise
-- Generic HTTP POST
-- Email through SMTP, SendGrid, MailJet, or Resend
 
 Each channel stores the destination and credentials needed by that service. You control which channels receive each saved search.
 

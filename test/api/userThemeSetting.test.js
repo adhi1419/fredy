@@ -20,7 +20,6 @@ async function loadThemeHandler(stored = {}) {
   upserted = [];
   vi.resetModules();
   vi.doMock(root + '/lib/services/storage/settingsStorage.js', () => ({
-    getSettings: async () => ({ demoMode: false }),
     getUserSettings: () => stored,
     getAddresses: () => [],
     upsertSettings: (settings, userId = null) => upserted.push({ settings, userId }),

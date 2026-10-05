@@ -246,7 +246,7 @@ const routes = {
   'GET /api/jobs/shareableUserList': [],
   'GET /api/jobs/notificationAdapter': notificationAdapterMetadata,
   'GET /api/notificationChannels': notificationChannels,
-  'GET /api/admin/generalSettings': { demoMode: false, interval: 30 },
+  'GET /api/admin/generalSettings': { interval: 30 },
   'GET /api/user/settings': {
     language: 'en',
     theme: 'light',
@@ -259,7 +259,6 @@ const routes = {
     },
   },
   'GET /api/dashboard': dashboard,
-  'GET /api/demo': { demoMode: false },
   'POST /api/user/settings/listing-deletion-preference': {},
 };
 

@@ -63,7 +63,7 @@ describe('orchestrateNotificationDelivery', () => {
 
     const summary = await run({
       listings: [{ id: 'L1' }],
-      notificationConfig: [channel('c1', 'telegram'), channel('c2', 'slack')],
+      notificationConfig: [channel('c1', 'telegram'), channel('c2', 'webhook')],
       sendOneToChannel,
       markComplete,
     });
@@ -99,7 +99,7 @@ describe('orchestrateNotificationDelivery', () => {
 
     const summary = await run({
       listings: [{ id: 'L1' }],
-      notificationConfig: [channel('c1', 'telegram'), channel('c2', 'slack')],
+      notificationConfig: [channel('c1', 'telegram'), channel('c2', 'webhook')],
       sendOneToChannel,
       markComplete,
     });
@@ -112,7 +112,7 @@ describe('orchestrateNotificationDelivery', () => {
   });
 
   it('is externally inert on a second execution (no duplicate sends, no re-mark)', async () => {
-    const config = [channel('c1', 'telegram'), channel('c2', 'slack')];
+    const config = [channel('c1', 'telegram'), channel('c2', 'webhook')];
     const send1 = vi.fn(async () => ({ ok: true }));
     const mark1 = makeMarkComplete();
     await run({ listings: [{ id: 'L1' }], notificationConfig: config, sendOneToChannel: send1, markComplete: mark1 });
@@ -137,7 +137,7 @@ describe('orchestrateNotificationDelivery', () => {
   });
 
   it('an unknown channel is never retried on a later run and blocks completion forever', async () => {
-    const config = [channel('c1', 'telegram'), channel('c2', 'slack')];
+    const config = [channel('c1', 'telegram'), channel('c2', 'webhook')];
     const send1 = vi.fn(async ({ channel: ch }) => {
       if (ch.configuredAdapterId === 'c2') throw new Error('ambiguous');
       return { ok: true };
@@ -210,7 +210,7 @@ describe('orchestrateNotificationDelivery', () => {
   it('persists the sorted intended-channel snapshot on every ledger record', async () => {
     await run({
       listings: [{ id: 'L1' }],
-      notificationConfig: [channel('c2', 'slack'), channel('c1', 'telegram')],
+      notificationConfig: [channel('c2', 'webhook'), channel('c1', 'telegram')],
       sendOneToChannel: vi.fn(async () => ({ ok: true })),
       markComplete: makeMarkComplete(),
     });

@@ -82,12 +82,11 @@ describe('Rust plugin parity contract', () => {
     expect(adapters.map(adapterProjection)).toEqual(contract.notificationAdapters);
     for (const adapter of adapters) {
       expect(typeof adapter.send, `${adapter.config.id}.send`).toBe('function');
-      expect(typeof adapter.sendPriceChange, `${adapter.config.id}.sendPriceChange`).toBe('function');
     }
   });
 
   it('freezes startup versus schedule-only task classification and cron expressions', () => {
-    expect(contract.schedules).toHaveLength(7);
+    expect(contract.schedules).toHaveLength(5);
     expect(new Set(contract.schedules.map((task) => task.id)).size).toBe(contract.schedules.length);
     expect(contract.schedules.filter((task) => task.startup).map((task) => task.id)).toEqual([
       'active-checker',
@@ -95,12 +94,7 @@ describe('Rust plugin parity contract', () => {
       'listing-retention',
       'connectivity',
     ]);
-    expect(contract.schedules.filter((task) => !task.startup).map((task) => task.id)).toEqual([
-      'demo-cleanup',
-      'price-tracking',
-      'travel-time',
-    ]);
-    expect(contract.schedules.find((task) => task.id === 'demo-cleanup').condition).toBe('demoMode');
+    expect(contract.schedules.filter((task) => !task.startup).map((task) => task.id)).toEqual(['travel-time']);
     for (const task of contract.schedules) {
       expect(task.cron, `${task.id}.cron`).toMatch(/^[^\n]+$/);
     }

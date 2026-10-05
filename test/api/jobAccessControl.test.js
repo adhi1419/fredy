@@ -13,7 +13,7 @@ vi.mock('../../lib/services/storage/firestore/FirestoreConnection.js', () => ({
   default: firestore.connection,
 }));
 vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
-  getSettings: async () => ({ demoMode: false }),
+  getSettings: async () => ({}),
 }));
 
 const ALICE = { id: 'u1', username: 'alice@example.com', isAdmin: false };

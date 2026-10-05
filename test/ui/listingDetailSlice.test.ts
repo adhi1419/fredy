@@ -181,7 +181,6 @@ describe('Listing Detail Slice 5', () => {
   it('keeps deep behavior sections inside evidence', () => {
     for (const marker of [
       'ListingFinanceCard',
-      'PriceHistoryChart',
       'MapCanvas',
       'AddressEditor',
       'NearbyStops',

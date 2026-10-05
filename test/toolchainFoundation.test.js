@@ -137,13 +137,9 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/services/authenticatedFetch.ts',
       'ui/src/components/connectivity/connectivityFormat.ts',
       'ui/src/services/transformer/providerTransformer.ts',
-      'ui/src/services/debugLoggingClient.ts',
-      'ui/src/services/backupRestoreClient.ts',
       'ui/src/Index.tsx',
       'ui/src/components/ListingDeletionModal.tsx',
       'ui/src/components/connectivity/ConnectivityCard.tsx',
-      'ui/src/components/debug/DebugLoggingBanner.tsx',
-      'ui/src/components/demo/DemoBanner.tsx',
       'ui/src/components/filters/ActiveFilterChips.tsx',
       'ui/src/components/filters/FilterButton.tsx',
       'ui/src/components/filters/FilterDrawer.tsx',
@@ -165,9 +161,7 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/utils.ts',
       'ui/src/views/admin/AdminLayout.tsx',
       'ui/src/views/admin/ScopeBanner.tsx',
-      'ui/src/views/admin/pages/BackupPage.tsx',
       'ui/src/views/admin/pages/ConnectivityPage.tsx',
-      'ui/src/views/admin/pages/DebugPage.tsx',
       'ui/src/views/admin/pages/ExecutionPage.tsx',
       'ui/src/views/admin/pages/SystemPage.tsx',
       'ui/src/views/admin/useAdminSettings.ts',
@@ -175,7 +169,6 @@ describe('Bun and TypeScript foundation', () => {
       'ui/src/views/listings/Map.tsx',
       'ui/src/views/listings/components/AddressEditor.tsx',
       'ui/src/views/listings/components/ListingFinanceCard.tsx',
-      'ui/src/views/listings/components/PriceHistoryChart.tsx',
       'ui/src/views/login/Login.tsx',
       'ui/src/views/onboarding/ApplicantProfileOnboardingPage.tsx',
       'ui/src/views/settings/pages/InquiryProfilePage.tsx',
@@ -332,8 +325,6 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/services/authenticatedFetch.ts', 'ui/src/services/authenticatedFetch.js'],
       ['ui/src/components/connectivity/connectivityFormat.ts', 'ui/src/components/connectivity/connectivityFormat.js'],
       ['ui/src/services/transformer/providerTransformer.ts', 'ui/src/services/transformer/providerTransformer.js'],
-      ['ui/src/services/debugLoggingClient.ts', 'ui/src/services/debugLoggingClient.js'],
-      ['ui/src/services/backupRestoreClient.ts', 'ui/src/services/backupRestoreClient.js'],
       ['test/ui/returnTo.test.ts', 'test/ui/returnTo.test.js'],
       ['test/ui/timeZoneOptions.test.ts', 'test/ui/timeZoneOptions.test.js'],
       ['test/ui/channelForm.test.ts', 'test/ui/channelForm.test.js'],
@@ -349,7 +340,7 @@ describe('Bun and TypeScript foundation', () => {
       ['test/ui/apiUrl.test.ts', 'test/ui/apiUrl.test.js'],
       ['test/ui/locales.test.ts', 'test/ui/locales.test.js'],
     ];
-    expect(waveThreeMigrations).toHaveLength(29);
+    expect(waveThreeMigrations).toHaveLength(27);
     for (const [typedPath, legacyPath] of waveThreeMigrations) {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
@@ -358,8 +349,6 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/Index.tsx', 'ui/src/Index.jsx'],
       ['ui/src/components/ListingDeletionModal.tsx', 'ui/src/components/ListingDeletionModal.jsx'],
       ['ui/src/components/connectivity/ConnectivityCard.tsx', 'ui/src/components/connectivity/ConnectivityCard.jsx'],
-      ['ui/src/components/debug/DebugLoggingBanner.tsx', 'ui/src/components/debug/DebugLoggingBanner.jsx'],
-      ['ui/src/components/demo/DemoBanner.tsx', 'ui/src/components/demo/DemoBanner.jsx'],
       ['ui/src/components/filters/ActiveFilterChips.tsx', 'ui/src/components/filters/ActiveFilterChips.jsx'],
       ['ui/src/components/filters/FilterButton.tsx', 'ui/src/components/filters/FilterButton.jsx'],
       ['ui/src/components/filters/FilterDrawer.tsx', 'ui/src/components/filters/FilterDrawer.jsx'],
@@ -387,9 +376,7 @@ describe('Bun and TypeScript foundation', () => {
       ['ui/src/utils.ts', 'ui/src/utils.js'],
       ['ui/src/views/admin/AdminLayout.tsx', 'ui/src/views/admin/AdminLayout.jsx'],
       ['ui/src/views/admin/ScopeBanner.tsx', 'ui/src/views/admin/ScopeBanner.jsx'],
-      ['ui/src/views/admin/pages/BackupPage.tsx', 'ui/src/views/admin/pages/BackupPage.jsx'],
       ['ui/src/views/admin/pages/ConnectivityPage.tsx', 'ui/src/views/admin/pages/ConnectivityPage.jsx'],
-      ['ui/src/views/admin/pages/DebugPage.tsx', 'ui/src/views/admin/pages/DebugPage.jsx'],
       ['ui/src/views/admin/pages/ExecutionPage.tsx', 'ui/src/views/admin/pages/ExecutionPage.jsx'],
       ['ui/src/views/admin/pages/SystemPage.tsx', 'ui/src/views/admin/pages/SystemPage.jsx'],
       ['ui/src/views/admin/useAdminSettings.ts', 'ui/src/views/admin/useAdminSettings.js'],
@@ -424,10 +411,6 @@ describe('Bun and TypeScript foundation', () => {
         'ui/src/views/listings/components/ListingFinanceCard.tsx',
         'ui/src/views/listings/components/ListingFinanceCard.jsx',
       ],
-      [
-        'ui/src/views/listings/components/PriceHistoryChart.tsx',
-        'ui/src/views/listings/components/PriceHistoryChart.jsx',
-      ],
       ['ui/src/views/login/Login.tsx', 'ui/src/views/login/Login.jsx'],
       [
         'ui/src/views/onboarding/ApplicantProfileOnboardingPage.tsx',
@@ -440,7 +423,7 @@ describe('Bun and TypeScript foundation', () => {
       ['test/ui/homeViewState.test.ts', 'test/ui/homeViewState.test.js'],
       ['test/ui/noWhatsNewSurface.test.ts', 'test/ui/noWhatsNewSurface.test.js'],
     ];
-    expect(finalMigrations).toHaveLength(51);
+    expect(finalMigrations).toHaveLength(46);
     for (const [typedPath, legacyPath] of finalMigrations) {
       expect(fs.existsSync(path.join(root, typedPath)), typedPath).toBe(true);
       expect(fs.existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);

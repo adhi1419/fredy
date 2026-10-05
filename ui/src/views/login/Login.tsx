@@ -9,7 +9,7 @@ import type { ReactElement } from 'react';
 import cityBackground from '../../assets/city_background.jpg';
 import Logo from '../../components/logo/Logo';
 import { useLocation, useNavigate } from 'react-router';
-import { useActions, useSelector } from '../../services/state/store';
+import { useActions } from '../../services/state/store';
 import { Button, Banner, Spin } from '@douyinfe/semi-ui-19';
 import { authReady } from '../../services/auth/firebaseAuth.js';
 import type { FirebaseAuthClient } from '../../services/auth/firebaseAuth.js';
@@ -17,14 +17,8 @@ import type { FirebaseAuthClient } from '../../services/auth/firebaseAuth.js';
 import './login.less';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 
-/** The store slices the login screen reads. */
-interface LoginState {
-  demoMode: { demoMode?: boolean };
-}
-
 /** The effects the login screen dispatches. */
 interface LoginActions {
-  demoMode: { getDemoMode: () => void };
   user: { getCurrentUser: () => Promise<void> };
 }
 
@@ -66,7 +60,6 @@ function GoogleIcon(): ReactElement {
 export default function Login(): ReactElement {
   const t = useTranslation();
   const actions = useActions<LoginActions>();
-  const demoMode = useSelector<LoginState, boolean>((state) => state.demoMode.demoMode || false);
   const navigate = useNavigate();
   const location = useLocation();
   const [authClient, setAuthClient] = React.useState<FirebaseAuthClient | null>(null);
@@ -76,7 +69,6 @@ export default function Login(): ReactElement {
 
   useEffect(() => {
     let active = true;
-    actions.demoMode.getDemoMode();
 
     authReady
       .then((client) => {
@@ -138,17 +130,6 @@ export default function Login(): ReactElement {
         <div className="login__logoWrapper">
           <Logo width={250} white />
         </div>
-
-        {demoMode && (
-          <Banner
-            fullMode={true}
-            type="info"
-            bordered
-            closeIcon={null}
-            description={t('login.demoBanner')}
-            style={{ marginBottom: '1.5rem' }}
-          />
-        )}
 
         {(error || authInitError) && (
           <Banner

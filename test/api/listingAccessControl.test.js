@@ -14,7 +14,7 @@ vi.mock('../../lib/services/storage/firestore/FirestoreConnection.js', () => ({
 vi.mock('../../lib/services/similarity-check/similarityCache.js', () => ({ removeEntry: vi.fn() }));
 vi.mock('../../lib/api/security.js', () => ({ isAdmin: () => false }));
 vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
-  getSettings: async () => ({ demoMode: false }),
+  getSettings: async () => ({}),
   getUserSettings: async () => ({}),
 }));
 vi.mock('../../lib/services/storage/watchListStorage.js', () => ({

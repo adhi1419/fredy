@@ -46,7 +46,6 @@ export interface FredyStoreState {
   listingsData: ListingsDataState;
   generalSettings: { settings: Record<string, unknown> };
   userSettings: UserSettingsState;
-  demoMode: { demoMode: boolean };
   provider: readonly unknown[];
   jobsData: JobsDataState;
   user: { currentUser: unknown };
@@ -178,18 +177,6 @@ export const useFredyState = create<FredyStoreState>()(
             set((state) => ({ user: { ...state.user, currentUser: {} } }));
           },
         },
-        demoMode: {
-          async getDemoMode() {
-            try {
-              const response = await xhrGet('/api/demo');
-              set((state) => ({
-                demoMode: { ...state.demoMode, demoMode: (response.json as { demoMode?: boolean }).demoMode ?? false },
-              }));
-            } catch (Exception) {
-              console.error('Error while trying to get resource for api/demo. Error:', Exception);
-            }
-          },
-        },
         listingsData: listingsEffects,
         userSettings: userSettingsEffects,
       };
@@ -202,7 +189,6 @@ export const useFredyState = create<FredyStoreState>()(
         listingsData: createListingsDataState(),
         generalSettings: { settings: {} },
         userSettings: createUserSettingsState(),
-        demoMode: { demoMode: false },
         provider: [],
         jobsData: createJobsDataState(),
         user: { currentUser: null },
@@ -215,7 +201,6 @@ export const useFredyState = create<FredyStoreState>()(
         notificationAdapter: { ...effects.notificationAdapter },
         notificationChannels: { ...effects.notificationChannels },
         generalSettings: { ...effects.generalSettings },
-        demoMode: { ...effects.demoMode },
         listingsData: { ...effects.listingsData },
         provider: { ...effects.provider },
         jobsData: { ...effects.jobsData },

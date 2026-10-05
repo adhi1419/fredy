@@ -16,7 +16,6 @@ vi.mock('../../lib/services/storage/listingsStorage.js', () => ({
   setListingAddress: vi.fn(),
   queryListings: vi.fn(),
   getListingsForMap: vi.fn(),
-  getPriceHistory: vi.fn(),
   setListingNotes: vi.fn(),
   setListingStatus: vi.fn(),
   deleteListingsByJobId: vi.fn(),
@@ -27,16 +26,12 @@ vi.mock('../../lib/services/storage/jobStorage.js', () => ({
   getJob: vi.fn(() => ({ id: 'job-1', userId: 'user-1' })),
 }));
 vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
-  getSettings: vi.fn(async () => ({ demoMode: false })),
   getUserSettings: vi.fn(() => ({})),
 }));
 vi.mock('../../lib/services/geocoding/distanceService.js', () => ({ updateDistancesForListing: vi.fn() }));
 vi.mock('../../lib/services/logger.js', () => ({ default: { error: vi.fn(), info: vi.fn(), debug: vi.fn() } }));
-vi.mock('../../lib/api/security.js', () => ({ isAdmin: vi.fn(() => false) }));
 
 import * as listingStorage from '../../lib/services/storage/listingsStorage.js';
-import { getSettings } from '../../lib/services/storage/settingsStorage.js';
-import { isAdmin } from '../../lib/api/security.js';
 import listingsPlugin from '../../lib/api/routes/listingsRouter.js';
 
 async function buildApp() {
@@ -58,8 +53,6 @@ const post = async (payload) => {
 beforeEach(() => {
   vi.clearAllMocks();
   listingStorage.filterListingIdsForOwner.mockImplementation((ids) => ids);
-  getSettings.mockResolvedValue({ demoMode: false });
-  isAdmin.mockReturnValue(false);
 });
 
 /**
@@ -84,25 +77,6 @@ describe('POST /api/listings/reactivate', () => {
     // is refused outright rather than half-applied.
     expect(response.statusCode).toBe(403);
     expect(listingStorage.reactivateListings).not.toHaveBeenCalled();
-  });
-
-  it('refuses in demo mode', async () => {
-    getSettings.mockResolvedValue({ demoMode: true });
-
-    const response = await post({ ids: ['mine-1'] });
-
-    expect(response.statusCode).toBe(403);
-    expect(listingStorage.reactivateListings).not.toHaveBeenCalled();
-  });
-
-  it('lets an admin through in demo mode', async () => {
-    getSettings.mockResolvedValue({ demoMode: true });
-    isAdmin.mockReturnValue(true);
-
-    const response = await post({ ids: ['mine-1'] });
-
-    expect(response.statusCode).toBe(200);
-    expect(listingStorage.reactivateListings).toHaveBeenCalledWith(['mine-1']);
   });
 
   it('does nothing on an empty or missing id list', async () => {

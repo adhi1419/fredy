@@ -14,7 +14,7 @@ vi.mock('../../lib/services/storage/firestore/FirestoreConnection.js', () => ({
 }));
 
 vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
-  getSettings: async () => ({ demoMode: false }),
+  getSettings: async () => ({}),
   upsertSettings: () => {},
 }));
 

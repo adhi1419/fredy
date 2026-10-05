@@ -72,17 +72,6 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-printf '%s\n' 'Testing Firestore through /api/demo...'
-DEMO_RESPONSE=$(docker exec "$APP_CONTAINER" curl -sf http://localhost:9998/api/demo 2>&1)
-case "$DEMO_RESPONSE" in
-  '{}'|*'"demoMode"'*) printf '%s\n' 'Firestore settings are readable through the API' ;;
-  *)
-    printf '%s\n' "Firestore read check failed: $DEMO_RESPONSE"
-    docker logs "$APP_CONTAINER"
-    exit 1
-    ;;
-esac
-
 # Write and read a disposable marker through the emulator REST API. This validates
 # storage independently of the removed password/admin bootstrap path.
 MARKER_URL='http://127.0.0.1:8080/v1/projects/fredy-docker-test/databases/(default)/documents/docker_smoke/marker'

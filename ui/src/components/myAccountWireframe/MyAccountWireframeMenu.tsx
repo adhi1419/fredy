@@ -9,7 +9,7 @@ import { useLocation, useNavigate } from 'react-router';
 
 import { signOutFirebase, safePhotoUrl } from '../../services/auth/firebaseAuth.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
-import { useActions, useSelector } from '../../services/state/store.js';
+import { useActions } from '../../services/state/store.js';
 import { ACCOUNT_NAV } from '../navigation/navModel.js';
 
 import './MyAccountWireframeMenu.less';
@@ -23,14 +23,6 @@ export interface AccountIdentity {
 interface AccountActions {
   user: {
     resetCurrentUser(): void;
-  };
-}
-
-interface AccountMenuState {
-  generalSettings: {
-    settings?: {
-      debugLoggingEnabled?: boolean;
-    };
   };
 }
 
@@ -94,9 +86,6 @@ export default function MyAccountWireframeMenu({
   const navigate = useNavigate();
   const location = useLocation();
   const actions = useActions<AccountActions>();
-  const debugLoggingEnabled = useSelector<AccountMenuState, boolean>(
-    (state) => state.generalSettings.settings?.debugLoggingEnabled === true,
-  );
   const containerRef = useRef<HTMLDivElement>(null);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -224,12 +213,6 @@ export default function MyAccountWireframeMenu({
               <span aria-hidden="true">↗</span>
             </button>
           </div>
-          {debugLoggingEnabled && (
-            <div className="myAccountWireframeMenu__criticalNote" role="status">
-              <strong>{t('nav.criticalState')}</strong>
-              <span>{t('nav.debugCaptureActive')}</span>
-            </div>
-          )}
         </div>
       )}
     </div>

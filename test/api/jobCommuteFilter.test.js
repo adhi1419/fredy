@@ -15,7 +15,7 @@ vi.mock('../../lib/services/storage/firestore/FirestoreConnection.js', () => ({
 
 const ADDRESSES = [{ id: 'addr-work', label: 'Work', address: 'Office', coords: { lat: 1, lng: 2 } }];
 vi.mock('../../lib/services/storage/settingsStorage.js', () => ({
-  getSettings: async () => ({ demoMode: false }),
+  getSettings: async () => ({}),
   getUserSettings: async () => ({ home_addresses: ADDRESSES }),
   getAddresses: (settings) => settings?.home_addresses ?? [],
   upsertSettings: () => {},

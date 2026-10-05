@@ -44,8 +44,6 @@ export const OPTIONAL_LISTING_NULL_FIELDS = Object.freeze([
   'inquiryRequestId',
   'inquirySendError',
   'lastCheckedAt',
-  'lastPriceCheckAt',
-  'previousPrice',
   'travelTimesAt',
   'inactiveSince',
   'connectivity',

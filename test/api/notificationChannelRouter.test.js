@@ -82,8 +82,8 @@ vi.mock('../../lib/utils.js', async (importOriginal) => {
       },
       {
         config: {
-          id: 'slack',
-          name: 'Slack',
+          id: 'webhook',
+          name: 'Webhook',
           fields: { token: { type: 'text', secret: true }, channel: { type: 'text', target: true } },
         },
         send: async (payload) => sent.push(payload),
@@ -285,7 +285,7 @@ describe('notificationChannelRouter', () => {
 
     it('keeps the adapter type when updating', async () => {
       const id = await seed();
-      await post('/api/notificationChannels', { id, adapterId: 'slack', name: 'Family', fields: {} });
+      await post('/api/notificationChannels', { id, adapterId: 'webhook', name: 'Family', fields: {} });
       expect((await storage.getChannel(id)).adapterId).toBe('telegram');
     });
 

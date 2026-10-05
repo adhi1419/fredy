@@ -33,7 +33,7 @@ The repository also contains release-tag workflows and a Compose default that re
 4. Load providers, remove provider records that no longer have a module, and initialize the similarity cache.
 5. Initialize `jobExecutionService`, including the trigger runner and event-bus listeners.
 6. Register the Fastify API and listen on `0.0.0.0`.
-7. Seed demo state when demo mode is enabled, then start background sweeps.
+7. Start background sweeps.
 
 The ordering of job-service initialization before the API listener is intentional. A cold Cloud Run instance can receive `/api/trigger` immediately after it accepts connections.
 
@@ -189,28 +189,28 @@ For an end-to-end Firebase check, use a real Firebase web configuration and a re
 
 The following variables are read by the current code or deployment workflows. Values marked as placeholders are intentionally not present in this repository.
 
-| Variable                                        | Required when                                  | Meaning and safe handling                                                                                                                                                                                       |
-| ----------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                      | Production runtime                             | `production` enables strict startup checks. Other values use development behavior.                                                                                                                              |
-| `PORT`                                          | Cloud Run supplies it                          | Effective API port is `Number(PORT)                                                                                                                                                                             |     | settings.port |     | 9998`. Cloud Run's value wins. |
-| `FIREBASE_WEB_CONFIG`                           | Production runtime                             | Valid JSON containing string `projectId`, `appId`, and `apiKey`. This is public Firebase web-client configuration, not a service-account key. Supply it through the deployment environment, not source control. |
-| `FRONTEND_ORIGIN`                               | Production runtime                             | Exact browser origin, currently `https://adhi1419.github.io`, without `/fredy/`. It is the CORS allowlist value.                                                                                                |
-| `FRONTEND_URL`                                  | Hosted notification links                      | Full Pages URL used when notifications link back to Fredy, currently `https://adhi1419.github.io/fredy/`.                                                                                                       |
-| `FIRESTORE_EMULATOR_HOST`                       | Local emulator only                            | Emulator host and port, for example `127.0.0.1:8144`. Production startup rejects it.                                                                                                                            |
-| `FIRESTORE_PROJECT_ID`                          | Local emulator or explicit Firestore selection | Project label used by the Firestore client. Local tests use a disposable value. It is not a credential.                                                                                                         |
-| `FIREBASE_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT` | Firebase Admin project selection               | Optional project-selection hints for Firebase Admin. They do not replace ADC.                                                                                                                                   |
-| `FIREBASE_AUTH_EMULATOR_HOST`                   | Optional local Firebase Auth emulator          | Native Firebase Admin emulator endpoint. The standard Compose and CI paths do not start this emulator.                                                                                                          |
-| `EXTERNAL_SCHEDULER`                            | Hosted scheduler mode                          | Set to the exact string `true` to disable the internal timer and scrape-on-boot.                                                                                                                                |
-| `TRIGGER_TOKEN`                                 | Hosted scheduler mode                          | Secret shared with Cloud Scheduler through `X-Trigger-Token`. Never put it in a repository variable, source file, provider source, or job document.                                                             |
-| `GEMINI_API_KEY`                                | Optional inquiry-message drafting              | Secret. The current Cloud Run bootstrap attaches it from Secret Manager only when that secret exists. Without it, the feature stays disabled.                                                                   |
-| `PROVIDER_CREDENTIAL_ENCRYPTION_KEY`             | Connected provider applications                | Secret. Base64-encoded 32-byte AES key mounted from Secret Manager. Provider refresh tokens are encrypted with AES-256-GCM in the owner-scoped `provider_credentials` collection; never rotate it without re-encrypting every credential first. |
-| `GEMINI_MODEL`                                  | Optional message-generator override            | Model name override. The source default is `gemini-3.5-flash-lite`.                                                                                                                                             |
-| `GEMINI_TIMEOUT_MS`                             | Optional message-generator override            | Timeout in milliseconds. The source default is `120000`.                                                                                                                                                        |
-| `VITE_API_BASE_URL`                             | Pages frontend build                           | Build-time API origin. The deploy workflow passes `CLOUD_RUN_API_ORIGIN`; local Vite leaves it empty and uses its `/api` proxy.                                                                                 |
-| `VITE_PAGES`                                    | Pages frontend build                           | Set to `true` to build with the `/fredy/` base path.                                                                                                                                                            |
-| `CLOUD_RUN_API_ORIGIN`                          | GitHub Actions Pages deployment                | Repository variable containing the Cloud Run origin without an API path. The workflow maps it to `VITE_API_BASE_URL`.                                                                                           |
+| Variable                                        | Required when                                  | Meaning and safe handling                                                                                                                                                                                                                       |
+| ----------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                      | Production runtime                             | `production` enables strict startup checks. Other values use development behavior.                                                                                                                                                              |
+| `PORT`                                          | Cloud Run supplies it                          | Effective API port is `Number(PORT)                                                                                                                                                                                                             |     | settings.port |     | 9998`. Cloud Run's value wins. |
+| `FIREBASE_WEB_CONFIG`                           | Production runtime                             | Valid JSON containing string `projectId`, `appId`, and `apiKey`. This is public Firebase web-client configuration, not a service-account key. Supply it through the deployment environment, not source control.                                 |
+| `FRONTEND_ORIGIN`                               | Production runtime                             | Exact browser origin, currently `https://adhi1419.github.io`, without `/fredy/`. It is the CORS allowlist value.                                                                                                                                |
+| `FRONTEND_URL`                                  | Hosted notification links                      | Full Pages URL used when notifications link back to Fredy, currently `https://adhi1419.github.io/fredy/`.                                                                                                                                       |
+| `FIRESTORE_EMULATOR_HOST`                       | Local emulator only                            | Emulator host and port, for example `127.0.0.1:8144`. Production startup rejects it.                                                                                                                                                            |
+| `FIRESTORE_PROJECT_ID`                          | Local emulator or explicit Firestore selection | Project label used by the Firestore client. Local tests use a disposable value. It is not a credential.                                                                                                                                         |
+| `FIREBASE_PROJECT_ID` or `GOOGLE_CLOUD_PROJECT` | Firebase Admin project selection               | Optional project-selection hints for Firebase Admin. They do not replace ADC.                                                                                                                                                                   |
+| `FIREBASE_AUTH_EMULATOR_HOST`                   | Optional local Firebase Auth emulator          | Native Firebase Admin emulator endpoint. The standard Compose and CI paths do not start this emulator.                                                                                                                                          |
+| `EXTERNAL_SCHEDULER`                            | Hosted scheduler mode                          | Set to the exact string `true` to disable the internal timer and scrape-on-boot.                                                                                                                                                                |
+| `TRIGGER_TOKEN`                                 | Hosted scheduler mode                          | Secret shared with Cloud Scheduler through `X-Trigger-Token`. Never put it in a repository variable, source file, provider source, or job document.                                                                                             |
+| `GEMINI_API_KEY`                                | Optional inquiry-message drafting              | Secret. The current Cloud Run bootstrap attaches it from Secret Manager only when that secret exists. Without it, the feature stays disabled.                                                                                                   |
+| `PROVIDER_CREDENTIAL_ENCRYPTION_KEY`            | Connected provider applications                | Secret. Base64-encoded 32-byte AES key mounted from Secret Manager. Provider refresh tokens are encrypted with AES-256-GCM in the owner-scoped `provider_credentials` collection; never rotate it without re-encrypting every credential first. |
+| `GEMINI_MODEL`                                  | Optional message-generator override            | Model name override. The source default is `gemini-3.5-flash-lite`.                                                                                                                                                                             |
+| `GEMINI_TIMEOUT_MS`                             | Optional message-generator override            | Timeout in milliseconds. The source default is `120000`.                                                                                                                                                                                        |
+| `VITE_API_BASE_URL`                             | Pages frontend build                           | Build-time API origin. The deploy workflow passes `CLOUD_RUN_API_ORIGIN`; local Vite leaves it empty and uses its `/api` proxy.                                                                                                                 |
+| `VITE_PAGES`                                    | Pages frontend build                           | Set to `true` to build with the `/fredy/` base path.                                                                                                                                                                                            |
+| `CLOUD_RUN_API_ORIGIN`                          | GitHub Actions Pages deployment                | Repository variable containing the Cloud Run origin without an API path. The workflow maps it to `VITE_API_BASE_URL`.                                                                                                                           |
 
-The stored `settings` collection contains application settings such as `interval`, `port`, `workingHours`, and `demoMode`. Settings are JSON values stored in Firestore. The public settings route removes non-serializable secret settings before returning data to clients. Do not treat a browser-visible settings response as a secret store.
+The stored `settings` collection contains application settings such as `interval`, `port`, and `workingHours`. Settings are JSON values stored in Firestore. The public settings route removes non-serializable secret settings before returning data to clients. Do not treat a browser-visible settings response as a secret store.
 
 ### Authentication onboarding
 
@@ -416,18 +416,6 @@ The expected response is `204` with the exact allowed-method and allowed-header 
 
 **A notification channel exposes an empty credential field.** This is expected for a user who may use a shared channel but may not edit it. Channel list responses omit fields, and non-editors receive secret fields as empty values. Mark every token, password, API key, or webhook URL with `secret: true` in an adapter's declarative field definition.
 
-### Backup and restore
-
-The admin-only `/api/admin/backup` route exports Firestore data as a ZIP containing top-level collection JSON, listing subcollections, and a manifest. `POST /api/admin/backup/restore?dryRun=true` prechecks an uploaded ZIP. A real restore wipes current Firestore data before import. Treat restore as destructive:
-
-1. Export a fresh backup first.
-2. Run the dry-run precheck.
-3. Confirm the manifest format and target project.
-4. Restore only with an administrator identity and an intentional maintenance window.
-5. Verify `/health`, authentication, allowlist access, jobs, and notifications after restore.
-
-The restore path is not a substitute for an image rollback. It changes data; an image rollback changes executable code.
-
 ## 10. Rollback and recovery
 
 ### Application rollback
@@ -446,7 +434,7 @@ After rollback, verify the revision's `/health`, the Pages-to-Cloud-Run CORS pat
 
 ### Data recovery
 
-Use the admin backup/restore flow for Firestore data recovery, with the dry-run and destructive-action safeguards above. Do not purge a real Firestore project as part of local emulator testing. `clearAllData()` is explicitly emulator-only, but production restore still deletes current collections before importing the archive.
+Recover Firestore data at the project level (for example, a Firestore managed export/import), not through the application. Do not purge a real Firestore project as part of local emulator testing. `clearAllData()` is explicitly emulator-only.
 
 ### Deployment recovery
 
@@ -466,7 +454,7 @@ Keep providers stateless. Two jobs can run concurrently, so never keep a job URL
 
 Provider source data is not a credential store. A job provider source should contain provider identity, search URL, enabled state, and application policy fields accepted by `lib/services/providers/applicationPolicy.js`. Do not put provider login credentials, API keys, passwords, tokens, webhook URLs, or applicant secrets in provider source documents or provider metadata. Applicant profile values and consent data follow their existing user-settings and application contracts.
 
-Connected provider refresh tokens live only in the owner-scoped `provider_credentials` collection as AES-256-GCM ciphertext. The Secret Manager key is authenticated together with the owner and provider identifiers, so a credential cannot be copied to another user or provider. Token refresh uses a Firestore revision check and stores a rotated refresh token before any application call continues. Backups exclude this collection, restores preserve it, and deleting a user deletes their credentials. If the encryption key is lost, the provider must be connected again; changing the key requires an explicit re-encryption procedure.
+Connected provider refresh tokens live only in the owner-scoped `provider_credentials` collection as AES-256-GCM ciphertext. The Secret Manager key is authenticated together with the owner and provider identifiers, so a credential cannot be copied to another user or provider. Token refresh uses a Firestore revision check and stores a rotated refresh token before any application call continues. Deleting a user deletes their credentials. If the encryption key is lost, the provider must be connected again; changing the key requires an explicit re-encryption procedure.
 
 If a new provider country is added, add its map bounding box in `ui/src/components/map/countryBounds.js`. Provider metadata tests enforce stable IDs, country declarations, and normalization.
 

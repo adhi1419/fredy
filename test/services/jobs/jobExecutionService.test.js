@@ -15,7 +15,7 @@ describe('services/jobs/jobExecutionService', () => {
   let calls;
   let state;
 
-  async function initService(settings = { demoMode: false }) {
+  async function initService(settings = {}) {
     const root = (await import('node:path')).resolve('.');
     const svcPath = root + '/lib/services/jobs/jobExecutionService.js';
     const busPath = root + '/lib/services/events/event-bus.js';
@@ -70,10 +70,6 @@ describe('services/jobs/jobExecutionService', () => {
 
         async reconcile() {}
       },
-    }));
-    vi.doMock(root + '/lib/services/demo/demoService.js', () => ({
-      DEMO_JOB_ID: 'demo-job',
-      isDemoJob: (jobId) => jobId === 'demo-job',
     }));
     vi.doMock(root + '/lib/services/jobs/run-state.js', () => ({
       isRunning: () => false,
@@ -213,41 +209,5 @@ describe('services/jobs/jobExecutionService', () => {
       'archive-stale-listings',
     ]);
     expect(calls.pipeline[0].options.executionId).toBe(event.executionId);
-  });
-
-  describe('demo mode', () => {
-    const demoJob = (id) => ({ id, enabled: true, userId: 'u1', provider: [], blacklist: [], notificationAdapter: [] });
-
-    it('runs only the demo job on a run-all', async () => {
-      state.jobsList = [demoJob('demo-job'), demoJob('other-job')];
-      state.jobsById = Object.fromEntries(state.jobsList.map((job) => [job.id, job]));
-
-      await initService({ demoMode: true });
-      bus.emit('jobs:runAll', { userId: null });
-      await vi.waitFor(() => expect(calls.markFinished).toEqual(['demo-job']));
-
-      expect(calls.lastRunUpdates.map((entry) => entry.id)).toEqual(['demo-job']);
-    });
-
-    it('refuses to run a job that is not the demo job', async () => {
-      state.jobsList = [demoJob('other-job')];
-      state.jobsById = Object.fromEntries(state.jobsList.map((job) => [job.id, job]));
-
-      await initService({ demoMode: true });
-      bus.emit('jobs:runOne', { jobId: 'other-job' });
-      await new Promise((resolve) => setTimeout(resolve, 20));
-
-      expect(calls.markRunning).toEqual([]);
-      expect(calls.lastRunUpdates).toEqual([]);
-    });
-
-    it('still runs the demo job when triggered manually', async () => {
-      state.jobsList = [demoJob('demo-job')];
-      state.jobsById = Object.fromEntries(state.jobsList.map((job) => [job.id, job]));
-
-      await initService({ demoMode: true });
-      bus.emit('jobs:runOne', { jobId: 'demo-job' });
-      await vi.waitFor(() => expect(calls.markFinished).toEqual(['demo-job']));
-    });
   });
 });

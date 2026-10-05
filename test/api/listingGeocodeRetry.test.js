@@ -29,10 +29,9 @@ let distanceUpdates;
 let geocodeCalls;
 
 /**
- * @param {{demoMode?: boolean, isAdmin?: boolean}} [options]
  * @returns {Promise<import('fastify').FastifyInstance>}
  */
-async function buildServer({ demoMode = false, isAdmin = false } = {}) {
+async function buildServer() {
   vi.resetModules();
   stored = [];
   distanceUpdates = [];
@@ -59,7 +58,7 @@ async function buildServer({ demoMode = false, isAdmin = false } = {}) {
   }));
   vi.doMock(jobStoragePath, () => ({ getJob: () => ({ userId: 'owner-1' }) }));
   vi.doMock(settingsStoragePath, () => ({
-    getSettings: async () => ({ demoMode }),
+    getSettings: async () => ({}),
     getUserSettings: () => ({}),
   }));
 
@@ -67,7 +66,6 @@ async function buildServer({ demoMode = false, isAdmin = false } = {}) {
   const app = Fastify();
   app.addHook('preHandler', (request, _reply, done) => {
     request.currentUser = { id: 'user-1', isAdmin: false };
-    request.currentUser = { id: 'user-1', isAdmin };
     done();
   });
   await app.register(plugin, { prefix: '/api/listings' });
@@ -170,14 +168,6 @@ describe('POST /api/listings/:listingId/geocode', () => {
     const app = await buildServer();
 
     expect((await retry(app)).json().status).toBe('noAddress');
-    await app.close();
-  });
-
-  it('is refused in demo mode', async () => {
-    const app = await buildServer({ demoMode: true });
-
-    expect((await retry(app)).statusCode).toBe(403);
-    expect(stored).toEqual([]);
     await app.close();
   });
 

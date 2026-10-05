@@ -4,7 +4,7 @@
  */
 
 import type { ReactElement } from 'react';
-import { Button, Checkbox, Input, InputNumber } from '@douyinfe/semi-ui-19';
+import { Button, Input, InputNumber } from '@douyinfe/semi-ui-19';
 import { IconSave } from '@douyinfe/semi-icons';
 import { useOutletContext } from 'react-router';
 
@@ -52,12 +52,6 @@ export default function SystemPage(): ReactElement {
           suffix={t('settings.listingRetentionSuffix')}
           style={{ maxWidth: 200 }}
         />
-      </SegmentPart>
-
-      <SegmentPart name={t('settings.demoMode')} helpText={t('settings.demoModeHelp')}>
-        <Checkbox checked={form.demoMode} onChange={(e) => setField('demoMode', e.target.checked === true)}>
-          {t('settings.demoModeEnable')}
-        </Checkbox>
       </SegmentPart>
 
       <div className="settingsShell__saveRow">

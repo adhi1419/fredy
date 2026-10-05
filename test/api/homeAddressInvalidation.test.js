@@ -30,7 +30,7 @@ let sweeps;
 async function buildServer() {
   vi.resetModules();
   vi.doMock(settingsStoragePath, () => ({
-    getSettings: async () => ({ demoMode: false }),
+    getSettings: async () => ({}),
     getUserSettings: () => stored,
     getAddresses: (settings) => (Array.isArray(settings?.home_addresses) ? settings.home_addresses : []),
     upsertSettings: (values) => Object.assign(stored, values),
