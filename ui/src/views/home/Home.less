@@ -126,67 +126,81 @@
     }
   }
 
+  // Two rows: the activity tabs on their hairline, then providers and sort beneath.
   &__controls {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: @space-3;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: @space-4;
     margin-bottom: @space-5;
   }
 
-  // True marketplace pills: rounded, bordered, one per activity. Inactive reads in Fredy's sage
-  // accent; the selected pill is the deep forest solid fill with white (on-accent) text.
+  // Underlined tabs on a hairline (Direction A): mono labels with a muted count, no boxes. The
+  // active tab's 1px underline sits on the rule that already divides the controls from the feed.
   &__activities {
     display: flex;
-    align-items: center;
-    gap: @space-2;
-    flex-wrap: wrap;
+    align-items: stretch;
+    gap: @space-6;
+    border-bottom: 1px solid @color-border-bright;
 
     button {
+      position: relative;
       display: inline-flex;
-      align-items: center;
-      gap: @space-1;
+      align-items: baseline;
+      gap: @space-2;
       min-height: 44px;
-      padding: @space-2 @space-4;
-      border: 1px solid @color-border;
-      border-radius: @radius-pill;
-      background: @color-surface;
-      color: @color-text;
+      padding: @space-3 0;
+      border: 0;
+      background: transparent;
+      color: @color-muted;
       font: inherit;
       font-family: @font-mono;
       font-size: @text-sm;
       font-weight: 500;
       letter-spacing: @tracking-label;
       text-transform: uppercase;
+      white-space: nowrap;
       cursor: pointer;
+
+      &::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        bottom: -1px;
+        left: 0;
+        height: 1px;
+        background: transparent;
+      }
 
       &:hover,
       &:focus-visible {
-        border-color: @color-border-bright;
+        color: @color-text;
         outline: none;
       }
 
-      // Selected controls invert: ink fill, paper text. The accent is kept for state, not chrome.
       &.is-selected {
-        border-color: @color-text;
-        background: @color-text;
-        color: @color-base;
+        color: @color-text;
+
+        &::after {
+          background: @color-text;
+        }
       }
     }
   }
 
-  &__activity-symbol {
-    font-size: @text-base;
+  &__activity-count {
+    color: @color-muted;
+    font-weight: 400;
   }
+
 
   // Compact provider + sort tools. The provider picker takes the wider share of the row (~70%) and
   // the icon sort control the rest (~30%), matching the pill language of the activity filters.
   &__tools {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: @space-2;
-    flex: 0 1 clamp(360px, 56%, 680px);
     min-width: 0;
   }
 
@@ -252,7 +266,7 @@
   &__providers {
     display: flex;
     align-items: center;
-    flex: 1 1 auto;
+    flex: 0 1 300px;
     min-width: 0;
   }
 
@@ -940,11 +954,12 @@
       gap: @space-3;
     }
 
-    // Horizontal, swipeable lifecycle pills that stay reachable without wrapping into a block.
+    // The tabs swipe on their hairline when the four labels (plus counts) outgrow the width.
     &__activities {
+      gap: @space-5;
       flex-wrap: nowrap;
       overflow-x: auto;
-      padding-bottom: @space-1;
+      scrollbar-width: none;
 
       button {
         flex: 0 0 auto;
@@ -1011,22 +1026,8 @@
 @media (max-width: 430px) {
   .home {
     &__activities {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: @space-2;
-      margin: 0;
-      // Let the row scroll to the page edge instead of being cut off by the page gutter, so the
-      // trailing pill is fully swipeable rather than half-clipped.
-      padding-bottom: @space-1;
-      overflow-x: auto;
+      gap: @space-4;
       -webkit-overflow-scrolling: touch;
-
-      button {
-        flex: 0 0 auto;
-        min-width: 0;
-        padding-right: @space-3;
-        padding-left: @space-3;
-      }
     }
 
     &__provider-picker .home__provider-trigger {

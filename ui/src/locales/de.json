@@ -84,6 +84,7 @@
   "home.mapView": "Kartenansicht",
   "home.viewLabel": "Startseitenansicht",
   "home.activityLabel": "Inserat-Aktivität",
+  "home.activityWithCount": "{{label}}, {{count}} Wohnungen",
   "home.activityNew": "Neu",
   "home.activityApplied": "Beworben",
   "home.activityViewed": "Angesehen",

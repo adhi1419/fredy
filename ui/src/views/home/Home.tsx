@@ -104,47 +104,6 @@ function IconPaperMap({ className, ...rest }: GlyphProps) {
   );
 }
 
-function IconInboxTray({ className, ...rest }: GlyphProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="1em"
-      height="1em"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      {...rest}
-    >
-      <path d="M4 13 6 5h12l2 8v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5Z" />
-      <path d="M4 13h4l1.5 2.5h5L16 13h4" />
-    </svg>
-  );
-}
-
-function IconArchiveBox({ className, ...rest }: GlyphProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="1em"
-      height="1em"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      {...rest}
-    >
-      <rect x="3.5" y="4.5" width="17" height="4" rx="1" />
-      <path d="M5 8.5V18a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5" />
-      <path d="M9.5 12h5" />
-    </svg>
-  );
-}
-
 type Glyph = (props: GlyphProps) => ReactElement;
 
 /**
@@ -158,18 +117,6 @@ type Glyph = (props: GlyphProps) => ReactElement;
 const LIFECYCLE_SYMBOLS: Readonly<Partial<Record<Activity, typeof IconTickCircle>>> = Object.freeze({
   applied: IconTickCircle,
   viewed: IconEyeOpened,
-});
-
-/**
- * Every activity filter pill carries its canonical glyph, so the four scope controls read as a set
- * rather than two icons and two bare words. New pairs an inbox tray, Archived an archive box, and
- * Applied/Viewed reuse the exact badge glyphs above so a pill and a card badge never diverge.
- */
-const ACTIVITY_SYMBOLS: Readonly<Record<Activity, Glyph>> = Object.freeze({
-  new: IconInboxTray,
-  applied: IconTickCircle as unknown as Glyph,
-  viewed: IconEyeOpened as unknown as Glyph,
-  archived: IconArchiveBox,
 });
 
 /** The lifecycle mutations a Home card overflow menu offers, in the order Direction A lists them. */
@@ -205,6 +152,7 @@ interface HomeActions {
     getListingsData: (query: HomeQueryPayload) => Promise<void>;
     appendListingsPage: (query: HomeQueryPayload) => Promise<void>;
     getListingsPins: (query: HomeQueryPayload) => Promise<void>;
+    getListingsCounts: (query: HomeQueryPayload) => Promise<void>;
     setListingLifecycleAction: (listingId: string, action: 'applied' | 'viewing' | 'archive') => Promise<void>;
   };
 }
@@ -732,6 +680,12 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
     void actions.listingsData.getListingsPins(baseQuery);
   }, [actions, baseQuery, values.view]);
 
+  // The tab counts: one request per filter set, keyed without the activity, so switching tabs reads
+  // the same four numbers it was just shown.
+  useEffect(() => {
+    void actions.listingsData.getListingsCounts(baseQuery);
+  }, [actions, baseQuery]);
+
   const onBboxChange = useCallback((bbox: HomeBbox | null) => updateState({ bbox }), [updateState]);
   // Once the map view has rendered, a refetch must not unmount it: a pan would otherwise tear down
   // the map it came from and fit a fresh one. Only the list dims while the box's rows load.
@@ -747,12 +701,13 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
     async (id: string, action: 'applied' | 'viewing' | 'archive') => {
       try {
         await actions.listingsData.setListingLifecycleAction(id, action);
-        await loadData();
+        // The row moved between tabs, so both the list and the four tallies are stale.
+        await Promise.all([loadData(), actions.listingsData.getListingsCounts(baseQuery)]);
       } catch (error) {
         console.error(`Failed to apply listing lifecycle action ${action}:`, error);
       }
     },
-    [actions, loadData],
+    [actions, baseQuery, loadData],
   );
 
   useEffect(() => {
@@ -894,17 +849,23 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
       <div className="home__controls">
         <div className="home__activities" role="group" aria-label={t('home.activityLabel')}>
           {HOME_ACTIVITIES.map((activity) => {
-            const ActivitySymbol = ACTIVITY_SYMBOLS[activity as Activity];
+            const count = listingsData.counts?.[activity as Activity];
+            const label = t(ACTIVITY_LABEL_KEYS[activity as Activity]);
             return (
               <button
                 key={activity}
                 type="button"
                 className={values.activity === activity ? 'is-selected' : ''}
                 aria-pressed={values.activity === activity}
+                aria-label={count == null ? label : t('home.activityWithCount', { label, count: String(count) })}
                 onClick={() => updateState({ activity })}
               >
-                {ActivitySymbol && <ActivitySymbol aria-hidden="true" className="home__activity-symbol" />}
-                {t(ACTIVITY_LABEL_KEYS[activity as Activity])}
+                <span className="home__activity-name">{label}</span>
+                {count != null && (
+                  <span className="home__activity-count" aria-hidden="true">
+                    {count}
+                  </span>
+                )}
               </button>
             );
           })}

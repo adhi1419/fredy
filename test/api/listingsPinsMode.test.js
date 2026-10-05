@@ -93,6 +93,26 @@ describe('GET /table pins flag (router)', () => {
   });
 });
 
+describe('GET /table counts flag (router)', () => {
+  it('passes counts:true to queryListings when counts=true, false otherwise', async () => {
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url: '/table?counts=true' });
+    expect(argsFromLastCall().counts).toBe(true);
+    await app.inject({ method: 'GET', url: '/table' });
+    expect(argsFromLastCall().counts).toBe(false);
+  });
+
+  it('returns the tally plus availableProviders without the per-row verdict wrapper', async () => {
+    queryListings.mockReturnValue({ counts: { new: 4, applied: 1, viewed: 0, archived: 7 } });
+    const app = await buildApp();
+    const response = await app.inject({ method: 'GET', url: '/table?counts=true&statusFilter=applied' });
+    expect(response.json()).toEqual({
+      counts: { new: 4, applied: 1, viewed: 0, archived: 7 },
+      availableProviders: ['immoscout', 'kleinanzeigen'],
+    });
+  });
+});
+
 describe('GET /table ids filter (router)', () => {
   it('parses a comma-separated ids param into an array', async () => {
     const app = await buildApp();
