@@ -3,8 +3,8 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { Empty, Button, Switch, Tag } from '@douyinfe/semi-ui-19';
-import { IconDelete, IconEdit } from '@douyinfe/semi-icons';
+import { Empty, Button, Switch } from '@douyinfe/semi-ui-19';
+import { IconAlertTriangle, IconDelete, IconEdit, IconExternalOpen, IconTickCircle } from '@douyinfe/semi-icons';
 import { labelWithFlags } from '../../../../../services/countryFlags.js';
 import {
   mergeProviderCapability,
@@ -13,7 +13,7 @@ import {
   type ProviderMetadata,
 } from '../../../../../services/jobs/guidedSearchForm.js';
 import { DEFAULT_COUNTRIES } from '../../../../../components/map/countryBounds.js';
-import { getSafeProviderUrl, normalizeHost } from '../../../../../services/jobs/providerUrl.js';
+import { getSafeProviderUrl, providerUrlLabel } from '../../../../../services/jobs/providerUrl.js';
 import { useTranslation } from '../../../../../services/i18n/i18n.jsx';
 
 interface ProviderChoiceCardsProps {
@@ -28,47 +28,26 @@ interface ProviderChoiceCardsProps {
 
 type Translation = (key: string, variables?: Record<string, string | number>) => string;
 
-/**
- * A compact, scannable label for a provider search URL in the Edit Search view.
- *
- * Raw search URLs run to hundreds of characters and wrapped across the card. The card now shows the
- * host only (the readable "which provider" part) and keeps the full URL in the link's title/aria so
- * nothing is lost. A URL that will not parse falls back to a middle-truncated form of the raw text.
- */
-export function providerUrlLabel(url: string | null | undefined): string | null {
-  if (url == null || String(url).trim().length === 0) return null;
-  const host = normalizeHost(url);
-  if (host != null) return host;
-  const raw = String(url).trim();
-  if (raw.length <= 42) return raw;
-  return `${raw.slice(0, 24)}…${raw.slice(-14)}`;
-}
-
-function policyHintKey(reason: ReturnType<typeof sourcePolicyControl>['reason']): string {
+/** The one-line status the card shows for automatic inquiries, keyed by why they may be unavailable. */
+function policyStatusKey(reason: ReturnType<typeof sourcePolicyControl>['reason']): string {
   switch (reason) {
     case 'unsupported':
-      return 'jobs.mutation.policyUnsupported';
+      return 'jobs.mutation.policyUnsupportedStatus';
     case 'connection':
-      return 'jobs.mutation.policyConnection';
+      return 'jobs.mutation.policyConnectionStatus';
     case 'profile':
-      return 'jobs.mutation.policyProfile';
-    case 'listing':
-      return 'jobs.mutation.policyListing';
+      return 'jobs.mutation.policyProfileStatus';
     default:
-      return 'jobs.mutation.policyAutomatic';
+      return 'jobs.mutation.policyAvailableStatus';
   }
 }
 
-function providerIdentity(
-  source: GuidedProviderSource,
-  provider: ProviderMetadata | null,
-  t: Translation,
-): { label: string; countries: readonly string[] } {
+function providerLabel(source: GuidedProviderSource, provider: ProviderMetadata | null, t: Translation): string {
   const name = provider?.name ?? source.name ?? source.id ?? t('provider.tableColumnName');
   const declaredCountries = provider?.countries;
   const countries =
     Array.isArray(declaredCountries) && declaredCountries.length > 0 ? declaredCountries : DEFAULT_COUNTRIES;
-  return { label: labelWithFlags({ name, countries }), countries };
+  return labelWithFlags({ name, countries });
 }
 
 export default function ProviderChoiceCards({
@@ -95,14 +74,10 @@ export default function ProviderChoiceCards({
           profileReady: policyProfileReady(displaySource),
         });
         const provider = policy.provider;
-        const profileReady = policyProfileReady(displaySource);
-        const providerIdentityView = providerIdentity(displaySource, provider, t);
-        const providerName = providerIdentityView.label;
-        const countryCodes = providerIdentityView.countries.map((country) => country.toUpperCase()).join(', ');
+        const providerName = providerLabel(displaySource, provider, t);
         const safeProviderUrl = getSafeProviderUrl(displaySource.url, provider);
-        const capabilityLabel = policy.capability.automatic
-          ? t('jobs.mutation.policyAutomatic')
-          : t('jobs.mutation.policyUnsupported');
+        const urlLabel = providerUrlLabel(displaySource.url) ?? t('common.na');
+        const available = policy.reason === null || policy.reason === 'listing';
         const key = `${displaySource.id ?? displaySource.url ?? 'provider'}-${index}`;
 
         return (
@@ -112,18 +87,7 @@ export default function ProviderChoiceCards({
             key={key}
           >
             <header className="providerChoiceCards__header">
-              <div className="providerChoiceCards__identity">
-                <h3>
-                  <span
-                    className="providerChoiceCards__countryCode"
-                    aria-label={t('jobs.mutation.providerCountries', { countries: countryCodes })}
-                  >
-                    {countryCodes}
-                  </span>
-                  {providerName}
-                </h3>
-                <p>{t('provider.tableColumnName')}</p>
-              </div>
+              <h3 className="providerChoiceCards__name">{providerName}</h3>
               <div className="providerChoiceCards__actions" aria-label={providerName}>
                 <Button
                   icon={<IconEdit aria-hidden="true" />}
@@ -139,77 +103,51 @@ export default function ProviderChoiceCards({
               </div>
             </header>
 
-            <dl className="providerChoiceCards__details">
-              <div>
-                <dt>{t('provider.tableColumnUrl')}</dt>
-                <dd>
-                  {safeProviderUrl ? (
-                    <a
-                      className="providerChoiceCards__urlLink"
-                      href={safeProviderUrl}
-                      title={displaySource.url ?? undefined}
-                      aria-label={t('jobs.mutation.viewUrlOpenAria', { url: String(displaySource.url ?? '') })}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                    >
-                      {providerUrlLabel(displaySource.url) ?? displaySource.url}
-                    </a>
-                  ) : (
-                    <span className="providerChoiceCards__urlLabel" title={displaySource.url ?? undefined}>
-                      {providerUrlLabel(displaySource.url) ?? displaySource.url ?? t('common.na')}
-                    </span>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>{t('jobs.mutation.policyColumn')}</dt>
-                <dd className="providerChoiceCards__readiness">
-                  {policy.reason === 'unsupported' ? (
-                    <span className="providerChoiceCards__unsupportedStatus" role="status">
-                      {t('jobs.mutation.policyUnsupportedStatus')}
-                    </span>
-                  ) : (
-                    <>
-                      <Tag color="green">{capabilityLabel}</Tag>
-                      <Tag color={policy.capability.connectionRequired ? 'orange' : 'green'}>
-                        {policy.capability.connectionRequired
-                          ? t('jobs.mutation.policyConnection')
-                          : t('jobs.mutation.policyConnectionReady')}
-                      </Tag>
-                      <Tag color={profileReady ? 'green' : 'orange'}>
-                        {profileReady ? t('jobs.mutation.policyProfileReady') : t('jobs.mutation.policyProfile')}
-                      </Tag>
-                    </>
-                  )}
-                </dd>
-              </div>
-            </dl>
+            {safeProviderUrl ? (
+              <a
+                className="providerChoiceCards__url"
+                href={safeProviderUrl}
+                title={displaySource.url ?? undefined}
+                aria-label={t('jobs.mutation.viewUrlOpenAria', { url: String(displaySource.url ?? '') })}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                <span className="providerChoiceCards__urlText">{urlLabel}</span>
+                <IconExternalOpen aria-hidden="true" />
+              </a>
+            ) : (
+              <span className="providerChoiceCards__url" title={displaySource.url ?? undefined}>
+                <span className="providerChoiceCards__urlText">{urlLabel}</span>
+              </span>
+            )}
+
+            <p
+              className={`providerChoiceCards__status providerChoiceCards__status--${available ? 'ok' : 'warn'}`}
+              role="status"
+            >
+              {available ? <IconTickCircle aria-hidden="true" /> : <IconAlertTriangle aria-hidden="true" />}
+              <span>{t(policyStatusKey(policy.reason))}</span>
+              {policy.reason === 'profile' && (
+                <button
+                  type="button"
+                  className="providerChoiceCards__statusLink"
+                  onClick={() => onCompleteProfile(displaySource)}
+                >
+                  {t('jobs.mutation.completeInquiryProfile')}
+                </button>
+              )}
+            </p>
 
             {policy.reason !== 'unsupported' && (
-              <div className="providerChoiceCards__policy">
-                <div className="providerChoiceCards__policyControl">
-                  <Switch
-                    checked={policy.enabled}
-                    disabled={policy.disabled}
-                    aria-label={t('jobs.mutation.policyToggle', { name: providerName })}
-                    onChange={(checked) => onPolicyChange(displaySource, checked)}
-                  />
-                  <span>{t('jobs.mutation.policyConsent', { name: providerName })}</span>
-                </div>
-                <div className="providerChoiceCards__policyHint">
-                  <span>{t(policyHintKey(policy.reason))}</span>
-                  {policy.capability.connectionRequired === true && (
-                    <Button type="tertiary" size="small" disabled>
-                      {t('jobs.mutation.policyConnectAccount')}
-                    </Button>
-                  )}
-                  {policy.reason === 'profile' && (
-                    <Button type="tertiary" size="small" onClick={() => onCompleteProfile(displaySource)}>
-                      {t('jobs.mutation.completeInquiryProfile')}
-                    </Button>
-                  )}
-                </div>
-              </div>
+              <label className="providerChoiceCards__policyControl">
+                <Switch
+                  checked={policy.enabled}
+                  disabled={policy.disabled}
+                  aria-label={t('jobs.mutation.policyToggle', { name: providerName })}
+                  onChange={(checked) => onPolicyChange(displaySource, checked)}
+                />
+                <span>{t('jobs.mutation.policyConsent', { name: providerName })}</span>
+              </label>
             )}
           </article>
         );
