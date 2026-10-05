@@ -134,22 +134,24 @@ with open(envfile, 'w') as f:
         f.write(f'{key}: {json.dumps(value)}\n')
 PYEOF
 
-# GEMINI_API_KEY powers inquiry-message drafting (on-demand + the eager
-# Telegram second message). It is a credential, so it lives in Secret Manager
-# and is attached with --update-secrets (which co-exists with --env-vars-file;
-# the latter only replaces plain env vars). Attach it ONLY when the secret
-# exists, so instances that don't use the feature still deploy cleanly — the
-# app already gates the route on GEMINI_API_KEY being present. Create once:
-#   printf %s '<key>' | gcloud secrets create gemini-api-key --data-file=- --project "$PROJECT"
-#   gcloud secrets add-iam-policy-binding gemini-api-key --project "$PROJECT" \
-#     --member "serviceAccount:$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')-compute@developer.gserviceaccount.com" \
-#     --role roles/secretmanager.secretAccessor
-SECRET_FLAGS=()
+# Credentials live in Secret Manager and are attached only when present. `--update-secrets`
+# co-exists with `--env-vars-file`, which replaces only plain environment variables.
+SECRET_BINDINGS=()
 if gcloud secrets describe gemini-api-key > /dev/null 2>&1; then
   echo "   attaching GEMINI_API_KEY from Secret Manager"
-  SECRET_FLAGS=(--update-secrets "GEMINI_API_KEY=gemini-api-key:latest")
+  SECRET_BINDINGS+=("GEMINI_API_KEY=gemini-api-key:latest")
 else
   echo "   gemini-api-key secret absent — inquiry drafting stays disabled in prod"
+fi
+if gcloud secrets describe provider-credential-encryption-key > /dev/null 2>&1; then
+  echo "   attaching PROVIDER_CREDENTIAL_ENCRYPTION_KEY from Secret Manager"
+  SECRET_BINDINGS+=("PROVIDER_CREDENTIAL_ENCRYPTION_KEY=provider-credential-encryption-key:latest")
+else
+  echo "   provider-credential-encryption-key secret absent — connected provider applications stay disabled"
+fi
+SECRET_FLAGS=()
+if ((${#SECRET_BINDINGS[@]} > 0)); then
+  SECRET_FLAGS=(--update-secrets "$(IFS=,; echo "${SECRET_BINDINGS[*]}")")
 fi
 
 gcloud run deploy "$SERVICE" \

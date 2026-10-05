@@ -41,7 +41,7 @@ The route, bearer, and CORS bytes are frozen by the existing [first Rust wire co
 
 - Pull requests build the real backend image and publish a candidate tagged by the deterministic backend-context hash. A push to `main` promotes the exact matching candidate to the immutable Artifact Registry `github.sha` tag; when no exact candidate exists, the workflow uses the shared registry cache to build the fallback image.
 - The Cloud Run workflow deploys the immutable image through `deploy-cloudrun@v3` and verifies `$SERVICE_URL/health`. It supplies an image, not a replacement environment/secrets set; the existing Cloud Run environment and secrets remain the deployment boundary for route replacement.
-- The one-time bootstrap helper, which is not invoked by the steady-state workflow, establishes `EXTERNAL_SCHEDULER`, `TRIGGER_TOKEN`, `FIREBASE_WEB_CONFIG`, `FRONTEND_ORIGIN`, and `FRONTEND_URL`, and optionally attaches `GEMINI_API_KEY` as a secret. It also creates or updates the `/api/trigger` Cloud Scheduler job.
+- The one-time bootstrap helper, which is not invoked by the steady-state workflow, establishes `EXTERNAL_SCHEDULER`, `TRIGGER_TOKEN`, `FIREBASE_WEB_CONFIG`, `FRONTEND_ORIGIN`, and `FRONTEND_URL`, and optionally attaches `GEMINI_API_KEY` and `PROVIDER_CREDENTIAL_ENCRYPTION_KEY` as secrets. It also creates or updates the `/api/trigger` Cloud Scheduler job.
 - Documentation and test paths are intentionally absent from the production-input filters. This contract change must not trigger a production deployment.
 
 ## Future route-cutover procedure (not current behavior)

@@ -3,7 +3,24 @@
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { connectedSession, getApplicationSession } = vi.hoisted(() => ({
+  connectedSession: {
+    accessToken: 'access-secret',
+    ssoId: 'sso-1',
+    entitlements: [{ serviceType: 'PRIORITY_CONTACT_RENT' }],
+    bundles: [{ productType: 'MIETER_PLUS' }],
+    hasMieterPlus: true,
+  },
+  getApplicationSession: vi.fn(),
+}));
+
+vi.mock('../../../lib/services/immoscout/authClient.js', () => ({
+  IMMOSCOUT_USER_AGENT: 'ImmoScout24_test',
+  getImmoscoutApplicationSession: getApplicationSession,
+}));
+
 import { buildContactForm, sendImmoscoutInquiry } from '../../../lib/services/immoscout/contactClient.js';
 
 const listing = { link: 'https://www.immobilienscout24.de/expose/170874105' };
@@ -14,6 +31,7 @@ const profile = {
   houseNumber: '25',
   postcode: '10551',
   city: 'Berlin',
+  moveInDate: '2026-11-01',
   immoscoutPrivacyAccepted: true,
 };
 const detail = {
@@ -28,6 +46,7 @@ const detail = {
         lastnameField: 'MANDATORY',
         emailAddressField: 'MANDATORY',
         addressField: 'MANDATORY',
+        messageField: 'OPTIONAL',
       },
     },
   },
@@ -35,9 +54,15 @@ const detail = {
 
 const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), { status });
 
+beforeEach(() => {
+  getApplicationSession.mockReset();
+  getApplicationSession.mockResolvedValue(connectedSession);
+});
+
 describe('buildContactForm', () => {
   it('uses only applicant facts that were supplied', () => {
     const { form, missingFields } = buildContactForm(profile, 'Hallo', detail.contact.contactData.formFieldConfig, {
+      userId: 'user-1',
       accountEmail: 'applicant@example.com',
     });
     expect(missingFields).toEqual([]);
@@ -51,6 +76,7 @@ describe('buildContactForm', () => {
     });
     expect(form.employmentRelationship).toBeUndefined();
     expect(form.income).toBeUndefined();
+    expect(form.moveInDate).toBeUndefined();
   });
 
   it('reports every mandatory field that the profile cannot satisfy', () => {
@@ -84,6 +110,7 @@ describe('sendImmoscoutInquiry', () => {
     const result = await sendImmoscoutInquiry({
       listing,
       profile,
+      userId: 'user-1',
       accountEmail: 'applicant@example.com',
       message: 'Hallo',
       fetchImpl,
@@ -91,9 +118,71 @@ describe('sendImmoscoutInquiry', () => {
 
     expect(result.requestId).toBe('request-1');
     expect(fetchImpl).toHaveBeenCalledTimes(3);
-    expect(JSON.parse(fetchImpl.mock.calls[1][1].body).doNotSend).toBe(true);
+    expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toMatchObject({
+      doNotSend: true,
+      ssoId: 'sso-1',
+      entitlements: [{ serviceType: 'PRIORITY_CONTACT_RENT' }],
+    });
     expect(JSON.parse(fetchImpl.mock.calls[2][1].body).doNotSend).toBe(false);
-    expect(fetchImpl.mock.calls[2][1].headers.Authorization).toBeUndefined();
+    expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer access-secret');
+    expect(fetchImpl.mock.calls[1][1].headers.Authorization).toBe('Bearer access-secret');
+    expect(fetchImpl.mock.calls[2][1].headers.Authorization).toBe('Bearer access-secret');
+    expect(getApplicationSession).toHaveBeenCalledWith({
+      userId: 'user-1',
+      accountEmail: 'applicant@example.com',
+      fetchImpl,
+    });
+  });
+
+  it('uses the connected MieterPlus entitlement for premium-only listings', async () => {
+    const premiumDetail = {
+      contact: {
+        ...detail.contact,
+        premiumProfileRequiredForContacting: 'true',
+      },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(premiumDetail))
+      .mockResolvedValueOnce(jsonResponse({ confirmationScreen: 'saveSearch' }))
+      .mockResolvedValueOnce(jsonResponse({ id: 'request-premium' }));
+
+    await expect(
+      sendImmoscoutInquiry({
+        listing,
+        profile,
+        userId: 'user-1',
+        accountEmail: 'applicant@example.com',
+        message: 'Hallo',
+        fetchImpl,
+      }),
+    ).resolves.toMatchObject({ requestId: 'request-premium' });
+  });
+
+  it('rejects a premium-only listing when the connected account lacks MieterPlus', async () => {
+    getApplicationSession.mockResolvedValueOnce({ ...connectedSession, hasMieterPlus: false, bundles: [] });
+    const premiumDetail = {
+      contact: {
+        ...detail.contact,
+        premiumProfileRequiredForContacting: 'true',
+      },
+    };
+    const fetchImpl = vi.fn().mockResolvedValueOnce(jsonResponse(premiumDetail));
+
+    await expect(
+      sendImmoscoutInquiry({
+        listing,
+        profile,
+        userId: 'user-1',
+        accountEmail: 'applicant@example.com',
+        message: 'Hallo',
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({
+      permanent: true,
+      message: 'This listing requires an ImmoScout MieterPlus account.',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it('reports contact-requirements HTTP status and returned provider error', async () => {
@@ -103,6 +192,7 @@ describe('sendImmoscoutInquiry', () => {
       sendImmoscoutInquiry({
         listing,
         profile,
+        userId: 'user-1',
         accountEmail: 'applicant@example.com',
         message: 'Hallo',
         fetchImpl,
@@ -123,6 +213,7 @@ describe('sendImmoscoutInquiry', () => {
       sendImmoscoutInquiry({
         listing,
         profile,
+        userId: 'user-1',
         accountEmail: 'applicant@example.com',
         message: 'Hallo',
         fetchImpl,
@@ -141,6 +232,7 @@ describe('sendImmoscoutInquiry', () => {
       sendImmoscoutInquiry({
         listing,
         profile: {},
+        userId: 'user-1',
         accountEmail: 'applicant@example.com',
         message: 'Hallo',
         fetchImpl,
@@ -160,7 +252,14 @@ describe('sendImmoscoutInquiry', () => {
       .mockRejectedValueOnce(new Error('socket closed'));
 
     await expect(
-      sendImmoscoutInquiry({ listing, profile, accountEmail: 'applicant@example.com', message: 'Hallo', fetchImpl }),
+      sendImmoscoutInquiry({
+        listing,
+        profile,
+        userId: 'user-1',
+        accountEmail: 'applicant@example.com',
+        message: 'Hallo',
+        fetchImpl,
+      }),
     ).rejects.toMatchObject({
       outcome: 'unknown',
     });
@@ -175,7 +274,14 @@ describe('sendImmoscoutInquiry', () => {
       .mockResolvedValueOnce(jsonResponse({ confirmationScreen: 'saveSearch' }));
 
     await expect(
-      sendImmoscoutInquiry({ listing, profile, accountEmail: 'applicant@example.com', message: 'Hallo', fetchImpl }),
+      sendImmoscoutInquiry({
+        listing,
+        profile,
+        userId: 'user-1',
+        accountEmail: 'applicant@example.com',
+        message: 'Hallo',
+        fetchImpl,
+      }),
     ).rejects.toMatchObject({
       outcome: 'unknown',
     });
@@ -189,7 +295,14 @@ describe('sendImmoscoutInquiry', () => {
       .mockResolvedValueOnce({ ok: true, status: 200, text: async () => Promise.reject(new Error('body lost')) });
 
     await expect(
-      sendImmoscoutInquiry({ listing, profile, accountEmail: 'applicant@example.com', message: 'Hallo', fetchImpl }),
+      sendImmoscoutInquiry({
+        listing,
+        profile,
+        userId: 'user-1',
+        accountEmail: 'applicant@example.com',
+        message: 'Hallo',
+        fetchImpl,
+      }),
     ).rejects.toMatchObject({
       outcome: 'unknown',
     });
@@ -212,6 +325,7 @@ describe('sendImmoscoutInquiry', () => {
       sendImmoscoutInquiry({
         listing,
         profile,
+        userId: 'user-1',
         accountEmail: 'applicant@example.com',
         message: 'Hallo',
         fetchImpl,
@@ -236,6 +350,7 @@ describe('sendImmoscoutInquiry', () => {
       sendImmoscoutInquiry({
         listing,
         profile,
+        userId: 'user-1',
         accountEmail: 'applicant@example.com',
         message: 'Hallo',
         fetchImpl,
@@ -262,6 +377,7 @@ describe('sendImmoscoutInquiry', () => {
       await sendImmoscoutInquiry({
         listing,
         profile,
+        userId: 'user-1',
         accountEmail: 'applicant@example.com',
         message: 'Hallo',
         fetchImpl,
@@ -283,6 +399,7 @@ describe('sendImmoscoutInquiry', () => {
       sendImmoscoutInquiry({
         listing,
         profile,
+        userId: 'user-1',
         accountEmail: 'applicant@example.com',
         message: 'Hallo',
         fetchImpl,
@@ -310,7 +427,14 @@ describe('sendImmoscoutInquiry', () => {
         .mockResolvedValueOnce(jsonResponse({}))
         .mockResolvedValueOnce(jsonResponse({ message: returnedError }, status));
       await expect(
-        sendImmoscoutInquiry({ listing, profile, accountEmail: 'applicant@example.com', message: 'Hallo', fetchImpl }),
+        sendImmoscoutInquiry({
+          listing,
+          profile,
+          userId: 'user-1',
+          accountEmail: 'applicant@example.com',
+          message: 'Hallo',
+          fetchImpl,
+        }),
       ).rejects.toMatchObject({
         status,
         outcome,
