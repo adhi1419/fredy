@@ -25,11 +25,14 @@ const testProviderConfig = JSON.parse(readFileSync(TEST_PROVIDER_PATH, 'utf-8'))
  *  - kleinanzeigen: attribute containing a dash (`.aditem@data-href`)
  *  - wgGesucht: selector that only resolves correctly when scoped to the crawl container (`a@href`)
  *
+ * Kleinanzeigen used to be here for its dashed attribute (`.aditem@data-href`). It reads its results
+ * with its own parser now, and the downloader asks its `getListings` for the detail url instead.
+ *
  * Immowelt used to be here as a third selector shape. It reads its listings from immowelt's search
  * BFF now, so it has no crawl container to extract anything from and its fixtures are downloaded
  * by a dedicated path in `downloadFixtures.js`.
  */
-const providersWithDetailPages = ['immobilienDe', 'kleinanzeigen', 'wgGesucht', 'sparkasse'];
+const providersWithDetailPages = ['immobilienDe', 'wgGesucht', 'sparkasse'];
 
 describe('extractFirstDetailUrl', () => {
   for (const providerName of providersWithDetailPages) {

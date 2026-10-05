@@ -87,6 +87,18 @@ vi.mock('../lib/services/extractor/puppeteerExtractor.js', async (importOriginal
   };
 });
 
+// Providers that read server-rendered pages over plain HTTP share the browser extractor's fixtures:
+// both answer "the page's HTML, or null", and the run name maps partner-domain detail pages back to
+// their fixture the same way.
+vi.mock('../lib/services/extractor/httpExtractor.js', async (importOriginal) => {
+  if (process.env.TEST_MODE !== 'offline') {
+    return importOriginal();
+  }
+  const { readFixture } = await import('./offlineFixtures.js');
+  const actual = await importOriginal();
+  return { ...actual, default: (url, options) => readFixture(url, options) };
+});
+
 // Immowelt talks to its search BFF from inside the browser page (the only place a DataDome cookie
 // is worth anything), so neither the extractor mock nor the fetch mock above can intercept it. The
 // transport module is swapped out wholesale instead.
