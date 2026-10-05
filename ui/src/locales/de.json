@@ -116,6 +116,8 @@
   "home.providerUnavailable": "Nicht verfügbar",
   "home.providersEmpty": "Keine Anbieter gefunden",
   "home.providerAll": "Alle",
+  "home.providerNone": "Keine",
+  "home.providerSelectAll": "Alle auswählen",
   "home.cardActionsLabel": "Inserat-Aktionen",
   "home.markApplied": "Als beworben markieren",
   "home.markViewed": "Als besichtigt markieren",

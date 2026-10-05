@@ -28,6 +28,7 @@ describe('listings state domain', () => {
       page: 1,
       result: [],
       availableProviders: [],
+      pins: [],
       mapListings: [],
       currentListing: null,
       maxPrice: 0,
@@ -110,6 +111,36 @@ describe('listings state domain', () => {
     await appending;
 
     expect(state.listingsData.result).toEqual([{ id: 'm' }]);
+  });
+
+  it('fetches pins unpaginated through pins=true, ignoring page, size and sort, and drops a stale set', async () => {
+    const { state, get, stringify, effects } = setup();
+    stringify.mockImplementation((query: Record<string, unknown>) => JSON.stringify(query));
+    get.mockResolvedValueOnce({
+      status: 200,
+      json: { totalNumber: 40, pins: [{ id: 'a', latitude: 52.5, longitude: 13.4 }] },
+    });
+    await effects.getListingsPins({
+      page: 4,
+      pageSize: 9,
+      sortfield: 'price',
+      sortdir: 'desc',
+      filter: { statusFilter: 'new', bbox: '13,52,14,53', ids: 'x,y' },
+    });
+    const sent = JSON.parse(String(get.mock.calls[0][0]).replace('/api/listings/table?', ''));
+    expect(sent).toMatchObject({ page: 1, pageSize: 1, statusFilter: 'new', bbox: '13,52,14,53', pins: true });
+    expect(sent.sortfield).toBeNull();
+    expect(state.listingsData.pins).toEqual([{ id: 'a', latitude: 52.5, longitude: 13.4 }]);
+
+    // Two filter sets in flight: the one issued last wins, whatever order the responses land in.
+    let resolveFirst: (value: { status: number; json: unknown }) => void = () => {};
+    get.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)));
+    const first = effects.getListingsPins({ filter: { statusFilter: 'viewed' } });
+    get.mockResolvedValueOnce({ status: 200, json: { totalNumber: 1, pins: [{ id: 'current' }] } });
+    await effects.getListingsPins({ filter: { statusFilter: 'applied' } });
+    resolveFirst({ status: 200, json: { totalNumber: 1, pins: [{ id: 'stale' }] } });
+    await first;
+    expect(state.listingsData.pins).toEqual([{ id: 'current' }]);
   });
 
   it('maps map data and keeps the existing empty-value fallbacks', async () => {

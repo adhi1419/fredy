@@ -186,3 +186,115 @@ describe('listingsStorage connectivity', () => {
     });
   });
 });
+
+describe('queryListings pins mode and ids filter', () => {
+  let storage;
+
+  const addFlat = (id, overrides = {}) =>
+    firestore.seed('listings', id, {
+      jobId: 'job-1',
+      provider: 'immoscout',
+      title: `Flat ${id}`,
+      price: 1000,
+      latitude: 52.52,
+      longitude: 13.405,
+      isActive: true,
+      manuallyDeleted: false,
+      createdAt: 1000,
+      ...overrides,
+    });
+
+  beforeEach(async () => {
+    firestore.clear();
+    firestore.seed('jobs', 'job-1', { userId: 'user-1', sharedWithUser: [] });
+    storage = await import('../../../lib/services/storage/listingsStorage.js');
+  });
+
+  describe('pins mode', () => {
+    it('returns only rows with finite coordinates, projected to the pin shape', async () => {
+      addFlat('located', {
+        latitude: 50.95,
+        longitude: 7.0,
+        title: 'Nice flat',
+        price: 1234,
+        provider: 'kleinanzeigen',
+      });
+      addFlat('no-coords', { latitude: null, longitude: null });
+      addFlat('nan-coords', { latitude: 'n/a', longitude: 'n/a' });
+
+      const { pins } = await storage.queryListings({ userId: 'user-1', pins: true });
+
+      expect(pins).toEqual([
+        { id: 'located', latitude: 50.95, longitude: 7.0, title: 'Nice flat', price: 1234, provider: 'kleinanzeigen' },
+      ]);
+    });
+
+    it('counts ALL matching rows in totalNumber, including those without coordinates', async () => {
+      addFlat('a', { latitude: 50.95, longitude: 7.0 });
+      addFlat('b', { latitude: 51.0, longitude: 7.1 });
+      addFlat('c', { latitude: null, longitude: null });
+
+      const { totalNumber, pins } = await storage.queryListings({ userId: 'user-1', pins: true });
+
+      expect(totalNumber).toBe(3);
+      expect(pins.map((p) => p.id).sort()).toEqual(['a', 'b']);
+    });
+
+    it('ignores pagination — a small pageSize does not limit the pins', async () => {
+      for (let index = 0; index < 5; index += 1) addFlat(`l${index}`, { longitude: 13.4 + index / 100 });
+
+      const { totalNumber, pins } = await storage.queryListings({ userId: 'user-1', pins: true, pageSize: 2, page: 1 });
+
+      expect(totalNumber).toBe(5);
+      expect(pins).toHaveLength(5);
+    });
+
+    it('does not return a page or result field in pins mode', async () => {
+      addFlat('a');
+
+      const out = await storage.queryListings({ userId: 'user-1', pins: true });
+
+      expect(out).toHaveProperty('pins');
+      expect(out).toHaveProperty('totalNumber');
+      expect(out.result).toBeUndefined();
+      expect(out.page).toBeUndefined();
+    });
+  });
+
+  describe('ids filter', () => {
+    const idsFor = async (filters) =>
+      (await storage.queryListings({ userId: 'user-1', ...filters })).result.map((row) => row.id).sort();
+
+    beforeEach(() => {
+      addFlat('a', { latitude: 50.95, longitude: 7.0 });
+      addFlat('b', { latitude: 51.0, longitude: 7.1 });
+      addFlat('c', { latitude: 48.0, longitude: 11.0 });
+    });
+
+    it('keeps only rows whose id is in the set', async () => {
+      expect(await idsFor({ idsFilter: ['a', 'c'] })).toEqual(['a', 'c']);
+    });
+
+    it('is a no-op when the set is empty or null', async () => {
+      expect(await idsFor({ idsFilter: [] })).toEqual(['a', 'b', 'c']);
+      expect(await idsFor({ idsFilter: null })).toEqual(['a', 'b', 'c']);
+    });
+
+    it('composes with pins mode', async () => {
+      const { totalNumber, pins } = await storage.queryListings({
+        userId: 'user-1',
+        pins: true,
+        idsFilter: ['a', 'b'],
+      });
+
+      expect(totalNumber).toBe(2);
+      expect(pins.map((p) => p.id).sort()).toEqual(['a', 'b']);
+    });
+
+    it('composes with a bbox', async () => {
+      // Box over Cologne keeps a and b; ids narrows further to just a.
+      const COLOGNE = { west: 6.9, south: 50.9, east: 7.1, north: 51.0 };
+      expect(await idsFor({ bbox: COLOGNE, idsFilter: ['a', 'c'] })).toEqual(['a']);
+    });
+  });
+});

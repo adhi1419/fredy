@@ -9,14 +9,11 @@ import {
   IconArrowUp,
   IconChevronDown,
   IconClock,
-  IconCrop,
   IconListView,
   IconMapPin,
   IconMore,
-  IconPriceTag,
   IconRoute,
   IconSearch,
-  IconSort,
   IconTickCircle,
   IconEyeOpened,
 } from '@douyinfe/semi-icons';
@@ -38,6 +35,9 @@ import {
   homeCardTravel,
   homeLifecycleState,
   homeListingNavigationId,
+  homeProviderSelectionState,
+  homeToggleAllProviders,
+  homeToggleProvider,
   homeMapListing,
   homeMapMarkerIds,
   homeMapToggleSelection,
@@ -48,7 +48,6 @@ import {
   homeProviderOptions,
   homeQueryFromState,
   homeSortOption,
-  normalizeProviderIds,
   readHomeViewState,
   writeHomeViewState,
   type HomeListing,
@@ -184,21 +183,7 @@ const CARD_LIFECYCLE_ACTIONS: readonly {
   { activity: 'archived', action: 'archive', labelKey: 'home.markArchived' },
 ]);
 
-/**
- * The glyph each sort criterion wears in the icon-based sort control. Keyed on the canonical sort
- * keys ({@link HOME_SORT_OPTIONS}); an unknown future key the server may introduce falls back to a
- * neutral sort glyph so the control never renders blank. No criterion carries a visible text label -
- * the meaning is the icon plus its tooltip/aria label, so the tool row stays compact.
- */
-const SORT_SYMBOLS: Readonly<Record<string, Glyph>> = Object.freeze({
-  created_at: IconClock as unknown as Glyph,
-  travel_time: IconRoute as unknown as Glyph,
-  distance: IconMapPin as unknown as Glyph,
-  price: IconPriceTag as unknown as Glyph,
-  size: IconCrop as unknown as Glyph,
-});
-
-function moveMenuFocus(event: globalThis.KeyboardEvent, currentIndex: number, items: Array<HTMLButtonElement | null>) {
+function moveMenuFocus(event: globalThis.KeyboardEvent, currentIndex: number, items: Array<HTMLElement | null>) {
   let nextIndex: number | null = null;
   if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
   if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
@@ -219,6 +204,7 @@ interface HomeActions {
   listingsData: {
     getListingsData: (query: HomeQueryPayload) => Promise<void>;
     appendListingsPage: (query: HomeQueryPayload) => Promise<void>;
+    getListingsPins: (query: HomeQueryPayload) => Promise<void>;
     setListingLifecycleAction: (listingId: string, action: 'applied' | 'viewing' | 'archive') => Promise<void>;
   };
 }
@@ -672,22 +658,17 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   const [loading, setLoading] = useState(false);
   const [searchDraft, setSearchDraft] = useState('');
   const values = useMemo(() => readHomeViewState(searchParams, defaultView), [defaultView, searchParams.toString()]);
-  const query = useMemo(() => homeQueryFromState(values), [values]);
-  const allListings = useMemo(() => asHomeListings(listingsData.result), [listingsData.result]);
   // Pin selection and hover are view state, not URL state: they describe where the pointer is, and a
   // reload should start from the whole result again.
   const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const listings = useMemo(
-    () =>
-      selectedIds == null
-        ? allListings
-        : allListings.filter((listing) => {
-            const id = homeListingNavigationId(listing);
-            return id != null && selectedIds.includes(id);
-          }),
-    [allListings, selectedIds],
-  );
+  // The filter set without the pin selection: it is what the pins are fetched for and what resets a
+  // selection when it changes. The list query adds the selected ids on top.
+  const baseQuery = useMemo(() => homeQueryFromState(values), [values]);
+  const query = useMemo(() => homeQueryFromState(values, 1, selectedIds), [values, selectedIds]);
+  const allListings = useMemo(() => asHomeListings(listingsData.result), [listingsData.result]);
+  const pins = useMemo(() => asHomeListings(listingsData.pins), [listingsData.pins]);
+  const listings = allListings;
   const loadedCount = allListings.length;
   const totalCount = listingsData.totalNumber ?? loadedCount;
   const hasMore = loadedCount < totalCount;
@@ -717,12 +698,12 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
     setAppending(true);
     try {
       await actions.listingsData.appendListingsPage(
-        homeQueryFromState(values, Math.floor(loadedCount / HOME_PAGE_SIZE) + 1),
+        homeQueryFromState(values, Math.floor(loadedCount / HOME_PAGE_SIZE) + 1, selectedIds),
       );
     } finally {
       setAppending(false);
     }
-  }, [actions, appending, hasMore, loadedCount, values]);
+  }, [actions, appending, hasMore, loadedCount, selectedIds, values]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -742,7 +723,14 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   useEffect(() => {
     setSelectedIds(null);
     setHoveredId(null);
-  }, [query, values.view]);
+  }, [baseQuery, values.view]);
+
+  // The map draws every match, not the loaded page: pins come from their own unpaginated request,
+  // keyed on the filter set alone, so scrolling the list or picking a pin never moves them.
+  useEffect(() => {
+    if (values.view !== 'map') return;
+    void actions.listingsData.getListingsPins(baseQuery);
+  }, [actions, baseQuery, values.view]);
 
   const onBboxChange = useCallback((bbox: HomeBbox | null) => updateState({ bbox }), [updateState]);
   // Once the map view has rendered, a refetch must not unmount it: a pan would otherwise tear down
@@ -784,12 +772,20 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   const [providerMenuOpen, setProviderMenuOpen] = useState(false);
   const providerMenuRef = useRef<HTMLDivElement | null>(null);
   const providerTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const providerOptionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const providerSelectedCount = values.providerIds.length;
+  const providerAllRef = useRef<HTMLInputElement | null>(null);
+  const providerOptionRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const providerOptionIds = providerOptions.map((option) => option.id);
+  const providerSelection = homeProviderSelectionState(values.providerIds, providerOptionIds);
+  // `indeterminate` is a DOM property with no attribute form, so the header box is kept in sync here.
+  useEffect(() => {
+    if (providerAllRef.current) providerAllRef.current.indeterminate = providerSelection === 'partial';
+  }, [providerSelection, providerMenuOpen]);
   const providerSummary =
-    providerSelectedCount === 0
+    providerSelection === 'all'
       ? t('home.providerAll')
-      : t('home.providerSelectedCount', { count: String(providerSelectedCount) });
+      : providerSelection === 'none'
+        ? t('home.providerNone')
+        : t('home.providerSelectedCount', { count: String(values.providerIds.length) });
 
   const closeProviderMenu = useCallback((restoreFocus: boolean) => {
     setProviderMenuOpen(false);
@@ -797,7 +793,8 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   }, []);
 
   useEffect(() => {
-    if (providerMenuOpen) providerOptionRefs.current[0]?.focus();
+    if (providerMenuOpen)
+      providerMenuRef.current?.querySelector<HTMLInputElement>('.home__provider-options input')?.focus();
   }, [providerMenuOpen]);
 
   useEffect(() => {
@@ -820,14 +817,11 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
   }, [providerMenuOpen, closeProviderMenu]);
 
   const toggleProvider = (id: string) => {
-    const next = selectedProviders.has(id)
-      ? values.providerIds.filter((entry) => entry !== id)
-      : [...values.providerIds, id];
-    updateState({ providerIds: normalizeProviderIds(next) });
+    updateState({ providerIds: homeToggleProvider(values.providerIds, providerOptionIds, id) });
   };
 
-  const selectAllProviders = () => {
-    updateState({ providerIds: [] });
+  const toggleAllProviders = () => {
+    updateState({ providerIds: homeToggleAllProviders(values.providerIds, providerOptionIds) });
   };
 
   const selectedSort = homeSortOption(values.sort);
@@ -922,7 +916,7 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
                 type="button"
                 ref={providerTriggerRef}
                 className="home__provider-trigger"
-                aria-haspopup="menu"
+                aria-haspopup="dialog"
                 aria-expanded={providerMenuOpen}
                 onClick={() => setProviderMenuOpen((open) => !open)}
               >
@@ -931,48 +925,45 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
                 <IconChevronDown aria-hidden="true" />
               </button>
               {providerMenuOpen && (
-                <div className="home__provider-options" role="menu" aria-label={t('home.providerLabel')}>
-                  <button
-                    ref={(element) => {
-                      providerOptionRefs.current[0] = element;
-                    }}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={providerSelectedCount === 0}
-                    className={`home__provider-all${providerSelectedCount === 0 ? ' is-selected' : ''}`}
-                    onClick={selectAllProviders}
-                    onKeyDown={(event) => moveMenuFocus(event.nativeEvent, 0, providerOptionRefs.current)}
-                  >
-                    <span className="home__provider-check" aria-hidden="true">
-                      {providerSelectedCount === 0 && <IconTickCircle />}
-                    </span>
-                    <span className="home__provider-name">{t('home.providerAll')}</span>
-                  </button>
+                <div className="home__provider-options" role="group" aria-label={t('home.providerLabel')}>
+                  {/* Excel-style header box: ticked = every provider, unticked = none, indeterminate = some.
+                      Ticked flips to none, anything else flips to all. */}
+                  <label className="home__provider-option home__provider-all">
+                    <input
+                      type="checkbox"
+                      ref={(element) => {
+                        providerAllRef.current = element;
+                        providerOptionRefs.current[0] = element;
+                      }}
+                      checked={providerSelection === 'all'}
+                      aria-checked={providerSelection === 'partial' ? 'mixed' : providerSelection === 'all'}
+                      onChange={toggleAllProviders}
+                      onKeyDown={(event) => moveMenuFocus(event.nativeEvent, 0, providerOptionRefs.current)}
+                    />
+                    <span className="home__provider-box" aria-hidden="true" />
+                    <span className="home__provider-name">{t('home.providerSelectAll')}</span>
+                  </label>
                   {providerOptions.length === 0 && (
                     <span className="home__provider-empty">{t('home.providersEmpty')}</span>
                   )}
                   {providerOptions.map((provider, index) => {
-                    const selected = selectedProviders.has(provider.id);
+                    const selected = providerSelection === 'all' || selectedProviders.has(provider.id);
                     const stale = selected && !(listingsData.availableProviders ?? []).includes(provider.id);
                     return (
-                      <button
-                        ref={(element) => {
-                          providerOptionRefs.current[index + 1] = element;
-                        }}
-                        key={provider.id}
-                        type="button"
-                        role="menuitemcheckbox"
-                        aria-checked={selected}
-                        className={selected ? 'is-selected' : ''}
-                        onClick={() => toggleProvider(provider.id)}
-                        onKeyDown={(event) => moveMenuFocus(event.nativeEvent, index + 1, providerOptionRefs.current)}
-                      >
-                        <span className="home__provider-check" aria-hidden="true">
-                          {selected && <IconTickCircle />}
-                        </span>
+                      <label key={provider.id} className="home__provider-option">
+                        <input
+                          type="checkbox"
+                          ref={(element) => {
+                            providerOptionRefs.current[index + 1] = element;
+                          }}
+                          checked={selected}
+                          onChange={() => toggleProvider(provider.id)}
+                          onKeyDown={(event) => moveMenuFocus(event.nativeEvent, index + 1, providerOptionRefs.current)}
+                        />
+                        <span className="home__provider-box" aria-hidden="true" />
                         <span className="home__provider-name">{provider.name}</span>
                         {stale && <small>{t('home.providerUnavailable')}</small>}
-                      </button>
+                      </label>
                     );
                   })}
                 </div>
@@ -981,13 +972,13 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
           </div>
           <div className="home__sort" role="group" aria-label={t('home.sortLabel')}>
             {sortOptions.map((option) => {
-              const SortSymbol = SORT_SYMBOLS[option.key] ?? (IconSort as unknown as Glyph);
               const isActive = option.key === values.sort;
               const criterionLabel = t(option.labelKey);
-              const directionLabel = t(activeDirection === 'asc' ? 'home.sortDirectionAsc' : 'home.sortDirectionDesc');
-              // The active criterion announces its direction and that tapping it flips; an inactive
-              // one announces it will become the active sort. No visible text - the icon plus these
-              // labels carry the meaning.
+              // Every button shows the direction it sorts in: the active one its current direction,
+              // an inactive one the direction a tap would apply. The arrow is the only glyph; the
+              // criterion itself is spelled out, since a clock or a tag never read as "sort by".
+              const direction = isActive ? activeDirection : option.direction;
+              const directionLabel = t(direction === 'asc' ? 'home.sortDirectionAsc' : 'home.sortDirectionDesc');
               const ariaLabel = isActive
                 ? t('home.sortActiveLabel', { label: criterionLabel, direction: directionLabel })
                 : t('home.sortSelectLabel', { label: criterionLabel });
@@ -1001,13 +992,12 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
                   title={ariaLabel}
                   onClick={() => chooseSort(option)}
                 >
-                  <SortSymbol aria-hidden="true" className="home__sort-symbol" />
-                  {isActive &&
-                    (activeDirection === 'asc' ? (
-                      <IconArrowUp aria-hidden="true" className="home__sort-direction" />
-                    ) : (
-                      <IconArrowDown aria-hidden="true" className="home__sort-direction" />
-                    ))}
+                  <span className="home__sort-name">{criterionLabel}</span>
+                  {direction === 'asc' ? (
+                    <IconArrowUp aria-hidden="true" className="home__sort-direction" />
+                  ) : (
+                    <IconArrowDown aria-hidden="true" className="home__sort-direction" />
+                  )}
                 </button>
               );
             })}
@@ -1061,7 +1051,7 @@ export default function Home({ defaultView = 'feed' }: HomeProps) {
             )}
           </section>
           <HomeMap
-            listings={allListings}
+            listings={pins}
             bbox={values.bbox}
             onBboxChange={onBboxChange}
             selectedIds={selectedIds}

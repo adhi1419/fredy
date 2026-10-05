@@ -10,6 +10,10 @@ import {
   homeLifecycleState,
   homeMapListing,
   homeProviderOptions,
+  homeProviderSelectionState,
+  homeToggleAllProviders,
+  homeToggleProvider,
+  HOME_NO_PROVIDERS,
   homeQueryFromState,
   homeSearchForNavigation,
   homeSavedPlaceGlyph,
@@ -184,11 +188,11 @@ describe('homeViewState', () => {
       ),
     ).toEqual({
       page: 3,
-      pageSize: 10,
+      pageSize: 9,
       freeTextFilter: 'Kreuzberg',
       sortfield: 'travel_time',
       sortdir: 'asc',
-      filter: { statusFilter: 'viewed', providerFilter: 'immoscout,immowelt', bbox: '13.3,52.4,13.5,52.6' },
+      filter: { statusFilter: 'viewed', providerFilter: 'immoscout,immowelt', bbox: '13.3,52.4,13.5,52.6', ids: null },
     });
     expect(homeQueryFromState({}).page).toBe(1);
     expect(homeQueryFromState({}).filter.bbox).toBeNull();
@@ -235,5 +239,43 @@ describe('homeViewState', () => {
     expect(homeLifecycleState({ inquiry_send_status: 'sent' })).toBe('applied');
     expect(homeLifecycleState({ lifecycle: { state: 'unexpected' } })).toBe('new');
     expect(homeLifecycleState({})).toBe('new');
+  });
+
+  it('narrows the list query to a pin selection while leaving the base query untouched', () => {
+    const state = readHomeViewState(new URLSearchParams('view=map'));
+    expect(homeQueryFromState(state).filter.ids).toBeNull();
+    expect(homeQueryFromState(state, 2, ['a', 'b']).filter.ids).toBe('a,b');
+    expect(homeQueryFromState(state, 1, []).filter.ids).toBeNull();
+  });
+
+  describe('Excel-style provider picker', () => {
+    const options = ['a', 'b', 'c'];
+
+    it('reads the header state: empty and all-named both mean all, the sentinel means none', () => {
+      expect(homeProviderSelectionState([], options)).toBe('all');
+      expect(homeProviderSelectionState(['c', 'a', 'b'], options)).toBe('all');
+      expect(homeProviderSelectionState([HOME_NO_PROVIDERS], options)).toBe('none');
+      expect(homeProviderSelectionState(['a'], options)).toBe('partial');
+    });
+
+    it('unticking one from all keeps the rest; unticking the last yields the sentinel', () => {
+      expect(homeToggleProvider([], options, 'b')).toEqual(['a', 'c']);
+      expect(homeToggleProvider(['a'], options, 'a')).toEqual([HOME_NO_PROVIDERS]);
+    });
+
+    it('ticking from none starts a partial set; ticking the final one collapses to all', () => {
+      expect(homeToggleProvider([HOME_NO_PROVIDERS], options, 'b')).toEqual(['b']);
+      expect(homeToggleProvider(['a', 'b'], options, 'c')).toEqual([]);
+    });
+
+    it('header toggles all -> none, and none or partial -> all', () => {
+      expect(homeToggleAllProviders([], options)).toEqual([HOME_NO_PROVIDERS]);
+      expect(homeToggleAllProviders([HOME_NO_PROVIDERS], options)).toEqual([]);
+      expect(homeToggleAllProviders(['a'], options)).toEqual([]);
+    });
+
+    it('never lists the sentinel as a provider option', () => {
+      expect(homeProviderOptions([], ['a'], [HOME_NO_PROVIDERS])).toEqual([{ id: 'a', name: 'a' }]);
+    });
   });
 });
