@@ -222,3 +222,95 @@
     color: @color-text;
   }
 }
+
+// The pin. One silhouette for every map: a rotated square with three round corners makes the
+// teardrop, the fourth corner is the tip. The outer box is the pin's true extent so MapLibre's
+// bottom anchor lands the tip on the location; the head is a child so the count or glyph inside
+// it can be rotated back upright. Hover and selection scale and invert, and a 44px hit area sits
+// around the head as a pseudo-element because the element handed to MapLibre is the marker itself.
+@pin-head: 26px;
+@pin-height: 34px;
+
+.fredy-pin {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: @pin-head;
+  height: @pin-height;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: @color-on-accent;
+  font: inherit;
+  cursor: default;
+  transition: transform 120ms ease;
+  transform-origin: 50% 100%;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -8px -10px -4px;
+  }
+
+  &__head {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: @pin-head;
+    height: @pin-head;
+    border: 1.5px solid @color-surface;
+    border-radius: 50% 50% 50% 0;
+    background: @color-accent;
+    font-family: @font-mono;
+    font-size: @text-xs;
+    font-weight: 500;
+    line-height: 1;
+    transform: rotate(-45deg);
+    transform-origin: 50% 50%;
+
+    // Whatever sits in the head - count or glyph - is turned back upright.
+    > * {
+      transform: rotate(45deg);
+    }
+
+    svg {
+      display: block;
+    }
+  }
+
+  &--listing,
+  &--group {
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible,
+    &.fredy-pin--hover {
+      transform: scale(1.15);
+      outline: none;
+    }
+
+    &:focus-visible &__head {
+      outline: 2px solid @color-accent;
+      outline-offset: 2px;
+    }
+
+    &.fredy-pin--selected {
+      transform: scale(1.15);
+
+      .fredy-pin__head {
+        border-color: @color-accent;
+        background: @color-surface;
+        color: @color-text;
+      }
+    }
+  }
+
+  &--place &__head {
+    border-color: @color-text;
+    background: @color-surface;
+    color: @color-text;
+  }
+}

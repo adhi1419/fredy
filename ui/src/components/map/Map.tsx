@@ -28,6 +28,7 @@ import { keepPopupInView, mountPopupNode } from './popupContent.jsx';
 import DeparturesBoard from '../transit/DeparturesBoard.jsx';
 import { useControllableState } from '../../hooks/useControllableState.js';
 import { resolveMapStyle } from './mapStyles.js';
+import { createPinElement } from './pins.js';
 import { useSelector } from '../../services/state/store.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import MapControls, { type MapControlsPatch, type MapStyleName } from './MapControls.jsx';
@@ -39,19 +40,6 @@ import './Map.less';
  * so the lock has to be expressed as a descendant rule rather than `overflow: hidden` here.
  */
 const EXPANDED_BODY_CLASS = 'fredy-map-expanded';
-
-/** Colour of the pin the user drops in `pickMode`, distinct from listing blue and home red. */
-const PICK_MARKER_COLOR = '#f5a623';
-
-/**
- * Colour of the pins standing for the user's own addresses, on every map that draws them.
- *
- * Named rather than repeated at the two call sites, which is all this constant is for: listing pins
- * are the one blue, so red is unambiguous.
- *
- * @type {string}
- */
-export const HOME_MARKER_COLOR = 'red';
 
 /** Center of Germany, the fallback view when a consumer has nothing better to show. */
 const GERMANY_CENTER: [number, number] = [10.4515, 51.1657];
@@ -635,7 +623,11 @@ export default function Map({
 
     const place = ({ lng, lat }: { lng: number; lat: number }) => {
       if (marker == null) {
-        marker = new maplibregl.Marker({ color: PICK_MARKER_COLOR, draggable: true })
+        marker = new maplibregl.Marker({
+          element: createPinElement({ role: 'place', glyph: 'flag', label: t('map.pickedLocation') }),
+          anchor: 'bottom',
+          draggable: true,
+        })
           .setLngLat([lng, lat])
           .addTo(mapInstance);
         marker.on('dragend', () => {
@@ -656,7 +648,7 @@ export default function Map({
       mapInstance.off('click', onClick);
       marker?.remove();
     };
-  }, [pickMode, onPick]);
+  }, [pickMode, onPick, t]);
 
   const showControls = controlsMode === 'always' || (controlsMode === 'expanded' && isExpanded);
   const shellClassName = ['map-shell', isExpanded ? 'map-shell--expanded' : '', pickMode ? 'map-shell--picking' : '']

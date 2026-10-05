@@ -521,6 +521,7 @@
   "map.popupNext": "Bu adresteki sonraki ilan",
   "map.popupRemove": "Kaldır",
   "map.popupHomeAddress": "Ev Adresi",
+  "map.pickedLocation": "Seçilen konum",
   "map.noHomeAddressBefore": "Ev adresi ayarlanmadı. ",
   "map.noHomeAddressLink": "kullanıcı ayarlarından",
   "map.noHomeAddressAfter": " uzaklık filtresini kullanmak için yapılandırın.",

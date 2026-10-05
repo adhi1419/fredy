@@ -536,6 +536,7 @@
   "map.popupNext": "Nächstes Inserat an dieser Adresse",
   "map.popupRemove": "Entfernen",
   "map.popupHomeAddress": "Heimatadresse",
+  "map.pickedLocation": "Gewählter Ort",
   "map.noHomeAddressBefore": "Keine Heimadresse gesetzt. Konfiguriere sie in den ",
   "map.noHomeAddressLink": "Benutzereinstellungen",
   "map.noHomeAddressAfter": ", um den Entfernungsfilter zu nutzen.",

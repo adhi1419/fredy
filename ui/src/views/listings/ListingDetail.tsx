@@ -42,7 +42,10 @@ import {
   IconUndo,
 } from '@douyinfe/semi-icons';
 import maplibregl from '../../components/map/maplibre.js';
-import MapCanvas, { HOME_MARKER_COLOR } from '../../components/map/Map.jsx';
+import MapCanvas from '../../components/map/Map.jsx';
+import { createPinElement } from '../../components/map/pins.js';
+import { homeSavedPlaceGlyph } from '../../services/home/homeViewState.js';
+import { currentTheme } from '../../services/theme/theme.js';
 import { useProviderCountries } from '../../hooks/useProviderCountries.js';
 import no_image from '../../assets/no_image.png';
 import * as timeService from '../../services/time/timeService.js';
@@ -419,7 +422,10 @@ export default function ListingDetail(): ReactNode {
     const markers: MapMarker[] = [];
 
     markers.push(
-      new maplibregl.Marker({ color: '#3FB1CE' })
+      new maplibregl.Marker({
+        element: createPinElement({ role: 'listing', label: t('listing.detail.mapPopupListingLocation') }),
+        anchor: 'bottom',
+      })
         .setLngLat(listingCoords)
         .setPopup(
           new maplibregl.Popup({ offset: 25 }).setHTML(
@@ -431,7 +437,14 @@ export default function ListingDetail(): ReactNode {
 
     homeAddresses.forEach((home: HomeAddress) => {
       markers.push(
-        new maplibregl.Marker({ color: HOME_MARKER_COLOR })
+        new maplibregl.Marker({
+          element: createPinElement({
+            role: 'place',
+            glyph: homeSavedPlaceGlyph(home.label),
+            label: home.label || t('listing.detail.mapPopupHomeAddress'),
+          }),
+          anchor: 'bottom',
+        })
           .setLngLat([home.coords.lng, home.coords.lat])
           .setPopup(
             new maplibregl.Popup({ offset: 25 }).setHTML(
@@ -466,6 +479,7 @@ export default function ListingDetail(): ReactNode {
           routeTimes,
           routeMode,
         ),
+        currentTheme(),
       );
     if (mapInstance.isStyleLoaded()) drawRoute();
     mapInstance.on('styledata', drawRoute);
