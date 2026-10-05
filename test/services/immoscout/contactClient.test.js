@@ -12,6 +12,12 @@ const { connectedSession, getApplicationSession } = vi.hoisted(() => ({
     entitlements: [{ serviceType: 'PRIORITY_CONTACT_RENT' }],
     bundles: [{ productType: 'MIETER_PLUS' }],
     hasMieterPlus: true,
+    applicationProfile: {
+      employmentRelationship: 'PUBLIC_EMPLOYEE',
+      income: 'OVER_5000',
+      hasPets: false,
+      applicationPackageCompleted: false,
+    },
   },
   getApplicationSession: vi.fn(),
 }));
@@ -77,6 +83,32 @@ describe('buildContactForm', () => {
     expect(form.employmentRelationship).toBeUndefined();
     expect(form.income).toBeUndefined();
     expect(form.moveInDate).toBeUndefined();
+  });
+
+  it('uses Android wire enums and connected-profile facts for listing-specific fields', () => {
+    const config = {
+      salutationField: 'MANDATORY',
+      employmentRelationshipField: 'MANDATORY',
+      incomeField: 'MANDATORY',
+      petsInHouseholdField: 'MANDATORY',
+      applicationPackageCompletedField: 'MANDATORY',
+      moveInDateField: 'NOT_REQUESTED',
+    };
+    const { form, missingFields } = buildContactForm({ ...profile, salutation: 'Herr' }, 'Hallo', config, {
+      accountEmail: 'applicant@example.com',
+      applicationProfile: connectedSession.applicationProfile,
+    });
+
+    expect(missingFields).toEqual([]);
+    expect(form).toMatchObject({
+      salutation: 'MALE',
+      employmentRelationship: 'PUBLIC_EMPLOYEE',
+      income: 'OVER_5000',
+      hasPets: false,
+      applicationPackageCompleted: false,
+    });
+    expect(form.moveInDate).toBeUndefined();
+    expect(form.petsInHousehold).toBeUndefined();
   });
 
   it('reports every mandatory field that the profile cannot satisfy', () => {
