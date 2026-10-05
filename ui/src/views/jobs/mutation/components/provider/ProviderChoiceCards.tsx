@@ -194,7 +194,7 @@ export default function ProviderChoiceCards({
                     aria-label={t('jobs.mutation.policyToggle', { name: providerName })}
                     onChange={(checked) => onPolicyChange(displaySource, checked)}
                   />
-                  <span>{policy.enabled ? t('jobs.mutation.policyOn') : t('jobs.mutation.policyOff')}</span>
+                  <span>{t('jobs.mutation.policyConsent', { name: providerName })}</span>
                 </div>
                 <div className="providerChoiceCards__policyHint">
                   <span>{t(policyHintKey(policy.reason))}</span>

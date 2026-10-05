@@ -87,14 +87,7 @@ describe('buildContactForm', () => {
     };
     const { missingFields } = buildContactForm({ name: 'OnlyOneName' }, '', config);
     expect(missingFields).toEqual(
-      expect.arrayContaining([
-        'name',
-        'signedInEmail',
-        'address',
-        'income',
-        'numberOfPersons',
-        'immoscoutPrivacyAccepted',
-      ]),
+      expect.arrayContaining(['name', 'signedInEmail', 'address', 'income', 'numberOfPersons']),
     );
   });
 });

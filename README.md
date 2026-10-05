@@ -127,8 +127,11 @@ Current provider-submitted application paths include:
 - **ImmoScout24**, with provider validation before a supported submission.
 - **Deutsche Wohnen**, with the provider-specific contact and income information it requires.
 - **HOWOGE offers surfaced through InBerlinWohnen**, which require the provider's confirmation email after Fredy submits the request.
+- **WBM offers surfaced through InBerlinWohnen**, using the provider's direct application form.
+- **Stadt und Land offers surfaced through InBerlinWohnen**, when the live Wohnungshelden form does not require a captcha or document upload.
+- **Kleinanzeigen**, using an encrypted connected web session and the generated inquiry message.
 
-Other providers remain notification-only for provider-submitted applications. You can always open the provider listing and record **I applied myself**.
+Degewo, Gewobag, Berlinovo, Gesobau/Immomio, and other providers remain notification-only for provider-submitted applications. You can always open the provider listing and record **I applied myself**.
 
 ## Privacy and account expectations
 

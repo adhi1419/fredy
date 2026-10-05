@@ -47,11 +47,13 @@ vi.mock('../../lib/services/messageGenerator.js', () => ({
   generateInquiryMessage: vi.fn(),
 }));
 vi.mock('../../lib/services/inquiries/sendInquiry.js', () => ({
-  supportsInquirySending: (providerId, candidate) =>
-    ['deutscheWohnen', 'immoscout'].includes(providerId) ||
-    (providerId === 'inberlinwohnen' && candidate?.link?.includes('howoge.de')),
-  inquiryRequiresMessage: (providerId, candidate) =>
-    !(providerId === 'inberlinwohnen' && candidate?.link?.includes('howoge.de')),
+  supportsInquirySending: (providerId, candidate) => {
+    if (['deutscheWohnen', 'immoscout', 'kleinanzeigen'].includes(providerId)) return true;
+    if (providerId !== 'inberlinwohnen' || candidate?.link == null) return false;
+    const host = new URL(candidate.link).hostname.toLowerCase().replace(/^www\./, '');
+    return ['howoge.de', 'wbm.de', 'stadtundland.de'].includes(host);
+  },
+  inquiryRequiresMessage: (providerId, candidate) => !(providerId === 'inberlinwohnen' && candidate?.link != null),
 }));
 vi.mock('../../lib/services/inquiries/deliverInquiry.js', () => ({
   deliverInquiry: async (params) => {
