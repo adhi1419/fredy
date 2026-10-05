@@ -15,7 +15,6 @@ describe('api/routes/dashboardRouter.js', () => {
     const ROOT = path.resolve('.');
     const jobStoragePath = path.join(ROOT, 'lib', 'services', 'storage', 'jobStorage.js');
     const listingsStoragePath = path.join(ROOT, 'lib', 'services', 'storage', 'listingsStorage.js');
-    const settingsStoragePath = path.join(ROOT, 'lib', 'services', 'storage', 'settingsStorage.js');
     const securityPath = path.join(ROOT, 'lib', 'api', 'security.js');
 
     vi.resetModules();
@@ -27,9 +26,7 @@ describe('api/routes/dashboardRouter.js', () => {
       getProviderDistributionForJobIds: () => [],
       getListingsPerDayForJobIds: () => [],
     }));
-    vi.doMock(settingsStoragePath, () => ({
-      getSettings: async () => ({ interval: 30 }),
-    }));
+    process.env.TRIGGER_INTERVAL_MINUTES = '30';
     vi.doMock(securityPath, () => ({
       isAdmin: () => state.admin,
     }));
@@ -73,6 +70,7 @@ describe('api/routes/dashboardRouter.js', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.general.lastRun).toBe(5000);
+    expect(body.general.interval).toBe(30);
     expect(body.general.nextRun).toBe(5000 + 30 * 60000);
   });
 

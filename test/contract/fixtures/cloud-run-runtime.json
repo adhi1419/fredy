@@ -53,9 +53,7 @@
       "await fastify.listen({ port: PORT, host: '0.0.0.0' });",
       "fastify.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: 'Not found' }));"
     ],
-    "schedulerRequired": [
-      "_triggerRunner = () => runAll();"
-    ]
+    "schedulerRequired": ["_triggerRunner = () => runAll();"]
   },
   "adc": {
     "firestoreRequired": ["new Firestore(", "FIRESTORE_EMULATOR_HOST"],
@@ -86,7 +84,7 @@
   },
   "bootstrap": {
     "required": [
-      "'EXTERNAL_SCHEDULER': 'true'",
+      "'TRIGGER_INTERVAL_MINUTES': '15'",
       "'FIREBASE_WEB_CONFIG': web_config",
       "'FRONTEND_ORIGIN': 'https://adhi1419.github.io'",
       "'FRONTEND_URL': 'https://adhi1419.github.io/fredy/'",

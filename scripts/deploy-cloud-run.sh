@@ -122,8 +122,9 @@ import json, sys
 envfile, token = sys.argv[1], sys.argv[2]
 web_config = json.dumps(json.load(open('firebase-web-config.json')), separators=(',', ':'))
 env = {
-    'EXTERNAL_SCHEDULER': 'true',
     'TRIGGER_TOKEN': token,
+    # Mirrors the Cloud Scheduler cadence below; the dashboard's "next run" line reads it.
+    'TRIGGER_INTERVAL_MINUTES': '15',
     'FIREBASE_WEB_CONFIG': web_config,
     'FRONTEND_ORIGIN': 'https://adhi1419.github.io',
     'FRONTEND_URL': 'https://adhi1419.github.io/fredy/',
