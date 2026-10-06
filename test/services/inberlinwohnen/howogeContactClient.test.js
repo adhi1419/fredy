@@ -28,13 +28,13 @@ const applicationHtml = `
 const htmlResponse = (body, status = 200, responseHeaders = {}) =>
   new Response(body, { status, headers: responseHeaders });
 
-function successfulFetch() {
+function successfulFetch(status = 303) {
   return vi
     .fn()
     .mockResolvedValueOnce(htmlResponse(detailHtml))
     .mockResolvedValueOnce(htmlResponse(applicationHtml))
     .mockResolvedValueOnce(
-      htmlResponse('', 303, {
+      htmlResponse('', status, {
         Location: '/immobiliensuche/wohnungssuche/besichtigung-vereinbaren/bewerbungsprozess/doi.html?request=accepted',
       }),
     );
@@ -68,6 +68,35 @@ describe('HOWOGE inquiry delivery', () => {
     expect(body.get('tx_howrealestate_visitform[visitRequest][email]')).toBe('applicant@example.com');
     expect([...body.keys()].some((key) => /message/i.test(key))).toBe(false);
     expect(result).toMatchObject({ requestId: 'howoge:9454' });
+  });
+
+  it('accepts HOWOGE’s HTTP 302 double-opt-in redirect', async () => {
+    const result = await sendHowogeInquiry({
+      listing,
+      profile,
+      accountEmail: 'applicant@example.com',
+      fetchImpl: successfulFetch(302),
+    });
+
+    expect(result).toMatchObject({ requestId: 'howoge:9454' });
+  });
+
+  it('accepts HOWOGE’s same-host HTTP proxy redirect without following it', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(htmlResponse(detailHtml))
+      .mockResolvedValueOnce(htmlResponse(applicationHtml))
+      .mockResolvedValueOnce(
+        htmlResponse('', 303, {
+          Location:
+            'http://www.howoge.de/immobiliensuche/wohnungssuche/besichtigung-vereinbaren/bewerbungsprozess.html',
+        }),
+      );
+
+    await expect(
+      sendHowogeInquiry({ listing, profile, accountEmail: 'applicant@example.com', fetchImpl }),
+    ).resolves.toMatchObject({ requestId: 'howoge:9454' });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
   it('does not POST without a complete applicant name', async () => {
@@ -106,6 +135,23 @@ describe('HOWOGE inquiry delivery', () => {
       }),
     ).rejects.toMatchObject({ outcome: 'unknown' });
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps off-domain redirects unknown', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(htmlResponse(detailHtml))
+      .mockResolvedValueOnce(htmlResponse(applicationHtml))
+      .mockResolvedValueOnce(htmlResponse('', 302, { Location: 'https://example.net/accepted' }));
+
+    await expect(
+      sendHowogeInquiry({
+        listing,
+        profile,
+        accountEmail: 'applicant@example.com',
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({ outcome: 'unknown', status: 302 });
   });
 
   it('classifies a timeout after the real POST starts as unknown without retrying', async () => {
