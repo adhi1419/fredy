@@ -14,6 +14,7 @@
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
+import { withFirestoreUsageScope, currentFirestoreUsage } from '../../lib/services/storage/firestore/firestoreUsage.js';
 
 let listingsStorage;
 let userStorage;
@@ -307,6 +308,24 @@ describe('listingsStorage lifecycle contract', () => {
 
       const candidates = await listingsStorage.getListingsToGeocode();
       expect(candidates.map((r) => r.id)).not.toContain(id);
+    });
+
+    it('reads only the listings missing coordinates, not every active listing', async () => {
+      await seedUser();
+      await seedJob();
+      const pending = await seedListing('job-1', { address: 'Hauptstr. 1, Berlin' });
+      for (let i = 0; i < 5; i++) {
+        const id = await seedListing('job-1', { address: `Nebenstr. ${i}, Berlin` });
+        await listingsStorage.updateListingGeocoordinates(id, 52.52, 13.405);
+      }
+
+      const { candidates, usage } = await withFirestoreUsageScope('test', async () => ({
+        candidates: await listingsStorage.getListingsToGeocode(),
+        usage: currentFirestoreUsage(),
+      }));
+      expect(candidates.map((r) => r.id)).toEqual([pending]);
+      // One query per coordinate, each returning the single pending row.
+      expect(usage.reads).toBe(2);
     });
 
     it('excludes manually deleted listings', async () => {
