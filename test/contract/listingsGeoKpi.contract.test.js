@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
+import { withFirestoreUsageScope, currentFirestoreUsage } from '../../lib/services/storage/firestore/firestoreUsage.js';
 
 let listingsStorage, userStorage, jobStorage;
 
@@ -106,6 +107,23 @@ describe('listingsStorage contract – distances', () => {
 
     const due = await listingsStorage.getListingsToCalculateDistance(JOB.jobId);
     expect(due.map((r) => r.id)).not.toContain(listing.id);
+  });
+
+  it('getListingsToCalculateDistance reads only the listings missing distances', async () => {
+    await seedContext();
+    const done = [makeListing(), makeListing(), makeListing()];
+    const pending = makeListing();
+    await listingsStorage.storeListings(JOB.jobId, 'immoscout', [...done, pending]);
+    for (const listing of done) {
+      await listingsStorage.updateListingDistances(listing.id, [{ label: 'X', meters: 100 }]);
+    }
+
+    const { due, usage } = await withFirestoreUsageScope('test', async () => ({
+      due: await listingsStorage.getListingsToCalculateDistance(JOB.jobId),
+      usage: currentFirestoreUsage(),
+    }));
+    expect(due.map((r) => r.id)).toEqual([pending.id]);
+    expect(usage.reads).toBe(1);
   });
 
   it('getListingsForUserToCalculateDistance returns listings across all user jobs', async () => {
