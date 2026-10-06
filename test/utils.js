@@ -47,12 +47,13 @@ export function setInquiryDeliveryError(error) {
 }
 vi.mock('../lib/services/inquiries/sendInquiry.js', () => ({
   supportsInquirySending: (providerId, listing) => {
-    if (['deutscheWohnen', 'immoscout', 'kleinanzeigen'].includes(providerId)) return true;
+    if (['deutscheWohnen', 'immoscout', 'kleinanzeigen', 'wbm'].includes(providerId)) return true;
     if (providerId !== 'inberlinwohnen' || listing == null) return providerId === 'inberlinwohnen';
     const host = new URL(listing.link).hostname.toLowerCase().replace(/^www\./, '');
     return ['howoge.de', 'wbm.de', 'stadtundland.de'].includes(host);
   },
-  inquiryRequiresMessage: (providerId, listing) => !(providerId === 'inberlinwohnen' && listing != null),
+  inquiryRequiresMessage: (providerId, listing) =>
+    !(providerId === 'wbm' || (providerId === 'inberlinwohnen' && listing != null)),
 }));
 vi.mock('../lib/services/inquiries/deliverInquiry.js', () => ({
   deliverInquiry: async (params) => {

@@ -12,6 +12,8 @@ describe('inquiry sender registry', () => {
     expect(supportsInquirySending('deutscheWohnen')).toBe(true);
     expect(supportsInquirySending('kleinanzeigen')).toBe(true);
     expect(inquiryRequiresMessage('kleinanzeigen')).toBe(true);
+    expect(supportsInquirySending('wbm')).toBe(true);
+    expect(inquiryRequiresMessage('wbm')).toBe(false);
     expect(supportsInquirySending('inberlinwohnen')).toBe(true);
     const howoge = {
       link: 'https://www.howoge.de/immobiliensuche/wohnungssuche/detail/1770-20776-16.html',

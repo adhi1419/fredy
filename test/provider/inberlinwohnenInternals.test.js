@@ -81,6 +81,26 @@ describe('#inberlinwohnen internals()', () => {
       });
     });
 
+    it('should cap result-page concurrency at three', async () => {
+      const ids = Array.from({ length: 8 }, (_, index) => index + 1);
+      let active = 0;
+      let peak = 0;
+      const extractPage = vi.fn(async (url) => {
+        const page = Number(new URL(url).searchParams.get('page'));
+        if (page === 1) return resultPage([1], paginationElement(ids, 1));
+        active += 1;
+        peak = Math.max(peak, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active -= 1;
+        return resultPage([page]);
+      });
+
+      const listings = await runConfig.getListings(SEARCH_URL, extractPage);
+
+      expect(listings).toHaveLength(8);
+      expect(peak).toBe(3);
+    });
+
     it('should deduplicate listings repeated across page boundaries', async () => {
       const extractPage = vi
         .fn()
@@ -183,9 +203,36 @@ describe('#inberlinwohnen internals()', () => {
     it('should apply blacklist terms to titles and descriptions', () => {
       runConfig = provider.createConfig(providerConfig.inberlinwohnen, ['wbs']);
 
-      expect(runConfig.filter({ title: 'Wohnung mit WBS', description: '' })).toBe(false);
-      expect(runConfig.filter({ title: 'Wohnung', description: 'WBS erforderlich' })).toBe(false);
-      expect(runConfig.filter({ title: 'Wohnung', description: 'Bezugsfertig' })).toBe(true);
+      expect(runConfig.filter({ title: 'Wohnung mit WBS', description: '', link: 'https://howoge.de/1' })).toBe(false);
+      expect(runConfig.filter({ title: 'Wohnung', description: 'WBS erforderlich', link: 'https://howoge.de/1' })).toBe(
+        false,
+      );
+      expect(runConfig.filter({ title: 'Wohnung', description: 'Bezugsfertig', link: 'https://howoge.de/1' })).toBe(
+        true,
+      );
+    });
+
+    it('should leave WBM listings to the direct provider only when the source opts in', () => {
+      const wbmListing = {
+        title: 'Wohnung',
+        description: 'Bezugsfertig',
+        link: 'https://www.wbm.de/wohnungen-berlin/angebote/details/example/',
+      };
+      const directWbmConfig = provider.createConfig(
+        { url: `${providerConfig.inberlinwohnen.url}?fredyDirectWbm=true`, enabled: true },
+        [],
+      );
+
+      expect(runConfig.filter(wbmListing)).toBe(true);
+      expect(directWbmConfig.url).not.toContain('fredyDirectWbm');
+      expect(directWbmConfig.filter(wbmListing)).toBe(false);
+      expect(
+        directWbmConfig.filter({
+          title: 'Wohnung',
+          description: 'Bezugsfertig',
+          link: 'https://www.howoge.de/immobiliensuche/detail/example/',
+        }),
+      ).toBe(true);
     });
   });
 

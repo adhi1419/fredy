@@ -97,6 +97,15 @@ describe('provider application capabilities', () => {
       consentRequirements: ['provider-privacy'],
       connectionRequired: false,
     });
+    expect(byId.get('wbm').capabilities.application).toEqual({
+      manual: true,
+      automatic: true,
+      eligibility: 'provider',
+      validation: 'local',
+      profileRequirements: ['identity', 'contact', 'household'],
+      consentRequirements: ['provider-privacy'],
+      connectionRequired: false,
+    });
     expect(byId.get('kleinanzeigen').capabilities.application).toEqual({
       manual: true,
       automatic: true,

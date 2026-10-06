@@ -41,6 +41,13 @@
       "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
     },
     {
+      "id": "wbm",
+      "name": "WBM",
+      "baseUrl": "https://www.wbm.de/",
+      "countries": ["de"],
+      "requiredFieldNames": ["id", "link", "title", "price", "size", "rooms", "address", "image", "description"]
+    },
+    {
       "id": "willhaben",
       "name": "willhaben",
       "baseUrl": "https://www.willhaben.at/",
