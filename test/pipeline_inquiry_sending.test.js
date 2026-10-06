@@ -25,6 +25,7 @@ const applicationCapabilities = {
   deutscheWohnen: { automatic: true, eligibility: 'provider' },
   inberlinwohnen: { automatic: true, eligibility: 'listing' },
   kleinanzeigen: { automatic: true, eligibility: 'provider' },
+  wbm: { automatic: true, eligibility: 'provider' },
   unsupported: { automatic: false, eligibility: 'none' },
 };
 const pipeline = (Fredy, jobConfig, providerId, applicationCapability = null, providerSource = null) =>
@@ -53,6 +54,7 @@ const job = (overrides = {}) => ({
     { id: 'deutscheWohnen', applicationPolicy: { automatic: 'enabled' } },
     { id: 'inberlinwohnen', applicationPolicy: { automatic: 'enabled' } },
     { id: 'kleinanzeigen', applicationPolicy: { automatic: 'enabled' } },
+    { id: 'wbm', applicationPolicy: { automatic: 'enabled' } },
   ],
   ...overrides,
 });
@@ -252,6 +254,24 @@ describe('pipeline automatic inquiry sending', () => {
       message: '',
     });
     expect(item.inquirySendStatus).toBe('sent');
+  });
+
+  it('applies through the direct WBM provider without requiring a generated message', async () => {
+    const Fredy = await mockFredy();
+    const item = {
+      ...listing(),
+      link: 'https://www.wbm.de/wohnungen-berlin/angebote/details/example/',
+      inquiryMessage: null,
+    };
+
+    await pipeline(Fredy, job(), 'wbm')._sendInquiryMessages([item]);
+
+    expect(inquiryDeliveries).toHaveLength(1);
+    expect(inquiryDeliveries[0]).toMatchObject({
+      providerId: 'wbm',
+      accountEmail: 'user1@example.com',
+      message: '',
+    });
   });
 
   it.each([

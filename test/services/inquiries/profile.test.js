@@ -48,9 +48,11 @@ describe('isInquiryProfileReady', () => {
       wbsAvailable: false,
     };
     expect(isInquiryProfileReady(wbmProfile, 'alice@example.com', 'inberlinwohnen', wbmListing)).toBe(true);
+    expect(isInquiryProfileReady(wbmProfile, 'alice@example.com', 'wbm')).toBe(true);
     expect(
       isInquiryProfileReady({ ...wbmProfile, salutation: '' }, 'alice@example.com', 'inberlinwohnen', wbmListing),
     ).toBe(false);
+    expect(isInquiryProfileReady({ ...wbmProfile, salutation: '' }, 'alice@example.com', 'wbm')).toBe(false);
 
     const stadtListing = { link: 'https://stadtundland.de/wohnungssuche/1001%2F7318%2F00031' };
     const stadtProfile = {
