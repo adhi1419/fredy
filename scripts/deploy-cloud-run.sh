@@ -20,6 +20,7 @@ CLEANUP=""
 LIFECYCLE=""
 ENVFILE=""
 SERVICE_ERROR=""
+SERVICE_JSON="{}"
 
 cleanup() {
   [ -z "$CLEANUP" ] || rm -f "$CLEANUP"
@@ -113,22 +114,38 @@ else
   echo "   reusing existing trigger token"
 fi
 
+# Preserve optional Monitoring billing configuration when this bootstrap replaces the service's
+# plain environment. A caller may also supply either value when creating a new service.
+existing_env() {
+  printf '%s' "$SERVICE_JSON" | python3 -c 'import json, sys; key = sys.argv[1]; service = json.load(sys.stdin); containers = service.get("spec", {}).get("template", {}).get("spec", {}).get("containers", []); env = containers[0].get("env", []) if containers else []; print(next((item.get("value", "") for item in env if item.get("name") == key), ""))' "$1"
+}
+BILLING_TABLE="${GCP_BILLING_EXPORT_TABLE:-$(existing_env GCP_BILLING_EXPORT_TABLE)}"
+BILLING_LOCATION="${GCP_BILLING_EXPORT_LOCATION:-$(existing_env GCP_BILLING_EXPORT_LOCATION)}"
+BILLING_LOCATION="${BILLING_LOCATION:-EU}"
+
 echo "== Deploy =="
 # env-vars-file instead of --set-env-vars: the web config JSON contains
 # commas, which --set-env-vars would split on.
 ENVFILE=$(mktemp)
-python3 - "$ENVFILE" "$TRIGGER_TOKEN" << 'PYEOF'
+python3 - "$ENVFILE" "$TRIGGER_TOKEN" "$PROJECT" "$BILLING_TABLE" "$BILLING_LOCATION" << 'PYEOF'
 import json, sys
-envfile, token = sys.argv[1], sys.argv[2]
+envfile, token, project, billing_table, billing_location = sys.argv[1:6]
 web_config = json.dumps(json.load(open('firebase-web-config.json')), separators=(',', ':'))
 env = {
     'TRIGGER_TOKEN': token,
+    'GOOGLE_CLOUD_PROJECT': project,
+    # These mirror the resource flags on the deploy command below.
+    'MONITORING_CLOUD_RUN_VCPU': '1',
+    'MONITORING_CLOUD_RUN_MEMORY_GIB': '1',
     # Mirrors the Cloud Scheduler cadence below; the dashboard's "next run" line reads it.
     'TRIGGER_INTERVAL_MINUTES': '15',
     'FIREBASE_WEB_CONFIG': web_config,
     'FRONTEND_ORIGIN': 'https://adhi1419.github.io',
     'FRONTEND_URL': 'https://adhi1419.github.io/fredy/',
 }
+if billing_table:
+    env['GCP_BILLING_EXPORT_TABLE'] = billing_table
+    env['GCP_BILLING_EXPORT_LOCATION'] = billing_location
 with open(envfile, 'w') as f:
     for key, value in env.items():
         f.write(f'{key}: {json.dumps(value)}\n')
