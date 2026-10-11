@@ -13,6 +13,7 @@ import { listingDocId } from '../../lib/services/storage/firestore/collections.j
 import {
   MANIFEST_SHARD_COUNT,
   addKnownListingIdsToManifest,
+  loadKnownListingManifest,
   manifestDocId,
   manifestShardForListingId,
   removeKnownListingIdsFromManifest,
@@ -261,6 +262,19 @@ describe('Firestore migrations', () => {
     ]);
     const afterRemove = (await db.collection('_known_listing_manifests').doc(manifestDocId(targetShard)).get()).data();
     expect(afterRemove.knownListingIds).toEqual([]);
+  });
+
+  it('bootstraps the manifest on a fresh instance, also when two instances boot at once', async () => {
+    await Promise.all([listingsStorage.getAllEntriesFromListings(), loadKnownListingManifest()]);
+    const shards = await db.collection('_known_listing_manifests').get();
+    expect(shards.size).toBe(MANIFEST_SHARD_COUNT);
+    for (const shard of shards.docs) expect(shard.data().knownListingIds).toEqual([]);
+  });
+
+  it('does not bootstrap over existing listings', async () => {
+    await db.collection('listings').doc('listing-1').set({ manuallyDeleted: false, title: 'needs migration' });
+    await expect(loadKnownListingManifest()).rejects.toThrow(/010-known-listing-manifests/);
+    expect((await db.collection('_known_listing_manifests').get()).size).toBe(0);
   });
 
   it('fails closed on an incomplete manifest without scanning listings', async () => {

@@ -147,6 +147,24 @@ describe('known-listing index', () => {
     await expect(storage.findKnownHashes('job-1', 'provider-1', ['direct', 'cascade'])).resolves.toEqual([]);
   });
 
+  it('bootstraps an empty manifest on a fresh instance instead of demanding a migration', async () => {
+    await storage.getAllEntriesFromListings();
+    const shards = firestore.list('_known_listing_manifests');
+    expect(shards).toHaveLength(MANIFEST_SHARD_COUNT);
+    expect(shards.every((shard) => Array.isArray(shard.knownListingIds) && shard.knownListingIds.length === 0)).toBe(
+      true,
+    );
+    expect(index.isKnownListingIndexLoaded()).toBe(true);
+  });
+
+  it('refuses to bootstrap when listings exist without a manifest, naming the migration', async () => {
+    firestore.seed('listings', listingDocId('job-1', 'live'), row('job-1', 'live'));
+
+    await expect(storage.getAllEntriesFromListings()).rejects.toThrow(/010-known-listing-manifests/);
+    expect(firestore.list('_known_listing_manifests')).toHaveLength(0);
+    expect(index.isKnownListingIndexLoaded()).toBe(false);
+  });
+
   it('fails closed when any expected manifest shard is missing', async () => {
     const liveId = listingDocId('job-1', 'live');
     firestore.seed('_known_listing_manifests', 'shard-0', { knownListingIds: [liveId] });

@@ -95,7 +95,7 @@ export function createFirestoreMemory() {
     limit: (value) => queryRef(path, filters, value),
     get: async () => {
       const docs = matchingDocs(path, filters).slice(0, maxResults ?? undefined);
-      return { docs, size: docs.length };
+      return { docs, size: docs.length, empty: docs.length === 0 };
     },
     count: () => ({ get: async () => ({ data: () => ({ count: matchingDocs(path, filters).length }) }) }),
   });
@@ -109,6 +109,7 @@ export function createFirestoreMemory() {
     const operations = [];
     return {
       set: (ref, value, options) => operations.push(() => ref.set(value, options)),
+      create: (ref, value) => operations.push(() => ref.create(value)),
       update: (ref, value) => operations.push(() => ref.update(value)),
       delete: (ref) => operations.push(() => ref.delete()),
       commit: async () => {
