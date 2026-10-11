@@ -18,6 +18,7 @@
  */
 
 import { getGoogleAccessToken } from '../lib/services/firebaseAdmin.js';
+import FirestoreConnection from '../lib/services/storage/firestore/FirestoreConnection.js';
 import { mergeHistoricalHour } from '../lib/services/storage/firestore/monitoringStorage.js';
 import { emptyMonitoringCounters, recordListingDecisionMetric } from '../lib/services/monitoring/monitoringCounters.js';
 
@@ -97,8 +98,13 @@ do {
   pageToken = body.nextPageToken ?? null;
 } while (pageToken);
 
-for (const [bucketStart, dimensions] of [...hours].sort(([a], [b]) => a - b)) {
-  await mergeHistoricalHour({ bucketStart, counterDimensions: [...dimensions.values()], backfillId });
+await FirestoreConnection.init();
+try {
+  for (const [bucketStart, dimensions] of [...hours].sort(([a], [b]) => a - b)) {
+    await mergeHistoricalHour({ bucketStart, counterDimensions: [...dimensions.values()], backfillId });
+  }
+} finally {
+  await FirestoreConnection.close();
 }
 
 process.stdout.write(
