@@ -31,19 +31,29 @@ describe('services/jobs/jobExecutionService', () => {
     vi.resetModules();
     vi.doMock(busPath, () => ({ bus }));
     vi.doMock(jobStoragePath, () => ({
-      getJob: (id) => state.jobsById[id] || null,
+      getJob: (id) => {
+        calls.contextReads.job += 1;
+        return state.jobsById[id] || null;
+      },
       getJobs: () => state.jobsList.slice(),
       updateJobLastRunAt: (id, timestamp) => calls.lastRunUpdates.push({ id, timestamp }),
     }));
     vi.doMock(userStoragePath, () => ({
       getUsers: () => state.users.slice(),
-      getUser: (id) => state.users.find((u) => u.id === id) || null,
+      getUser: async (id) => {
+        calls.contextReads.user += 1;
+        return state.users.find((u) => u.id === id) || null;
+      },
     }));
     // The service reads settings live rather than from a snapshot handed in at startup, so demo
     // mode and working hours follow the settings UI without a restart. The mock therefore has to
     // serve what the scenario configured.
     vi.doMock(settingsStoragePath, () => ({
       getSettings: async () => settings,
+      getUserSettings: async (id) => {
+        calls.contextReads.userSettings += 1;
+        return state.userSettingsById[id] || {};
+      },
     }));
     vi.doMock(utilsPath, () => ({
       getPackageVersion: async () => '0.0.0-test',
@@ -64,6 +74,7 @@ describe('services/jobs/jobExecutionService', () => {
         }
 
         async execute() {
+          if (this.record.options.executionContext) await this.record.options.executionContext;
           if (pipelineHook) await pipelineHook(this.record);
         }
 
@@ -93,11 +104,13 @@ describe('services/jobs/jobExecutionService', () => {
       lastRunUpdates: [],
       pipeline: [],
       logs: [],
+      contextReads: { job: 0, user: 0, userSettings: 0 },
     };
     state = {
       jobsById: {},
       jobsList: [],
       users: [],
+      userSettingsById: {},
       providers: [],
     };
   });
@@ -176,6 +189,37 @@ describe('services/jobs/jobExecutionService', () => {
       expect(record).not.toHaveProperty('browser');
       expect(typeof record.options).toBe('object');
     }
+  });
+
+  it('loads execution context once per job and shares it with every provider', async () => {
+    const provider = (id) => ({
+      metaInformation: { id },
+      createConfig: vi.fn(() => ({ url: `https://${id}.example/`, getListings: vi.fn() })),
+    });
+    state.providers = [provider('provider-a'), provider('provider-b'), provider('provider-c')];
+    state.users = [{ id: 'u1', username: 'u1@example.com' }];
+    state.userSettingsById = { u1: { language: 'de' } };
+    state.jobsById.j1 = {
+      id: 'j1',
+      enabled: true,
+      userId: 'u1',
+      provider: state.providers.map(({ metaInformation }) => ({ id: metaInformation.id })),
+    };
+
+    await initService();
+    bus.emit('jobs:runOne', { jobId: 'j1' });
+    await vi.waitFor(() => expect(calls.markFinished).toEqual(['j1']));
+
+    const contexts = calls.pipeline.map(({ options }) => options.executionContext);
+    expect(contexts).toHaveLength(3);
+    expect(new Set(contexts).size).toBe(1);
+    await contexts[0];
+    expect(calls.contextReads).toEqual({ job: 1, user: 1, userSettings: 1 });
+    await expect(contexts[0]).resolves.toEqual({
+      job: state.jobsById.j1,
+      user: state.users[0],
+      userSettings: state.userSettingsById.u1,
+    });
   });
 
   it('emits one correlated timing summary for the complete job run', async () => {
