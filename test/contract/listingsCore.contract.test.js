@@ -7,10 +7,13 @@
  * Contract tests: listingsStorage (core behaviors)
  *
  * Firestore behavioral contract for storage, dedup, query, delete, and access
- * control. Seeds and asserts ONLY through the public storage API.
+ * Listing data is seeded through the public storage API; the manifest shards are initialized explicitly
+ * because production requires migration 010 before startup.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
+import FirestoreConnection from '../../lib/services/storage/firestore/FirestoreConnection.js';
 import { normalizeProviderFilter } from '../../lib/services/storage/firestore/listingsCore.impl.js';
+import { MANIFEST_SHARD_COUNT, manifestDocId } from '../../lib/services/storage/firestore/knownListingManifest.js';
 import { initBackend, resetBackend, teardownBackend, loadStorageModule } from './harness.js';
 
 let listingsStorage;
@@ -61,6 +64,16 @@ async function seedJob(id, userId, { shareWithUsers = [], name = null, dealType 
     shareWithUsers,
     dealType,
   });
+}
+
+async function seedManifestShards() {
+  const db = FirestoreConnection.getConnection();
+  for (let index = 0; index < MANIFEST_SHARD_COUNT; index++) {
+    await db
+      .collection('_known_listing_manifests')
+      .doc(manifestDocId(index.toString(16)))
+      .set({ knownListingIds: [] });
+  }
 }
 
 // ── storeListings ───────────────────────────────────────────────────────────
@@ -144,6 +157,7 @@ describe('listingsStorage contract', () => {
       await seedJob('j1', 'u1');
       const live = makeListing('similarity-live', { description: 'live description' });
       const deleted = makeListing('similarity-deleted', { description: 'deleted description' });
+      await seedManifestShards();
       await listingsStorage.storeListings('j1', 'immoscout', [live, deleted]);
       await listingsStorage.deleteListingsById([deleted.id]);
 

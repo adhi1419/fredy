@@ -12,6 +12,24 @@
 export function createFirestoreMemory() {
   const collections = new Map();
 
+  const applyTransform = (current, value) => {
+    const transform = value?.constructor?.name;
+    if (transform === 'ArrayUnionTransform') {
+      return [...new Set([...(Array.isArray(current) ? current : []), ...value.elements])];
+    }
+    if (transform === 'ArrayRemoveTransform') {
+      const removals = new Set(value.elements);
+      return (Array.isArray(current) ? current : []).filter((entry) => !removals.has(entry));
+    }
+    return value;
+  };
+
+  const mergeDocument = (current, value, merge = false) => {
+    const next = merge ? { ...(current ?? {}) } : {};
+    for (const [key, fieldValue] of Object.entries(value)) next[key] = applyTransform(current?.[key], fieldValue);
+    return next;
+  };
+
   const collectionMap = (name) => {
     if (!collections.has(name)) collections.set(name, new Map());
     return collections.get(name);
@@ -31,8 +49,9 @@ export function createFirestoreMemory() {
   const documentRef = (path, id) => ({
     id,
     get: async () => snapshotFor(path, id),
-    set: async (value) => {
-      collectionMap(path).set(id, { ...value });
+    set: async (value, options = {}) => {
+      const current = collectionMap(path).get(id);
+      collectionMap(path).set(id, mergeDocument(current, value, options.merge === true));
     },
     create: async (value) => {
       if (collectionMap(path).has(id)) throw Object.assign(new Error('Already exists'), { code: 6 });
@@ -41,7 +60,7 @@ export function createFirestoreMemory() {
     update: async (value) => {
       const current = collectionMap(path).get(id);
       if (current === undefined) throw new Error(`Missing document: ${path}/${id}`);
-      collectionMap(path).set(id, { ...current, ...value });
+      collectionMap(path).set(id, mergeDocument(current, value, true));
     },
     delete: async () => {
       collectionMap(path).delete(id);
@@ -89,7 +108,7 @@ export function createFirestoreMemory() {
   const batch = () => {
     const operations = [];
     return {
-      set: (ref, value) => operations.push(() => ref.set(value)),
+      set: (ref, value, options) => operations.push(() => ref.set(value, options)),
       update: (ref, value) => operations.push(() => ref.update(value)),
       delete: (ref) => operations.push(() => ref.delete()),
       commit: async () => {
