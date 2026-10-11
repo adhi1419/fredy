@@ -8,6 +8,7 @@ import {
   accessRequestPath,
   createAdminEffects,
   createAdminState,
+  monitoringPath,
   orderAccessRequests,
   type AccessRequest,
   type AdminStateSetter,
@@ -34,7 +35,15 @@ function setup(initial: readonly AccessRequest[] = []) {
 
 describe('admin state: access requests', () => {
   it('starts empty and not loaded', () => {
-    expect(createAdminState()).toEqual({ admin: { accessRequests: [], accessRequestsLoaded: false } });
+    expect(createAdminState()).toEqual({
+      admin: {
+        accessRequests: [],
+        accessRequestsLoaded: false,
+        monitoring: null,
+        monitoringRuns: [],
+        monitoringLoaded: false,
+      },
+    });
   });
 
   it('loads the queue and marks it loaded', async () => {
@@ -42,7 +51,7 @@ describe('admin state: access requests', () => {
     const { state, get, effects } = setup(rows);
     await effects.getAccessRequests();
     expect(get).toHaveBeenCalledWith('/api/admin/access-requests');
-    expect(state.admin).toEqual({ accessRequests: rows, accessRequestsLoaded: true });
+    expect(state.admin).toMatchObject({ accessRequests: rows, accessRequestsLoaded: true });
   });
 
   it('approves, declines and removes through the per-email routes, then re-reads the queue', async () => {
@@ -60,6 +69,30 @@ describe('admin state: access requests', () => {
   it('encodes the email as one path segment', () => {
     expect(accessRequestPath('a/b@x.io')).toBe('/api/admin/access-requests/a%2Fb%40x.io');
     expect(accessRequestPath('a@x.io', 'approve')).toBe('/api/admin/access-requests/a%40x.io/approve');
+  });
+
+  it('loads Monitoring overview and selected-bucket runs through encoded query paths', async () => {
+    const { state, get, effects } = setup();
+    const overview = { generatedAt: 5, buckets: [] };
+    get.mockResolvedValueOnce({ status: 200, json: overview });
+    await effects.getMonitoring({ start: 1, end: 2, monthStart: 1, jobId: 'job/a', providerId: 'p one' });
+    expect(get).toHaveBeenLastCalledWith(
+      '/api/admin/monitoring?start=1&end=2&monthStart=1&jobId=job%2Fa&providerId=p+one',
+    );
+    expect(state.admin.monitoring).toBe(overview);
+    expect(state.admin.monitoringLoaded).toBe(true);
+
+    const runs = [{ id: 'run-1' }];
+    get.mockResolvedValueOnce({ status: 200, json: { runs } });
+    await effects.getMonitoringRuns({ start: 1, end: 2 });
+    expect(get).toHaveBeenLastCalledWith('/api/admin/monitoring/runs?start=1&end=2');
+    expect(state.admin.monitoringRuns).toEqual(runs);
+  });
+
+  it('omits empty optional Monitoring filters', () => {
+    expect(monitoringPath({ start: 1, end: 2, jobId: '', providerId: null })).toBe(
+      '/api/admin/monitoring?start=1&end=2',
+    );
   });
 
   it('orders pending requests first, oldest at the top, declined after', () => {

@@ -48,12 +48,35 @@
         { "fieldPath": "manuallyDeleted", "order": "ASCENDING" },
         { "fieldPath": "nextTravelTimeAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "listings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "jobId", "order": "ASCENDING" },
+        { "fieldPath": "provider", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "manuallyDeleted", "order": "ASCENDING" },
+        { "fieldPath": "lifecycle.state", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [
     {
       "collectionGroup": "_known_listing_manifests",
       "fieldPath": "knownListingIds",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "monitoring_runs",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "monitoring_hourly",
+      "fieldPath": "expiresAt",
+      "ttl": true,
       "indexes": []
     }
   ]

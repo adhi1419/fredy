@@ -8,6 +8,7 @@ import { EventEmitter } from 'node:events';
 
 /** Optional per-test behaviour for the mocked pipeline's execute(). */
 let pipelineHook = null;
+let monitoringHook = null;
 
 describe('services/jobs/jobExecutionService', () => {
   /** @type {EventEmitter} */
@@ -27,6 +28,7 @@ describe('services/jobs/jobExecutionService', () => {
     const notifyPath = root + '/lib/notification/notify.js';
     const pipelinePath = root + '/lib/FredyPipelineExecutioner.js';
     const listingsStoragePath = root + '/lib/services/storage/listingsStorage.js';
+    const monitoringStoragePath = root + '/lib/services/storage/firestore/monitoringStorage.js';
 
     vi.resetModules();
     vi.doMock(busPath, () => ({ bus }));
@@ -65,6 +67,12 @@ describe('services/jobs/jobExecutionService', () => {
     vi.doMock(listingsStoragePath, () => ({
       archiveStaleListingsForJob: async () => ({ archived: 0 }),
     }));
+    vi.doMock(monitoringStoragePath, () => ({
+      recordProviderRun: async (run) => {
+        calls.monitoringRuns.push(run);
+        if (monitoringHook) await monitoringHook(run);
+      },
+    }));
     vi.doMock(notifyPath, () => ({ send: async () => [] }));
     vi.doMock(pipelinePath, () => ({
       default: class {
@@ -97,6 +105,7 @@ describe('services/jobs/jobExecutionService', () => {
 
   beforeEach(() => {
     pipelineHook = null;
+    monitoringHook = null;
     bus = new EventEmitter();
     calls = {
       markRunning: [],
@@ -104,6 +113,7 @@ describe('services/jobs/jobExecutionService', () => {
       lastRunUpdates: [],
       pipeline: [],
       logs: [],
+      monitoringRuns: [],
       contextReads: { job: 0, user: 0, userSettings: 0 },
     };
     state = {
@@ -188,7 +198,38 @@ describe('services/jobs/jobExecutionService', () => {
     for (const record of calls.pipeline) {
       expect(record).not.toHaveProperty('browser');
       expect(typeof record.options).toBe('object');
+      expect(record.options.monitoringCounters).toMatchObject({ newListings: 0, providerConfirmed: 0 });
     }
+    expect(calls.monitoringRuns).toHaveLength(3);
+    expect(calls.monitoringRuns.map(({ providerId }) => providerId)).toEqual([
+      'provider-a',
+      'provider-b',
+      'provider-c',
+    ]);
+  });
+
+  it('continues provider searches when Monitoring persistence fails', async () => {
+    const provider = (id) => ({
+      metaInformation: { id },
+      createConfig: vi.fn(() => ({ url: `https://${id}.example/`, getListings: vi.fn() })),
+    });
+    state.providers = [provider('provider-a'), provider('provider-b')];
+    state.jobsById.j1 = {
+      id: 'j1',
+      enabled: true,
+      userId: 'u1',
+      provider: state.providers.map(({ metaInformation }) => ({ id: metaInformation.id })),
+    };
+    monitoringHook = async (run) => {
+      if (run.providerId === 'provider-a') throw new Error('monitoring unavailable');
+    };
+
+    await initService();
+    bus.emit('jobs:runOne', { jobId: 'j1' });
+    await vi.waitFor(() => expect(calls.markFinished).toEqual(['j1']));
+
+    expect(calls.pipeline.map(({ providerId }) => providerId)).toEqual(['provider-a', 'provider-b']);
+    expect(calls.monitoringRuns.map(({ providerId }) => providerId)).toEqual(['provider-a', 'provider-b']);
   });
 
   it('loads execution context once per job and shares it with every provider', async () => {

@@ -32,7 +32,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: {
-          host: '0.0.0.0',
+          host: '127.0.0.1',
           protocol: 'http:',
           port: Number(process.env.FREDY_API_PORT) || 9998,
         },

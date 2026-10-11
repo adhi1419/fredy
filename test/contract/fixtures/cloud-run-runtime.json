@@ -50,7 +50,9 @@
     ],
     "apiRequired": [
       "const PORT = Number(process.env.PORT) || settings.port || 9998;",
-      "await fastify.listen({ port: PORT, host: '0.0.0.0' });",
+      "const HOST =",
+      "process.env.K_SERVICE || process.env.FREDY_DOCKER === '1' ? '0.0.0.0' : '127.0.0.1'",
+      "await fastify.listen({ port: PORT, host: HOST });",
       "fastify.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: 'Not found' }));"
     ],
     "schedulerRequired": ["_triggerRunner = () => runAll();"]

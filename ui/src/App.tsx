@@ -14,6 +14,7 @@ import NotificationsPage from './views/settings/pages/NotificationsPage';
 import InquiryProfilePage from './views/settings/pages/InquiryProfilePage';
 import AdminLayout from './views/admin/AdminLayout';
 import AccessRequestsPage from './views/admin/pages/AccessRequestsPage';
+import MonitoringPage from './views/admin/pages/MonitoringPage';
 import JobMutation from './views/jobs/mutation/JobMutation';
 import { useActions, useSelector } from './services/state/store.js';
 import { Routes, Route, Navigate, useLocation } from 'react-router';
@@ -273,6 +274,7 @@ export default function FredyApp() {
                       <Route path="/admin" element={<AdminLayout />}>
                         <Route index element={<Navigate to="/admin/access-requests" replace />} />
                         <Route path="access-requests" element={<AccessRequestsPage />} />
+                        <Route path="monitoring" element={<MonitoringPage />} />
                       </Route>
 
                       {/* The addresses these things used to live at, kept so existing bookmarks and the

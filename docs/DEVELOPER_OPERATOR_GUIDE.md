@@ -32,7 +32,7 @@ The repository also contains release-tag workflows and a Compose default that re
 3. Initialize the Firestore client and load global settings.
 4. Load providers, remove provider records that no longer have a module, and initialize the similarity cache.
 5. Initialize `jobExecutionService`, including the trigger runner and event-bus listeners.
-6. Register the Fastify API and listen on `0.0.0.0`.
+6. Register the Fastify API. Cloud Run/Docker listen on `0.0.0.0`; a host-process development server defaults to `127.0.0.1`.
 7. Start background sweeps.
 
 The ordering of job-service initialization before the API listener is intentional. A cold Cloud Run instance can receive `/api/trigger` immediately after it accepts connections.
@@ -70,6 +70,12 @@ A verified token that is absent from `allowed_users` receives `403` with `{ "rea
 
 A verified identity that is not (yet) allowlisted can still record an access request: `GET`/`POST /api/auth/access-request` sit behind a token-only verified-identity hook (same bearer parsing as the allowlist hook, but no allowlist lookup), so they return a waitlist status instead of `403`. `POST` creates a `pending` row the first time, returns the existing row unchanged on every later call (a declined requester does not become pending again just by asking), and reports `approved` with no write once the email is on the allowlist. Admins list, approve, or decline these requests under `/api/admin/access-requests`, behind the bearer hook and the admin hook; approval only ever adds the email to `allowed_users` with `isAdmin: false` - it never grants admin.
 
+The Monitoring page lives at `/admin/monitoring`; both its page and `/api/admin/monitoring/**` require the same admin authority. One provider pass adds one active-count aggregation read, two transaction document reads, one hourly-rollup write, and one short-lived run-summary write. `monitoring_state` receives a third write only when that provider's active count changes. Monitoring persistence failures are observational and never fail a search or a user's listing action.
+
+Actual project/runtime cost is optional and comes only from a standard BigQuery Cloud Billing export. Set `GCP_BILLING_EXPORT_TABLE=project.dataset.gcp_billing_export_v1_...` and optionally `GCP_BILLING_EXPORT_LOCATION`; otherwise the UI says **Not configured**. The query is MTD-only, parameterized, and capped at 100 MiB scanned per refresh. Grant the Cloud Run service account BigQuery Job User on the query project and Data Viewer on only the export dataset. Built-in Cloud Run/Firestore consumption comes from Cloud Monitoring; grant Monitoring Viewer if the runtime identity does not already have it.
+
+Runtime estimates apply the current defaults encoded in `googleCloudUsage.js`, including Cloud Run monthly and Firestore daily free quotas. Override deployed shape/currency assumptions with `MONITORING_CLOUD_RUN_VCPU`, `MONITORING_CLOUD_RUN_MEMORY_GIB`, `MONITORING_ESTIMATE_CURRENCY`, and `MONITORING_USD_TO_CURRENCY`. Without an explicit conversion, estimates remain in USD rather than pretending to match another billing currency.
+
 The browser uses `browserLocalPersistence` and waits for `authStateReady()` before login actions. HTTP requests omit cookies and attach a current or refreshed Firebase token.
 
 ### Firestore authority
@@ -85,6 +91,7 @@ Firestore implementations live under `lib/services/storage/firestore/`. The top-
 - `allowed_users` for the authentication allowlist
 - `access_requests` for the allowlist waitlist (pending/declined requests from verified-but-not-yet-allowlisted identities)
 - `_known_listing_manifests`, sixteen shards holding every stored listing id so startup never scans `listings`. A fresh instance (no manifest, no listings) creates them empty on first start; an instance that already has listings but no manifest refuses to start and names migration `010-known-listing-manifests`, which builds them from the existing rows.
+- `monitoring_hourly`, compact 13-month cost/outcome rollups; `monitoring_runs`, 31-day provider-run details; and `monitoring_state`, the latest active-listing count by saved search/provider. The two historical collections use Firestore TTL on `expiresAt`.
 
 Firestore operations are asynchronous. Await storage calls, and use the contract suite when changing storage behavior. The emulator is safe for disposable local data. The real project is not.
 
@@ -161,7 +168,7 @@ Start Vite in another terminal:
 bun run start:frontend:dev
 ```
 
-Vite serves the SPA at its local root and proxies `/api` to `http://0.0.0.0:9998`. Leave `VITE_API_BASE_URL` empty for this mode. Do not run the host backend and the Compose `fredy` service on port `9998` at the same time.
+Vite serves the SPA at its local root and proxies `/api` to `http://127.0.0.1:9998`. Leave `VITE_API_BASE_URL` empty for this mode. Do not run the host backend and the Compose `fredy` service on port `9998` at the same time.
 
 The backend creates `conf/config.json` when it is absent. If the file exists but is unreadable, malformed, or not a JSON object, startup fails rather than replacing operator data. Keep local runtime settings in this file and keep credentials out of it unless the setting is explicitly designed for a local secret and is protected by the application.
 
