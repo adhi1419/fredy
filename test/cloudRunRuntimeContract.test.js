@@ -47,6 +47,15 @@ describe('Cloud Run runtime contract', () => {
     );
   });
 
+  it('does not wire provider cleanup or recurring similarity-cache reloads at startup', () => {
+    const startup = readContractFile('startup');
+
+    expect(startup).not.toContain('providerCleanup.js');
+    expect(startup).not.toContain('removeObsoleteProviders');
+    expect(startup).not.toContain('startSimilarityCacheReloader');
+    expect(startup).toContain('await similarityCache.initSimilarityCache();');
+  });
+
   it('keeps the ADC boundary and external scheduler mode explicit', () => {
     const firestore = readContractFile('firestore');
     const firebaseAdmin = readContractFile('firebaseAdmin');

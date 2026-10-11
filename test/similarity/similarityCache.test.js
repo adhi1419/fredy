@@ -36,6 +36,12 @@ describe('similarityCache', () => {
     expect(checkAndAddEntry({ jobId: 'job-1', title: 'B', price: 0, address: 'Zero St' })).toBe(true);
   });
 
+  it('hydrates once and does not expose a recurring reload hook', async () => {
+    const similarityCache = await loadModuleWith();
+
+    expect(similarityCache.startSimilarityCacheReloader).toBeUndefined();
+  });
+
   it('checkAndAddEntry returns false for new entry then true for duplicate on second call', async () => {
     const { checkAndAddEntry } = await loadModuleWith();
 

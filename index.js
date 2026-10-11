@@ -9,7 +9,6 @@ import logger from './lib/services/logger.js';
 import { getSettings } from './lib/services/storage/settingsStorage.js';
 import FirestoreConnection from './lib/services/storage/firestore/FirestoreConnection.js';
 import { initJobExecutionService } from './lib/services/jobs/jobExecutionService.js';
-import { removeObsoleteProviders } from './lib/services/providers/providerCleanup.js';
 
 function validateProductionAuthConfiguration() {
   if (process.env.NODE_ENV !== 'production') return;
@@ -69,13 +68,7 @@ const settings = await getSettings();
 // Load provider modules once at startup
 const providers = await getProviders();
 
-// A provider that was deleted from lib/provider still lives on in the DB (in the provider config
-// of existing jobs and in the listings it found). Those leftovers can never be scraped or
-// re-checked again, so they are pruned before anything starts working with jobs or listings.
-removeObsoleteProviders(providers);
-
 await similarityCache.initSimilarityCache();
-similarityCache.startSimilarityCacheReloader();
 
 // Wire the Job Execution Service (sets the trigger runner + bus listeners) BEFORE the API starts
 // listening. On scale-to-zero Cloud Run the external scheduler's wake-up request can hit
