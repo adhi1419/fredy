@@ -14,6 +14,15 @@ Fredy keeps the important choices visible without making the home search feel bu
 
 <div align="center">
   <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/login-desktop-dark.png" />
+    <img src="doc/screenshots/login-desktop-light.png" alt="Fredy sign-in: a listing photo beside a paper column with the Fredy wordmark, the headline Find a home that fits your life and one Sign in with Google button" width="1200" />
+  </picture>
+  <br />
+  <em>Sign-in is one button. An account that is not on the list yet can request access from this screen.</em>
+</div>
+
+<div align="center">
+  <picture>
     <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/home-quiet-feed-desktop-dark.png" />
     <img src="doc/screenshots/home-quiet-feed-desktop-light.png" alt="Fredy Home in Quiet feed view: a grid of listing photos with price, size and rooms, activity tabs with counts, a provider picker and labelled sort pills" width="1200" />
   </picture>
@@ -81,19 +90,32 @@ Fredy keeps the important choices visible without making the home search feel bu
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/my-account-mobile-dark.png" />
-    <img src="doc/screenshots/my-account-mobile-light.png" alt="Fredy My account on a phone: Preferences tab with appearance, language and listing deletion settings" width="390" />
+    <img src="doc/screenshots/my-account-mobile-light.png" alt="Fredy My account on a phone: Preferences tab with appearance and language settings" width="390" />
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/admin-panel-mobile-dark.png" />
+    <img src="doc/screenshots/admin-panel-mobile-light.png" alt="Fredy Admin panel on a phone: the Access requests tab listing two accounts with Approve and Decline actions" width="390" />
   </picture>
   <br />
-  <em>Setup and account settings share one hairline layout.</em>
+  <em>Setup, account and operator settings share one hairline layout.</em>
 </div>
 
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/my-account-desktop-dark.png" />
-    <img src="doc/screenshots/my-account-desktop-light.png" alt="Fredy My account on desktop: Preferences, Travel time, Listing details, Notification channels and Inquiry profile tabs over ruled settings sections" width="1200" />
+    <img src="doc/screenshots/my-account-desktop-light.png" alt="Fredy My account on desktop: Preferences, Travel time, Notification channels and Inquiry profile tabs over ruled settings sections" width="1200" />
   </picture>
   <br />
   <em>Settings are one column of ruled sections, no boxes.</em>
+</div>
+
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/screenshots/admin-panel-desktop-dark.png" />
+    <img src="doc/screenshots/admin-panel-desktop-light.png" alt="Fredy Admin panel on desktop: Access requests listing a pending and a declined account with Approve, Decline and Remove" width="1200" />
+  </picture>
+  <br />
+  <em>The operator approves who may use the instance from the Admin panel.</em>
 </div>
 
 ## What Fredy does
