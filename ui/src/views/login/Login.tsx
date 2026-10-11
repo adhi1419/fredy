@@ -6,11 +6,9 @@
 import React, { useEffect } from 'react';
 import type { ReactElement } from 'react';
 
-import cityBackground from '../../assets/city_background.jpg';
-import Logo from '../../components/logo/Logo';
+import loginHero from '../../assets/login_hero.jpg';
 import { useLocation, useNavigate } from 'react-router';
 import { useActions } from '../../services/state/store';
-import { Button, Banner, Spin } from '@douyinfe/semi-ui-19';
 import { authReady } from '../../services/auth/firebaseAuth.js';
 import type { FirebaseAuthClient } from '../../services/auth/firebaseAuth.js';
 
@@ -33,10 +31,10 @@ interface AuthError {
   status?: number;
 }
 
-/** Google sign-in SVG icon (official branding colors). */
+/** Google sign-in mark (official branding colours; Google's guidelines require the coloured mark). */
 function GoogleIcon(): ReactElement {
   return (
-    <svg width="18" height="18" viewBox="0 0 48 48" style={{ marginRight: 8, verticalAlign: 'middle' }}>
+    <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
       <path
         fill="#EA4335"
         d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
@@ -57,6 +55,11 @@ function GoogleIcon(): ReactElement {
   );
 }
 
+/**
+ * The sign-in screen: a listing photo beside a paper column that carries the wordmark, the
+ * headline and the one Google button. It shares the app's grammar (text wordmark, mono eyebrows,
+ * ruled notes, square ink controls) so the first screen and the app read as one product.
+ */
 export default function Login(): ReactElement {
   const t = useTranslation();
   const actions = useActions<LoginActions>();
@@ -121,42 +124,73 @@ export default function Login(): ReactElement {
     }
   };
 
+  const message = error || authInitError;
+  const waiting = !authClient && !authInitError;
+  const busy = pending || waiting;
+
   return (
     <div className="login">
-      <div className="login__bgImage" style={{ backgroundImage: `url("${cityBackground}")` }} />
-      <div className="login__glow" />
-      <div className="login__loginWrapper">
-        <div className="login__scanLine" aria-hidden="true" />
-        <div className="login__logoWrapper">
-          <Logo width={250} white />
+      <div className="login__photo" aria-hidden="true">
+        <img src={loginHero} alt="" />
+        <div className="login__scrim" />
+        <div className="login__caption">
+          <span>{t('login.captionLeft')}</span>
+          <span>{t('login.captionRight')}</span>
+        </div>
+      </div>
+
+      <div className="login__form">
+        <div className="login__top">
+          <span className="login__brand">Fredy</span>
+          <span className="login__eyebrow">{t('login.eyebrowTop')}</span>
         </div>
 
-        {(error || authInitError) && (
-          <Banner
-            type="danger"
-            closeIcon={null}
-            description={error || authInitError}
-            style={{ marginBottom: '1rem' }}
-          />
-        )}
+        <div className="login__mid">
+          <p className="login__eyebrow login__eyebrow--lead">{t('login.welcome')}</p>
+          <h1 className="login__headline">{t('login.headline')}</h1>
+          <p className="login__lede">{t('login.lede')}</p>
 
-        {!authClient && !authInitError ? (
-          <Spin size="large" />
-        ) : (
-          <Button
-            block
-            type="primary"
-            onClick={handleGoogleSignIn}
-            theme="solid"
-            loading={pending}
-            disabled={!authClient || !!authInitError}
-            icon={!pending ? <GoogleIcon /> : undefined}
-            className="login__submit"
-            style={{ marginTop: '1rem' }}
-          >
-            {pending ? t('login.firebaseSigningIn') : t('login.firebaseGoogleButton')}
-          </Button>
-        )}
+          <div className="login__actions">
+            {message && (
+              <p className="login__note login__note--error" role="alert">
+                <b>{t('login.errorLead')}</b> {message}
+              </p>
+            )}
+            <button
+              type="button"
+              className="login__submit"
+              onClick={handleGoogleSignIn}
+              disabled={busy || !!authInitError}
+              aria-busy={busy || undefined}
+            >
+              {busy ? (
+                <span className="login__spinner" aria-hidden="true" />
+              ) : (
+                <span className="login__g">{<GoogleIcon />}</span>
+              )}
+              {pending ? t('login.firebaseSigningIn') : t('login.firebaseGoogleButton')}
+            </button>
+          </div>
+        </div>
+
+        <div className="login__bottom">
+          <span className="login__fine">
+            {t('login.creditsRoutes')}{' '}
+            <a href="https://transitous.org/" target="_blank" rel="noreferrer">
+              Transitous
+            </a>{' '}
+            · {t('login.creditsMap')}{' '}
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+              OpenStreetMap
+            </a>
+          </span>
+          <span className="login__fine">
+            {t('footer.originalProjectBy')}{' '}
+            <a href="https://github.com/orangecoding" target="_blank" rel="noreferrer">
+              Christian Kellner
+            </a>
+          </span>
+        </div>
       </div>
     </div>
   );
