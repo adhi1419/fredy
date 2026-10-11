@@ -12,6 +12,7 @@ vi.mock('../../../lib/services/storage/firestore/FirestoreConnection.js', () => 
 }));
 
 const storage = await import('../../../lib/services/storage/listingsStorage.js');
+const jobStorage = await import('../../../lib/services/storage/firestore/jobStorage.js');
 const index = await import('../../../lib/services/storage/firestore/knownListingIndex.js');
 const { listingDocId } = await import('../../../lib/services/storage/firestore/collections.js');
 
@@ -81,5 +82,48 @@ describe('known-listing index', () => {
     await storage.getAllEntriesFromListings();
     await storage.getAllEntriesFromListings();
     expect(index.partitionKnownHashes('job-1', ['gone']).known).toEqual(['gone']);
+  });
+
+  it('loads exact tombstones from persisted shards while hydrating only live rows', async () => {
+    const liveId = listingDocId('job-1', 'live');
+    const tombstoneId = listingDocId('job-1', 'gone');
+    firestore.seed('_known_listing_manifests', 'shard-0', { knownListingIds: [liveId, tombstoneId] });
+    firestore.seed('listings', liveId, row('job-1', 'live'));
+    firestore.seed('listings', tombstoneId, row('job-1', 'gone', { manuallyDeleted: true }));
+
+    await expect(storage.getAllEntriesFromListings()).resolves.toEqual([
+      {
+        job_id: 'job-1',
+        provider: 'provider-1',
+        title: 'Home live',
+        address: null,
+        price: null,
+        size: null,
+        rooms: null,
+        description: null,
+      },
+    ]);
+    expect(index.partitionKnownHashes('job-1', ['live', 'gone', 'new'])).toEqual({
+      known: ['live', 'gone'],
+      unconfirmed: ['new'],
+    });
+  });
+
+  it('persists a batch once per affected shard and removes direct and job-cascade hard deletes', async () => {
+    const items = [
+      { id: 'direct', title: 'Direct' },
+      { id: 'cascade', title: 'Cascade' },
+    ];
+    await storage.storeListings('job-1', 'provider-1', items);
+    const manifestIds = firestore
+      .list('_known_listing_manifests')
+      .flatMap((manifest) => manifest.knownListingIds ?? []);
+    expect(manifestIds.sort()).toEqual(items.map((item) => item.id).sort());
+
+    await storage.deleteListingsById([items[0].id], true);
+    await jobStorage.deleteListingsCascadeByJobId('job-1');
+    index.resetKnownListingIndex();
+    await storage.getAllEntriesFromListings();
+    await expect(storage.findKnownHashes('job-1', 'provider-1', ['direct', 'cascade'])).resolves.toEqual([]);
   });
 });
