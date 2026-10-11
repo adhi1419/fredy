@@ -35,8 +35,10 @@ async function addCopyright(files) {
   for (let file of files) {
     try {
       let content = await fs.readFile(file, 'utf8');
-      const strippedContent = content.replace(oldCopyrightRegex, '');
-      const newContent = COPYRIGHT + strippedContent;
+      const shebang = content.match(/^#![^\n]*(?:\n|$)/)?.[0] ?? '';
+      const body = content.slice(shebang.length);
+      const strippedContent = body.replace(oldCopyrightRegex, '');
+      const newContent = shebang + COPYRIGHT + strippedContent;
       if (content !== newContent) {
         await fs.writeFile(file, newContent);
         console.log(`Added/Updated copyright in ${file}`);
