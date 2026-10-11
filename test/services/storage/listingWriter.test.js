@@ -24,6 +24,7 @@ const listing = {
 
 const expectedKeys = [
   'activeCheckFailures',
+  'activityIsManual',
   'address',
   'buildYear',
   'createdAt',
@@ -47,6 +48,8 @@ const expectedKeys = [
   'link',
   'longitude',
   'manuallyDeleted',
+  'nextActiveCheckAt',
+  'nextTravelTimeAt',
   'notes',
   'notificationComplete',
   'notifiedAt',
@@ -76,6 +79,9 @@ describe('toFirestoreListing', () => {
       createdAt: 1234,
       notificationComplete: false,
       activeCheckFailures: 0,
+      activityIsManual: false,
+      nextActiveCheckAt: 0,
+      nextTravelTimeAt: 0,
       travelTimeFailures: 0,
       lifecycle: {
         state: 'new',
