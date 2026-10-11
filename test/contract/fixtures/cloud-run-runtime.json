@@ -96,6 +96,12 @@
       "'FRONTEND_URL': 'https://adhi1419.github.io/fredy/'",
       "--env-vars-file \"$ENVFILE\"",
       "--image \"$IMAGE\"",
+      "RUNTIME_SERVICE_ACCOUNT_NAME=fredy-runtime",
+      "roles/datastore.user",
+      "roles/monitoring.viewer",
+      "roles/bigquery.jobUser",
+      "roles/secretmanager.secretAccessor",
+      "--service-account \"$RUNTIME_SERVICE_ACCOUNT\"",
       "\"$SERVICE_URL/api/trigger\"",
       "--schedule '*/15 * * * *'"
     ]

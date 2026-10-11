@@ -186,12 +186,25 @@ describe('listing access control', () => {
 
     it('applies manual lifecycle actions through the existing status route', async () => {
       const reply = makeReply();
+      const mine = firestore.read('listings', 'mine-1');
+      firestore.seed('listings', 'mine-1', { ...mine, provider: 'immoscout' });
+
       await routes['POST /:listingId/status'](
         requestFor('alice', { action: 'applied' }, { listingId: 'mine-1' }),
         reply,
       );
       expect(reply.statusCode).toBeNull();
       expect(firestore.read('listings', 'mine-1').lifecycle.state).toBe('applied');
+      expect(firestore.list('monitoring_listing_history')).toHaveLength(1);
+      expect(firestore.list('monitoring_listing_history')[0].listingOutcomes).toEqual([
+        expect.objectContaining({
+          listingId: 'mine-1',
+          jobId: 'job-mine-1',
+          providerId: 'immoscout',
+          stored: true,
+          outcome: 'manual-applied',
+        }),
+      ]);
 
       await routes['POST /:listingId/status'](
         requestFor('alice', { action: 'viewed' }, { listingId: 'mine-1' }),

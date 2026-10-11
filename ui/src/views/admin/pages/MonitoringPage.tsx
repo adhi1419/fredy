@@ -4,6 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import type { ReactNode } from 'react';
 import { Button, Toast } from '@douyinfe/semi-ui-19';
 import { CHART_COLORS } from '../../../components/cards/chartTheme.js';
@@ -13,8 +14,14 @@ import {
   type AdminState,
   type MonitoringBucket,
   type MonitoringCostValue,
+  type MonitoringListing,
   type MonitoringQuery,
   type MonitoringRun,
+  DEFAULT_MONITORING_GRANULARITY,
+  monitoringListingPath,
+  monitoringListingTitle,
+  monitoringRunOutcome,
+  type MonitoringGranularity,
 } from '../../../services/state/adminState.js';
 import { useActions, useSelector } from '../../../services/state/store.js';
 import MonitoringChart, { type MonitoringSeries } from './MonitoringChart.jsx';
@@ -45,9 +52,21 @@ function bytes(value: number, locale: string): string {
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value / 1024 ** 3)} GiB`;
 }
 
-function runOutcome(run: MonitoringRun) {
-  if (run.outcome === 'completed') return 'monitoring__ok';
+function runOutcomeClass(run: MonitoringRun): string {
+  const outcome = monitoringRunOutcome(run);
+  if (outcome === 'completed') return 'monitoring__ok';
+  if (outcome === 'completed-with-issues') return 'monitoring__warn';
   return run.errorType ? 'monitoring__error' : 'monitoring__warn';
+}
+
+function listingOutcomeClass(outcome: MonitoringListing['outcome']): string {
+  if (outcome === 'provider-confirmed' || outcome === 'manual-applied') return 'monitoring__ok';
+  if (outcome === 'terminal') return 'monitoring__error';
+  return 'monitoring__warn';
+}
+
+function listingOutcomeKey(outcome: MonitoringListing['outcome']): string {
+  return `admin.monitoring.listingOutcome.${outcome}`;
 }
 
 /** Admin-only Monitoring dashboard, matching the approved expandable-ledger mock. */
@@ -57,8 +76,11 @@ export default function MonitoringPage(): ReactNode {
   const actions = useActions<MonitoringActions>();
   const overview = useSelector((state: AdminState) => state.admin.monitoring);
   const runs = useSelector((state: AdminState) => state.admin.monitoringRuns);
+  const listings = useSelector((state: AdminState) => state.admin.monitoringListings ?? []);
+  const listingsTruncated = useSelector((state: AdminState) => state.admin.monitoringListingsTruncated === true);
   const [range, setRange] = useState<MonitoringRangeKey>('7d');
   const [granularity, setGranularity] = useState<Granularity>('hourly');
+  const [ledgerGranularity, setLedgerGranularity] = useState<MonitoringGranularity>(DEFAULT_MONITORING_GRANULARITY);
   const [jobId, setJobId] = useState('');
   const [providerId, setProviderId] = useState('');
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -382,9 +404,30 @@ export default function MonitoringPage(): ReactNode {
               <header className="monitoring__ledgerHeading">
                 <div>
                   <h2>{selectedLabel}</h2>
-                  <p>{t('admin.monitoring.runsContributed', { count: String(runs.length) })}</p>
+                  <p>
+                    {ledgerGranularity === 'provider'
+                      ? t('admin.monitoring.runsContributed', { count: String(runs.length) })
+                      : t('admin.monitoring.listingsContributed', { count: String(listings.length) })}
+                  </p>
                 </div>
                 <div className="monitoring__ledgerActions">
+                  <div
+                    className="monitoring__granularityToggle"
+                    role="group"
+                    aria-label={t('admin.monitoring.granularity')}
+                  >
+                    {(['provider', 'listing'] as const).map((value) => (
+                      <button
+                        className={`monitoring__granularityButton${ledgerGranularity === value ? ' monitoring__granularityButton--active' : ''}`}
+                        type="button"
+                        aria-pressed={ledgerGranularity === value}
+                        key={value}
+                        onClick={() => setLedgerGranularity(value)}
+                      >
+                        {t(`admin.monitoring.${value}View`)}
+                      </button>
+                    ))}
+                  </div>
                   <span className="monitoring__costLabel">
                     {t('admin.monitoring.selectedFrom', {
                       chart: charts.find((chart) => chart.key === selectedChart)?.title ?? '',
@@ -423,42 +466,143 @@ export default function MonitoringPage(): ReactNode {
                     </span>
                   </div>
                   <div className="monitoring__tableWrap">
-                    <table className="monitoring__table">
-                      <thead>
-                        <tr>
-                          <th>{t('admin.monitoring.started')}</th>
-                          <th>{t('admin.monitoring.savedSearch')}</th>
-                          <th>{t('admin.monitoring.provider')}</th>
-                          <th>{t('admin.monitoring.stored')}</th>
-                          <th>{t('admin.monitoring.outcome')}</th>
-                          <th>{t('admin.monitoring.duration')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {runs.map((run) => (
-                          <tr key={run.id}>
-                            <td>
-                              {new Date(run.startedAt).toLocaleTimeString(locale, {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </td>
-                            <td>{run.jobName}</td>
-                            <td>{run.providerName}</td>
-                            <td>{run.counters.newListings}</td>
-                            <td className={runOutcome(run)}>
-                              {run.outcome === 'completed'
-                                ? t('admin.monitoring.completed')
-                                : (run.errorType ?? run.outcome)}
-                            </td>
-                            <td>{(run.durationMs / 1000).toFixed(1)}s</td>
+                    {ledgerGranularity === 'listing' && (
+                      <div className="monitoring__tableNotices">
+                        <p className="monitoring__scrollHint">{t('admin.monitoring.listingScrollHint')}</p>
+                        {listingsTruncated && (
+                          <p className="monitoring__truncationNotice">{t('admin.monitoring.listingsTruncated')}</p>
+                        )}
+                      </div>
+                    )}
+                    {ledgerGranularity === 'provider' ? (
+                      <table className="monitoring__table">
+                        <thead>
+                          <tr>
+                            <th>{t('admin.monitoring.started')}</th>
+                            <th>{t('admin.monitoring.savedSearch')}</th>
+                            <th>{t('admin.monitoring.provider')}</th>
+                            <th>{t('admin.monitoring.stored')}</th>
+                            <th>{t('admin.monitoring.applications')}</th>
+                            <th>{t('admin.monitoring.outcome')}</th>
+                            <th>{t('admin.monitoring.duration')}</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {runs.map((run) => {
+                            const applicationCounts = [
+                              [t('admin.monitoring.confirmedShort'), run.counters.providerConfirmed, 'monitoring__ok'],
+                              [t('admin.monitoring.manualShort'), run.counters.manualApplied, 'monitoring__ok'],
+                              [
+                                t('admin.monitoring.retryableShort'),
+                                run.counters.retryableFailures,
+                                'monitoring__warn',
+                              ],
+                              [t('admin.monitoring.terminalShort'), run.counters.terminalFailures, 'monitoring__error'],
+                              [t('admin.monitoring.unknownShort'), run.counters.unknownFailures, 'monitoring__warn'],
+                              [t('admin.monitoring.notAttemptedShort'), run.counters.notAttempted, 'monitoring__muted'],
+                            ] as const;
+                            const outcome = monitoringRunOutcome(run);
+                            return (
+                              <tr key={run.id}>
+                                <td>
+                                  {new Date(run.startedAt).toLocaleTimeString(locale, {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </td>
+                                <td>{run.jobName}</td>
+                                <td>{run.providerName}</td>
+                                <td>{run.counters.newListings}</td>
+                                <td>
+                                  <div
+                                    className="monitoring__applicationCounts"
+                                    aria-label={t('admin.monitoring.applications')}
+                                  >
+                                    {applicationCounts.map(([label, count, className]) => (
+                                      <span className={`monitoring__applicationCount ${className}`} key={label}>
+                                        <b>{count}</b> {label}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className={runOutcomeClass(run)}>
+                                  {outcome === 'completed'
+                                    ? t('admin.monitoring.completed')
+                                    : outcome === 'completed-with-issues'
+                                      ? t('admin.monitoring.completedWithIssues')
+                                      : (run.errorType ?? run.outcome)}
+                                </td>
+                                <td>{(run.durationMs / 1000).toFixed(1)}s</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <table className="monitoring__table monitoring__table--listings">
+                        <thead>
+                          <tr>
+                            <th>{t('admin.monitoring.listingTime')}</th>
+                            <th>{t('admin.monitoring.listingTitle')}</th>
+                            <th>{t('admin.monitoring.listingJob')}</th>
+                            <th>{t('admin.monitoring.listingProvider')}</th>
+                            <th>{t('admin.monitoring.listingOutcome')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {listings.map((listing) => (
+                            <tr key={`${listing.listingId}-${listing.happenedAt}`}>
+                              <td>
+                                {new Date(listing.happenedAt).toLocaleTimeString(locale, {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </td>
+                              <td>
+                                {listing.title == null ? (
+                                  <span className="monitoring__listingUnavailable">
+                                    {monitoringListingTitle(listing, t('admin.monitoring.listingUnavailable'))}
+                                  </span>
+                                ) : (
+                                  <Link
+                                    className="monitoring__listingLink"
+                                    to={monitoringListingPath(listing.listingId)}
+                                  >
+                                    {listing.title}
+                                  </Link>
+                                )}
+                                {listing.providerUrl != null && (
+                                  <a
+                                    className="monitoring__listingExternal"
+                                    href={listing.providerUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={t('admin.monitoring.openProviderListing')}
+                                  >
+                                    ↗
+                                  </a>
+                                )}
+                              </td>
+                              <td>{listing.jobName}</td>
+                              <td>{listing.providerName}</td>
+                              <td className={listingOutcomeClass(listing.outcome)}>
+                                {t(listingOutcomeKey(listing.outcome))}
+                                {listing.reason != null && (
+                                  <span className="monitoring__listingReason"> · {listing.reason}</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                     {runsLoading && <p className="monitoring__empty">{t('admin.monitoring.loadingRuns')}</p>}
-                    {!runsLoading && runs.length === 0 && (
-                      <p className="monitoring__empty">{t('admin.monitoring.noRuns')}</p>
+                    {!runsLoading && (ledgerGranularity === 'provider' ? runs.length === 0 : listings.length === 0) && (
+                      <p className="monitoring__empty">
+                        {ledgerGranularity === 'provider'
+                          ? t('admin.monitoring.noRuns')
+                          : t('admin.monitoring.noListings')}
+                      </p>
                     )}
                   </div>
                 </>

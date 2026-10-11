@@ -12,6 +12,8 @@
   grid-template-columns: minmax(0, 1fr);
   gap: @space-5;
   min-width: 0;
+  background: @color-base;
+  color: @color-text;
 
   &__titleRow,
   &__sectionHeading,
@@ -126,8 +128,14 @@
 
   &__costHeader h2 {
     margin: 0;
+    color: @color-text;
     font-size: @text-md;
     font-weight: 500;
+  }
+
+  &__cost strong,
+  &__usage strong {
+    color: @color-text;
   }
 
   &__costGrid {
@@ -166,7 +174,104 @@
   &__ledgerActions {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: @space-2;
+  }
+
+  &__granularityToggle {
+    display: inline-flex;
+    border: 1px solid @color-border;
+  }
+
+  &__granularityButton {
+    min-height: 28px;
+    padding: 0 @space-2;
+    border: 0;
+    border-right: 1px solid @color-border;
+    background: transparent;
+    color: @color-muted;
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: @tracking-label;
+    text-transform: uppercase;
+    cursor: pointer;
+
+    &:last-child {
+      border-right: 0;
+    }
+    &:hover,
+    &:focus-visible {
+      background: @color-hover;
+      color: @color-text;
+    }
+    &:focus-visible {
+      outline: 1px solid @color-text;
+      outline-offset: 2px;
+    }
+  }
+
+  &__granularityButton--active {
+    background: @color-fill-subtle;
+    color: @color-text;
+  }
+
+  &__applicationCounts {
+    display: flex;
+    min-width: 290px;
+    flex-wrap: wrap;
+    gap: 2px @space-2;
+  }
+
+  &__applicationCount {
+    white-space: nowrap;
+  }
+
+  &__tableNotices {
+    margin-bottom: @space-2;
+    font-size: @text-xs;
+  }
+
+  &__scrollHint {
+    display: none;
+    margin: 0;
+    color: @color-muted;
+  }
+
+  &__truncationNotice {
+    margin: 0;
+    color: @color-warning;
+  }
+
+  &__listingLink {
+    color: @color-text;
+    text-decoration: underline;
+    text-decoration-color: @color-border;
+    text-underline-offset: 2px;
+
+    &:hover,
+    &:focus-visible {
+      color: @color-accent;
+    }
+  }
+
+  &__listingExternal {
+    margin-left: @space-1;
+    color: @color-muted;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      color: @color-text;
+    }
+  }
+
+  &__listingUnavailable,
+  &__listingReason {
+    color: @color-muted;
+  }
+
+  &__table--listings {
+    min-width: 720px;
   }
 
   &__cost--estimate strong {
@@ -252,6 +357,9 @@
   &__error {
     color: @color-error;
   }
+  &__muted {
+    color: @color-muted;
+  }
   &__footnote {
     padding-top: @space-2;
     border-top: 1px solid @color-border;
@@ -273,6 +381,7 @@
   }
   &__heading h3 {
     margin: 0;
+    color: @color-text;
     font-size: @text-sm;
     font-weight: 500;
   }
@@ -296,6 +405,7 @@
   .monitoring {
     &__titleRow,
     &__sectionHeading,
+    &__ledgerHeading,
     &__costHeader {
       align-items: flex-start;
       flex-direction: column;
@@ -317,6 +427,9 @@
     }
     &__cost:nth-child(3) {
       padding-left: 0;
+    }
+    &__scrollHint {
+      display: block;
     }
     &__usage,
     &__charts {

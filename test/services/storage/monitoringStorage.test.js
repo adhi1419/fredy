@@ -25,6 +25,15 @@ const run = (overrides = {}) => ({
   outcome: 'completed',
   errorType: null,
   counters: { ...emptyMonitoringCounters(), newListings: 2, providerConfirmed: 1 },
+  listingOutcomes: [
+    {
+      listingId: 'listing-1',
+      happenedAt: finishedAt,
+      stored: true,
+      outcome: 'provider-confirmed',
+      reason: 'provider-accepted',
+    },
+  ],
   ...overrides,
 });
 
@@ -55,7 +64,20 @@ describe('monitoring storage', () => {
     expect(hourly).toHaveLength(1);
     expect(hourly[0]).toMatchObject({ activeListings: 1, counters: { newListings: 2, providerConfirmed: 1 } });
     expect(runs).toHaveLength(1);
-    expect(runs[0]).toMatchObject({ jobId: 'job-1', providerId: 'immoscout', durationMs: 10_000 });
+    expect(runs[0]).toMatchObject({
+      jobId: 'job-1',
+      providerId: 'immoscout',
+      durationMs: 10_000,
+      listingOutcomes: [
+        {
+          listingId: 'listing-1',
+          happenedAt: finishedAt,
+          stored: true,
+          outcome: 'provider-confirmed',
+          reason: 'provider-accepted',
+        },
+      ],
+    });
     expect(state.dimensions).toEqual([{ jobId: 'job-1', providerId: 'immoscout', count: 1 }]);
   });
 
@@ -81,6 +103,104 @@ describe('monitoring storage', () => {
     const hourly = firestore.list('monitoring_hourly')[0];
     expect(hourly.counters).toMatchObject({ newListings: 5, providerConfirmed: 1, manualApplied: 1 });
     expect(firestore.list('monitoring_runs')).toHaveLength(2);
+  });
+
+  it('merges bounded historical listing outcomes once with a 31-day expiry', async () => {
+    const bucketStart = finishedAt - (finishedAt % 3600000);
+    const input = {
+      bucketStart,
+      listingOutcomes: [
+        {
+          jobId: 'job-1',
+          providerId: 'immoscout',
+          listingId: 'listing-1',
+          happenedAt: finishedAt - 1234,
+          stored: true,
+          outcome: 'stored-only',
+          reason: 'new-listing',
+        },
+      ],
+      backfillId: 'logging-v1',
+    };
+    await storage.mergeHistoricalListingHour(input);
+    await storage.mergeHistoricalListingHour(input);
+    const history = firestore.list('monitoring_listing_history');
+    expect(history).toHaveLength(1);
+    expect(history[0].listingOutcomes).toEqual([
+      {
+        jobId: 'job-1',
+        providerId: 'immoscout',
+        listingId: 'listing-1',
+        happenedAt: finishedAt - 1234,
+        stored: true,
+        outcome: 'stored-only',
+        reason: 'new-listing',
+      },
+    ]);
+    expect(history[0].expiresAt.getTime()).toBe(bucketStart + 31 * 24 * 60 * 60 * 1000);
+    expect(await storage.listHistoricalListingOutcomes(bucketStart, bucketStart + 3600000)).toHaveLength(1);
+  });
+
+  it('uses the latest historical outcome while preserving stored=true', async () => {
+    const bucketStart = finishedAt - (finishedAt % 3600000);
+    const base = {
+      jobId: 'job-1',
+      providerId: 'immoscout',
+      listingId: 'listing-1',
+      stored: true,
+    };
+    await storage.mergeHistoricalListingHour({
+      bucketStart,
+      listingOutcomes: [{ ...base, happenedAt: 100, outcome: 'stored-only', reason: 'new-listing' }],
+      backfillId: 'logging-v1',
+    });
+    await storage.mergeHistoricalListingHour({
+      bucketStart,
+      listingOutcomes: [{ ...base, happenedAt: 200, outcome: 'manual-applied', reason: null }],
+      backfillId: 'manual-v1',
+    });
+    expect(firestore.list('monitoring_listing_history')[0].listingOutcomes).toEqual([
+      { ...base, happenedAt: 200, outcome: 'manual-applied', reason: null },
+    ]);
+  });
+
+  it('records an explicit manual application in history without creating a provider run', async () => {
+    const happenedAt = finishedAt + 1234;
+    await storage.recordManualApplication({
+      jobId: 'job-1',
+      providerId: 'immoscout',
+      listingId: 'listing-1',
+      happenedAt,
+    });
+    expect(firestore.list('monitoring_runs')).toHaveLength(0);
+    expect(firestore.list('monitoring_listing_history')[0].listingOutcomes).toEqual([
+      {
+        jobId: 'job-1',
+        providerId: 'immoscout',
+        listingId: 'listing-1',
+        happenedAt,
+        stored: true,
+        outcome: 'manual-applied',
+        reason: null,
+      },
+    ]);
+  });
+
+  it('keeps the latest 500 run outcomes and records how many older rows were omitted', async () => {
+    const listingOutcomes = Array.from({ length: storage.MAX_LISTING_OUTCOMES + 1 }, (_, index) => ({
+      listingId: `listing-${String(index).padStart(3, '0')}`,
+      happenedAt: index,
+      stored: true,
+      outcome: 'stored-only',
+      reason: 'new-listing',
+    }));
+
+    await storage.recordProviderRun(run({ listingOutcomes }));
+
+    const storedRun = firestore.list('monitoring_runs')[0];
+    expect(storedRun.listingOutcomes).toHaveLength(storage.MAX_LISTING_OUTCOMES);
+    expect(storedRun.listingOutcomes[0].listingId).toBe('listing-500');
+    expect(storedRun.listingOutcomesTruncated).toBe(1);
   });
 
   it('lists bounded hourly rollups and provider runs', async () => {
