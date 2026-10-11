@@ -50,5 +50,11 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "_known_listing_manifests",
+      "fieldPath": "knownListingIds",
+      "indexes": []
+    }
+  ]
 }

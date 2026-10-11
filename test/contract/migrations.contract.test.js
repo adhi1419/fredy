@@ -8,19 +8,25 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import FirestoreConnection from '../../lib/services/storage/firestore/FirestoreConnection.js';
+import { resetKnownListingIndex } from '../../lib/services/storage/firestore/knownListingIndex.js';
+import { listingDocId } from '../../lib/services/storage/firestore/collections.js';
+import { withFirestoreUsageScope, currentFirestoreUsage } from '../../lib/services/storage/firestore/firestoreUsage.js';
 import { runMigrations } from '../../scripts/migrations/run.js';
 
 let stateDir;
 let db;
+let listingsStorage;
 
 beforeAll(async () => {
   await FirestoreConnection.init();
   db = FirestoreConnection.getConnection();
+  listingsStorage = await import('../../lib/services/storage/listingsStorage.js');
   stateDir = await fs.mkdtemp(path.join(process.env.KIROCREW_SCRATCH ?? os.tmpdir(), 'fredy-migrations-'));
 });
 
 beforeEach(async () => {
   await FirestoreConnection.clearAllData();
+  resetKnownListingIndex();
   await fs.rm(stateDir, { recursive: true, force: true });
 });
 
@@ -164,5 +170,58 @@ describe('Firestore migrations', () => {
     // A second run finds nothing to do.
     const [again] = await runMigrations({ only: '008-address-ids', stateDir, db });
     expect(again.skipped ?? again.changes).toBeTruthy();
+  });
+
+  it('backfills idempotent manifests and avoids reading tombstones during cold-start similarity hydration', async () => {
+    const liveId = listingDocId('job-1', 'live');
+    const tombstoneId = listingDocId('job-1', 'tombstone');
+    await db.collection('listings').doc(liveId).set({
+      jobId: 'job-1',
+      provider: 'provider-1',
+      hash: 'live',
+      manuallyDeleted: false,
+      title: 'Live listing',
+      address: 'Main 1',
+      price: 1000,
+      size: 60,
+      rooms: 2,
+      description: 'live',
+    });
+    await db.collection('listings').doc(tombstoneId).set({
+      jobId: 'job-1',
+      provider: 'provider-1',
+      hash: 'tombstone',
+      manuallyDeleted: true,
+      title: 'Deleted listing',
+    });
+    for (let i = 0; i < 8; i++) {
+      await db
+        .collection('listings')
+        .doc(`old-${i}`)
+        .set({
+          jobId: 'job-1',
+          provider: 'provider-1',
+          hash: `old-${i}`,
+          manuallyDeleted: true,
+        });
+    }
+
+    const hash = await dryRun('010-known-listing-manifests');
+    await apply('010-known-listing-manifests', hash);
+    expect((await db.collection('_known_listing_manifests').get()).size).toBe(16);
+
+    resetKnownListingIndex();
+    let usage;
+    const entries = await withFirestoreUsageScope('known-listing-cold-start', async () => {
+      const result = await listingsStorage.getAllEntriesFromListings();
+      usage = { ...currentFirestoreUsage() };
+      return result;
+    });
+    expect(entries.map((entry) => entry.title)).toEqual(['Live listing']);
+    expect(usage.reads).toBe(17);
+    await expect(listingsStorage.findKnownHashes('job-1', 'provider-1', ['tombstone'])).resolves.toEqual(['tombstone']);
+
+    const [again] = await runMigrations({ only: '010-known-listing-manifests', stateDir, db });
+    expect(again.skipped).toBe(true);
   });
 });

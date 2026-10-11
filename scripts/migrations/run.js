@@ -16,6 +16,12 @@ import {
   TRAVEL_TIME_DEFAULT_INTERVAL_MS,
 } from '../../lib/services/storage/firestore/listingWriter.js';
 import { getProviders } from '../../lib/utils.js';
+import {
+  KNOWN_LISTING_MANIFEST_COLLECTION,
+  MANIFEST_SHARD_COUNT,
+  manifestDocId,
+  manifestShardForListingId,
+} from '../../lib/services/storage/firestore/knownListingManifest.js';
 import { UNSUPPORTED_APPLICATION_CAPABILITIES } from '../../lib/services/providers/capabilities.js';
 
 export const BATCH_LIMIT = 400;
@@ -479,6 +485,27 @@ async function plan009(db) {
   return operations;
 }
 
+/**
+ * Backfill the exact known-listing manifest from the current listing document ids.
+ *
+ * The plan writes every shard, including empty shards, so a successful migration is an explicit
+ * marker that the manifest is complete. Re-running the plan produces the same contents and the
+ * runner's migration marker makes application idempotent.
+ */
+async function plan010(db) {
+  const idsByShard = new Map([...Array(MANIFEST_SHARD_COUNT)].map((_, index) => [index.toString(16), []]));
+  for (const doc of await allDocs(db, 'listings')) {
+    const shard = manifestShardForListingId(doc.id);
+    idsByShard.get(shard).push(doc.id);
+  }
+  return [...idsByShard].map(([shard, ids]) =>
+    creation(KNOWN_LISTING_MANIFEST_COLLECTION, manifestDocId(shard), {
+      shard,
+      knownListingIds: [...new Set(ids)].sort(),
+    }),
+  );
+}
+
 export const MIGRATIONS = Object.freeze([
   {
     id: '001-inquiry-rejected',
@@ -516,6 +543,11 @@ export const MIGRATIONS = Object.freeze([
     id: '009-due-maintenance',
     description: 'Backfill indexed active-check and travel-time due timestamps.',
     plan: plan009,
+  },
+  {
+    id: '010-known-listing-manifests',
+    description: 'Backfill sharded exact known-listing manifests from listing document ids.',
+    plan: plan010,
   },
 ]);
 
