@@ -523,6 +523,45 @@ describe('listingsStorage contract – getListingsDueForTravelTimes', () => {
     expect(row).toBeDefined();
     expect(row.user_id).toBe(USER.userId);
   });
+
+  it('reads only the bounded due rows and their owning jobs', async () => {
+    await seedContext();
+    const pending = makeListing();
+    const fresh = [makeListing(), makeListing(), makeListing()];
+    await listingsStorage.storeListings(JOB.jobId, 'immoscout', [pending, ...fresh]);
+    for (const listing of fresh) {
+      await listingsStorage.saveListingTravelTimes(
+        listing.id,
+        [{ addressId: 'id-Home', label: 'Home', transitMinutes: 20, isEstimate: true }],
+        Date.now(),
+      );
+    }
+
+    const { due, usage } = await withFirestoreUsageScope('travel-due', async () => ({
+      due: await listingsStorage.getListingsDueForTravelTimes({ limit: 1 }),
+      usage: currentFirestoreUsage(),
+    }));
+    expect(due.map((row) => row.id)).toEqual([pending.id]);
+    expect(usage.reads).toBe(2);
+  });
+
+  it('reads only the bounded active-check due rows', async () => {
+    await seedContext();
+    const pending = makeListing();
+    const fresh = [makeListing(), makeListing(), makeListing()];
+    await listingsStorage.storeListings(JOB.jobId, 'immoscout', [pending, ...fresh]);
+    await listingsStorage.markListingsChecked(
+      fresh.map((listing) => listing.id),
+      Date.now(),
+    );
+
+    const { due, usage } = await withFirestoreUsageScope('active-due', async () => ({
+      due: await listingsStorage.getListingsDueForActiveCheck({ limit: 1, now: Date.now() }),
+      usage: currentFirestoreUsage(),
+    }));
+    expect(due.map((row) => row.id)).toEqual([pending.id]);
+    expect(usage.reads).toBe(1);
+  });
 });
 
 // ---------------------------------------------------------------------------

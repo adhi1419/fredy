@@ -29,6 +29,25 @@
         { "fieldPath": "isActive", "order": "ASCENDING" },
         { "fieldPath": "inactiveSince", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "listings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "manuallyDeleted", "order": "ASCENDING" },
+        { "fieldPath": "activityIsManual", "order": "ASCENDING" },
+        { "fieldPath": "nextActiveCheckAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "listings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "manuallyDeleted", "order": "ASCENDING" },
+        { "fieldPath": "nextTravelTimeAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
