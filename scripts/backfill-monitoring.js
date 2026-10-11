@@ -8,6 +8,10 @@
  * Copyright (c) 2026 by Christian Kellner.
  * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
  */
+/*
+ * Copyright (c) 2026 by Christian Kellner.
+ * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
+ */
 
 import { getGoogleAccessToken } from '../lib/services/firebaseAdmin.js';
 import { mergeHistoricalHour } from '../lib/services/storage/firestore/monitoringStorage.js';
