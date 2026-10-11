@@ -87,6 +87,10 @@
   "bootstrap": {
     "required": [
       "'TRIGGER_INTERVAL_MINUTES': '15'",
+      "'GOOGLE_CLOUD_PROJECT': project",
+      "'MONITORING_CLOUD_RUN_VCPU': '1'",
+      "'MONITORING_CLOUD_RUN_MEMORY_GIB': '1'",
+      "env['GCP_BILLING_EXPORT_TABLE'] = billing_table",
       "'FIREBASE_WEB_CONFIG': web_config",
       "'FRONTEND_ORIGIN': 'https://adhi1419.github.io'",
       "'FRONTEND_URL': 'https://adhi1419.github.io/fredy/'",
