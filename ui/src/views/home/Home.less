@@ -899,6 +899,12 @@
       padding-right: 0;
     }
 
+    // Stacked, the map comes first: it is the reason this view was chosen, and the pins are what
+    // narrow the list beneath. The DOM keeps list-before-map for desktop and for screen readers.
+    &__map {
+      order: -1;
+    }
+
     &__map,
     &__map .map-container {
       height: 420px;
