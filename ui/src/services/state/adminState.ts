@@ -79,6 +79,57 @@ export interface MonitoringRun {
   counters: MonitoringCounters;
 }
 
+export type MonitoringListingStatus =
+  'provider-confirmed' | 'manual-applied' | 'retryable' | 'terminal' | 'unknown' | 'not-attempted' | 'stored-only';
+
+/** One listing-level result returned for a selected monitoring bucket. */
+export interface MonitoringListingOutcome {
+  listingId: string;
+  happenedAt: number;
+  jobId: string;
+  jobName: string;
+  providerId: string;
+  providerName: string;
+  stored: boolean;
+  outcome: MonitoringListingStatus;
+  reason: string | null;
+  title: string | null;
+  providerUrl: string | null;
+}
+
+export type MonitoringListing = MonitoringListingOutcome;
+
+export type MonitoringGranularity = 'provider' | 'listing';
+/** The default ledger view keeps the existing provider-run table first. */
+export const DEFAULT_MONITORING_GRANULARITY: MonitoringGranularity = 'provider';
+
+/** Switches the selected ledger between provider runs and listing outcomes. */
+export function toggleMonitoringGranularity(value: MonitoringGranularity): MonitoringGranularity {
+  return value === 'provider' ? 'listing' : 'provider';
+}
+
+/** Returns the internal route for a listing detail page. */
+export function monitoringListingPath(listingId: string): string {
+  return `/listings/listing/${encodeURIComponent(listingId)}`;
+}
+
+/** Uses the localized fallback for listings removed before the ledger was read. */
+export function monitoringListingTitle(listing: Pick<MonitoringListing, 'title'>, unavailable: string): string {
+  return listing.title ?? unavailable;
+}
+
+/** Detects application failures recorded inside an otherwise completed provider run. */
+export function monitoringRunHasFailures(run: Pick<MonitoringRun, 'counters'>): boolean {
+  const { retryableFailures, terminalFailures, unknownFailures } = run.counters;
+  return retryableFailures + terminalFailures + unknownFailures > 0;
+}
+
+/** Returns the display outcome for a run, including failures hidden by a completed status. */
+export function monitoringRunOutcome(run: MonitoringRun): string {
+  if (run.outcome === 'completed' && monitoringRunHasFailures(run)) return 'completed-with-issues';
+  return run.errorType ?? run.outcome;
+}
+
 export interface MonitoringQuery {
   start: number;
   end: number;
@@ -93,6 +144,10 @@ export interface AdminState {
     accessRequestsLoaded: boolean;
     monitoring: MonitoringOverview | null;
     monitoringRuns: readonly MonitoringRun[];
+    /** Listing-level outcomes are absent until the first selected bucket is loaded. */
+    monitoringListings?: readonly MonitoringListing[];
+    /** True when storage or response bounds omitted older listing outcomes. */
+    monitoringListingsTruncated?: boolean;
     monitoringLoaded: boolean;
   };
 }
@@ -182,8 +237,19 @@ export function createAdminEffects(set: AdminStateSetter, transport: AdminTransp
       set((state) => ({ admin: { ...state.admin, monitoring: response.json, monitoringLoaded: true } }));
     },
     async getMonitoringRuns(query) {
-      const response = await transport.get<{ runs: readonly MonitoringRun[] }>(monitoringPath(query, true));
-      set((state) => ({ admin: { ...state.admin, monitoringRuns: [...response.json.runs] } }));
+      const response = await transport.get<{
+        runs: readonly MonitoringRun[];
+        listings: readonly MonitoringListingOutcome[];
+        listingsTruncated?: boolean;
+      }>(monitoringPath(query, true));
+      set((state) => ({
+        admin: {
+          ...state.admin,
+          monitoringRuns: [...response.json.runs],
+          monitoringListings: [...(response.json.listings ?? [])],
+          monitoringListingsTruncated: response.json.listingsTruncated === true,
+        },
+      }));
     },
   };
 }

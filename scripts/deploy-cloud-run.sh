@@ -171,8 +171,29 @@ if ((${#SECRET_BINDINGS[@]} > 0)); then
   SECRET_FLAGS=(--update-secrets "$(IFS=,; echo "${SECRET_BINDINGS[*]}")")
 fi
 
+RUNTIME_SERVICE_ACCOUNT_NAME=fredy-runtime
+RUNTIME_SERVICE_ACCOUNT="$RUNTIME_SERVICE_ACCOUNT_NAME@$PROJECT.iam.gserviceaccount.com"
+if ! gcloud iam service-accounts describe "$RUNTIME_SERVICE_ACCOUNT" > /dev/null 2>&1; then
+  echo "   creating dedicated runtime identity: $RUNTIME_SERVICE_ACCOUNT"
+  gcloud iam service-accounts create "$RUNTIME_SERVICE_ACCOUNT_NAME" --display-name='Fredy Cloud Run runtime'
+  # A newly-created identity can take a few seconds to propagate to project IAM.
+  sleep 10
+fi
+for role in roles/datastore.user roles/monitoring.viewer roles/bigquery.jobUser; do
+  gcloud projects add-iam-policy-binding "$PROJECT" \
+    --member="serviceAccount:$RUNTIME_SERVICE_ACCOUNT" --role="$role" --condition=None --quiet > /dev/null
+done
+for secret in gemini-api-key provider-credential-encryption-key; do
+  if gcloud secrets describe "$secret" > /dev/null 2>&1; then
+    gcloud secrets add-iam-policy-binding "$secret" \
+      --member="serviceAccount:$RUNTIME_SERVICE_ACCOUNT" \
+      --role=roles/secretmanager.secretAccessor --condition=None --quiet > /dev/null
+  fi
+done
+
 gcloud run deploy "$SERVICE" \
   --image "$IMAGE" \
+  --service-account "$RUNTIME_SERVICE_ACCOUNT" \
   --region "$REGION" \
   --memory 1Gi --cpu 1 \
   --min-instances 0 --max-instances 1 \

@@ -4,6 +4,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import {
+  DEFAULT_MONITORING_GRANULARITY,
+  monitoringListingPath,
+  monitoringListingTitle,
+  monitoringRunHasFailures,
+  monitoringRunOutcome,
+  toggleMonitoringGranularity,
+  type MonitoringListing,
+  type MonitoringRun,
+} from '../../ui/src/services/state/adminState.js';
 import { monitoringDailyBuckets, monitoringRangeFor } from '../../ui/src/views/admin/pages/monitoringTime.js';
 import type { MonitoringBucket } from '../../ui/src/services/state/adminState.js';
 
@@ -15,6 +25,64 @@ const counters = (newListings: number): MonitoringBucket['counters'] => ({
   terminalFailures: 0,
   unknownFailures: 0,
   notAttempted: 0,
+});
+
+const run = (overrides: Partial<MonitoringRun> = {}): MonitoringRun => ({
+  id: 'run-1',
+  executionId: 'execution-1',
+  jobId: 'job-1',
+  jobName: 'Berlin homes',
+  providerId: 'provider-1',
+  providerName: 'Provider',
+  startedAt: 1,
+  finishedAt: 2,
+  durationMs: 1000,
+  outcome: 'completed',
+  errorType: null,
+  counters: counters(1),
+  ...overrides,
+});
+
+const listing = (overrides: Partial<MonitoringListing> = {}): MonitoringListing => ({
+  listingId: 'listing/1',
+  happenedAt: 1,
+  jobId: 'job-1',
+  jobName: 'Berlin homes',
+  providerId: 'provider-1',
+  providerName: 'Provider',
+  stored: false,
+  outcome: 'unknown',
+  reason: null,
+  title: 'A bright flat',
+  providerUrl: null,
+  ...overrides,
+});
+
+describe('Monitoring ledger behavior', () => {
+  it('defaults to Provider and toggles between provider and listing views', () => {
+    expect(DEFAULT_MONITORING_GRANULARITY).toBe('provider');
+    expect(toggleMonitoringGranularity(DEFAULT_MONITORING_GRANULARITY)).toBe('listing');
+    expect(toggleMonitoringGranularity('listing')).toBe('provider');
+  });
+
+  it('builds an encoded internal listing link for a titled listing', () => {
+    expect(monitoringListingPath(listing().listingId)).toBe('/listings/listing/listing%2F1');
+    expect(monitoringListingTitle(listing(), 'Listing unavailable')).toBe('A bright flat');
+  });
+
+  it('keeps failed counters visible instead of presenting a plain Completed outcome', () => {
+    const failedRun = run({
+      counters: { ...counters(1), retryableFailures: 2, terminalFailures: 1, unknownFailures: 1 },
+    });
+    expect(monitoringRunHasFailures(failedRun)).toBe(true);
+    expect(monitoringRunOutcome(failedRun)).toBe('completed-with-issues');
+    expect(monitoringRunOutcome(run())).toBe('completed');
+  });
+
+  it('uses unavailable text instead of linking a deleted listing', () => {
+    const deletedListing = listing({ listingId: 'deleted', title: null });
+    expect(monitoringListingTitle(deletedListing, 'Listing unavailable')).toBe('Listing unavailable');
+  });
 });
 
 describe('Monitoring page time model', () => {
