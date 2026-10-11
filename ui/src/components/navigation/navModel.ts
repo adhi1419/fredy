@@ -31,14 +31,22 @@ export const PRIMARY_NAV: readonly PrimaryDestination[] = [
 ];
 
 export interface AccountDestination {
-  key: 'account';
+  key: 'account' | 'admin';
   path: string;
   labelKey: string;
+  /** Shown to administrators only; everyone else never sees the entry or the route. */
+  adminOnly?: boolean;
 }
 
 export const ACCOUNT_NAV: readonly AccountDestination[] = [
   { key: 'account', path: '/settings', labelKey: 'nav.myAccount' },
+  { key: 'admin', path: '/admin', labelKey: 'nav.adminPanel', adminOnly: true },
 ];
+
+/** The account-menu destinations this user may open. */
+export function accountNavFor(isAdmin: boolean): readonly AccountDestination[] {
+  return ACCOUNT_NAV.filter((item) => !item.adminOnly || isAdmin);
+}
 
 /**
  * Returns the primary destination that owns a pathname. Settings deliberately returns
@@ -65,6 +73,7 @@ export interface NavNode {
   key: string;
   labelKey: string;
   path?: string;
+  adminOnly?: boolean;
 }
 
 export const NAV_TREE: readonly NavNode[] = [
@@ -72,10 +81,9 @@ export const NAV_TREE: readonly NavNode[] = [
   ...ACCOUNT_NAV,
 ];
 
-/** Every shell destination. Kept as a function for callers that used to pass a role; there are no
- * role-gated destinations any more. */
-export function navTreeFor(): readonly NavNode[] {
-  return NAV_TREE;
+/** Every shell destination this user may reach; the admin panel is the one role-gated entry. */
+export function navTreeFor(isAdmin = false): readonly NavNode[] {
+  return NAV_TREE.filter((node) => !node.adminOnly || isAdmin);
 }
 
 export function routeKeysOf(tree: readonly NavNode[]): readonly string[] {

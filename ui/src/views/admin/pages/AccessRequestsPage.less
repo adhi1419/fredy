@@ -1,0 +1,85 @@
+@import '../../../tokens.less';
+
+// Access requests: one hairline row per account, label-left / actions-right like every other
+// settings ledger.
+.accessRequests {
+  &__empty {
+    margin: 0;
+    color: @color-muted;
+    font-size: @text-base;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid @color-border;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+    gap: @space-4;
+    align-items: center;
+    padding: @space-4 0;
+    border-bottom: 1px solid @color-border;
+
+    &--declined &__who strong {
+      color: @color-muted;
+    }
+  }
+
+  &__who {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+
+    strong {
+      font-weight: 500;
+      color: @color-text;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    span {
+      color: @color-muted;
+      font-size: @text-sm;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &__meta {
+    display: grid;
+    gap: 2px;
+    color: @color-muted;
+    font-family: @font-mono;
+    font-size: @text-xs;
+    font-weight: 500;
+    letter-spacing: @tracking-label;
+    text-transform: uppercase;
+  }
+
+  &__status {
+    color: @color-warning;
+  }
+
+  &__actions {
+    display: flex;
+    gap: @space-2;
+    justify-content: flex-end;
+  }
+
+  @media (max-width: 640px) {
+    &__row {
+      grid-template-columns: 1fr;
+      gap: @space-2;
+    }
+
+    &__actions {
+      justify-content: flex-start;
+    }
+  }
+}

@@ -55,7 +55,7 @@ describe('legacyRedirects', () => {
 
   it('reads the routes out of App.tsx rather than trusting a copy', () => {
     expect(routes.has('/settings')).toBe(true);
-    expect(routes.has('/admin')).toBe(false);
+    expect(routes.has('/admin')).toBe(true);
     expect(routes.has('/dashboard')).toBe(true);
     expect(routes.size).toBeGreaterThan(10);
   });
