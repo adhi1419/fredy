@@ -39,23 +39,39 @@ function hourStart(timestamp) {
 }
 
 const token = await getGoogleAccessToken();
+
+async function loggingRequest(payload) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const response = await fetch('https://logging.googleapis.com/v2/entries:list', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        'x-goog-user-project': project,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (response.ok) return response.json();
+    const body = await response.text();
+    if (response.status !== 429 || attempt === 5) {
+      throw new Error(`Cloud Logging ${response.status}: ${body.slice(0, 300)}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
+  }
+  throw new Error('Cloud Logging retry budget exhausted');
+}
+
 let pageToken = null;
 const hours = new Map();
 let entriesRead = 0;
 do {
-  const response = await fetch('https://logging.googleapis.com/v2/entries:list', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      resourceNames: [`projects/${project}`],
-      filter: `timestamp >= "${new Date(start).toISOString()}" AND (textPayload:"LISTING_DECISION " OR jsonPayload.message:"LISTING_DECISION ")`,
-      orderBy: 'timestamp asc',
-      pageSize: 1000,
-      ...(pageToken ? { pageToken } : {}),
-    }),
+  const body = await loggingRequest({
+    resourceNames: [`projects/${project}`],
+    filter: `timestamp >= "${new Date(start).toISOString()}" AND (textPayload:"LISTING_DECISION " OR jsonPayload.message:"LISTING_DECISION ")`,
+    orderBy: 'timestamp asc',
+    pageSize: 1000,
+    ...(pageToken ? { pageToken } : {}),
   });
-  if (!response.ok) throw new Error(`Cloud Logging ${response.status}: ${(await response.text()).slice(0, 300)}`);
-  const body = await response.json();
   for (const entry of body.entries ?? []) {
     const line = lineFrom(entry);
     const marker = line.indexOf('LISTING_DECISION ');
