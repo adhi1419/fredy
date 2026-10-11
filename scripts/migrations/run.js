@@ -10,6 +10,11 @@ import process from 'node:process';
 import { FieldValue } from '@google-cloud/firestore';
 import FirestoreConnection from '../../lib/services/storage/firestore/FirestoreConnection.js';
 import { lifecycleFromData } from '../../lib/services/listings/listingLifecycle.js';
+import {
+  ACTIVE_CHECK_DEFAULT_INTERVAL_MS,
+  ACTIVE_CHECK_RETRY_INTERVAL_MS,
+  TRAVEL_TIME_DEFAULT_INTERVAL_MS,
+} from '../../lib/services/storage/firestore/listingWriter.js';
 import { getProviders } from '../../lib/utils.js';
 import { UNSUPPORTED_APPLICATION_CAPABILITIES } from '../../lib/services/providers/capabilities.js';
 
@@ -437,6 +442,43 @@ async function plan008(db) {
   return operations;
 }
 
+async function plan009(db) {
+  const operations = [];
+  for (const doc of await allDocs(db, 'listings')) {
+    const data = doc.data();
+    const fields = {};
+    const isActive = data.isActive !== false;
+    const isManual = data.activityIsManual === true;
+    const eligible = isActive && !isManual && data.manuallyDeleted !== true;
+    const hasCoords = data.latitude != null && data.longitude != null && data.latitude !== -1 && data.longitude !== -1;
+
+    if (!hasOwn(data, 'isActive') || data.isActive == null) fields.isActive = true;
+    if (!hasOwn(data, 'activityIsManual') || data.activityIsManual == null) fields.activityIsManual = false;
+    if (!hasOwn(data, 'nextActiveCheckAt')) {
+      const lastChecked = data.lastCheckedAt ?? null;
+      const failures = data.activeCheckFailures ?? 0;
+      fields.nextActiveCheckAt = !eligible
+        ? null
+        : lastChecked == null
+          ? 0
+          : failures >= 10
+            ? null
+            : lastChecked + (failures > 0 ? ACTIVE_CHECK_RETRY_INTERVAL_MS : ACTIVE_CHECK_DEFAULT_INTERVAL_MS);
+    }
+    if (!hasOwn(data, 'nextTravelTimeAt')) {
+      const failures = data.travelTimeFailures ?? 0;
+      fields.nextTravelTimeAt =
+        eligible && hasCoords && failures < 5
+          ? data.travelTimesAt == null
+            ? 0
+            : data.travelTimesAt + TRAVEL_TIME_DEFAULT_INTERVAL_MS
+          : null;
+    }
+    if (Object.keys(fields).length) operations.push(operation('listings', doc.id, fields));
+  }
+  return operations;
+}
+
 export const MIGRATIONS = Object.freeze([
   {
     id: '001-inquiry-rejected',
@@ -469,6 +511,11 @@ export const MIGRATIONS = Object.freeze([
     id: '008-address-ids',
     description: 'Give saved addresses stable ids and key commute limits and travel times by them.',
     plan: plan008,
+  },
+  {
+    id: '009-due-maintenance',
+    description: 'Backfill indexed active-check and travel-time due timestamps.',
+    plan: plan009,
   },
 ]);
 

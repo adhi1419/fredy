@@ -4,6 +4,9 @@
  */
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { createFirestoreMemory } from '../../mocks/firestoreMemory.js';
 
 const firestore = createFirestoreMemory();
@@ -26,6 +29,14 @@ const addListing = (
     isActive,
     manuallyDeleted: deleted,
     lastCheckedAt,
+    nextActiveCheckAt:
+      isActive === true && !manual
+        ? lastCheckedAt == null
+          ? 0
+          : failures >= 10
+            ? null
+            : lastCheckedAt + (failures > 0 ? DAY : 7 * DAY)
+        : null,
     inactiveSince: null,
     activeCheckFailures: failures,
     activityIsManual: manual,
@@ -80,7 +91,7 @@ describe('alive checker throttling', () => {
     addListing('gone', { isActive: false });
     addListing('hidden', { deleted: true });
     addListing('unknown', { isActive: null });
-    expect(await dueIds(listingsStorage)).toEqual(['unknown']);
+    expect(await dueIds(listingsStorage)).toEqual([]);
   });
 
   it('never hands over a listing a human marked as available', async () => {
@@ -172,5 +183,42 @@ describe('alive checker throttling', () => {
     it('is a no-op for an empty list', async () => {
       expect(await listingsStorage.markListingsChecked([])).toBeUndefined();
     });
+  });
+
+  it('backfills due timestamps and canonical flags for legacy listings', async () => {
+    const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'fredy-due-maintenance-'));
+    firestore.seed('listings', 'legacy', {
+      isActive: null,
+      manuallyDeleted: false,
+      activityIsManual: null,
+      lastCheckedAt: NOW - 2 * DAY,
+      activeCheckFailures: 1,
+      latitude: 52.5,
+      longitude: 13.4,
+      travelTimesAt: null,
+      travelTimeFailures: 0,
+    });
+
+    const { runMigrations } = await import('../../../scripts/migrations/run.js');
+    const [dryRun] = await runMigrations({
+      only: '009-due-maintenance',
+      stateDir,
+      db: firestore.connection,
+    });
+    await runMigrations({
+      only: '009-due-maintenance',
+      apply: true,
+      planHash: dryRun.planHash,
+      stateDir,
+      db: firestore.connection,
+    });
+
+    expect(rowOf('legacy')).toMatchObject({
+      isActive: true,
+      activityIsManual: false,
+      nextActiveCheckAt: NOW - DAY,
+      nextTravelTimeAt: 0,
+    });
+    await fs.rm(stateDir, { recursive: true, force: true });
   });
 });
