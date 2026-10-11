@@ -143,9 +143,20 @@ export default function GuidedJobForm({
   const localPanelRef = useRef<HTMLElement | null>(null);
   const validationRef = useRef<HTMLDivElement | null>(null);
 
+  const previousStep = useRef(currentStep);
+
+  // Move focus to the new step for keyboard and screen-reader users without letting focus()
+  // scroll: on a phone that pulled the panel up under the sticky step ribbon, hiding the heading.
+  // A real step change scrolls the content back to the top instead, so the ribbon and the first
+  // field of the new step are what the user sees.
   useEffect(() => {
     const target = panelRef?.current ?? localPanelRef.current;
-    target?.focus();
+    target?.focus({ preventScroll: true });
+    if (previousStep.current !== currentStep) {
+      previousStep.current = currentStep;
+      target?.closest('.app__content')?.scrollTo({ top: 0 });
+      window.scrollTo({ top: 0 });
+    }
   }, [currentStep, panelRef]);
 
   useEffect(() => {
