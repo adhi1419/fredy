@@ -35,7 +35,12 @@ async function loadSweeper() {
     getTravelTimesForListings: (ids) =>
       new Map(ids.filter((id) => state.stored.has(id)).map((id) => [id, state.stored.get(id)])),
     saveListingTravelTimes: (listingId, entries, _at, opts) =>
-      state.saved.push({ listingId, entries, stamp: opts?.stamp !== false }),
+      state.saved.push({
+        listingId,
+        entries,
+        stamp: opts?.stamp !== false,
+        nextDueAt: opts?.nextDueAt ?? null,
+      }),
     recordTravelTimeFailure: (listingId) => state.failures.push(listingId),
   }));
   vi.doMock(settingsPath, () => ({
@@ -178,6 +183,15 @@ describe('runTravelTimeSweep', () => {
     expect(entry.viaStops).toHaveLength(1);
     expect(entry.viaStops[0]).toMatchObject({ minutes: 18, transfers: 1 });
     expect(entry.viaStops[0].walkMeters).toBeGreaterThan(150);
+  });
+
+  it('schedules the next refresh from the configured maximum age', async () => {
+    state.settings.travelTimeMaxAgeDays = 5;
+    const { run } = await loadSweeper();
+
+    await run({ now: NOW });
+
+    expect(state.saved[0].nextDueAt).toBe(NOW + 5 * 24 * 60 * 60 * 1000);
   });
 
   it('stops before asking anything while the upstream is rate limiting us', async () => {
@@ -440,7 +454,14 @@ describe('runTravelTimeSweep', () => {
     await run({ now: NOW });
 
     expect(state.reachabilityCalls).toHaveLength(0);
-    expect(state.saved).toEqual([{ listingId: 'l1', entries: [], stamp: true }]);
+    expect(state.saved).toEqual([
+      {
+        listingId: 'l1',
+        entries: [],
+        stamp: true,
+        nextDueAt: NOW + 30 * 24 * 60 * 60 * 1000,
+      },
+    ]);
   });
 });
 
