@@ -10,6 +10,13 @@ import path from 'node:path';
 import FirestoreConnection from '../../lib/services/storage/firestore/FirestoreConnection.js';
 import { resetKnownListingIndex } from '../../lib/services/storage/firestore/knownListingIndex.js';
 import { listingDocId } from '../../lib/services/storage/firestore/collections.js';
+import {
+  MANIFEST_SHARD_COUNT,
+  addKnownListingIdsToManifest,
+  manifestDocId,
+  manifestShardForListingId,
+  removeKnownListingIdsFromManifest,
+} from '../../lib/services/storage/firestore/knownListingManifest.js';
 import { withFirestoreUsageScope, currentFirestoreUsage } from '../../lib/services/storage/firestore/firestoreUsage.js';
 import { runMigrations } from '../../scripts/migrations/run.js';
 
@@ -223,5 +230,53 @@ describe('Firestore migrations', () => {
 
     const [again] = await runMigrations({ only: '010-known-listing-manifests', stateDir, db });
     expect(again.skipped).toBe(true);
+  });
+
+  it('retains identities from overlapping add and remove transforms on one shard', async () => {
+    for (let index = 0; index < MANIFEST_SHARD_COUNT; index++) {
+      await db
+        .collection('_known_listing_manifests')
+        .doc(manifestDocId(index.toString(16)))
+        .set({ knownListingIds: [] });
+    }
+    const targetShard = manifestShardForListingId('concurrent-0');
+    const ids = [];
+    for (let index = 0; ids.length < 6; index++) {
+      const id = `concurrent-${index}`;
+      if (manifestShardForListingId(id) === targetShard) ids.push(id);
+    }
+
+    await Promise.all([
+      addKnownListingIdsToManifest(ids.slice(0, 2)),
+      addKnownListingIdsToManifest(ids.slice(2, 4)),
+      addKnownListingIdsToManifest(ids.slice(4)),
+    ]);
+    const afterAdd = (await db.collection('_known_listing_manifests').doc(manifestDocId(targetShard)).get()).data();
+    expect(afterAdd.knownListingIds).toEqual(expect.arrayContaining(ids));
+
+    await Promise.all([
+      removeKnownListingIdsFromManifest(ids.slice(0, 2)),
+      removeKnownListingIdsFromManifest(ids.slice(2, 4)),
+      removeKnownListingIdsFromManifest(ids.slice(4)),
+    ]);
+    const afterRemove = (await db.collection('_known_listing_manifests').doc(manifestDocId(targetShard)).get()).data();
+    expect(afterRemove.knownListingIds).toEqual([]);
+  });
+
+  it('fails closed on an incomplete manifest without scanning listings', async () => {
+    await db.collection('_known_listing_manifests').doc('shard-0').set({ knownListingIds: [] });
+    await db.collection('listings').doc('listing-1').set({ manuallyDeleted: false, title: 'must not scan' });
+    let usage;
+
+    await expect(
+      withFirestoreUsageScope('incomplete-known-listing-manifest', async () => {
+        try {
+          await listingsStorage.getAllEntriesFromListings();
+        } finally {
+          usage = { ...currentFirestoreUsage() };
+        }
+      }),
+    ).rejects.toThrow(/expected all 16 shards/);
+    expect(usage.reads).toBe(1);
   });
 });
