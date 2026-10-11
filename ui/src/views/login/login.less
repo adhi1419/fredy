@@ -18,13 +18,19 @@
   grid-template-columns: 11fr 9fr;
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background: @color-base;
 
   &__photo {
     position: relative;
     overflow: hidden;
 
+    // Absolutely positioned so the photo never sizes the row: in flow, `height: 100%` cannot
+    // resolve against a `min-height` grid row, so the portrait asset fell back to its intrinsic
+    // height and pushed the screen past the viewport.
     img {
+      position: absolute;
+      inset: 0;
       display: block;
       width: 100%;
       height: 100%;
