@@ -21,7 +21,13 @@ vi.mock('../../lib/services/storage/userStorage.js', () => ({
   upsertUser: mocks.upsertUser,
 }));
 
-import { adminHook, authHook, normalizeVerifiedEmail, parseBearerToken } from '../../lib/api/security.js';
+import {
+  adminHook,
+  authHook,
+  normalizeVerifiedEmail,
+  parseBearerToken,
+  verifiedIdentityHook,
+} from '../../lib/api/security.js';
 
 function makeReply() {
   return {
@@ -194,5 +200,68 @@ describe('adminHook', () => {
     const reply = makeReply();
     await adminHook({ currentUser: { isAdmin: false } }, reply);
     expect(reply.statusCode).toBe(403);
+  });
+});
+
+describe('verifiedIdentityHook', () => {
+  it('returns 401 and does not verify when the bearer header is missing or malformed', async () => {
+    const reply = makeReply();
+
+    await verifiedIdentityHook({ headers: { authorization: 'Basic not-a-firebase-token' } }, reply);
+
+    expect(reply.statusCode).toBe(401);
+    expect(mocks.verifyIdToken).not.toHaveBeenCalled();
+    expect(mocks.getAllowedUser).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when Firebase verification fails', async () => {
+    mocks.verifyIdToken.mockRejectedValue(new Error('auth/id-token-expired'));
+    const reply = makeReply();
+
+    await verifiedIdentityHook(requestWithToken(), reply);
+
+    expect(reply.statusCode).toBe(401);
+  });
+
+  it.each([
+    [{ email: 'alice@example.com', email_verified: true }, 'uid missing'],
+    [{ uid: 'uid-alice', email_verified: true }, 'email missing'],
+    [{ uid: 'uid-alice', email: 'alice@example.com', email_verified: false }, 'email not verified'],
+    [{ uid: 'uid-alice', email: 'alice@example.com' }, 'verification claim missing'],
+  ])('returns 401 for invalid verified identity claims (%s)', async (claims) => {
+    mocks.verifyIdToken.mockResolvedValue(claims);
+    const reply = makeReply();
+
+    await verifiedIdentityHook(requestWithToken(), reply);
+
+    expect(reply.statusCode).toBe(401);
+  });
+
+  it('sets request.verifiedIdentity without consulting the allowlist, even when not allowlisted', async () => {
+    mocks.verifyIdToken.mockResolvedValue({
+      uid: 'uid-alice',
+      email: 'Alice@Example.COM',
+      email_verified: true,
+      name: 'Alice',
+    });
+    const request = requestWithToken();
+    const reply = makeReply();
+
+    await verifiedIdentityHook(request, reply);
+
+    expect(reply.statusCode).toBeNull();
+    expect(request.verifiedIdentity).toEqual({ uid: 'uid-alice', email: 'alice@example.com', displayName: 'Alice' });
+    expect(mocks.getAllowedUser).not.toHaveBeenCalled();
+  });
+
+  it('clears stale request.verifiedIdentity before re-evaluating', async () => {
+    mocks.verifyIdToken.mockRejectedValue(new Error('expired'));
+    const request = requestWithToken();
+    request.verifiedIdentity = { uid: 'stale', email: 'stale@example.com', displayName: null };
+    const reply = makeReply();
+
+    await verifiedIdentityHook(request, reply);
+
+    expect(request.verifiedIdentity).toBeUndefined();
   });
 });

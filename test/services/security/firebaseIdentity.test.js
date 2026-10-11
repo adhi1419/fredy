@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createFirebaseIdentityResolver,
+  createVerifiedIdentityResolver,
   IdentityFailure,
   normalizeVerifiedEmail,
 } from '../../../lib/services/security/firebaseIdentity.js';
@@ -126,5 +127,56 @@ describe('verified-email normalization', () => {
 
   it.each([undefined, null, '', '   '])('rejects an empty or non-string claim: %o', (email) => {
     expect(normalizeVerifiedEmail(email)).toBeNull();
+  });
+});
+
+describe('verified-identity resolver', () => {
+  function makeVerifiedResolver(overrides = {}) {
+    const verifyToken = vi.fn().mockResolvedValue({
+      uid: 'uid-alice',
+      email: ' Alice@Example.COM ',
+      email_verified: true,
+      name: 'Alice Example',
+      ...overrides.claims,
+    });
+    return { resolver: createVerifiedIdentityResolver({ verifyToken }), verifyToken };
+  }
+
+  it('verifies the token and projects identity without consulting the allowlist', async () => {
+    const { resolver, verifyToken } = makeVerifiedResolver();
+
+    await expect(resolver('firebase-token')).resolves.toEqual({
+      ok: true,
+      identity: { uid: 'uid-alice', email: 'alice@example.com', displayName: 'Alice Example' },
+    });
+    expect(verifyToken).toHaveBeenCalledWith('firebase-token');
+  });
+
+  it('defaults displayName to null when the name claim is absent', async () => {
+    const verifyToken = vi
+      .fn()
+      .mockResolvedValue({ uid: 'uid-alice', email: 'alice@example.com', email_verified: true });
+    const resolver = createVerifiedIdentityResolver({ verifyToken });
+
+    await expect(resolver('token')).resolves.toMatchObject({ ok: true, identity: { displayName: null } });
+  });
+
+  it('reports INVALID_TOKEN when Firebase verification throws', async () => {
+    const verifyToken = vi.fn().mockRejectedValue(new Error('auth/id-token-expired'));
+    const resolver = createVerifiedIdentityResolver({ verifyToken });
+
+    await expect(resolver('bad-token')).resolves.toEqual({ ok: false, reason: IdentityFailure.INVALID_TOKEN });
+  });
+
+  it.each([
+    ['uid missing', { email: 'alice@example.com', email_verified: true }],
+    ['email missing', { uid: 'uid-alice', email_verified: true }],
+    ['email not verified', { uid: 'uid-alice', email: 'alice@example.com', email_verified: false }],
+    ['verification claim missing', { uid: 'uid-alice', email: 'alice@example.com' }],
+  ])('reports INVALID_CLAIMS when %s', async (_name, claims) => {
+    const verifyToken = vi.fn().mockResolvedValue(claims);
+    const resolver = createVerifiedIdentityResolver({ verifyToken });
+
+    await expect(resolver('token')).resolves.toEqual({ ok: false, reason: IdentityFailure.INVALID_CLAIMS });
   });
 });

@@ -117,6 +117,24 @@
           }
         }
       }
+    },
+    "accessRequest": {
+      "method": "GET",
+      "path": "/api/auth/access-request",
+      "success": {
+        "status": 200,
+        "body": {
+          "status": "none"
+        }
+      },
+      "failures": {
+        "missingBearer": {
+          "status": 401,
+          "body": {
+            "reason": "invalid authorization"
+          }
+        }
+      }
     }
   },
   "cors": {
