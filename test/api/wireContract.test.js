@@ -12,11 +12,17 @@ const mocks = vi.hoisted(() => ({
   getAllowedUser: vi.fn(),
   getUserIdentity: vi.fn(),
   upsertUser: vi.fn(),
+  getAccessRequest: vi.fn(),
+  createAccessRequest: vi.fn(),
 }));
 
 vi.mock('../../lib/services/firebaseAdmin.js', () => ({ verifyIdToken: mocks.verifyIdToken }));
 vi.mock('../../lib/services/storage/firestore/allowedUsersStorage.js', () => ({
   getAllowedUser: mocks.getAllowedUser,
+}));
+vi.mock('../../lib/services/storage/firestore/accessRequestsStorage.js', () => ({
+  getAccessRequest: mocks.getAccessRequest,
+  createAccessRequest: mocks.createAccessRequest,
 }));
 vi.mock('../../lib/services/storage/userStorage.js', () => ({
   getUserIdentity: mocks.getUserIdentity,
@@ -121,6 +127,17 @@ describe('shared HTTP wire contract', () => {
       headers: { authorization: 'Bearer revoked-token' },
     });
     expectJson(notAllowed, cases.notAllowed);
+  });
+
+  it('keeps the public access-request bootstrap case stable', async () => {
+    mocks.getAllowedUser.mockResolvedValueOnce(null);
+    const none = await injectCase(wireContract.http.accessRequest, {
+      headers: { authorization: 'Bearer firebase-token' },
+    });
+    expectJson(none, wireContract.http.accessRequest.success);
+
+    const missingBearer = await injectCase(wireContract.http.accessRequest);
+    expectJson(missingBearer, wireContract.http.accessRequest.failures.missingBearer);
   });
 
   it('keeps exact-origin bearer CORS and preflight headers stable', async () => {

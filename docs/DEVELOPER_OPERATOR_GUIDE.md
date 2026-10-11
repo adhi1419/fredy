@@ -68,6 +68,8 @@ A verified token that is absent from `allowed_users` receives `403` with `{ "rea
 
 `GET /api/auth/config` is public. It returns the public web configuration from `FIREBASE_WEB_CONFIG`; it does not establish authorization. `GET /api/auth/me` and the user routes require the bearer hook. Backup, debug, and price-tracking administration routes require the bearer hook and the admin hook.
 
+A verified identity that is not (yet) allowlisted can still record an access request: `GET`/`POST /api/auth/access-request` sit behind a token-only verified-identity hook (same bearer parsing as the allowlist hook, but no allowlist lookup), so they return a waitlist status instead of `403`. `POST` creates a `pending` row the first time, returns the existing row unchanged on every later call (a declined requester does not become pending again just by asking), and reports `approved` with no write once the email is on the allowlist. Admins list, approve, or decline these requests under `/api/admin/access-requests`, behind the bearer hook and the admin hook; approval only ever adds the email to `allowed_users` with `isAdmin: false` - it never grants admin.
+
 The browser uses `browserLocalPersistence` and waits for `authStateReady()` before login actions. HTTP requests omit cookies and attach a current or refreshed Firebase token.
 
 ### Firestore authority
@@ -81,6 +83,7 @@ Firestore implementations live under `lib/services/storage/firestore/`. The top-
 - `listings`
 - `watch_list`
 - `allowed_users` for the authentication allowlist
+- `access_requests` for the allowlist waitlist (pending/declined requests from verified-but-not-yet-allowlisted identities)
 
 Firestore operations are asynchronous. Await storage calls, and use the contract suite when changing storage behavior. The emulator is safe for disposable local data. The real project is not.
 
