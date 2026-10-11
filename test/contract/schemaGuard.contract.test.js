@@ -42,6 +42,7 @@ const USER_KEYS = new Set(['username', 'isAdmin', 'lastLogin']);
 const SETTING_KEYS = new Set(['id', 'name', 'value', 'userId', 'createdAt']);
 const LISTING_KEYS = new Set([
   'activeCheckFailures',
+  'activityIsManual',
   'address',
   'buildYear',
   'createdAt',
@@ -65,6 +66,8 @@ const LISTING_KEYS = new Set([
   'link',
   'longitude',
   'manuallyDeleted',
+  'nextActiveCheckAt',
+  'nextTravelTimeAt',
   'notes',
   'notificationComplete',
   'notifiedAt',
