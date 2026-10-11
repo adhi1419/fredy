@@ -1,0 +1,77 @@
+/*
+ * Copyright (c) 2026 by Christian Kellner.
+ * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
+ */
+
+import { describe, expect, it, vi } from 'vitest';
+import {
+  accessRequestPath,
+  createAdminEffects,
+  createAdminState,
+  orderAccessRequests,
+  type AccessRequest,
+  type AdminStateSetter,
+} from '../../ui/src/services/state/adminState.js';
+
+const row = (email: string, status: AccessRequest['status'], requestedAt: number): AccessRequest => ({
+  email,
+  displayName: null,
+  uid: `uid-${email}`,
+  requestedAt,
+  status,
+  decidedAt: status === 'declined' ? requestedAt + 1 : null,
+});
+
+function setup(initial: readonly AccessRequest[] = []) {
+  const state = createAdminState();
+  const get = vi.fn().mockResolvedValue({ status: 200, json: { requests: initial } });
+  const post = vi.fn().mockResolvedValue({ status: 200, json: {} });
+  const del = vi.fn().mockResolvedValue({ status: 204, json: {} });
+  const set: AdminStateSetter = (updater) => Object.assign(state, updater(state));
+  const effects = createAdminEffects(set, { get, post, delete: del });
+  return { state, get, post, del, effects };
+}
+
+describe('admin state: access requests', () => {
+  it('starts empty and not loaded', () => {
+    expect(createAdminState()).toEqual({ admin: { accessRequests: [], accessRequestsLoaded: false } });
+  });
+
+  it('loads the queue and marks it loaded', async () => {
+    const rows = [row('a@example.com', 'pending', 1)];
+    const { state, get, effects } = setup(rows);
+    await effects.getAccessRequests();
+    expect(get).toHaveBeenCalledWith('/api/admin/access-requests');
+    expect(state.admin).toEqual({ accessRequests: rows, accessRequestsLoaded: true });
+  });
+
+  it('approves, declines and removes through the per-email routes, then re-reads the queue', async () => {
+    const { get, post, del, effects } = setup();
+    await effects.approveAccessRequest('Bob+tag@Example.com');
+    await effects.declineAccessRequest('c@example.com');
+    await effects.removeAccessRequest('c@example.com');
+    expect(post).toHaveBeenNthCalledWith(1, '/api/admin/access-requests/Bob%2Btag%40Example.com/approve', {});
+    expect(post).toHaveBeenNthCalledWith(2, '/api/admin/access-requests/c%40example.com/decline', {});
+    expect(del).toHaveBeenCalledWith('/api/admin/access-requests/c%40example.com');
+    // One re-read per action, so the page never reconciles optimistic state.
+    expect(get).toHaveBeenCalledTimes(3);
+  });
+
+  it('encodes the email as one path segment', () => {
+    expect(accessRequestPath('a/b@x.io')).toBe('/api/admin/access-requests/a%2Fb%40x.io');
+    expect(accessRequestPath('a@x.io', 'approve')).toBe('/api/admin/access-requests/a%40x.io/approve');
+  });
+
+  it('orders pending requests first, oldest at the top, declined after', () => {
+    const ordered = orderAccessRequests([
+      row('late@example.com', 'pending', 30),
+      row('old-declined@example.com', 'declined', 5),
+      row('early@example.com', 'pending', 10),
+    ]);
+    expect(ordered.map(({ email }) => email)).toEqual([
+      'early@example.com',
+      'late@example.com',
+      'old-declined@example.com',
+    ]);
+  });
+});

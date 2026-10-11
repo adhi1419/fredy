@@ -12,6 +12,8 @@ import PreferencesPage from './views/settings/pages/PreferencesPage';
 import TravelTimePage from './views/settings/pages/TravelTimePage';
 import NotificationsPage from './views/settings/pages/NotificationsPage';
 import InquiryProfilePage from './views/settings/pages/InquiryProfilePage';
+import AdminLayout from './views/admin/AdminLayout';
+import AccessRequestsPage from './views/admin/pages/AccessRequestsPage';
 import JobMutation from './views/jobs/mutation/JobMutation';
 import { useActions, useSelector } from './services/state/store.js';
 import { Routes, Route, Navigate, useLocation } from 'react-router';
@@ -264,6 +266,13 @@ export default function FredyApp() {
                         <Route path="travel-time" element={<TravelTimePage />} />
                         <Route path="notifications" element={<NotificationsPage />} />
                         <Route path="inquiry-profile" element={<InquiryProfilePage />} />
+                      </Route>
+
+                      {/* The admin panel: operator-only, same shell as My account. The layout itself
+                      bounces non-admins to /403, so the pages beneath need no guard of their own. */}
+                      <Route path="/admin" element={<AdminLayout />}>
+                        <Route index element={<Navigate to="/admin/access-requests" replace />} />
+                        <Route path="access-requests" element={<AccessRequestsPage />} />
                       </Route>
 
                       {/* The addresses these things used to live at, kept so existing bookmarks and the

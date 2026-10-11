@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 
 import {
   ACCOUNT_NAV,
+  accountNavFor,
   NAV_TREE,
   PRIMARY_NAV,
   navTreeFor,
@@ -50,10 +51,12 @@ describe('two-tab shell navigation model', () => {
     expect(PRIMARY_NAV).toHaveLength(2);
   });
 
-  it('exposes My account as the only destination behind the account control', () => {
-    // There is no Admin panel: every instance setting lives in the deployment, not in a page.
-    expect(ACCOUNT_NAV.map(({ key }) => key)).toEqual(['account']);
+  it('exposes My account to everyone and the Admin panel to administrators only', () => {
+    expect(ACCOUNT_NAV.map(({ key }) => key)).toEqual(['account', 'admin']);
+    expect(accountNavFor(false).map(({ key }) => key)).toEqual(['account']);
+    expect(accountNavFor(true).map(({ key }) => key)).toEqual(['account', 'admin']);
     expect(routeKeysOf(navTreeFor())).toEqual(['/dashboard', '/jobs', '/settings']);
+    expect(routeKeysOf(navTreeFor(true))).toEqual(['/dashboard', '/jobs', '/settings', '/admin']);
   });
 
   it('translates every visible shell label in all supported locales', () => {
@@ -69,6 +72,6 @@ describe('two-tab shell navigation model', () => {
   });
 
   it('keeps the compatibility tree limited to shell destinations', () => {
-    expect(NAV_TREE.map(({ key }) => key)).toEqual(['/dashboard', '/jobs', 'account']);
+    expect(NAV_TREE.map(({ key }) => key)).toEqual(['/dashboard', '/jobs', 'account', 'admin']);
   });
 });

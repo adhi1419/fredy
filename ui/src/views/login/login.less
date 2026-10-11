@@ -148,6 +148,16 @@
         color: @color-warning;
       }
     }
+
+    // The access-request states: a ruled note in ink, lead in text colour
+    &--notice {
+      color: @color-muted;
+
+      b {
+        font-weight: 500;
+        color: @color-text;
+      }
+    }
   }
 
   &__submit {
@@ -183,6 +193,16 @@
     &:disabled {
       opacity: 0.7;
       cursor: default;
+    }
+
+    &--ghost {
+      background: transparent;
+      color: @color-text;
+
+      &:hover:not(:disabled) {
+        background: @color-text;
+        color: @color-base;
+      }
     }
   }
 

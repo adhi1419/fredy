@@ -9,7 +9,8 @@ import type { ReactElement } from 'react';
 import loginHero from '../../assets/login_hero.jpg';
 import { useLocation, useNavigate } from 'react-router';
 import { useActions } from '../../services/state/store';
-import { authReady } from '../../services/auth/firebaseAuth.js';
+import { authReady, signOutFirebase } from '../../services/auth/firebaseAuth.js';
+import { xhrGet, xhrPost } from '../../services/xhr.js';
 import type { FirebaseAuthClient } from '../../services/auth/firebaseAuth.js';
 
 import './login.less';
@@ -29,6 +30,19 @@ interface LoginLocationState {
 interface AuthError {
   code?: string;
   status?: number;
+}
+
+/**
+ * Where a verified Google account stands with this instance. `approved` is on the allowlist;
+ * `none` has never asked; `pending` and `declined` are the operator's queue states. `unknown`
+ * is the client's own state before the question has been asked.
+ */
+export type AccessStatus = 'unknown' | 'approved' | 'none' | 'pending' | 'declined';
+
+/** The access status the server reports for the bearer the client already holds. */
+async function fetchAccessStatus(): Promise<AccessStatus> {
+  const response = await xhrGet('/api/auth/access-request');
+  return (response.json as { status: AccessStatus }).status;
 }
 
 /** Google sign-in mark (official branding colours; Google's guidelines require the coloured mark). */
@@ -69,6 +83,8 @@ export default function Login(): ReactElement {
   const [authInitError, setAuthInitError] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+  const [access, setAccess] = React.useState<AccessStatus>('unknown');
+  const [requesting, setRequesting] = React.useState(false);
 
   useEffect(() => {
     let active = true;
@@ -105,6 +121,14 @@ export default function Login(): ReactElement {
       // remains the first awaited operation in the user-gesture chain.
       const result = await authClient.signInWithPopup(authClient.auth, new authClient.GoogleAuthProvider());
       await result.user.getIdToken();
+      // Ask where this account stands before touching /me: /me answers a non-allowlisted account
+      // with a 403 that signs the Firebase user out again, and the access request needs that token.
+      const status = await fetchAccessStatus();
+      if (status !== 'approved') {
+        setAccess(status);
+        setPending(false);
+        return;
+      }
       await completeLogin();
     } catch (err) {
       const authError = err as AuthError | null;
@@ -124,9 +148,31 @@ export default function Login(): ReactElement {
     }
   };
 
+  /** Queue this account for the operator; the server keeps a declined account declined. */
+  const handleRequestAccess = async () => {
+    if (requesting) return;
+    setRequesting(true);
+    try {
+      const response = await xhrPost('/api/auth/access-request', {});
+      setAccess((response.json as { status: AccessStatus }).status);
+    } catch {
+      setError(t('login.firebaseError'));
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  /** Drop the Firebase session so another Google account can be tried. */
+  const handleSwitchAccount = async () => {
+    await signOutFirebase().catch(() => {});
+    setAccess('unknown');
+    setError(null);
+  };
+
   const message = error || authInitError;
   const waiting = !authClient && !authInitError;
   const busy = pending || waiting;
+  const gated = access === 'none' || access === 'pending' || access === 'declined';
 
   return (
     <div className="login">
@@ -156,20 +202,45 @@ export default function Login(): ReactElement {
                 <b>{t('login.errorLead')}</b> {message}
               </p>
             )}
-            <button
-              type="button"
-              className="login__submit"
-              onClick={handleGoogleSignIn}
-              disabled={busy || !!authInitError}
-              aria-busy={busy || undefined}
-            >
-              {busy ? (
-                <span className="login__spinner" aria-hidden="true" />
-              ) : (
-                <span className="login__g">{<GoogleIcon />}</span>
-              )}
-              {pending ? t('login.firebaseSigningIn') : t('login.firebaseGoogleButton')}
-            </button>
+            {gated ? (
+              <>
+                <p className="login__note login__note--notice" role="status">
+                  <b>{t(`login.access.${access}Lead`)}</b> {t(`login.access.${access}`)}
+                </p>
+                {access === 'none' && (
+                  <button
+                    type="button"
+                    className="login__submit"
+                    onClick={handleRequestAccess}
+                    disabled={requesting}
+                    aria-busy={requesting || undefined}
+                  >
+                    {requesting && <span className="login__spinner" aria-hidden="true" />}
+                    {t('login.access.request')}
+                  </button>
+                )}
+                <button type="button" className="login__submit login__submit--ghost" onClick={handleSwitchAccount}>
+                  {t('login.access.switchAccount')}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="login__submit"
+                onClick={handleGoogleSignIn}
+                disabled={busy || !!authInitError}
+                aria-busy={busy || undefined}
+              >
+                {busy ? (
+                  <span className="login__spinner" aria-hidden="true" />
+                ) : (
+                  <span className="login__g">
+                    <GoogleIcon />
+                  </span>
+                )}
+                {pending ? t('login.firebaseSigningIn') : t('login.firebaseGoogleButton')}
+              </button>
+            )}
           </div>
         </div>
 

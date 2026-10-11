@@ -148,9 +148,10 @@ describe('two-destination product shell', () => {
     }
   });
 
-  it('keeps exactly one personal destination, hidden during onboarding', () => {
+  it('keeps one personal destination, adds the admin panel for administrators, hides both during onboarding', () => {
     expect(accountDestinationPaths(true)).toEqual(['/settings']);
-    expect(accountDestinationPaths(false)).toEqual([]);
+    expect(accountDestinationPaths(true, true)).toEqual(['/settings', '/admin']);
+    expect(accountDestinationPaths(false, true)).toEqual([]);
   });
 
   it('renders an account-only shell during mandatory onboarding', () => {
@@ -260,12 +261,14 @@ describe('cohesive My account destination', () => {
     expect(routeTabsSource).toContain('<NavLink');
   });
 
-  it('uses a compact local heading and ships no admin surface', () => {
+  it('uses a compact local heading, and the admin panel reuses the same shell', () => {
     expect(settingsSource).toContain('className="settingsLayout__heading"');
     expect(settingsSource).not.toContain('Headline');
     expect(appSource).toContain('path="/settings"');
-    expect(appSource).not.toContain('path="/admin"');
-    expect(fs.existsSync(path.join(root, 'ui/src/views/admin'))).toBe(false);
+    expect(appSource).toContain('path="/admin"');
+    const adminSource = fs.readFileSync(path.join(root, 'ui/src/views/admin/AdminLayout.tsx'), 'utf-8');
+    expect(adminSource).toContain('className="settingsLayout__heading"');
+    expect(adminSource).toContain('<Navigate to="/403" replace />');
   });
 
   it('keeps mobile navigation contained above fixed primary navigation', () => {

@@ -110,7 +110,7 @@ Fredy keeps the important choices visible without making the home search feel bu
 
 Fredy is available at [adhi1419.github.io/fredy](https://adhi1419.github.io/fredy/). Its backend is API-only and runs at [fredy-vh63vbsl2q-ew.a.run.app](https://fredy-vh63vbsl2q-ew.a.run.app). The app uses Firestore as its only persistence layer.
 
-Access is operator-allowlisted. Sign-in uses Google through direct Firebase bearer authentication. An account must be approved for this Fredy instance before it can use the app.
+Access is operator-allowlisted. Sign-in uses Google through direct Firebase bearer authentication. An account must be approved for this Fredy instance before it can use the app: sign in once with your Google account, choose **Request access**, and the operator approves or declines the request from the Admin panel.
 
 On your first registration, Fredy asks you to enter these common profile facts explicitly:
 

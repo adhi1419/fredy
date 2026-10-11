@@ -14,6 +14,7 @@ import { createJobsDataState, createJobsEffects, type JobsDataState } from './jo
 import { createListingsDataState, createListingsEffects, type ListingsDataState } from './listingsState.js';
 import { createUserSettingsState, createUserSettingsEffects, type UserSettingsState } from './userSettingsState.js';
 import { createFinanceState, createFinanceEffects, type FinanceState } from './financeState.js';
+import { createAdminState, createAdminEffects, type AdminState } from './adminState.js';
 import {
   createNotificationEffects,
   createNotificationState,
@@ -48,6 +49,7 @@ export interface FredyStoreState {
   provider: readonly unknown[];
   jobsData: JobsDataState;
   user: { currentUser: unknown };
+  admin: AdminState['admin'];
   loading: Record<string, boolean>;
   __actions: { actions: Record<string, Record<string, FredyAction>> };
 }
@@ -108,6 +110,11 @@ export const useFredyState = create<FredyStoreState>()(
       const userSettingsEffects = createUserSettingsEffects(set, { get: xhrGet, post: xhrPost }, async () => {
         await financeEffects.getProfileSummary();
       });
+      const adminEffects = createAdminEffects(set, {
+        get: <T>(url: string) => xhrGet(url) as Promise<{ status: number; json: T }>,
+        post: <T>(url: string, data: unknown) => xhrPost(url, data) as Promise<{ status: number; json: T }>,
+        delete: <T>(url: string) => xhrDelete(url, undefined) as Promise<{ status: number; json: T }>,
+      });
       const notificationEffects = createNotificationEffects(set, {
         get: <T>(url: string) => xhrGet(url) as Promise<{ status: number; json: T }>,
         post: <T>(url: string, data: unknown) => xhrPost(url, data) as Promise<{ status: number; json: T }>,
@@ -140,6 +147,7 @@ export const useFredyState = create<FredyStoreState>()(
           },
         },
         jobsData: jobsEffects,
+        admin: adminEffects,
         user: {
           /**
            * Loads the logged-in user and returns it, so a caller that needs to act on the
@@ -178,6 +186,7 @@ export const useFredyState = create<FredyStoreState>()(
         provider: [],
         jobsData: createJobsDataState(),
         user: { currentUser: null },
+        ...createAdminState(),
       };
 
       // Expose actions by grouping them per slice
@@ -190,6 +199,7 @@ export const useFredyState = create<FredyStoreState>()(
         provider: { ...effects.provider },
         jobsData: { ...effects.jobsData },
         user: { ...effects.user },
+        admin: { ...effects.admin },
         userSettings: { ...effects.userSettings },
       };
 

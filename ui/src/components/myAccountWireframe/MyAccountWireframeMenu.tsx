@@ -10,7 +10,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { signOutFirebase, safePhotoUrl } from '../../services/auth/firebaseAuth.js';
 import { useTranslation } from '../../services/i18n/i18n.jsx';
 import { useActions } from '../../services/state/store.js';
-import { ACCOUNT_NAV } from '../navigation/navModel.js';
+import { accountNavFor } from '../navigation/navModel.js';
 
 import './MyAccountWireframeMenu.less';
 
@@ -71,9 +71,9 @@ export function menuItemIndexForKey(key: string, currentIndex: number, itemCount
   return currentIndex;
 }
 
-export function accountDestinationPaths(primaryVisible: boolean): string[] {
+export function accountDestinationPaths(primaryVisible: boolean, isAdmin = false): string[] {
   if (!primaryVisible) return [];
-  return ACCOUNT_NAV.map((item) => item.path);
+  return accountNavFor(isAdmin).map((item) => item.path);
 }
 
 export default function MyAccountWireframeMenu({
@@ -153,7 +153,7 @@ export default function MyAccountWireframeMenu({
     }
   };
 
-  const accountItems = useMemo(() => (primaryVisible ? ACCOUNT_NAV : []), [primaryVisible]);
+  const accountItems = useMemo(() => (primaryVisible ? accountNavFor(isAdmin) : []), [primaryVisible, isAdmin]);
   const username = currentUser?.username ?? '';
   const displayName = accountDisplayName(username) || username;
 
