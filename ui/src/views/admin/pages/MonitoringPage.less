@@ -1,0 +1,329 @@
+/*
+ * Copyright (c) 2026 by Christian Kellner.
+ * Licensed under Apache-2.0 with Commons Clause and Attribution/Naming Clause
+ */
+
+@import '../../../tokens.less';
+
+.monitoring {
+  // The approved Option B keeps the existing Admin shell width. The charts divide that one column
+  // rather than widening every admin page.
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: @space-5;
+  min-width: 0;
+
+  &__titleRow,
+  &__sectionHeading,
+  &__ledgerHeading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: @space-3;
+  }
+
+  &__titleRow h2,
+  &__sectionHeading h2,
+  &__ledgerHeading h2 {
+    margin: 0;
+    color: @color-text;
+    font-weight: 500;
+  }
+
+  &__titleRow h2 {
+    font-size: @text-lg;
+  }
+  &__sectionHeading h2,
+  &__ledgerHeading h2 {
+    font-size: @text-md;
+  }
+
+  &__updated,
+  &__intro,
+  &__outcomeHelp,
+  &__sectionHeading p,
+  &__ledgerHeading p,
+  &__billingNote,
+  &__footnote,
+  &__empty {
+    margin: 0;
+    color: @color-muted;
+    font-size: @text-xs;
+    line-height: 1.45;
+  }
+
+  &__updated,
+  &__badge,
+  &__costLabel,
+  &__table th {
+    font-family: @font-mono;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: @tracking-label;
+    text-transform: uppercase;
+  }
+
+  &__badge {
+    display: inline-block;
+    margin-left: @space-2;
+    padding: 2px @space-1;
+    border: 1px solid @color-border;
+    color: @color-muted;
+    vertical-align: 2px;
+  }
+
+  &__controls {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: @space-2;
+  }
+
+  &__select {
+    min-height: 32px;
+    padding: 0 @space-2;
+    border: 1px solid @color-border;
+    border-radius: @radius-input;
+    background: @color-surface;
+    color: @color-text;
+    font-size: @text-xs;
+    cursor: pointer;
+
+    &:hover {
+      background: @color-hover;
+    }
+    &:focus-visible {
+      outline: 1px solid @color-text;
+      outline-offset: 2px;
+    }
+  }
+
+  &__outcomeHelp {
+    margin: @space-2 0;
+  }
+
+  &__usageError {
+    margin: 0 0 @space-3;
+    color: @color-warning;
+    font-size: @text-xs;
+  }
+
+  &__refresh {
+    margin-left: auto;
+  }
+
+  &__costs {
+    border-top: 1px solid @color-border-bright;
+    border-bottom: 1px solid @color-border-bright;
+  }
+
+  &__costHeader {
+    display: flex;
+    justify-content: space-between;
+    gap: @space-3;
+    padding: @space-3 0 @space-2;
+  }
+
+  &__costHeader h2 {
+    margin: 0;
+    font-size: @text-md;
+    font-weight: 500;
+  }
+
+  &__costGrid {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  &__cost {
+    min-width: 0;
+    padding: @space-3;
+    border-right: 1px solid @color-border;
+
+    &:first-child {
+      padding-left: 0;
+    }
+    &:last-child {
+      padding-right: 0;
+      border-right: 0;
+    }
+    strong {
+      display: block;
+      margin: @space-1 0;
+      font-size: @text-lg;
+      font-weight: 500;
+      letter-spacing: @tracking-tight;
+    }
+    small {
+      display: block;
+      color: @color-muted;
+      font-size: 10px;
+      line-height: 1.35;
+    }
+  }
+
+  &__ledgerActions {
+    display: flex;
+    align-items: center;
+    gap: @space-2;
+  }
+
+  &__cost--estimate strong {
+    color: @color-info;
+  }
+  &__costLabel {
+    color: @color-muted;
+  }
+
+  &__usage {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: @space-5;
+    padding: @space-3 0;
+    border-top: 1px solid @color-border;
+    font-size: @text-xs;
+    line-height: 1.5;
+    strong {
+      font-weight: 500;
+    }
+    span {
+      color: @color-muted;
+    }
+  }
+
+  &__charts {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid @color-border-bright;
+    border-left: 1px solid @color-border-bright;
+  }
+
+  &__ledger {
+    min-width: 0;
+    max-width: 100%;
+    padding: @space-4;
+    border: 1px solid @color-border-bright;
+    border-top: 0;
+  }
+
+  &__summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @space-4;
+    margin-top: @space-2;
+    font-size: @text-xs;
+    b {
+      font-weight: 500;
+    }
+  }
+
+  &__tableWrap {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-top: @space-3;
+    overflow-x: auto;
+  }
+  &__table {
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+    font-size: @text-xs;
+    th,
+    td {
+      padding: @space-2;
+      border-top: 1px solid @color-border;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: @color-muted;
+    }
+  }
+
+  &__ok {
+    color: @color-success;
+  }
+  &__warn {
+    color: @color-warning;
+  }
+  &__error {
+    color: @color-error;
+  }
+  &__footnote {
+    padding-top: @space-2;
+    border-top: 1px solid @color-border;
+  }
+}
+
+.monitoringChart {
+  min-width: 0;
+  padding: @space-3;
+  border-right: 1px solid @color-border-bright;
+  border-bottom: 1px solid @color-border-bright;
+  transition: background @transition-fast;
+
+  &--selected {
+    background: @color-fill-subtle;
+  }
+  &__heading {
+    min-height: 38px;
+  }
+  &__heading h3 {
+    margin: 0;
+    font-size: @text-sm;
+    font-weight: 500;
+  }
+  &__heading span,
+  &__footnote {
+    color: @color-muted;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  &__canvas {
+    height: 210px;
+    cursor: crosshair;
+  }
+  &__footnote {
+    min-height: 14px;
+    margin: @space-1 0 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .monitoring {
+    &__titleRow,
+    &__sectionHeading,
+    &__costHeader {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    &__controls > * {
+      max-width: 100%;
+    }
+    &__refresh {
+      margin-left: 0;
+    }
+    &__costGrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    &__cost:nth-child(2) {
+      border-right: 0;
+    }
+    &__cost:nth-child(n + 3) {
+      border-top: 1px solid @color-border;
+    }
+    &__cost:nth-child(3) {
+      padding-left: 0;
+    }
+    &__usage,
+    &__charts {
+      grid-template-columns: 1fr;
+    }
+  }
+  .monitoringChart__canvas {
+    height: 230px;
+  }
+}

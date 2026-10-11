@@ -22,6 +22,7 @@ interface AdminSection {
  */
 export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { path: '/admin/access-requests', labelKey: 'admin.tabAccessRequests' },
+  { path: '/admin/monitoring', labelKey: 'admin.tabMonitoring' },
 ];
 
 /** The section a pathname belongs to, defaulting to the first. */
