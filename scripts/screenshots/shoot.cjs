@@ -24,7 +24,11 @@ const SHOTS = [
   { name: 'saved-search-step-1', url: '/#/jobs/edit/job-berlin', vps: ['desktop', 'mobile'] },
   { name: 'listing-detail', url: '/#/listings/listing/demo-1', vps: ['desktop', 'mobile'], settle: 5000 },
   { name: 'my-account', url: '/#/settings/preferences', vps: ['desktop', 'mobile'] },
+  { name: 'admin-panel', url: '/#/admin/access-requests', vps: ['desktop', 'mobile'] },
 ];
+// The login screen is shot before signing in. It has no user setting to read the theme from, so the
+// body attribute is set directly, which is exactly what the app does for its default.
+const LOGIN_SHOT = { name: 'login', url: '/#/login', vps: ['desktop', 'mobile'] };
 const VP = { desktop: { width: 1440, height: 900 }, mobile: { width: 390, height: 844 } };
 
 async function login(ctx, page) {
@@ -55,6 +59,21 @@ async function login(ctx, page) {
   });
   const page = ctx.pages()[0] || (await ctx.newPage());
   page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 200)));
+
+  for (const theme of ['light', 'dark']) {
+    for (const vp of LOGIN_SHOT.vps) {
+      await page.setViewportSize(VP[vp]);
+      await page.goto(BASE + LOGIN_SHOT.url, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(2500);
+      await page.evaluate((mode) => document.body.setAttribute('theme-mode', mode), theme);
+      await page.waitForTimeout(600);
+      const file = path.join(out, `${LOGIN_SHOT.name}-${vp}-${theme}.png`);
+      await page.screenshot({ path: file, fullPage: false });
+      console.log('shot', path.basename(file), page.url().replace(BASE, ''));
+    }
+  }
+
+  await page.setViewportSize(VP.desktop);
   await login(ctx, page);
   console.log('LOGGED IN:', (await page.innerText('body')).slice(0, 80).replace(/\s+/g, ' '));
 
@@ -63,9 +82,16 @@ async function login(ctx, page) {
     await page.setViewportSize(VP.desktop);
     await page.goto(BASE + '/#/settings/preferences', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2000);
-    await page.getByRole('radio', { name: new RegExp(theme, 'i') }).first().click({ force: true }).catch(async () => {
-      await page.getByText(new RegExp(`^${theme}$`, 'i')).first().click();
-    });
+    await page
+      .getByRole('radio', { name: new RegExp(theme, 'i') })
+      .first()
+      .click({ force: true })
+      .catch(async () => {
+        await page
+          .getByText(new RegExp(`^${theme}$`, 'i'))
+          .first()
+          .click();
+      });
     await page.waitForTimeout(1500);
     const mode = await page.evaluate(() => document.body.getAttribute('theme-mode'));
     console.log('THEME', theme, '->', mode);
