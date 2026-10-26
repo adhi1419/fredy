@@ -278,11 +278,12 @@ Status: DONE (schemaGuard contract test, scripts/schema-audit.js)
 
 Found from the per-run usage line (1,300 reads per run after PR #94) and Cloud Monitoring.
 
-| Source                                                          | Reads per run before                             | Fix                                                                                                                       |
-| --------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `archiveStaleListingsForJob` read every listing of the job      | 887                                              | Query only live, not-archived rows created before the cutoff (index `jobId, manuallyDeleted, lifecycle.state, createdAt`) |
-| `findKnownHashes`: one read per already-stored scrape result    | ~385                                             | In-memory known-listing index (`knownListingIndex.js`); only misses are queried                                           |
-| Retention purge read every inactive listing on every cold start | every inactive listing, per cold start and daily | Range on `inactiveSince` (index `isActive, inactiveSince`)                                                                |
+| Source                                                          | Reads per run before                             | Fix                                                                                                                                    |
+| --------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `archiveStaleListingsForJob` read every listing of the job      | 887                                              | Query only live, not-archived rows created before the cutoff (index `jobId, manuallyDeleted, lifecycle.state, createdAt`)              |
+| `archiveStaleListingsForJob` still ran on every cycle           | ~125 of ~200 on a cycle with no new listings     | Sweep at most once a day per job, gated on `job.lastArchiveSweepAt` written in the same update as `lastRunAt` (no extra read or write) |
+| `findKnownHashes`: one read per already-stored scrape result    | ~385                                             | In-memory known-listing index (`knownListingIndex.js`); only misses are queried                                                        |
+| Retention purge read every inactive listing on every cold start | every inactive listing, per cold start and daily | Range on `inactiveSince` (index `isActive, inactiveSince`)                                                                             |
 
 Run time: 15 live ImmoScout listings stored the -1 "found nothing" marker because the address ends
 in a district label (`..., 10551 Berlin, Tiergarten`) that Nominatim cannot match. Reconcile retried
