@@ -88,7 +88,7 @@
     "required": [
       "'TRIGGER_INTERVAL_MINUTES': '15'",
       "'GOOGLE_CLOUD_PROJECT': project",
-      "'MONITORING_CLOUD_RUN_VCPU': '1'",
+      "'MONITORING_CLOUD_RUN_VCPU': '0.5'",
       "'MONITORING_CLOUD_RUN_MEMORY_GIB': '1'",
       "env['GCP_BILLING_EXPORT_TABLE'] = billing_table",
       "'FIREBASE_WEB_CONFIG': web_config",
@@ -102,6 +102,9 @@
       "roles/bigquery.jobUser",
       "roles/secretmanager.secretAccessor",
       "--service-account \"$RUNTIME_SERVICE_ACCOUNT\"",
+      "--memory 1Gi --cpu 0.5",
+      "--concurrency 1 --execution-environment gen1",
+      "--min-instances 0 --max-instances 2",
       "\"$SERVICE_URL/api/trigger\"",
       "--schedule '*/15 * * * *'"
     ]
