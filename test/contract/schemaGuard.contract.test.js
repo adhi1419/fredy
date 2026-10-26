@@ -29,6 +29,7 @@ const JOB_KEYS = new Set([
   'commuteFilter',
   'dealType',
   'enabled',
+  'lastArchiveSweepAt',
   'lastRunAt',
   'name',
   'notificationAdapter',

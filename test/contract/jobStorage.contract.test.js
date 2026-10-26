@@ -436,6 +436,27 @@ describe('jobStorage contract', () => {
       await jobStorage.upsertJob(makeJob({ jobId: 'j1' }));
       expect((await jobStorage.getJob('j1')).lastRunAt).toBeNull();
     });
+
+    it('initially has null lastArchiveSweepAt and leaves it untouched when no sweep marker is given', async () => {
+      await jobStorage.upsertJob(makeJob({ jobId: 'j1' }));
+      expect((await jobStorage.getJob('j1')).lastArchiveSweepAt).toBeNull();
+      await jobStorage.updateJobLastRunAt('j1', Date.now());
+      expect((await jobStorage.getJob('j1')).lastArchiveSweepAt).toBeNull();
+    });
+
+    it('stamps lastArchiveSweepAt in the same update and preserves it on later marker-less runs', async () => {
+      await jobStorage.upsertJob(makeJob({ jobId: 'j1' }));
+      const sweptAt = Date.now();
+      await jobStorage.updateJobLastRunAt('j1', sweptAt, { archiveSweepAt: sweptAt });
+      expect((await jobStorage.getJob('j1')).lastArchiveSweepAt).toBe(sweptAt);
+
+      const later = sweptAt + 15 * 60 * 1000;
+      await jobStorage.updateJobLastRunAt('j1', later);
+      const job = await jobStorage.getJob('j1');
+      expect(job.lastRunAt).toBe(later);
+      expect(job.lastArchiveSweepAt).toBe(sweptAt);
+      expect((await jobStorage.getJobs({ includeDisabled: true }))[0].lastArchiveSweepAt).toBe(sweptAt);
+    });
   });
 
   describe('setJobStatus', () => {

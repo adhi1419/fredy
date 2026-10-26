@@ -38,7 +38,8 @@ describe('services/jobs/jobExecutionService', () => {
         return state.jobsById[id] || null;
       },
       getJobs: () => state.jobsList.slice(),
-      updateJobLastRunAt: (id, timestamp) => calls.lastRunUpdates.push({ id, timestamp }),
+      updateJobLastRunAt: (id, timestamp, options = {}) =>
+        calls.lastRunUpdates.push({ id, timestamp, archiveSweepAt: options.archiveSweepAt ?? null }),
     }));
     vi.doMock(userStoragePath, () => ({
       getUsers: () => state.users.slice(),
@@ -65,7 +66,10 @@ describe('services/jobs/jobExecutionService', () => {
       return { default: m };
     });
     vi.doMock(listingsStoragePath, () => ({
-      archiveStaleListingsForJob: async () => ({ archived: 0 }),
+      archiveStaleListingsForJob: async (jobId) => {
+        calls.archiveSweeps.push(jobId);
+        return { archived: 0 };
+      },
     }));
     vi.doMock(monitoringStoragePath, () => ({
       recordProviderRun: async (run) => {
@@ -111,6 +115,7 @@ describe('services/jobs/jobExecutionService', () => {
       markRunning: [],
       markFinished: [],
       lastRunUpdates: [],
+      archiveSweeps: [],
       pipeline: [],
       logs: [],
       monitoringRuns: [],
@@ -168,6 +173,46 @@ describe('services/jobs/jobExecutionService', () => {
     expect(update.id).toBe('j1');
     expect(update.timestamp).toBeGreaterThanOrEqual(before);
     expect(update.timestamp).toBeLessThanOrEqual(after);
+  });
+
+  describe('daily auto-archive sweep gate', () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    async function runJobWithMarker(lastArchiveSweepAt) {
+      state.jobsById.j1 = { id: 'j1', enabled: true, userId: 'u1', provider: [], lastArchiveSweepAt };
+      state.users = [{ id: 'u1', isAdmin: false }];
+      await initService();
+      bus.emit('jobs:runOne', { jobId: 'j1' });
+      await vi.waitFor(() => expect(calls.markFinished).toEqual(['j1']));
+      const line = calls.logs.map(([message]) => message).find((message) => message.startsWith('PIPELINE_RUN '));
+      return JSON.parse(line.slice('PIPELINE_RUN '.length));
+    }
+
+    it('sweeps a never-swept job and stamps the marker in the same write as lastRunAt', async () => {
+      const event = await runJobWithMarker(null);
+
+      expect(calls.archiveSweeps).toEqual(['j1']);
+      expect(calls.lastRunUpdates).toHaveLength(1);
+      const [update] = calls.lastRunUpdates;
+      expect(update.archiveSweepAt).toBe(update.timestamp);
+      expect(event.stages.map(({ name }) => name)).toContain('archive-stale-listings');
+    });
+
+    it('skips the sweep, the stage and the marker when the job was swept less than a day ago', async () => {
+      const event = await runJobWithMarker(Date.now() - DAY_MS / 2);
+
+      expect(calls.archiveSweeps).toEqual([]);
+      expect(calls.lastRunUpdates).toHaveLength(1);
+      expect(calls.lastRunUpdates[0].archiveSweepAt).toBeNull();
+      expect(event.stages.map(({ name }) => name)).toEqual(['persist-last-run']);
+    });
+
+    it('sweeps again once the marker is a day old', async () => {
+      await runJobWithMarker(Date.now() - DAY_MS - 1);
+
+      expect(calls.archiveSweeps).toEqual(['j1']);
+      expect(calls.lastRunUpdates[0].archiveSweepAt).toBe(calls.lastRunUpdates[0].timestamp);
+    });
   });
 
   it('runs every provider in a job without ever constructing a browser', async () => {

@@ -6,8 +6,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARCHIVED_STATE,
+  ARCHIVE_SWEEP_PACE_MS,
   AUTO_ARCHIVE_WINDOWS_MS,
   MIN_AUTO_ARCHIVE_MS,
+  isArchiveSweepDue,
   isListingStaleForArchive,
 } from '../../../lib/services/listings/staleArchive.js';
 
@@ -117,5 +119,27 @@ describe('isListingStaleForArchive', () => {
         { now: NOW },
       ),
     ).toBe(true);
+  });
+});
+
+describe('isArchiveSweepDue', () => {
+  it('paces the sweep to once a day', () => {
+    expect(ARCHIVE_SWEEP_PACE_MS).toBe(DAY_MS);
+  });
+
+  it('is due when the job has never been swept', () => {
+    expect(isArchiveSweepDue(null, { now: NOW })).toBe(true);
+    expect(isArchiveSweepDue(undefined, { now: NOW })).toBe(true);
+  });
+
+  it('is not due inside the pace and due at exactly the pace', () => {
+    expect(isArchiveSweepDue(NOW - ARCHIVE_SWEEP_PACE_MS + 1, { now: NOW })).toBe(false);
+    expect(isArchiveSweepDue(NOW - ARCHIVE_SWEEP_PACE_MS, { now: NOW })).toBe(true);
+    expect(isArchiveSweepDue(NOW - 3 * DAY_MS, { now: NOW })).toBe(true);
+  });
+
+  it('treats an unparseable marker as never swept rather than never sweeping again', () => {
+    expect(isArchiveSweepDue('not-a-date', { now: NOW })).toBe(true);
+    expect(isArchiveSweepDue(String(NOW - 1000), { now: NOW })).toBe(false);
   });
 });
