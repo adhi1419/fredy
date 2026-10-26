@@ -87,7 +87,7 @@
   "bootstrap": {
     "required": [
       "'GOOGLE_CLOUD_PROJECT': project",
-      "'MONITORING_CLOUD_RUN_VCPU': '0.5'",
+      "'MONITORING_CLOUD_RUN_VCPU': '1'",
       "'MONITORING_CLOUD_RUN_MEMORY_GIB': '1'",
       "env['GCP_BILLING_EXPORT_TABLE'] = billing_table",
       "'FIREBASE_WEB_CONFIG': web_config",
@@ -103,13 +103,13 @@
       "projects/$PROJECT/roles/$SCHEDULE_ROLE_ID",
       "roles/secretmanager.secretAccessor",
       "--service-account \"$RUNTIME_SERVICE_ACCOUNT\"",
-      "--memory 1Gi --cpu 0.5",
-      "--concurrency 1 --execution-environment gen1",
-      "--min-instances 0 --max-instances 2",
+      "--memory 1Gi --cpu 1",
+      "--concurrency 80 --execution-environment gen1",
+      "--min-instances 0 --max-instances 1",
       "\"$SERVICE_URL/api/trigger\"",
       "--schedule '*/15 * * * *'"
     ],
-    "mustNotContain": ["--schedule '*/15 * * * *' \\\\\n    --uri"]
+    "mustNotContain": ["--schedule '*/15 * * * *' \\\\\n    --uri", "--cpu 0.5", "--concurrency 1 "]
   },
   "wire": {
     "requiredAssumptions": {

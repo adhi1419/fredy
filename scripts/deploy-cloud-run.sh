@@ -135,7 +135,7 @@ env = {
     'TRIGGER_TOKEN': token,
     'GOOGLE_CLOUD_PROJECT': project,
     # These mirror the resource flags on the deploy command below.
-    'MONITORING_CLOUD_RUN_VCPU': '0.5',
+    'MONITORING_CLOUD_RUN_VCPU': '1',
     'MONITORING_CLOUD_RUN_MEMORY_GIB': '1',
     'FIREBASE_WEB_CONFIG': web_config,
     'FRONTEND_ORIGIN': 'https://adhi1419.github.io',
@@ -206,21 +206,22 @@ gcloud run deploy "$SERVICE" \
   --image "$IMAGE" \
   --service-account "$RUNTIME_SERVICE_ACCOUNT" \
   --region "$REGION" \
-  --memory 1Gi --cpu 0.5 \
-  --concurrency 1 --execution-environment gen1 \
-  --min-instances 0 --max-instances 2 \
+  --memory 1Gi --cpu 1 \
+  --concurrency 80 --execution-environment gen1 \
+  --min-instances 0 --max-instances 1 \
   --timeout 900 \
   --allow-unauthenticated \
   --env-vars-file "$ENVFILE" \
   "${SECRET_FLAGS[@]}"
-# Half a vCPU: the scrape is I/O-bound (p99 CPU utilisation 16% of one vCPU), so halving the
-# allocation halves the billed vCPU-seconds and barely changes run time - it is what keeps a
-# 5-minute cadence inside the Cloud Run free tier. Below 1 vCPU Cloud Run requires request-based
-# billing, memory <= 1 GiB, the first-generation execution environment and a concurrency of 1.
-# Concurrency 1 means a browser request cannot share the instance a 30-second scrape is holding,
-# hence max-instances 2: the second instance only exists while the two overlap. The Scheduler
-# never overlaps itself (one request every few minutes, each ~30 s), so two instances only run
-# jobs at the same time when a manual "run" from the UI coincides with a scheduled one.
+# One vCPU, one instance, default concurrency. Do not drop below 1 vCPU: Cloud Run then forces
+# concurrency 1, and its autoscaler treats a single in-flight trigger request (40-80 s) as a
+# saturated instance and starts a second one almost every other cycle. Measured 2026-10-26 at
+# 0.5 vCPU / max-instances 2: each phantom start took ~70 s to boot under startup CPU boost
+# (~150-190 vCPU-s, more than a whole scrape cycle) and reloaded the similarity cache (~780
+# Firestore reads), projecting ~200k vCPU-s and ~70k reads a day - over both free-tier limits.
+# The scrape itself also ran 1.6x longer when throttled, so the half vCPU saved almost nothing.
+# With concurrency 80 a browser request shares the instance a scrape is holding, so a single
+# instance is enough and no autoscaling can occur.
 SERVICE_URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')
 
 echo "== Scheduler =="
