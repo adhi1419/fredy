@@ -138,6 +138,20 @@ export interface MonitoringQuery {
   providerId?: string | null;
 }
 
+/** The cadences the admin Schedule control offers, in minutes; mirrors the API's fixed list. */
+export type RunIntervalMinutes = 5 | 10 | 15 | 30 | 60;
+
+/** How often the hosted scheduler triggers a search, as read from the Cloud Scheduler job. */
+export interface RunSchedule {
+  status: 'available' | 'unavailable';
+  /** Null when the job carries a cron expression Fredy did not write. */
+  intervalMinutes: RunIntervalMinutes | null;
+  schedule: string | null;
+  timeZone: string | null;
+  choices: readonly RunIntervalMinutes[];
+  reason?: string;
+}
+
 export interface AdminState {
   admin: {
     accessRequests: readonly AccessRequest[];
@@ -149,6 +163,8 @@ export interface AdminState {
     /** True when storage or response bounds omitted older listing outcomes. */
     monitoringListingsTruncated?: boolean;
     monitoringLoaded: boolean;
+    /** Null until the Schedule control has read the Cloud Scheduler job. */
+    runSchedule: RunSchedule | null;
   };
 }
 
@@ -174,6 +190,9 @@ export interface AdminEffects {
   removeAccessRequest(email: string): Promise<void>;
   getMonitoring(query: MonitoringQuery): Promise<void>;
   getMonitoringRuns(query: MonitoringQuery): Promise<void>;
+  getRunSchedule(): Promise<void>;
+  /** Writes the cadence to the Cloud Scheduler job and stores what the job reports back. */
+  setRunSchedule(intervalMinutes: RunIntervalMinutes): Promise<void>;
 }
 
 export function createAdminState(): AdminState {
@@ -184,6 +203,7 @@ export function createAdminState(): AdminState {
       monitoring: null,
       monitoringRuns: [],
       monitoringLoaded: false,
+      runSchedule: null,
     },
   };
 }
@@ -196,6 +216,7 @@ export function orderAccessRequests(requests: readonly AccessRequest[]): AccessR
 
 const ACCESS_BASE = '/api/admin/access-requests';
 const MONITORING_BASE = '/api/admin/monitoring';
+export const SCHEDULE_PATH = '/api/admin/schedule';
 
 export function accessRequestPath(email: string, action?: 'approve' | 'decline'): string {
   const base = `${ACCESS_BASE}/${encodeURIComponent(email)}`;
@@ -250,6 +271,14 @@ export function createAdminEffects(set: AdminStateSetter, transport: AdminTransp
           monitoringListingsTruncated: response.json.listingsTruncated === true,
         },
       }));
+    },
+    async getRunSchedule() {
+      const response = await transport.get<RunSchedule>(SCHEDULE_PATH);
+      set((state) => ({ admin: { ...state.admin, runSchedule: response.json } }));
+    },
+    async setRunSchedule(intervalMinutes) {
+      const response = await transport.post<RunSchedule>(SCHEDULE_PATH, { intervalMinutes });
+      set((state) => ({ admin: { ...state.admin, runSchedule: response.json } }));
     },
   };
 }

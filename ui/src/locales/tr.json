@@ -1256,5 +1256,15 @@
   "admin.monitoring.collapseRuns": "Çalışmaları daralt",
   "admin.monitoring.expandRuns": "Çalışmaları genişlet",
   "admin.monitoring.outcomeHelp": "Sağlayıcı onaylı, Fredy’nin başarı yanıtı aldığı anlamına gelir. Yeniden denenebilir durumda hiçbir şey gönderilmemiştir. Kalıcı yeniden denenmez. Bilinmeyen sağlayıcıya ulaşmış olabilir; bu yüzden otomatik denenmez.",
-  "admin.monitoring.usageUnavailable": "Bulut kullanımı kullanılamıyor: {{reason}}"
+  "admin.monitoring.usageUnavailable": "Bulut kullanımı kullanılamıyor: {{reason}}",
+  "admin.schedule.title": "Arama sıklığı",
+  "admin.schedule.help": "Fredy'nin kayıtlı her aramayı yeni ilanlar için ne sıklıkla kontrol ettiği.",
+  "admin.schedule.current": "Fredy kayıtlı her aramayı her {{minutes}} dakikada bir yeni ilanlar için kontrol ediyor. Daha kısa aralıklar ilanları daha erken bulur ve daha fazla Cloud Run süresi ile Firestore okuması tüketir; ücretsiz katmanda kalan en kısa aralık 5 dakikadır.",
+  "admin.schedule.customCron": "Zamanlayıcı işi bu sayfadan ayarlanmamış özel bir zamanlama ({{cron}}) kullanıyor. Değiştirmek için aşağıdan bir aralık seçin.",
+  "admin.schedule.unavailable": "Geçerli sıklık şu anda Google Cloud'dan okunamadı.",
+  "admin.schedule.every": "Her",
+  "admin.schedule.minutes": "{{minutes}} dakika",
+  "admin.schedule.saved": "Fredy artık her {{minutes}} dakikada bir arıyor.",
+  "admin.schedule.saveFailed": "Sıklık değiştirilemedi. Lütfen tekrar deneyin.",
+  "admin.schedule.loadFailed": "Geçerli sıklık yüklenemedi."
 }

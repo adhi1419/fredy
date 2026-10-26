@@ -86,7 +86,6 @@
   },
   "bootstrap": {
     "required": [
-      "'TRIGGER_INTERVAL_MINUTES': '15'",
       "'GOOGLE_CLOUD_PROJECT': project",
       "'MONITORING_CLOUD_RUN_VCPU': '0.5'",
       "'MONITORING_CLOUD_RUN_MEMORY_GIB': '1'",
@@ -100,6 +99,8 @@
       "roles/datastore.user",
       "roles/monitoring.viewer",
       "roles/bigquery.jobUser",
+      "cloudscheduler.jobs.get,cloudscheduler.jobs.update",
+      "projects/$PROJECT/roles/$SCHEDULE_ROLE_ID",
       "roles/secretmanager.secretAccessor",
       "--service-account \"$RUNTIME_SERVICE_ACCOUNT\"",
       "--memory 1Gi --cpu 0.5",
@@ -107,7 +108,8 @@
       "--min-instances 0 --max-instances 2",
       "\"$SERVICE_URL/api/trigger\"",
       "--schedule '*/15 * * * *'"
-    ]
+    ],
+    "mustNotContain": ["--schedule '*/15 * * * *' \\\\\n    --uri"]
   },
   "wire": {
     "requiredAssumptions": {

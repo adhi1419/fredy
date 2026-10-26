@@ -26,7 +26,11 @@ describe('api/routes/dashboardRouter.js', () => {
       getProviderDistributionForJobIds: () => [],
       getListingsPerDayForJobIds: () => [],
     }));
-    process.env.TRIGGER_INTERVAL_MINUTES = '30';
+    // The cadence comes from the Cloud Scheduler job, read through runSchedule.js; the dashboard
+    // only needs the resolved minutes.
+    vi.doMock(path.join(ROOT, 'lib', 'services', 'scheduler', 'runSchedule.js'), () => ({
+      runIntervalMinutes: async () => 30,
+    }));
     vi.doMock(securityPath, () => ({
       isAdmin: () => state.admin,
     }));
