@@ -1271,5 +1271,15 @@
   "admin.monitoring.collapseRuns": "Läufe einklappen",
   "admin.monitoring.expandRuns": "Läufe ausklappen",
   "admin.monitoring.outcomeHelp": "Anbieter bestätigt bedeutet, dass Fredy Erfolg erhalten hat. Wiederholbar bedeutet, dass nichts gesendet wurde. Endgültig wird nicht wiederholt. Unbekannt kann den Anbieter erreicht haben und wird daher nicht automatisch wiederholt.",
-  "admin.monitoring.usageUnavailable": "Cloud-Nutzung ist nicht verfügbar: {{reason}}"
+  "admin.monitoring.usageUnavailable": "Cloud-Nutzung ist nicht verfügbar: {{reason}}",
+  "admin.schedule.title": "Suchintervall",
+  "admin.schedule.help": "Wie oft Fredy jede gespeicherte Suche auf neue Inserate prüft.",
+  "admin.schedule.current": "Fredy prüft jede gespeicherte Suche alle {{minutes}} Minuten auf neue Inserate. Kürzere Intervalle finden Inserate früher und kosten mehr Cloud-Run-Zeit und Firestore-Lesevorgänge; 5 Minuten ist das kürzeste Intervall, das im kostenlosen Kontingent bleibt.",
+  "admin.schedule.customCron": "Der Scheduler-Job verwendet eine eigene Zeitangabe ({{cron}}), die nicht über diese Seite gesetzt wurde. Wähle unten ein Intervall, um sie zu ersetzen.",
+  "admin.schedule.unavailable": "Das aktuelle Intervall konnte gerade nicht von Google Cloud gelesen werden.",
+  "admin.schedule.every": "Alle",
+  "admin.schedule.minutes": "{{minutes}} Minuten",
+  "admin.schedule.saved": "Fredy sucht jetzt alle {{minutes}} Minuten.",
+  "admin.schedule.saveFailed": "Das Intervall konnte nicht geändert werden. Bitte versuche es erneut.",
+  "admin.schedule.loadFailed": "Das aktuelle Intervall konnte nicht geladen werden."
 }

@@ -1271,5 +1271,15 @@
   "admin.monitoring.collapseRuns": "Collapse runs",
   "admin.monitoring.expandRuns": "Expand runs",
   "admin.monitoring.outcomeHelp": "Provider confirmed means Fredy received success. Retryable means nothing was sent and can be tried again. Terminal will not retry. Unknown may have reached the provider, so Fredy will not retry automatically.",
-  "admin.monitoring.usageUnavailable": "Cloud usage is unavailable: {{reason}}"
+  "admin.monitoring.usageUnavailable": "Cloud usage is unavailable: {{reason}}",
+  "admin.schedule.title": "Run schedule",
+  "admin.schedule.help": "How often Fredy checks every saved search for new listings.",
+  "admin.schedule.current": "Fredy checks every saved search for new listings every {{minutes}} minutes. Shorter intervals find listings sooner and cost more Cloud Run time and Firestore reads; 5 minutes is the shortest that stays within the free tier.",
+  "admin.schedule.customCron": "The scheduler job uses a custom timing ({{cron}}) that was not set from this page. Pick an interval below to replace it.",
+  "admin.schedule.unavailable": "The current schedule could not be read from Google Cloud right now.",
+  "admin.schedule.every": "Every",
+  "admin.schedule.minutes": "{{minutes}} minutes",
+  "admin.schedule.saved": "Fredy now searches every {{minutes}} minutes.",
+  "admin.schedule.saveFailed": "The schedule could not be changed. Please try again.",
+  "admin.schedule.loadFailed": "The current schedule could not be loaded."
 }

@@ -25,6 +25,7 @@ import {
 } from '../../../services/state/adminState.js';
 import { useActions, useSelector } from '../../../services/state/store.js';
 import MonitoringChart, { type MonitoringSeries } from './MonitoringChart.jsx';
+import RunScheduleControl from './RunScheduleControl.jsx';
 import { monitoringDailyBuckets, monitoringRangeFor, type MonitoringRangeKey } from './monitoringTime.js';
 import './MonitoringPage.less';
 
@@ -310,6 +311,8 @@ export default function MonitoringPage(): ReactNode {
           {t('admin.monitoring.refresh')}
         </Button>
       </div>
+
+      <RunScheduleControl />
 
       <section className="monitoring__costs">
         <header className="monitoring__costHeader">

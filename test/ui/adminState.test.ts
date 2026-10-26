@@ -10,7 +10,9 @@ import {
   createAdminState,
   monitoringPath,
   orderAccessRequests,
+  SCHEDULE_PATH,
   type AccessRequest,
+  type RunSchedule,
   type AdminStateSetter,
 } from '../../ui/src/services/state/adminState.js';
 
@@ -42,6 +44,7 @@ describe('admin state: access requests', () => {
         monitoring: null,
         monitoringRuns: [],
         monitoringLoaded: false,
+        runSchedule: null,
       },
     });
   });
@@ -106,5 +109,43 @@ describe('admin state: access requests', () => {
       'late@example.com',
       'old-declined@example.com',
     ]);
+  });
+});
+
+describe('admin state: run schedule', () => {
+  const schedule = (intervalMinutes: RunSchedule['intervalMinutes']): RunSchedule => ({
+    status: 'available',
+    intervalMinutes,
+    schedule: intervalMinutes == null ? '30 2 * * *' : `*/${intervalMinutes} * * * *`,
+    timeZone: 'Etc/UTC',
+    choices: [5, 10, 15, 30, 60],
+  });
+
+  it('is unknown until the Cloud Scheduler job has been read', () => {
+    expect(createAdminState().admin.runSchedule).toBeNull();
+  });
+
+  it('reads the job through the admin schedule route', async () => {
+    const { state, get, effects } = setup();
+    get.mockResolvedValueOnce({ status: 200, json: schedule(15) });
+    await effects.getRunSchedule();
+    expect(get).toHaveBeenCalledWith(SCHEDULE_PATH);
+    expect(state.admin.runSchedule?.intervalMinutes).toBe(15);
+  });
+
+  it('posts the chosen cadence and keeps what the job reports back, not what was asked', async () => {
+    const { state, post, effects } = setup();
+    post.mockResolvedValueOnce({ status: 200, json: schedule(5) });
+    await effects.setRunSchedule(5);
+    expect(post).toHaveBeenCalledWith(SCHEDULE_PATH, { intervalMinutes: 5 });
+    expect(state.admin.runSchedule).toEqual(schedule(5));
+  });
+
+  it('keeps a hand-edited cron visible as a null interval with its expression', async () => {
+    const { state, get, effects } = setup();
+    get.mockResolvedValueOnce({ status: 200, json: schedule(null) });
+    await effects.getRunSchedule();
+    expect(state.admin.runSchedule?.intervalMinutes).toBeNull();
+    expect(state.admin.runSchedule?.schedule).toBe('30 2 * * *');
   });
 });

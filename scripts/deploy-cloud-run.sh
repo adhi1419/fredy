@@ -137,8 +137,6 @@ env = {
     # These mirror the resource flags on the deploy command below.
     'MONITORING_CLOUD_RUN_VCPU': '0.5',
     'MONITORING_CLOUD_RUN_MEMORY_GIB': '1',
-    # Mirrors the Cloud Scheduler cadence below; the dashboard's "next run" line reads it.
-    'TRIGGER_INTERVAL_MINUTES': '15',
     'FIREBASE_WEB_CONFIG': web_config,
     'FRONTEND_ORIGIN': 'https://adhi1419.github.io',
     'FRONTEND_URL': 'https://adhi1419.github.io/fredy/',
@@ -183,6 +181,19 @@ for role in roles/datastore.user roles/monitoring.viewer roles/bigquery.jobUser;
   gcloud projects add-iam-policy-binding "$PROJECT" \
     --member="serviceAccount:$RUNTIME_SERVICE_ACCOUNT" --role="$role" --condition=None --quiet > /dev/null
 done
+# The admin Schedule control re-times the Cloud Scheduler job from inside Fredy. A custom role with
+# only get+update keeps the runtime identity from creating, pausing or deleting jobs; the predefined
+# roles/cloudscheduler.admin would allow all of that.
+SCHEDULE_ROLE_ID=fredyScheduleEditor
+if ! gcloud iam roles describe "$SCHEDULE_ROLE_ID" --project "$PROJECT" > /dev/null 2>&1; then
+  gcloud iam roles create "$SCHEDULE_ROLE_ID" --project "$PROJECT" \
+    --title 'Fredy schedule editor' \
+    --description 'Read and re-time the Fredy Cloud Scheduler job' \
+    --permissions cloudscheduler.jobs.get,cloudscheduler.jobs.update --quiet > /dev/null
+fi
+gcloud projects add-iam-policy-binding "$PROJECT" \
+  --member="serviceAccount:$RUNTIME_SERVICE_ACCOUNT" \
+  --role="projects/$PROJECT/roles/$SCHEDULE_ROLE_ID" --condition=None --quiet > /dev/null
 for secret in gemini-api-key provider-credential-encryption-key; do
   if gcloud secrets describe "$secret" > /dev/null 2>&1; then
     gcloud secrets add-iam-policy-binding "$secret" \
@@ -213,9 +224,10 @@ gcloud run deploy "$SERVICE" \
 SERVICE_URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')
 
 echo "== Scheduler =="
+# The cadence is NOT passed on update: an administrator sets it from the Monitoring page (it is
+# written straight to this job), and re-running the bootstrap must not reset their choice.
 if gcloud scheduler jobs describe fredy-scrape --location "$REGION" > /dev/null 2>&1; then
   gcloud scheduler jobs update http fredy-scrape --location "$REGION" \
-    --schedule '*/15 * * * *' \
     --uri "$SERVICE_URL/api/trigger" \
     --update-headers X-Trigger-Token="$TRIGGER_TOKEN"
 else

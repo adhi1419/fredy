@@ -103,6 +103,11 @@ describe('Cloud Run runtime contract', () => {
     const bootstrap = readContractFile('bootstrap');
 
     expectAllIncluded(bootstrap, fixture.bootstrap.required, 'deploy-cloud-run.sh');
+    // The cadence belongs to the admin Schedule control; a re-run of the bootstrap must not
+    // reset it, so the update path never passes --schedule.
+    for (const forbidden of fixture.bootstrap.mustNotContain ?? []) {
+      expect(bootstrap, `deploy-cloud-run.sh must not contain ${JSON.stringify(forbidden)}`).not.toContain(forbidden);
+    }
   });
 
   it('keeps this documentation executable and separates current behavior from future work', () => {

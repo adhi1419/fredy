@@ -119,6 +119,38 @@
     border-bottom: 1px solid @color-border-bright;
   }
 
+  &__schedule {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: @space-3;
+    padding: @space-3 0;
+    border-top: 1px solid @color-border-bright;
+  }
+
+  &__scheduleText h2 {
+    margin: 0 0 @space-1;
+    color: @color-text;
+    font-size: @text-md;
+    font-weight: 500;
+  }
+
+  &__scheduleText p {
+    margin: 0;
+    color: @color-muted;
+    font-size: @text-xs;
+    line-height: 1.45;
+  }
+
+  &__scheduleField {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: @space-2;
+    color: @color-text;
+    font-size: @text-sm;
+  }
+
   &__costHeader {
     display: flex;
     justify-content: space-between;
