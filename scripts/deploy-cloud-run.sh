@@ -135,7 +135,7 @@ env = {
     'TRIGGER_TOKEN': token,
     'GOOGLE_CLOUD_PROJECT': project,
     # These mirror the resource flags on the deploy command below.
-    'MONITORING_CLOUD_RUN_VCPU': '1',
+    'MONITORING_CLOUD_RUN_VCPU': '0.5',
     'MONITORING_CLOUD_RUN_MEMORY_GIB': '1',
     # Mirrors the Cloud Scheduler cadence below; the dashboard's "next run" line reads it.
     'TRIGGER_INTERVAL_MINUTES': '15',
@@ -195,12 +195,21 @@ gcloud run deploy "$SERVICE" \
   --image "$IMAGE" \
   --service-account "$RUNTIME_SERVICE_ACCOUNT" \
   --region "$REGION" \
-  --memory 1Gi --cpu 1 \
-  --min-instances 0 --max-instances 1 \
+  --memory 1Gi --cpu 0.5 \
+  --concurrency 1 --execution-environment gen1 \
+  --min-instances 0 --max-instances 2 \
   --timeout 900 \
   --allow-unauthenticated \
   --env-vars-file "$ENVFILE" \
   "${SECRET_FLAGS[@]}"
+# Half a vCPU: the scrape is I/O-bound (p99 CPU utilisation 16% of one vCPU), so halving the
+# allocation halves the billed vCPU-seconds and barely changes run time - it is what keeps a
+# 5-minute cadence inside the Cloud Run free tier. Below 1 vCPU Cloud Run requires request-based
+# billing, memory <= 1 GiB, the first-generation execution environment and a concurrency of 1.
+# Concurrency 1 means a browser request cannot share the instance a 30-second scrape is holding,
+# hence max-instances 2: the second instance only exists while the two overlap. The Scheduler
+# never overlaps itself (one request every few minutes, each ~30 s), so two instances only run
+# jobs at the same time when a manual "run" from the UI coincides with a scheduled one.
 SERVICE_URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')
 
 echo "== Scheduler =="
